@@ -219,6 +219,22 @@ backend/
 │   └── app.php
 │
 └── vendor/
+frontend/
+├── src/
+│   ├── api/
+│   │   ├── auth.api.js
+│   │   ├── test.api.js
+│   │   └── user.api.js
+│   │
+│   ├── views/
+│   │   ├── teacher/
+│   │   ├── student/
+│   │   └── admin/
+│   │
+│   ├── components/
+│   ├── router/
+│   ├── store/ (Pinia)
+│   └── utils/
 ```
 
 ### 🔑 Nguyên tắc
