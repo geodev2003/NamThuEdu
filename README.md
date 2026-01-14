@@ -151,3 +151,13 @@ Chấm writing => Gọi API KEY Gemini => JSON => FE
 #### 3.4 Rate limit (Không cho đăng nhập sai nhiều lần,..)
 
 #### 3.5 Bảo mật
+
+## Phân chia nhiệm vụ
+
+- **Thư**:  2.4, 2.2
+
+- **Nhi**: 1.1, 1.2
+
+- **Thuần** (bbb): 2.1, 3.3, 1.3
+
+- **Tuần**: 3.1, 2.3
