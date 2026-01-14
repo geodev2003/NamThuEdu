@@ -35,32 +35,59 @@ Chấm writing => Gọi API KEY Gemini => JSON => FE
 #### 1.2 Quản lý test
 
 **Tạo bài test mới**
+
     - ***Tạo trên giao diện***
+
         + Nhập tên bài test
+
         + Chế độ ***Private***
+
         + Thời gian làm bài
+
         + Chọn Skill 
+
             + If ***Listening***:
+
                 + Up record
+
                 + Up câu hỏi + đáp án + đáp án chính xác
+
                 + Up transcript
+
                 + Ràng buộc chỉ **Nghe được 1 lần**
+
             + If ***Reading***:
+
                 + Up paragraph
+
                 + Up câu hỏi + đáp án + đáp án chính xác
+
                 + Giải thích (Optional)
+
             + If ***Writing***:
+
                 + Up câu hỏi
+
             + If ***Speaking***:
+
                 + Up câu hỏi
+
         + Bấm **Lưu**
+
     - ***Tạo bằng Upload file***
+
         + File excel/.csv mẫu (trong đó có những cột đã được đặt tên rồi) 
+
             + Đối với ***Listening***: 
+
                 + Trong file excel/csv, ghi tên file record tương ứng với test/câu hỏi
+
                 + Up kèm .zip
+
         + File word mẫu => Chuyển word sang excel => Xử lý như trên
+
         + Đọc file upload lên
+
         + Bấm **Lưu**
 
 **Sửa bài test**
