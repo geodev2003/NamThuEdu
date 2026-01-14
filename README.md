@@ -161,3 +161,72 @@ Chấm writing => Gọi API KEY Gemini => JSON => FE
 - **Thuần** (bbb): 2.1, 3.3, 1.3
 
 - **Tuần**: 3.1, 2.3
+
+## Cấu trúc thư mục đề xuất
+```
+backend/
+├── public/
+│   └── index.php           # Entry point
+│
+├── app/
+│   ├── Core/
+│   │   ├── Router.php
+│   │   ├── Controller.php
+│   │   ├── Model.php
+│   │   ├── Database.php
+│   │   ├── Auth.php        # JWT, role check
+│   │   ├── Validator.php
+│   │   └── Response.php
+│   │
+│   ├── Modules/
+│   │   ├── Auth/
+│   │   │   ├── AuthController.php
+│   │   │   └── AuthService.php
+│   │   │
+│   │   ├── User/
+│   │   │   ├── UserController.php
+│   │   │   ├── UserService.php
+│   │   │   └── UserModel.php
+│   │   │
+│   │   ├── Class/
+│   │   ├── Test/
+│   │   ├── TestAssignment/
+│   │   ├── Submission/
+│   │   ├── Vocabulary/
+│   │   ├── Post/
+│   │   ├── Notification/
+│   │   └── AuditLog/
+│   │
+│   └── Helpers/
+│       ├── FileUpload.php
+│       ├── OTPService.php
+│       ├── ExcelReader.php
+│       ├── WordParser.php
+│       └── GeminiService.php
+│
+├── storage/
+│   ├── audio/
+│   ├── documents/
+│   ├── submissions/
+│   └── temp/
+│
+├── routes/
+│   └── api.php
+│
+├── config/
+│   ├── database.php
+│   ├── jwt.php
+│   └── app.php
+│
+└── vendor/
+```
+
+### 🔑 Nguyên tắc
+**Controller**: nhận request, validate, gọi Service
+
+**Service**: xử lý nghiệp vụ
+
+**Model**: thao tác DB
+
+**Helper**: xử lý file, OTP, AI
+
