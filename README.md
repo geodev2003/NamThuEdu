@@ -165,76 +165,74 @@ Chấm writing => Gọi API KEY Gemini => JSON => FE
 ## Cấu trúc thư mục đề xuất
 ```
 backend/
+│
 ├── public/
-│   └── index.php           # Entry point
+│   └── index.php          // Front Controller
 │
 ├── app/
-│   ├── Core/
+│   ├── controllers/
+│   │   ├── AuthController.php
+│   │   ├── UserController.php
+│   │   ├── TestController.php
+│   │
+│   ├── models/
+│   │   ├── User.php
+│   │   ├── Test.php
+│   │
+│   ├── services/
+│   │   ├── AuthService.php
+│   │   ├── UserService.php
+│   │
+│   ├── middlewares/
+│   │   ├── AuthMiddleware.php
+│   │   ├── RoleMiddleware.php
+│   │
+│   ├── core/
 │   │   ├── Router.php
 │   │   ├── Controller.php
-│   │   ├── Model.php
 │   │   ├── Database.php
-│   │   ├── Auth.php        # JWT, role check
-│   │   ├── Validator.php
 │   │   └── Response.php
 │   │
-│   ├── Modules/
-│   │   ├── Auth/
-│   │   │   ├── AuthController.php
-│   │   │   └── AuthService.php
-│   │   │
-│   │   ├── User/
-│   │   │   ├── UserController.php
-│   │   │   ├── UserService.php
-│   │   │   └── UserModel.php
-│   │   │
-│   │   ├── Class/
-│   │   ├── Test/
-│   │   ├── TestAssignment/
-│   │   ├── Submission/
-│   │   ├── Vocabulary/
-│   │   ├── Post/
-│   │   ├── Notification/
-│   │   └── AuditLog/
+│   └── config/
+│       ├── database.php
+│       └── app.php
+│
+├── vendor/                // nếu dùng composer
+└── .htaccess
+
+
+src/
+├── views/                        # Nơi chứa các TRANG (Page)
+│   ├── User/                     # Chức năng Quản lý User
+│   │   ├── UserList.vue          # Trang danh sách (được map vào router)
+│   │   └── UserDetail.vue        # Trang chi tiết
 │   │
-│   └── Helpers/
-│       ├── FileUpload.php
-│       ├── OTPService.php
-│       ├── ExcelReader.php
-│       ├── WordParser.php
-│       └── GeminiService.php
-│
-├── storage/
-│   ├── audio/
-│   ├── documents/
-│   ├── submissions/
-│   └── temp/
-│
-├── routes/
-│   └── api.php
-│
-├── config/
-│   ├── database.php
-│   ├── jwt.php
-│   └── app.php
-│
-└── vendor/
-frontend/
-├── src/
-│   ├── api/
-│   │   ├── auth.api.js
-│   │   ├── test.api.js
-│   │   └── user.api.js
+│   ├── Product/                  # Chức năng Quản lý Sản phẩm
+│   │   ├── ProductList.vue
+│   │   └── ProductCreate.vue
 │   │
-│   ├── views/
-│   │   ├── teacher/
-│   │   ├── student/
-│   │   └── admin/
+│   └── Dashboard/                # Trang Dashboard
+│       └── Dashboard.vue
+│
+├── components/                   # Nơi chứa các UI nhỏ (Mảnh ghép)
+│   ├── common/                   # [QUAN TRỌNG] Các component dùng chung cho toàn app
+│   │   ├── BaseButton.vue
+│   │   ├── BaseInput.vue
+│   │   └── Modal.vue
 │   │
-│   ├── components/
-│   ├── router/
-│   ├── store/ (Pinia)
-│   └── utils/
+│   ├── User/                     # Components CHỈ dành riêng cho chức năng User
+│   │   ├── UserAvatar.vue        # (Chỉ dùng trong UserList hoặc UserDetail)
+│   │   └── UserRoleBadge.vue
+│   │
+│   └── Product/                  # Components CHỈ dành riêng cho chức năng Product
+│       ├── ProductCard.vue       # (Chỉ dùng trong ProductList)
+│       └── ProductPrice.vue
+│
+├── router/
+│   └── index.ts                  # Import các file từ src/views/...
+│
+└── App.vue
+
 ```
 
 ### 🔑 Nguyên tắc
