@@ -78,6 +78,15 @@ $router->delete('/api/users/{id}', 'UserController@softDelete');
 $router->post('/api/tests/upload', 'TestController@upload');
 $router->get('/api/tests', 'TestController@index');
 
+/* ======== COURSE ========= */
+$router->get('/api/teacher/courses', 'CourseController@teacherCourses');
+$router->post('/api/teacher/courses', 'CourseController@store');
+$router->delete('/api/teacher/courses/{id}', 'CourseController@destroy');
+
+/* ======== CATEGORY ======== */
+$router->get('/api/teacher/categories', 'CategoryController@getCategory');
+
+
 /**
  * ------------------------------------------
  * 6. Chạy Router

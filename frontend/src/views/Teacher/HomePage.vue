@@ -1,3 +1,4 @@
+<!-- src/views/Teacher/HomePage.vue -->
 <template>
     <div class="teacher-section">
         <!-- Overlay for mobile/tablet -->
@@ -49,9 +50,12 @@
                 <span>Menu</span>
             </button>
 
+            <!-- NavBar Component -->
+            <NavBar />
+
+            <!-- Router View - Hiển thị nội dung từ các route con -->
             <div class="content-inner">
-                <h1>Teacher Home Page</h1>
-                <p>Welcome to the teacher dashboard</p>
+                <router-view />
             </div>
         </div>
     </div>
@@ -60,6 +64,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 import Sidebar from '../../components/Teachers/SideBar/SideBar.vue';
+import NavBar from '../../components/Teachers/NavBar/NavBar.vue';
 
 const isSidebarOpen = ref(true);
 const isSidebarCollapsed = ref(false);
@@ -161,22 +166,14 @@ onUnmounted(() => {
 .sidebar-toggle {
     position: absolute;
     z-index: 1500;
-    /* background-color: #007bff; */
     color: white;
-    /* border: none; */
     padding: 16px 16px;
     cursor: pointer;
-    /* box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3); */
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
     justify-content: center;
 }
-
-/* .sidebar-toggle:hover {
-    background-color: #0056b3;
-    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
-} */
 
 .sidebar-toggle:active {
     transform: scale(0.95);
@@ -192,7 +189,6 @@ onUnmounted(() => {
     top: 15px;
     left: 15px;
     z-index: 100;
-    /* background-color: #007bff; */
     color: white;
     border: none;
     padding: 16px 16px;
@@ -208,7 +204,6 @@ onUnmounted(() => {
 }
 
 .mobile-menu-button:hover {
-    /* background-color: #0056b3; */
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
@@ -243,21 +238,13 @@ onUnmounted(() => {
     overflow-y: auto;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
 .content-inner {
     padding: 30px;
-}
-
-.teacher-content h1 {
-    font-size: 32px;
-    color: #333;
-    margin-bottom: 10px;
-}
-
-.teacher-content p {
-    font-size: 16px;
-    color: #666;
+    flex: 1;
 }
 
 /* Desktop (> 1024px) */
@@ -286,10 +273,6 @@ onUnmounted(() => {
 @media (min-width: 1025px) and (max-width: 1440px) {
     .content-inner {
         padding: 25px;
-    }
-
-    .teacher-content h1 {
-        font-size: 28px;
     }
 }
 
@@ -321,15 +304,6 @@ onUnmounted(() => {
 
     .content-inner {
         padding: 20px;
-        padding-top: 70px;
-    }
-
-    .teacher-content h1 {
-        font-size: 26px;
-    }
-
-    .teacher-content p {
-        font-size: 15px;
     }
 }
 
@@ -380,15 +354,6 @@ onUnmounted(() => {
 
     .content-inner {
         padding: 15px;
-        padding-top: 70px;
-    }
-
-    .teacher-content h1 {
-        font-size: 24px;
-    }
-
-    .teacher-content p {
-        font-size: 14px;
     }
 }
 
@@ -396,11 +361,6 @@ onUnmounted(() => {
 @media (max-width: 374px) {
     .content-inner {
         padding: 12px;
-        padding-top: 65px;
-    }
-
-    .teacher-content h1 {
-        font-size: 22px;
     }
 }
 </style>
