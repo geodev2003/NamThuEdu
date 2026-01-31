@@ -1,4 +1,9 @@
 <template>
+
+
+    <!-- Header -->
+     <Header />
+
   <div class="home">
     <!-- Hero Section with playful design -->
     <section class="hero">
@@ -185,10 +190,16 @@
       </div>
     </section>
   </div>
+
+  
+    <!-- Footer -->
+    <Footer />
 </template>
 
 <script setup>
-// No additional logic needed
+import Header from "@/components/common/header.vue";
+import Footer from "@/components/common/footer.vue";
+
 </script>
 
 <style scoped>

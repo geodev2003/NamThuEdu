@@ -190,7 +190,7 @@ const handleLogin = async () => {
 
         // Lưu token
         localStorage.setItem("token", access_token);
-
+        localStorage.setItem("uRole", user.role);
         // Điều hướng theo role
         if (user.role === "student") {
             router.push("/students/homepage");

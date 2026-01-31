@@ -239,3 +239,10 @@ CREATE TABLE audit_logs (
         FOREIGN KEY (user_id) REFERENCES users(uId)
         ON DELETE SET NULL
 );
+
+INSERT INTO users(uPhone, uPassword, uRole) VALUES (0336695863, '$2a$10$Ugu/RMgmG6tk071M.cuNHOm3pNb6SBhhHSElB/xC1k8Oy3xqibT1O', 'teacher');
+
+UPDATE users SET uRole='admin' WHERE uId=2;
+SELECT * FROM users;
+
+-- DROP DATABASE namthuedu;

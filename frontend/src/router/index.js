@@ -39,11 +39,64 @@ const routes = [
       title: 'Quên mật khẩu - NamThuEdu'
     }
   },
-  // Teacher Routes
+  // Teacher Routes với nested routing
   {
-    path: '/teacher/homepage',
-    name: 'TeacherHome',
+    path: '/teacher',
     component: () => import('../views/Teacher/HomePage.vue'),
+    children: [
+      {
+        path: '',
+        redirect: '/teacher/homepage'
+      },
+      {
+        path: 'homepage',
+        name: 'TeacherHome',
+        component: () => import('../views/Teacher/Dashboard/dashboard.vue'),
+        meta: {
+          title: 'Teacher Home - NamThuEdu'
+        }
+      },
+      {
+        path: 'dashboard',
+        name: 'TeacherDashboard',
+        component: () => import('../views/Teacher/Dashboard/dashboard.vue'),
+        meta: {
+          title: 'Dashboard - NamThuEdu'
+        }
+      },
+      {
+        path: 'courses',
+        name: 'TeacherCourses',
+        component: () => import('../views/Teacher/CourseManagements/index.vue'),
+        meta: {
+          title: 'Course Management - NamThuEdu'
+        }
+      },
+      {
+        path: 'students',
+        name: 'TeacherStudents',
+        component: () => import('../views/Teacher/StudentManagements/index.vue'),
+        meta: {
+          title: 'Student Management - NamThuEdu'
+        }
+      },
+      {
+        path: 'classes',
+        name: 'TeacherClasses',
+        component: () => import('../views/Teacher/ClassManagements/index.vue'),
+        meta: {
+          title: 'Class Management - NamThuEdu'
+        }
+      },
+      {
+        path: 'tests',
+        name: 'TeacherTests',
+        component: () => import('../views/Teacher/TestManagements/index.vue'),
+        meta: {
+          title: 'Test Management - NamThuEdu'
+        }
+      }
+    ]
   },
   // Student Routes
   {
@@ -92,8 +145,17 @@ const router = createRouter({
 
 // Navigation guard for page titles
 router.beforeEach((to, from, next) => {
-  document.title = to.meta.title || 'NamThuEdu - Nền tảng giáo dục trực tuyến'
-  next()
-})
+  const token = localStorage.getItem('token');
+  const userRole = localStorage.getItem('uRole');
+
+  // Kiểm tra nếu route yêu cầu quyền teacher
+  if (to.path.startsWith('/teacher') && (!token || userRole !== 'teacher')) {
+    next('/login');
+  } 
+  else {
+    document.title = to.meta.title || 'NamThuEdu';
+    next();
+  }
+});
 
 export default router
