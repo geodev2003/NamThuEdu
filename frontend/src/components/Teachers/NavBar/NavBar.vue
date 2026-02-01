@@ -29,8 +29,8 @@
             <div class="profile-dropdown">
                 <img src="@/assets/profile-placeholder.png" alt="Profile" class="profile-avatar" />
                 <div class="profile-info">
-                    <span class="profile-name">John Doe</span>
-                    <span class="profile-role">Teacher</span>
+                    <span class="profile-name">{{ user.uName }}</span>
+                    <span class="profile-role" style="text-transform: capitalize;">{{ user.uRole }}</span>
                 </div>
                 <i class="bi bi-chevron-down"></i>
             </div>
@@ -40,9 +40,11 @@
 
 <script setup>
 import { computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { onMounted, ref } from 'vue';
 
 const route = useRoute();
+const router = useRouter(); // Khởi tạo router
 
 // Mapping routes to titles
 const routeTitles = {
@@ -75,6 +77,25 @@ const pageTitle = computed(() => {
 const breadcrumb = computed(() => {
     return routeBreadcrumbs[route.name] || '';
 });
+const user = ref({
+    uName: '', // Giá trị mặc định
+    uRole: ''
+});
+
+onMounted(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+        try {
+            const userData = JSON.parse(storedUser);
+            // Cập nhật key 'name' và 'role' từ dữ liệu đăng nhập thực tế
+            user.value.uName = userData.name || 'Người dùng'; 
+            user.value.uRole = userData.role || 'Guest';
+        } catch (e) {
+            console.error("Lỗi parse user:", e);
+        }
+    }
+});
+
 </script>
 
 <style scoped>

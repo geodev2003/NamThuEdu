@@ -100,9 +100,19 @@ const routes = [
   },
   // Student Routes
   {
-    path: '/students/homepage',
-    name: 'StudentHome',
-    component: () => import('../views/Students/HomePage.vue'),
+    path: '/students/children/homepage',
+    name: 'ChildrenHome',
+    component: () => import('../views/Students/Children/HomePage.vue'),
+  },
+    {
+    path: '/students/pre-teens/homepage',
+    name: 'PreteensHome',
+    component: () => import('../views/Students/Pre-teens/HomePage.vue'),
+  },
+    {
+    path: '/students/teenagers/homepage',
+    name: 'TeenagersHome',
+    component: () => import('../views/Students/Teenagers/HomePage.vue'),
   },
   // Admin Routes
   {

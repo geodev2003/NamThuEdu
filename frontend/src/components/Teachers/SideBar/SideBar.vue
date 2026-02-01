@@ -1,6 +1,6 @@
 <!-- src/components/Teachers/SideBar/SideBar.vue -->
 <template>
-    <div class="teacher-sidebar" :class="{ 
+    <div class="teacher-sidebar" :class="{
         'collapsed': isCollapsed && isDesktop
     }">
         <!-- Logo and Name -->
@@ -25,21 +25,16 @@
                         <span v-show="!isCollapsed || !isDesktop">Course Managements</span>
                     </router-link>
                 </li>
-                
+
                 <li class="has-submenu">
-                    <div 
-                        class="menu-item" 
-                        @click="toggleSubmenu('class')"
-                        :title="isCollapsed && isDesktop ? 'Class Managements' : ''"
-                    >
+                    <div class="menu-item" @click="toggleSubmenu('class')"
+                        :title="isCollapsed && isDesktop ? 'Class Managements' : ''">
                         <router-link to="/teacher/classes" class="menu-item-left">
                             <i class="bi bi-door-open"></i>
                             <span v-show="!isCollapsed || !isDesktop">Class Managements</span>
                         </router-link>
-                        <i 
-                            v-show="(!isCollapsed || !isDesktop)" 
-                            :class="['bi', openMenus.class ? 'bi-chevron-down' : 'bi-chevron-right']"
-                        ></i>
+                        <i v-show="(!isCollapsed || !isDesktop)"
+                            :class="['bi', openMenus.class ? 'bi-chevron-down' : 'bi-chevron-right']"></i>
                     </div>
                     <ul class="submenu" v-show="openMenus.class && (!isCollapsed || !isDesktop)">
                         <li><router-link to="/teacher/classes/create">Create Class</router-link></li>
@@ -49,19 +44,14 @@
                 </li>
 
                 <li class="has-submenu">
-                    <div 
-                        class="menu-item" 
-                        @click="toggleSubmenu('student')"
-                        :title="isCollapsed && isDesktop ? 'Student Managements' : ''"
-                    >
+                    <div class="menu-item" @click="toggleSubmenu('student')"
+                        :title="isCollapsed && isDesktop ? 'Student Managements' : ''">
                         <router-link to="/teacher/students" class="menu-item-left">
                             <i class="bi bi-people"></i>
                             <span v-show="!isCollapsed || !isDesktop">Student Managements</span>
                         </router-link>
-                        <i 
-                            v-show="(!isCollapsed || !isDesktop)" 
-                            :class="['bi', openMenus.student ? 'bi-chevron-down' : 'bi-chevron-right']"
-                        ></i>
+                        <i v-show="(!isCollapsed || !isDesktop)"
+                            :class="['bi', openMenus.student ? 'bi-chevron-down' : 'bi-chevron-right']"></i>
                     </div>
                     <ul class="submenu" v-show="openMenus.student && (!isCollapsed || !isDesktop)">
                         <li><router-link to="/teacher/students/list">Students</router-link></li>
@@ -70,19 +60,14 @@
                 </li>
 
                 <li class="has-submenu">
-                    <div 
-                        class="menu-item" 
-                        @click="toggleSubmenu('test')"
-                        :title="isCollapsed && isDesktop ? 'Test Managements' : ''"
-                    >
+                    <div class="menu-item" @click="toggleSubmenu('test')"
+                        :title="isCollapsed && isDesktop ? 'Test Managements' : ''">
                         <router-link to="/teacher/tests" class="menu-item-left">
                             <i class="bi bi-clipboard-check"></i>
                             <span v-show="!isCollapsed || !isDesktop">Test Managements</span>
                         </router-link>
-                        <i 
-                            v-show="(!isCollapsed || !isDesktop)" 
-                            :class="['bi', openMenus.test ? 'bi-chevron-down' : 'bi-chevron-right']"
-                        ></i>
+                        <i v-show="(!isCollapsed || !isDesktop)"
+                            :class="['bi', openMenus.test ? 'bi-chevron-down' : 'bi-chevron-right']"></i>
                     </div>
                     <ul class="submenu" v-show="openMenus.test && (!isCollapsed || !isDesktop)">
                         <li><router-link to="/teacher/tests/create">Create Test</router-link></li>
@@ -92,19 +77,14 @@
                 </li>
 
                 <li class="has-submenu">
-                    <div 
-                        class="menu-item" 
-                        @click="toggleSubmenu('blog')"
-                        :title="isCollapsed && isDesktop ? 'Blog Managements' : ''"
-                    >
+                    <div class="menu-item" @click="toggleSubmenu('blog')"
+                        :title="isCollapsed && isDesktop ? 'Blog Managements' : ''">
                         <router-link to="/teacher/blogs" class="menu-item-left">
                             <i class="bi bi-pencil-square"></i>
                             <span v-show="!isCollapsed || !isDesktop">Blog Managements</span>
                         </router-link>
-                        <i 
-                            v-show="(!isCollapsed || !isDesktop)" 
-                            :class="['bi', openMenus.blog ? 'bi-chevron-down' : 'bi-chevron-right']"
-                        ></i>
+                        <i v-show="(!isCollapsed || !isDesktop)"
+                            :class="['bi', openMenus.blog ? 'bi-chevron-down' : 'bi-chevron-right']"></i>
                     </div>
                     <ul class="submenu" v-show="openMenus.blog && (!isCollapsed || !isDesktop)">
                         <li><router-link to="/teacher/blogs/create">Create Blog</router-link></li>
@@ -135,12 +115,8 @@
         </div>
 
         <!-- Collapsed Theme Toggle (Desktop only) -->
-        <div 
-            class="theme-toggle-collapsed" 
-            v-show="isCollapsed && isDesktop"
-            @click="toggleTheme"
-            :title="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
-        >
+        <div class="theme-toggle-collapsed" v-show="isCollapsed && isDesktop" @click="toggleTheme"
+            :title="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
             <i class="bi" :class="isDarkMode ? 'bi-moon-fill' : 'bi-sun-fill'"></i>
         </div>
 
@@ -149,34 +125,27 @@
             <div class="profile-left">
                 <img src="@/assets/profile-placeholder.png" alt="Profile Picture" class="profile-picture" />
                 <div class="profile-info" v-show="!isCollapsed || !isDesktop">
-                    <h3 class="profile-name">John Doe</h3>
-                    <p class="profile-role">Teacher</p>
+                    <h3 class="profile-name">{{ user.uName }}</h3>
+                    <p class="profile-role" style="text-transform: capitalize;">{{ user.uRole }}</p>
                 </div>
             </div>
 
-            <!-- Logout Button -->
-            <button 
-                class="logout-button" 
-                v-show="!isCollapsed || !isDesktop"
-                :title="isCollapsed && isDesktop ? 'Logout' : ''"
-            >
+            <button class="logout-button" v-show="!isCollapsed || !isDesktop" @click="handleLogout" title="Logout">
                 <i class="bi bi-box-arrow-right"></i>
             </button>
         </div>
 
-        <!-- Collapsed Logout Button (Desktop only) -->
-        <button 
-            class="logout-button-collapsed" 
-            v-show="isCollapsed && isDesktop"
-            title="Logout"
-        >
+        <button class="logout-button-collapsed" v-show="isCollapsed && isDesktop" @click="handleLogout" title="Logout">
             <i class="bi bi-box-arrow-right"></i>
         </button>
     </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 
 const props = defineProps({
     isOpen: {
@@ -210,6 +179,32 @@ const openMenus = ref({
     test: false
 });
 
+// Khai báo biến user để hứng dữ liệu
+const user = ref({
+    uName: '',
+    uRole: ''
+});
+
+// Hàm đăng xuất: xóa sạch phiên làm việc và về trang login
+const handleLogout = () => {
+    localStorage.clear();
+    router.push('/login');
+};
+
+// Lấy thông tin từ localStorage khi component vừa load
+onMounted(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+        try {
+            const userData = JSON.parse(storedUser);
+            // Cập nhật key 'name' và 'role' từ dữ liệu đăng nhập thực tế
+            user.value.uName = userData.name || 'Người dùng'; 
+            user.value.uRole = userData.role || 'Guest';
+        } catch (e) {
+            console.error("Lỗi parse user:", e);
+        }
+    }
+});
 const isDarkMode = ref(false);
 
 const toggleSubmenu = (menu) => {
@@ -299,12 +294,12 @@ const toggleTheme = () => {
     margin: 0;
 }
 
-.navigation-links > ul > li {
+.navigation-links>ul>li {
     margin: 4px 0;
 }
 
-.navigation-links > ul > li > a,
-.navigation-links > ul > li > .router-link-active {
+.navigation-links>ul>li>a,
+.navigation-links>ul>li>.router-link-active {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -318,35 +313,35 @@ const toggleTheme = () => {
     cursor: pointer;
 }
 
-.navigation-links > ul > li > a:hover {
+.navigation-links>ul>li>a:hover {
     background-color: #e9ecef;
     color: #007bff;
 }
 
-.navigation-links > ul > li > a:hover i {
+.navigation-links>ul>li>a:hover i {
     color: #007bff;
 }
 
 /* Active Link Styling */
-.navigation-links > ul > li > a.router-link-active,
-.navigation-links > ul > li .menu-item-left.router-link-active {
+.navigation-links>ul>li>a.router-link-active,
+.navigation-links>ul>li .menu-item-left.router-link-active {
     background-color: #007bff;
     color: white;
 }
 
-.navigation-links > ul > li > a.router-link-active i,
-.navigation-links > ul > li .menu-item-left.router-link-active i {
+.navigation-links>ul>li>a.router-link-active i,
+.navigation-links>ul>li .menu-item-left.router-link-active i {
     color: white;
 }
 
-.navigation-links > ul > li > a i {
+.navigation-links>ul>li>a i {
     font-size: 19px;
     min-width: 20px;
     color: #666;
     transition: color 0.2s ease;
 }
 
-.navigation-links > ul > li > a span {
+.navigation-links>ul>li>a span {
     flex: 1;
     white-space: nowrap;
     overflow: hidden;
@@ -396,7 +391,7 @@ const toggleTheme = () => {
     color: #007bff;
 }
 
-.has-submenu .menu-item > i {
+.has-submenu .menu-item>i {
     font-size: 13px;
     color: #888;
     transition: transform 0.3s ease;
@@ -508,11 +503,11 @@ const toggleTheme = () => {
     border-radius: 50%;
 }
 
-input:checked + .slider {
+input:checked+.slider {
     background-color: #007bff;
 }
 
-input:checked + .slider:before {
+input:checked+.slider:before {
     transform: translateX(20px);
 }
 
@@ -654,7 +649,7 @@ input:checked + .slider:before {
     justify-content: center;
 }
 
-.teacher-sidebar.collapsed .navigation-links > ul > li > a,
+.teacher-sidebar.collapsed .navigation-links>ul>li>a,
 .teacher-sidebar.collapsed .has-submenu .menu-item {
     justify-content: center;
     padding: 11px 8px;
@@ -681,7 +676,7 @@ input:checked + .slider:before {
         padding: 16px 12px;
     }
 
-    .navigation-links > ul > li > a,
+    .navigation-links>ul>li>a,
     .has-submenu .menu-item {
         padding: 13px 12px;
         font-size: 16px;

@@ -47,7 +47,7 @@ class AuthController
 
         // Tìm user theo SĐT
         $stmt = $db->prepare("
-            SELECT uId, uPhone, uPassword, uRole, uDoB, uStatus
+            SELECT uId, uName, uPhone, uPassword, uRole, uDoB, uStatus
             FROM users
             WHERE uPhone = ? AND uDeleted_at IS NULL
             LIMIT 1
@@ -104,7 +104,7 @@ class AuthController
             'iat' => time(),
             'exp' => time() + 60 * 60 * 24, // 24h
             'sub' => $user['uId'],
-            'phone' => $user['uPhone'],
+            'name' => $user['uName'],
             'age' => $age,
             'role' => $user['uRole']
         ];
@@ -131,6 +131,7 @@ class AuthController
             'access_token' => $token,
             'user' => [
                 'id' => $user['uId'],
+                'name' => $user['uName'],
                 'phone' => $user['uPhone'],
                 'age' => $age,
                 'role' => $user['uRole']

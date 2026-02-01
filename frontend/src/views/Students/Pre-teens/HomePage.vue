@@ -1,6 +1,6 @@
 <template>
     <div class="teacher-home-page">
-        <h1>Welcome to the Students Home Page</h1>
+        <h1>Welcome to the Pre-teens Home Page</h1>
         <p>This is where teachers can manage their classes and students.</p>
     </div>
 </template>

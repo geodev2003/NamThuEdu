@@ -13,7 +13,7 @@ class CategoryModel
 
         $sql = "
             SELECT * FROM category
-            ORDER BY caId DESC
+            ORDER BY caId ASC
         ";
 
         $stmt = $db->prepare($sql);

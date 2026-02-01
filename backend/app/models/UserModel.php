@@ -24,8 +24,8 @@ class UserModel
             $decoded = JWT::decode($jwt, new Key($secretKey, 'HS256'));
 
             return [
-                'uId' => $decoded->sub, // Lấy từ 'sub' mới đúng
-                'uPhone' => $decoded->phone,
+                'uId' => $decoded->sub,
+                'uName' => $decoded->name, // Lấy name thay vì phone
                 'uRole' => $decoded->role
             ];
         } catch (Exception $e) {

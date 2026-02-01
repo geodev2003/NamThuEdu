@@ -82,6 +82,8 @@ $router->get('/api/tests', 'TestController@index');
 $router->get('/api/teacher/courses', 'CourseController@teacherCourses');
 $router->post('/api/teacher/courses', 'CourseController@store');
 $router->delete('/api/teacher/courses/{id}', 'CourseController@destroy');
+$router->get('/api/teacher/courses/{id}', 'CourseController@show');
+$router->put('/api/teacher/courses/{id}', 'CourseController@update');
 
 /* ======== CATEGORY ======== */
 $router->get('/api/teacher/categories', 'CategoryController@getCategory');
