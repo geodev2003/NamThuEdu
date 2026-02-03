@@ -3,6 +3,9 @@
 namespace App\Controllers;
 
 use App\Core\Database;
+use App\Core\Response;
+use App\Models\CourseModel;
+use App\Models\UserModel;
 
 class UserController
 {
@@ -74,5 +77,20 @@ class UserController
                 'message' => 'Lỗi khi tạo tài khoản'
             ]);
         }
+    }
+
+     public function teacherStudents()
+    {
+        $user = UserModel::getAuthenticatedUser();
+
+        if (!$user || $user['uRole'] !== 'teacher') {
+            Response::error('AUTH_UNAUTHORIZED', 'Bạn không có quyền truy cập.', null, 401);
+            return;
+        }
+
+        $users = UserModel::getAllStudents();
+
+        // Trả về trực tiếp $courses để Response::success đóng gói vào key 'data'
+        Response::success($users);
     }
 }

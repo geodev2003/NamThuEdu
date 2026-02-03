@@ -165,16 +165,6 @@ const totalPages = computed(() => {
     return Math.ceil(filteredCourses.value.length / itemsPerPage.value);
 })
 
-// Handlers
-const handleSearch = () => {
-    // Search is handled by computed property
-}
-
-const handleFilter = () => {
-
-
-}
-
 const handleCourseDeleted = () => {
     emit('fetch-courses')
 }

@@ -85,6 +85,8 @@ $router->delete('/api/teacher/courses/{id}', 'CourseController@destroy');
 $router->get('/api/teacher/courses/{id}', 'CourseController@show');
 $router->put('/api/teacher/courses/{id}', 'CourseController@update');
 
+$router->get('api/teacher/students', 'UserController@teacherStudents');
+
 /* ======== CATEGORY ======== */
 $router->get('/api/teacher/categories', 'CategoryController@getCategory');
 

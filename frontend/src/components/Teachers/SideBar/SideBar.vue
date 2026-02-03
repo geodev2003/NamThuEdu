@@ -46,7 +46,7 @@
                 <li class="has-submenu">
                     <div class="menu-item" @click="toggleSubmenu('student')"
                         :title="isCollapsed && isDesktop ? 'Student Managements' : ''">
-                        <router-link to="/teacher/students" class="menu-item-left">
+                        <router-link to="/teacher/studentmanagements" class="menu-item-left">
                             <i class="bi bi-people"></i>
                             <span v-show="!isCollapsed || !isDesktop">Student Managements</span>
                         </router-link>
@@ -54,8 +54,8 @@
                             :class="['bi', openMenus.student ? 'bi-chevron-down' : 'bi-chevron-right']"></i>
                     </div>
                     <ul class="submenu" v-show="openMenus.student && (!isCollapsed || !isDesktop)">
-                        <li><router-link to="/teacher/students/list">Students</router-link></li>
-                        <li><router-link to="/teacher/students/scores">Scores</router-link></li>
+                        <li><router-link to="/teacher/studentmanagements/students">Students</router-link></li>
+                        <li><router-link to="/teacher/studentmanagements/scores">Scores</router-link></li>
                     </ul>
                 </li>
 

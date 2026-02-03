@@ -61,14 +61,14 @@
                 </button>
             </form>
 
-            <div class="footer-text">
+            <!-- <div class="footer-text">
                 Chưa có tài khoản? <router-link to="/register" class="register-link">Đăng ký ngay</router-link>
-            </div>
+            </div> -->
 
-            <div class="motivation-quote">
+            <!-- <div class="motivation-quote">
                 <span class="quote-icon">✨</span>
                 <p>Học tập là chìa khóa của thành công!</p>
-            </div>
+            </div> -->
         </div>
     </div>
 </template>

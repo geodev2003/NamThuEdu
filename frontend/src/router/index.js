@@ -73,9 +73,25 @@ const routes = [
         }
       },
       {
-        path: 'students',
-        name: 'TeacherStudents',
-        component: () => import('../views/Teacher/StudentManagements/index.vue'),
+        path: 'studentmanagements',
+        name: 'StudentDashboard',
+        component: () => import('../views/Teacher/StudentManagements/HomePage.vue'),
+        meta: {
+          title: 'Student Management - NamThuEdu'
+        }
+      },
+      {
+        path: 'studentmanagements/students',
+        name: 'StudentManagements',
+        component: () => import('../views/Teacher/StudentManagements/Students/index.vue'),
+        meta: {
+          title: 'Student Management - NamThuEdu'
+        }
+      },
+            {
+        path: 'studentmanagements/scores',
+        name: 'StudentScores',
+        component: () => import('../views/Teacher/StudentManagements/Scores/index.vue'),
         meta: {
           title: 'Student Management - NamThuEdu'
         }
