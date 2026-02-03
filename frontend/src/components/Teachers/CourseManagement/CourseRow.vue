@@ -15,7 +15,7 @@
         </td>
 
         <td class="text-center">
-            <span>{{ course.time }}h</span>
+            <span>{{ course.time }}</span>
         </td>
 
         <td class="text-center">
@@ -42,13 +42,10 @@
 
         <td class="text-center">
             <div class="action-buttons">
-                <button class="btn-action" @click="editCourse" title="Edit">
-                    <i class="bi bi-pencil"></i>
-                </button>
-                <button class="btn-action" @click="viewCourse" title="View">
+                <button class="btn-action btn-edit" @click="viewCourseDetail" title="View Details">
                     <i class="bi bi-eye"></i>
                 </button>
-                <button class="btn-action" @click="deleteCourse" title="Delete">
+                <button class="btn-action btn-delete" @click="deleteCourse" title="Delete">
                     <i class="bi bi-trash"></i>
                 </button>
             </div>
@@ -59,7 +56,7 @@
 <script setup>
 import { useToast } from 'vue-toastification';
 import http from '@/api/http';
-import Swal from 'sweetalert2'; // Import thư viện SweetAlert2
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     course: {
@@ -68,7 +65,8 @@ const props = defineProps({
     }
 })
 
-const emit = defineEmits(['course-deleted']); // Để báo cho cha load lại danh sách
+const emit = defineEmits(['course-deleted', 'view-detail'])
+
 const toast = useToast();
 
 const getDayName = (day) => {
@@ -86,11 +84,7 @@ const getDayName = (day) => {
 
 const getScheduleDays = (schedule) => {
     if (!Array.isArray(schedule) || schedule.length === 0) return '-';
-
-    // Cách này đảm bảo mỗi số đều có chữ T đi kèm và cách nhau bằng dấu phẩy
-    return schedule
-        .map(day => `T${day}`) // Biến [2, 4, 6] thành ["T2", "T4", "T6"]
-        .join(', ');           // Nối lại thành "T2, T4, T6"
+    return schedule.map(day => `T${day}`).join(', ');
 }
 
 const formatDate = (dateString) => {
@@ -122,37 +116,43 @@ const getTypeClass = (type) => {
     return classes[type] || 'category-default';
 }
 
-const editCourse = () => {
-    console.log('Edit course:', props.course.id)
-}
-
-const viewCourse = () => {
-    console.log('View course:', props.course.id)
+// Open detail modal
+const viewCourseDetail = () => {
+    emit('view-detail', props.course.id);
 }
 
 const deleteCourse = async () => {
-    // Hiển thị hộp thoại xác nhận phong cách SweetAlert2
     Swal.fire({
-        title: 'Bạn có chắc chắn muốn xóa?',
-        text: `Khóa học "${props.course.name}" sẽ bị xóa vĩnh viễn!`,
+        title: 'Are you sure?',
+        text: `Course "${props.course.name}" will be permanently deleted!`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#dc3545', // Màu đỏ cho nút xóa
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Có! Tôi muốn xóa',
-        cancelButtonText: 'Không, Tôi hủy',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel',
         reverseButtons: true
     }).then(async (result) => {
         if (result.isConfirmed) {
             try {
-                const res = await http.delete(`/api/teacher/courses/${props.course.id}`);
+                const res = await http.delete(`/api/teacher/courses/${props.course.id}`, {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
                 
                 if (res.data.code === 'SUCCESS') {
-                    toast.success("Đã xóa khóa học thành công!");
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Deleted!',
+                        text: 'Course has been deleted.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
                     emit('course-deleted');
                 }
             } catch (error) {
-                toast.error("Xóa thất bại. Vui lòng thử lại.");
+                toast.error("Failed to delete. Please try again.");
                 console.error(error);
             }
         }
@@ -282,28 +282,37 @@ const deleteCourse = async () => {
 /* Action Buttons */
 .action-buttons {
     display: flex;
-    gap: 4px;
+    gap: 6px;
     justify-content: center;
 }
 
 .btn-action {
     width: 32px;
     height: 32px;
-    border: 1px solid #e5e7eb;
-    background-color: white;
+    border: none;
     border-radius: 4px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.15s;
-    color: #6b7280;
+    color: white;
 }
 
-.btn-action:hover {
-    background-color: #f9fafb;
-    border-color: #d1d5db;
-    color: #111827;
+.btn-edit {
+    background-color: #3b82f6;
+}
+
+.btn-edit:hover {
+    background-color: #2563eb;
+}
+
+.btn-delete {
+    background-color: #ef4444;
+}
+
+.btn-delete:hover {
+    background-color: #dc2626;
 }
 
 .btn-action i {
