@@ -4,10 +4,10 @@
         'collapsed': isCollapsed && isDesktop
     }">
         <!-- Logo and Name -->
-        <div class="logo-section">
+        <router-link to="/teacher/dashboard" class="logo-section">
             <img src="@/assets/logo.png" alt="Logo" class="logo" />
             <h2 class="teacher-name" v-show="!isCollapsed || !isDesktop">NamThuEdu</h2>
-        </div>
+        </router-link>
 
         <!-- Navigation Links -->
         <nav class="navigation-links">
@@ -56,6 +56,7 @@
                     <ul class="submenu" v-show="openMenus.student && (!isCollapsed || !isDesktop)">
                         <li><router-link to="/teacher/studentmanagements/students">Students</router-link></li>
                         <li><router-link to="/teacher/studentmanagements/scores">Scores</router-link></li>
+                        <li><router-link to="/teacher/studentmanagements/check-in">Check in</router-link></li>
                     </ul>
                 </li>
 
@@ -76,20 +77,11 @@
                     </ul>
                 </li>
 
-                <li class="has-submenu">
-                    <div class="menu-item" @click="toggleSubmenu('blog')"
-                        :title="isCollapsed && isDesktop ? 'Blog Managements' : ''">
-                        <router-link to="/teacher/blogs" class="menu-item-left">
-                            <i class="bi bi-pencil-square"></i>
-                            <span v-show="!isCollapsed || !isDesktop">Blog Managements</span>
-                        </router-link>
-                        <i v-show="(!isCollapsed || !isDesktop)"
-                            :class="['bi', openMenus.blog ? 'bi-chevron-down' : 'bi-chevron-right']"></i>
-                    </div>
-                    <ul class="submenu" v-show="openMenus.blog && (!isCollapsed || !isDesktop)">
-                        <li><router-link to="/teacher/blogs/create">Create Blog</router-link></li>
-                        <li><router-link to="/teacher/blogs/list">List Blog</router-link></li>
-                    </ul>
+                <li>
+                    <router-link to="/teacher/blogs" :title="isCollapsed && isDesktop ? 'Blogs Managements' : ''">
+                        <i class="bi bi-pencil-square"></i>
+                        <span v-show="!isCollapsed || !isDesktop">Blogs Managements</span>
+                    </router-link>
                 </li>
 
                 <li>
@@ -198,7 +190,7 @@ onMounted(() => {
         try {
             const userData = JSON.parse(storedUser);
             // Cập nhật key 'name' và 'role' từ dữ liệu đăng nhập thực tế
-            user.value.uName = userData.name || 'Người dùng'; 
+            user.value.uName = userData.name || 'Người dùng';
             user.value.uRole = userData.role || 'Guest';
         } catch (e) {
             console.error("Lỗi parse user:", e);

@@ -12,12 +12,41 @@ CREATE TABLE users (
     uPhone VARCHAR(20) NOT NULL UNIQUE,
     uPassword VARCHAR(255) NOT NULL,
     uName VARCHAR(150),
+    uGender Boolean,
+    uAddress TEXT,
+    uClass INT,
     uRole ENUM('student','teacher','admin') DEFAULT 'student',
     uDoB DATE,
     uStatus ENUM('active','inactive') DEFAULT 'active',
     uCreated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    uDeleted_at DATETIME NULL
+    uDeleted_at DATETIME NULL,
+    CONSTRAINT fk_user_class FOREIGN KEY (uClass) REFERENCES classed(cId)
+		ON DELETE CASCADE
 );
+
+SELECT * FROM users;
+
+ALTER TABLE users 
+ADD COLUMN uGender BOOLEAN AFTER uName,
+ADD COLUMN uAddress TEXT AFTER uGender,
+ADD COLUMN uClass INT AFTER uAddress;
+
+ALTER TABLE users
+ADD CONSTRAINT fk_user_class 
+FOREIGN KEY (uClass) REFERENCES classes(cId) 
+ON DELETE CASCADE;
+
+INSERT INTO users (uName, uPhone, uPassword, uGender, uDoB, uAddress, uClass, uStatus, uRole) VALUES 
+('Lê Thị B', '0912345678', '$2y$12$haGN8/bWZ/fY9H4sSuNT0Ouz/WD9SoPrIVlg6UPMVTy7NaNn6PKIO', 0, '2003-02-15', '123 Đường 3/2, Xuân Khánh, Ninh Kiều, Cần Thơ', 3, 'active', 'student'),
+('Trần Văn C', '0922345678', '$2y$12$haGN8/bWZ/fY9H4sSuNT0Ouz/WD9SoPrIVlg6UPMVTy7NaNn6PKIO', 1, '2003-05-20', '456 Cách Mạng Tháng 8, Bùi Hữu Nghĩa, Bình Thủy, Cần Thơ', 3, 'active', 'student'),
+('Phạm Thị D', '0932345678', '$2y$12$haGN8/bWZ/fY9H4sSuNT0Ouz/WD9SoPrIVlg6UPMVTy7NaNn6PKIO', 0, '2003-08-10', '789 Nguyễn Văn Cừ, An Khánh, Ninh Kiều, Cần Thơ', 3, 'active', 'student'),
+('Hoàng Văn E', '0942345678', '$2y$12$haGN8/bWZ/fY9H4sSuNT0Ouz/WD9SoPrIVlg6UPMVTy7NaNn6PKIO', 1, '2003-11-25', '101 Tầm Vu, Hưng Lợi, Ninh Kiều, Cần Thơ', 3, 'active', 'student'),
+('Nguyễn Thị F', '0952345678', '$2y$12$haGN8/bWZ/fY9H4sSuNT0Ouz/WD9SoPrIVlg6UPMVTy7NaNn6PKIO', 0, '2004-01-05', '202 Trần Hưng Đạo, An Phú, Ninh Kiều, Cần Thơ', 3, 'active', 'student'),
+('Đặng Văn G', '0962345678', '$2y$12$haGN8/bWZ/fY9H4sSuNT0Ouz/WD9SoPrIVlg6UPMVTy7NaNn6PKIO', 1, '2003-03-12', '303 Mậu Thân, An Hòa, Ninh Kiều, Cần Thơ', 3, 'active', 'student'),
+('Bùi Thị H', '0972345678', '$2y$12$haGN8/bWZ/fY9H4sSuNT0Ouz/WD9SoPrIVlg6UPMVTy7NaNn6PKIO', 0, '2003-06-18', '404 Lê Hồng Phong, Trà An, Bình Thủy, Cần Thơ', 3, 'active', 'student'),
+('Vũ Văn I', '0982345678', '$2y$12$haGN8/bWZ/fY9H4sSuNT0Ouz/WD9SoPrIVlg6UPMVTy7NaNn6PKIO', 1, '2003-09-30', '505 Đồng Ngọc Hoàng, Cái Răng, Cần Thơ', 3, 'active', 'student'),
+('Đỗ Thị K', '0992345678', '$2y$12$haGN8/bWZ/fY9H4sSuNT0Ouz/WD9SoPrIVlg6UPMVTy7NaNn6PKIO', 0, '2003-12-22', '606 Võ Văn Kiệt, Bình Thủy, Cần Thơ', 3, 'active', 'student'),
+('Trịnh Văn L', '0812345678', '$2y$12$haGN8/bWZ/fY9H4sSuNT0Ouz/WD9SoPrIVlg6UPMVTy7NaNn6PKIO', 1, '2003-04-14', '707 Nguyễn Văn Linh, An Khánh, Ninh Kiều, Cần Thơ', 3, 'active', 'student');
 
 -- 2. OTP (Đổi mật khẩu/ xác thực)
 CREATE TABLE otp_logs (
@@ -40,10 +69,31 @@ CREATE TABLE classes (
     cDescription TEXT,
     cStatus ENUM('active','inactive') DEFAULT 'active',
     cCreated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    course INT,
     CONSTRAINT fk_class_teacher
         FOREIGN KEY (cTeacher_id) REFERENCES users(uId)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+	CONSTRAINT fk_class_course 
+		FOREIGN KEY (course) REFERENCES classes(cId) 
+		ON DELETE CASCADE
 );
+
+ALTER TABLE classes
+ADD COLUMN course INT AFTER cName;
+
+ALTER TABLE classes
+ADD CONSTRAINT fk_class_course 
+FOREIGN KEY (course) REFERENCES classes(cId) 
+ON DELETE CASCADE;
+
+
+SELECT * FROM classes;
+-- Để course là NULL vì chưa có ID nào khác để tham chiếu
+INSERT INTO classes (cName, cTeacher_id, cDescription, cStatus, course) 
+VALUES ('Khóa học Tổng quát IC3', 5, 'Khóa học nền tảng', 'active', NULL);
+INSERT INTO classes (cName, cTeacher_id, cDescription, cStatus, course) 
+VALUES ('Lớp Luyện Thi IC3 GS6 - Nhóm 1', 5, 'Lớp học mẫu cho sinh viên IT', 'active', 1);
+
 
 -- 4. Class Enrollments
 CREATE TABLE class_enrollments (
@@ -207,14 +257,73 @@ CREATE TABLE posts (
     pTitle VARCHAR(255) NOT NULL,
     pContent LONGTEXT NOT NULL,
     pAuthor_id INT NOT NULL,
-    pType ENUM('video','article') NOT NULL,
-    pCategory ENUM('tip','grammar','vocabulary') NOT NULL,
-    pThumbnail VARCHAR(255),
+    pType ENUM('grammar','tips', 'vocabulary') NOT NULL,
+    pCategory INT,
+    pUrl TEXT,
+    pThumbnail TEXT,
+    pView INT, -- Lượt xem bài 
+    pLike INT, -- Lượt thả yêu thích 
+    pStatus ENUM('active', 'inactive', 'draft') NOT NULL,
     pCreated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    pDeleted_at TIMESTAMP,
+    pUpdated_at TIMESTAMP,
     CONSTRAINT fk_post_author
         FOREIGN KEY (pAuthor_id) REFERENCES users(uId)
+        ON DELETE CASCADE,
+	CONSTRAINT fk_post_category
+		FOREIGN KEY (pCategory) REFERENCES category(caId)
         ON DELETE CASCADE
 );
+
+SELECT p.*, u.uName, c.caName FROM posts AS p JOIN users AS u ON p.pAuthor_id = u.uId JOIN category AS c ON p.pCategory = c.caId WHERE p.pAuthor_id=5;
+INSERT INTO posts (pTitle, pContent, pAuthor_id, pType, pCategory, pUrl, pThumbnail, pView, pLike, pStatus, pCreated_at) 
+VALUES 
+-- Bài viết 1: Về Ngữ pháp (Grammar), trạng thái Active
+(
+    'Cách phân biệt "Make" và "Do" trong tiếng Anh', 
+    'Trong tiếng Anh, Make và Do đều có nghĩa là làm, nhưng cách dùng của chúng rất khác nhau. Make thường dùng cho việc tạo ra cái gì đó mới (sáng tạo), trong khi Do dùng cho các hoạt động, công việc chung chung...', 
+    5, -- Giả sử ID tác giả là 1
+    'grammar', 
+    3, -- Giả sử ID danh mục là 10
+    'phan-biet-make-va-do', 
+    'https://example.com/images/make-vs-do.jpg', 
+    1500, 
+    120, 
+    'active', 
+    NOW()
+),
+
+-- Bài viết 2: Về Từ vựng (Vocabulary), trạng thái Active
+(
+    '50 Từ vựng tiếng Anh chuyên ngành Công nghệ thông tin', 
+    'Tổng hợp các từ vựng quan trọng cho dân IT: Algorithm (Thuật toán), Database (Cơ sở dữ liệu), Debug (Gỡ lỗi), Encryption (Mã hóa)...', 
+    5, -- Giả sử ID tác giả là 1
+    'vocabulary', 
+    2, -- Giả sử ID danh mục là 11
+    'tu-vung-tieng-anh-it', 
+    'https://example.com/images/it-vocab.jpg', 
+    3400, 
+    450, 
+    'active', 
+    NOW()
+),
+
+-- Bài viết 3: Về Mẹo học tập (Tips), trạng thái Draft (Nháp)
+(
+    'Phương pháp Pomodoro: Bí quyết tập trung cao độ', 
+    'Pomodoro là phương pháp quản lý thời gian để nâng cao tối đa sự tập trung trong công việc. Quy trình thực hiện gồm 5 bước: 1. Chọn công việc cần làm, 2. Đặt báo thức 25 phút...', 
+    5, -- Giả sử ID tác giả là 2
+    'tips', 
+    1, -- Giả sử ID danh mục là 12
+    'phuong-phap-pomodoro', 
+    'https://example.com/images/pomodoro.png', 
+    0, 
+    0, 
+    'draft', 
+    NOW()
+);
+
+DROP TABLE posts;
 
 -- 15. Notifications
 CREATE TABLE notifications (
@@ -240,9 +349,57 @@ CREATE TABLE audit_logs (
         ON DELETE SET NULL
 );
 
-INSERT INTO users(uPhone, uPassword, uRole) VALUES (0336695863, '$2a$10$Ugu/RMgmG6tk071M.cuNHOm3pNb6SBhhHSElB/xC1k8Oy3xqibT1O', 'teacher');
+-- INSERT INTO users(uPhone, uPassword, uRole) VALUES (0336695863, '$2a$10$Ugu/RMgmG6tk071M.cuNHOm3pNb6SBhhHSElB/xC1k8Oy3xqibT1O', 'teacher');
 
-UPDATE users SET uRole='admin' WHERE uId=2;
-SELECT * FROM users;
+-- UPDATE users SET uRole='admin' WHERE uId=2;
+-- SELECT * FROM users;
 
 -- DROP DATABASE namthuedu;
+
+CREATE TABLE category (
+	caId INT AUTO_INCREMENT PRIMARY KEY,
+    caName NVARCHAR(100) NOT NULL
+);
+
+CREATE TABLE course (
+	cId INT AUTO_INCREMENT PRIMARY KEY,
+    cName NVARCHAR(100) NOT NULL,
+    cCategory INT,
+    cNumberOfStudent INT,
+    cTime NVARCHAR(50),
+    cSchedule TEXT,
+    cStartDate DATE,
+    cEndDate DATE,
+    cStatus ENUM ('active', 'draft', 'ongoing', 'complete') NOT NULL,
+    cTeacher INT,
+    CONSTRAINT fk_category_course 
+		FOREIGN KEY (cCategory) REFERENCES category(caId)
+        ON DELETE CASCADE,
+	CONSTRAINT fk_teacher_course
+		FOREIGN KEY (cTeacher) REFERENCES users(uId)
+        ON DELETE CASCADE,
+	cDescription TEXT,
+    cDeleteAt DATETIME,
+    cCreateAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    cUpdateAt TIMESTAMP
+);
+
+DROP TABLE course;
+SELECT * FROM course;
+SELECT * FROM category; 
+SELECT * FROM users;
+
+INSERT INTO category (caName) VALUES ('TOEIC'), ('VSTEP'), ('IELTS');
+
+INSERT INTO course(cName, cCategory, cNumberOfStudent, cTime, cSchedule, cStartDate, cEndDate, cStatus, cTeacher)
+	VALUES ('TOEIC 2 Kỹ năng', 1, 100, '18h00', '2,4,6', '2025-10-20', '2026-01-20', 'complete', 5);
+    
+INSERT INTO course(cName, cCategory, cNumberOfStudent, cTime, cSchedule, cStartDate, cEndDate, cStatus, cTeacher)
+	VALUES ('VSTEP B2', 2, 100, '18h00', '3,5,7', '2025-10-30', '2026-03-20', 'ongoing', 5);
+    
+INSERT INTO course(cName, cCategory, cNumberOfStudent, cTime, cSchedule, cStartDate, cEndDate, cStatus, cTeacher)
+	VALUES ('SPEAKING IELTS BASIC', 3, 10, '18h00', '2,4,6', '2026-1-31', '2026-01-20', 'draft', 5);
+    
+UPDATE users SET uName='Nhựt Tuấn' WHERE uId=5;
+
+SELECT * FROM course WHERE cTeacher = 5;

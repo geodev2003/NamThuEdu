@@ -78,14 +78,26 @@ $router->delete('/api/users/{id}', 'UserController@softDelete');
 $router->post('/api/tests/upload', 'TestController@upload');
 $router->get('/api/tests', 'TestController@index');
 
-/* ======== COURSE ========= */
+/* ======== TEACHER MANAGE COURSE ========= */
 $router->get('/api/teacher/courses', 'CourseController@teacherCourses');
 $router->post('/api/teacher/courses', 'CourseController@store');
 $router->delete('/api/teacher/courses/{id}', 'CourseController@destroy');
 $router->get('/api/teacher/courses/{id}', 'CourseController@show');
 $router->put('/api/teacher/courses/{id}', 'CourseController@update');
 
-$router->get('api/teacher/students', 'UserController@teacherStudents');
+/* ======== TEACHER MANAGE STUDENT ========= */
+$router->get('/api/teacher/students', 'UserController@teacherStudents');
+$router->get('/api/teacher/student/{id}', 'UserController@getStudentById');
+$router->delete('/api/teacher/student/{id}', 'UserController@destroy');
+$router->put('/api/teacher/student/{id}', 'UserController@update');
+$router->post('/api/teacher/student', 'UserController@store');
+
+/* ========= TEACHER MANAGE BLOGS ========= */
+$router->get('/api/teacher/blogs', 'BlogController@show');
+$router->post('/api/teacher/blogs', 'BlogController@store');
+$router->put('/api/teacher/blogs/{id}', 'BlogController@update');
+$router->delete('/api/teacher/blogs/{id}', 'BlogController@destroy');
+$router->get('/api/teacher/blogs/{id}', 'BlogController@getBlogById');
 
 /* ======== CATEGORY ======== */
 $router->get('/api/teacher/categories', 'CategoryController@getCategory');

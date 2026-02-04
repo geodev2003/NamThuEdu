@@ -248,7 +248,7 @@ const exportToPDF = async (data) => {
                 theme: 'grid'
             });
 
-            doc.save(`Bao_Cao_Khoa_Hoc_${Date.now()}.pdf`);
+            doc.save(`Report_Course_${Date.now()}.pdf`);
         } catch (error) {
             console.error("Lỗi xuất PDF:", error);
             Swal.fire('Lỗi font', 'Không thể xử lý dữ liệu font. Vui lòng thử lại.', 'error');
@@ -262,7 +262,7 @@ const exportToExcel = (data, format) => {
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-    XLSX.writeFile(wb, `Bao_Cao_${Date.now()}.${format === 'excel' ? 'xlsx' : 'csv'}`);
+    XLSX.writeFile(wb, `Report_Course_${Date.now()}.${format === 'excel' ? 'xlsx' : 'csv'}`);
 };
 
 const exportToWord = (data) => {
@@ -281,7 +281,7 @@ const exportToWord = (data) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Bao_Cao_${Date.now()}.doc`;
+    link.download = `Report_Course_${Date.now()}.doc`;
     link.click();
 };
 </script>

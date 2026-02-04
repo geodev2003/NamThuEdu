@@ -8,18 +8,25 @@
                 Create New Student
             </button>
             <button class="btn-secondary" @click="isImportModalOpen = true">
-                <i class="bi bi-signpost"></i> Check in Students
-            </button>
-            <button class="btn-secondary" @click="isImportModalOpen = true">
                 <i class="bi bi-file-earmark-arrow-up"></i> Import Students
             </button>
             <button class="btn-secondary" @click="isExportModalOpen = true">
                 <i class="bi bi-download"></i> Export Students
             </button>
+            <button class="btn-secondary" @click="isImportModalOpen = true">
+                <i class="bi bi-archive"></i> Student Deleted
+            </button>
         </div>
+
+                <CreateStudent :isModalOpen="isModalOpen" :form="form" :submitting="submitting"
+            @close-modal="closeModal" @create-student="handleCreateNewStudent" />
 
         <ListStudent :studentList="studentList" :loading="loading" @fetch-students="fetchStudents"
             @edit-student="openEditModal" />
+
+
+                <EditStudent :is-open="isEditModalOpen" :course-data="seletecdStudent"
+            @close="isEditModalOpen = false" @updated="fetchStudents" />
 
     </div>
 </template>
@@ -30,6 +37,7 @@ import http from '@/api/http.js';
 import { useToast } from 'vue-toastification';
 import Swal from 'sweetalert2';
 import ListStudent from './ListStudent/ListStudent.vue';
+import EditStudent from './EditStudent/EditStudent.vue';
 
 const toast = useToast();
 
