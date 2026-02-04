@@ -1,35 +1,35 @@
 <template>
-    <div class="student-table-section">
+    <div class="blog-table-section">
         <div class="table-header">
-            <h1>Student List</h1>
+            <h1>Your Blogs</h1>
 
             <div class="table-controls">
                 <div class="search-box">
                     <i class="bi bi-search"></i>
-                    <input type="text" v-model="searchQuery" placeholder="Search students..." @input="handleSearch" />
+                    <input type="text" v-model="searchQuery" placeholder="Search blogs..." @input="handleSearch" />
                 </div>
-                <select class="filter-select" v-model="selectedFiltered" @change="handleFilter">
-                    <option value="">All</option>
-                    <option value="name-from-a-to-z">Name A - Z</option>
-                    <option value="name-from-z-to-a">Name Z - A</option>
-                    <option value="age">Sort by Age</option>
+                <select class="filter-select" v-model="selectedCategory" @change="handleFilter">
+                    <option value="">All Categories</option>
+                    <option value="TOEIC">TOEIC</option>
+                    <option value="VSTEP">VSTEP</option>
+                    <option value="IELTS">IELTS</option>
                 </select>
             </div>
 
         </div>
 
         <div class="table-wrapper">
-            <table class="student-table">
+            <table class="blog-table">
                 <thead>
                     <tr>
-                        <th style="width: 15%;" class="text-center">Student Name</th>
-                        <th style="width: 5%;" class="text-center">Gender</th>
-                        <th style="width: 5%;" class="text-center">Age</th>
-                        <th style="width: 10%;" class="text-center">Phone</th>
-                        <th style="width: 18%;" class="text-center">Class</th>
-                        <th style="width: 29%;" class="text-center">Address</th>
-                        <th style="width: 8%;" class="text-center">Status</th>
-                        <th style="width: 10%;" class="text-center">Actions</th>
+                        <th>Thumbnail</th>
+                        <th>Blog Name</th>
+                        <th>Type</th>
+                        <th>Category</th>
+                        <th>Author</th>
+                        <th>Created</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -37,24 +37,24 @@
                     <tr v-if="loading">
                         <td colspan="9" class="loading-cell">
                             <div class="spinner"></div>
-                            Loading students...
+                            Loading blogs...
                         </td>
                     </tr>
 
                     <!-- Có data -->
-                    <template v-else-if="paginatedStudents.length > 0">
-                        <StudentRow v-for="student in paginatedStudents" :key="student.id" :student="student"
-                            @student-deleted="handleStudentDeleted" @view-detail="handleViewDetail" />
+                    <template v-else-if="paginatedBlogs.length > 0">
+                        <BlogRow v-for="blog in paginatedBlogs" :key="blog.id" :blog="blog"
+                            @blog-deleted="handleBlogDeleted" @view-detail="handleViewDetail" />
                     </template>
 
                     <!-- Không có data -->
                     <tr v-else>
                         <td colspan="9" class="no-data">
                             <i class="bi bi-inbox"></i>
-                            <p v-if="searchQuery">
-                                No student found matching your criteria
+                            <p v-if="searchQuery || selectedCategory">
+                                No blogs found matching your criteria
                             </p>
-                            <p v-else>No student available</p>
+                            <p v-else>No blogs available</p>
                         </td>
                     </tr>
                 </tbody>
@@ -62,7 +62,7 @@
         </div>
 
         <!-- Pagination -->
-        <div class="pagination-container" v-if="filteredStudents.length > 0">
+        <div class="pagination-container" v-if="filteredBlogs.length > 0">
             <!-- <div class="pagination-info">
                 Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
                 {{ Math.min(currentPage * itemsPerPage, filteredCourses.length) }}
@@ -83,20 +83,19 @@
         </div>
 
         <!-- Course Detail Modal -->
-        <StudentDetail :isOpen="isDetailModalOpen" :studentId="selectedStudentId" @close="handleCloseDetail"
-            @edit="handleEditStudent" @delete="handleDeleteStudent" @refresh="handleRefresh" />
+        <BlogDetail :isOpen="isDetailModalOpen" :blogId="selectedBlogId" @close="handleCloseDetail"
+            @edit="handleEditBlog" @delete="handleDeleteBlog" @refresh="handleRefresh" />
     </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
-import StudentRow from '@/components/Teachers/StudentManagement/StudentRow.vue'
+import { ref, computed, watch } from 'vue';
 import Pagination from '@/components/Teachers/Pagination/pagination.vue'
-import StudentDetail from '../DetailStudent/StudentDetail.vue'
-
+import BlogRow from '../../../../components/Teachers/Blogs/BlogRow.vue';
+import BlogDetail from '../DetailBlog/BlogDetail.vue';
 
 const props = defineProps({
-    studentList: {
+    blogList: {
         type: Array,
         required: true
     },
@@ -104,107 +103,96 @@ const props = defineProps({
         type: Boolean,
         default: false
     },
-    // categories: { type: Array, default: () => [] }
+    categories: { type: Array, default: () => [] }
 })
 
+// const emit = defineEmits(['fetch-courses'])
 
 // Thêm 'edit-course' vào danh sách khai báo emit
-const emit = defineEmits(['fetch-students', 'edit-student']) // Cập nhật dòng này
+const emit = defineEmits(['fetch-blogs', 'edit-blog']) // Cập nhật dòng này
 
-const handleEditStudent = (student) => {
+const handleEditBlog = (blog) => {
     handleCloseDetail(); // Đóng modal chi tiết trước
-    emit('edit-student', student); // Gửi dữ liệu khóa học lên index.vue
+    emit('edit-blog', blog); // Gửi dữ liệu khóa học lên index.vue
 }
 
 // Search and filter state
 const searchQuery = ref('')
-const selectedFiltered = ref('')
+const selectedCategory = ref('')
 
 // Detail modal state
 const isDetailModalOpen = ref(false)
-const selectedStudentId = ref(null)
+const selectedBlogId = ref(null)
 
 // Phân trang
 const currentPage = ref(1)
 const itemsPerPage = ref(6) // Mặc định hiển thị 6 course
 
 // Reset về trang 1 khi người dùng search hoặc lọc danh mục
-watch([searchQuery, itemsPerPage], () => {
+watch([searchQuery, selectedCategory, itemsPerPage], () => {
     currentPage.value = 1
 })
 
-// Filtered and Sorted students
-const filteredStudents = computed(() => {
-    // Bước 1: Lọc dữ liệu theo Search Query (Tìm kiếm)
-    let result = props.studentList.filter(student => {
+// Filtered courses
+const filteredBlogs = computed(() => {
+    return props.blogList.filter(blog => {
+        // 1. Chuyển tất cả về chữ thường để so sánh không phân biệt hoa thường
         const query = searchQuery.value.toLowerCase();
-        const name = (student.name || '').toLowerCase();
-        const phone = (student.phone || '').toLowerCase();
-        const address = (student.address || '').toLowerCase();
-        const classes = (student.class || '').toLowerCase();
 
-        return name.includes(query) || phone.includes(query) || address.includes(query) || classes.includes(query);
+        // 2. Kiểm tra Search (Tìm trong Tên khóa học hoặc Loại khóa học)
+        const matchesSearch = blog.name.toLowerCase().includes(query) ||
+            blog.type.toLowerCase().includes(query);
+
+        // 3. Kiểm tra Categories (Nếu chọn "All" - chuỗi rỗng thì bỏ qua lọc)
+        const matchesCategory = selectedCategory.value === '' ||
+            blog.type === selectedCategory.value;
+
+        // Kết quả phải thỏa mãn cả 2 (Search VÀ Category)
+        return matchesSearch && matchesCategory;
     });
-
-    // Bước 2: Sắp xếp dữ liệu theo selectedFiltered
-    if (selectedFiltered.value === 'name-from-a-to-z') {
-        result.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'vi'));
-    }
-    else if (selectedFiltered.value === 'name-from-z-to-a') {
-        result.sort((a, b) => (b.name || '').localeCompare(a.name || '', 'vi'));
-    }
-    else if (selectedFiltered.value === 'age') {
-        result.sort((a, b) => {
-            // Tính toán tuổi dựa trên DoB (YYYY-MM-DD)
-            const ageA = a.DoB ? new Date().getFullYear() - new Date(a.DoB).getFullYear() : 0;
-            const ageB = b.DoB ? new Date().getFullYear() - new Date(b.DoB).getFullYear() : 0;
-            return ageA - ageB; // Sắp xếp tuổi từ thấp đến cao
-        });
-    }
-
-    return result;
-});
-
-// Hàm xử lý sự kiện khi thay đổi filter (nếu cần xử lý thêm logic khác)
-const handleFilter = () => {
-    currentPage.value = 1; // Reset về trang 1 khi đổi cách sắp xếp
-};
+})
 
 // Dữ liệu thực tế hiển thị trên trang hiện tại
-const paginatedStudents = computed(() => {
+const paginatedBlogs = computed(() => {
     const start = (currentPage.value - 1) * itemsPerPage.value;
     const end = start + itemsPerPage.value;
-    return filteredStudents.value.slice(start, end);
+    return filteredBlogs.value.slice(start, end);
 })
 
 // Tính tổng số trang
 const totalPages = computed(() => {
-    return Math.ceil(filteredStudents.value.length / itemsPerPage.value);
+    return Math.ceil(filteredBlogs.value.length / itemsPerPage.value);
 })
 
-const handleStudentDeleted = () => {
-    emit('fetch-students')
+const handleBlogDeleted = () => {
+    emit('fetch-blogs')
 }
 
-const handleViewDetail = (studentId) => {
-    selectedStudentId.value = studentId
+const handleViewDetail = (blogId) => {
+    selectedBlogId.value = blogId
     isDetailModalOpen.value = true
 }
 
 const handleCloseDetail = () => {
     isDetailModalOpen.value = false
-    selectedStudentId.value = null
+    selectedBlogId.value = null
 }
 
-const handleDeleteStudent = (studentId) => {
+// const handleEditCourse = (course) => {
+//     // TODO: Implement edit functionality
+//     console.log('Edit course:', course)
+//     // You can emit event to parent or navigate to edit page
+// }
+
+const handleDeleteBlog = (blogId) => {
+    // Course deleted from detail modal
     handleCloseDetail()
-    emit('fetch-students')
+    emit('fetch-blogs')
 }
 
 const handleRefresh = () => {
-    emit('fetch-students')
+    emit('fetch-blogs')
 }
-
 </script>
 
 <style scoped>
@@ -234,7 +222,7 @@ const handleRefresh = () => {
 
 
 /* Course Table Section */
-.student-table-section {
+.blog-table-section {
     background: white;
     border-radius: 8px;
     padding: 24px;
@@ -323,27 +311,22 @@ const handleRefresh = () => {
     border-color: #6b7280;
 }
 
-.text-center {
-    text-align: center;
-    justify-content: center;
-}
-
 /* Table */
 .table-wrapper {
     overflow-x: auto;
 }
 
-.student-table {
+.course-table {
     width: 100%;
     border-collapse: collapse;
 }
 
-.student-table thead {
+.blog-table thead {
     background-color: #f9fafb;
     border-bottom: 1px solid #e5e7eb;
 }
 
-.student-table th {
+.blog-table th {
     padding: 12px 16px;
     text-align: left;
     font-size: 12px;
@@ -420,7 +403,7 @@ const handleRefresh = () => {
         width: 100%;
     }
 
-    .student-table-section {
+    .blog-table-section {
         padding: 20px 16px;
     }
 }

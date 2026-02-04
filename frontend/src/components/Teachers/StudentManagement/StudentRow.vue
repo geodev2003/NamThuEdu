@@ -6,13 +6,12 @@
             </div>
         </td>
 
-        <td>
-            <!-- <span class="category-badge" :class="getTypeClass(student.type)">{{ student.type }}</span> -->
-            <span>Nữ</span>
+        <td class="text-center">
+            <span>{{ student.gender === 1 ? 'Nam' : 'Nữ' }}</span>
         </td>
 
         <td class="text-center">
-            <span>{{ student.DoB }}</span>
+            <span>{{ student.age || '21' }}</span>
         </td>
 
         <td class="text-center">
@@ -20,19 +19,11 @@
         </td>
 
         <td class="text-center">
-            <div class="schedule-list">
-                <!-- <span class="schedule-day">
-                    {{ getScheduleDays(student.schedule) }}
-                </span> -->
-            </div>
+            <span>{{ student.class || '-' }}</span>
         </td>
 
         <td class="text-center">
-            <!-- <span class="date-text">{{ formatDate(student.startDate) }}</span> -->
-        </td>
-
-        <td class="text-center">
-            <!-- <span class="date-text">{{ formatDate(student.endDate) }}</span> -->
+            <span class="address-text" :title="student.address">{{ student.address || '-' }}</span>
         </td>
 
         <td class="text-center">
@@ -43,12 +34,8 @@
 
         <td class="text-center">
             <div class="action-buttons">
-                <button class="btn-action btn-edit" @click="viewStudentDetail" title="View Details">
-                    <i class="bi bi-eye"></i>
-                </button>
-                <button class="btn-action btn-delete" @click="deleteStudent" title="Delete">
-                    <i class="bi bi-trash"></i>
-                </button>
+                <button class="btn-action btn-edit" @click="viewStudentDetail"><i class="bi bi-eye"></i></button>
+                <button class="btn-action btn-delete" @click="deleteStudent"><i class="bi bi-trash"></i></button>
             </div>
         </td>
     </tr>
@@ -70,22 +57,16 @@ const emit = defineEmits(['student-deleted', 'view-detail'])
 
 const toast = useToast();
 
-const getDayName = (day) => {
-    const days = {
-        1: 'Mon',
-        2: 'Tue',
-        3: 'Wed',
-        4: 'Thu',
-        5: 'Fri',
-        6: 'Sat',
-        7: 'Sun'
-    };
-    return days[day] || day;
-}
-
-const getScheduleDays = (schedule) => {
-    if (!Array.isArray(schedule) || schedule.length === 0) return '-';
-    return schedule.map(day => `T${day}`).join(', ');
+const calculateAge = (dateString) => {
+    if (!dateString) return 'N/A';
+    const today = new Date();
+    const birthDate = new Date(dateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age;
 }
 
 const formatDate = (dateString) => {
@@ -106,15 +87,6 @@ const getStatusClass = (status) => {
         'Ongoing': 'status-ongoing'
     };
     return classes[status] || 'status-default';
-}
-
-const getTypeClass = (type) => {
-    const classes = {
-        'TOEIC': 'category-toeic',
-        'VSTEP': 'category-vstep',
-        'IELTS': 'category-ielts'
-    };
-    return classes[type] || 'category-default';
 }
 
 // Open detail modal
@@ -141,7 +113,7 @@ const deleteStudent = async () => {
                         Authorization: `Bearer ${localStorage.getItem('token')}`
                     }
                 });
-                
+
                 if (res.data.code === 'SUCCESS') {
                     await Swal.fire({
                         icon: 'success',
