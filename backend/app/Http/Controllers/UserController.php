@@ -10,6 +10,17 @@ use App\Models\User;
 class UserController extends Controller
 {
     /**
+     * @OA\Get(
+     *     path="/users",
+     *     tags={"Users"},
+     *     summary="Get users list",
+     *     description="Get list of all users (public endpoint)",
+     *     @OA\Response(
+     *         response=200,
+     *         description="Users retrieved successfully"
+     *     )
+     * )
+     * 
      * GET /api/users
      * Test endpoint
      */
@@ -21,6 +32,206 @@ class UserController extends Controller
     }
 
     /**
+     * @OA\Post(
+     *     path="/users",
+     *     tags={"Users"},
+     *     summary="Create new user",
+     *     description="Create a new user (requires teacher/admin role if authenticated)",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"phone","password"},
+     *             @OA\Property(property="phone", type="string", example="0987654321"),
+     *             @OA\Property(property="password", type="string", example="password123"),
+     *             @OA\Property(property="name", type="string", example="Nguyen Van B"),
+     *             @OA\Property(property="role", type="string", example="student")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="User created successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation error"
+     *     )
+     * )
+     * 
+     * POST /api/users
+     * Tạo user mới (tương thích với backend cũ)
+     */
+    /**
+     * @OA\Post(
+     *     path="/users",
+     *     tags={"User Management"},
+     *     summary="Create new user",
+     *     description="Create a new user (public endpoint)",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"phone", "password"},
+     *             @OA\Property(property="phone", type="string", example="0987654321"),
+     *             @OA\Property(property="password", type="string", example="password123"),
+     *             @OA\Property(property="name", type="string", example="Nguyen Van A"),
+     *             @OA\Property(property="role", type="string", enum={"student", "teacher"}, example="student"),
+     *             @OA\Property(property="dob", type="string", format="date", example="1995-01-01"),
+     *             @OA\Property(property="address", type="string", example="Can Tho City"),
+     *             @OA\Property(property="gender", type="boolean", example=true),
+     *             @OA\Property(property="class", type="integer", example=1)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="User created successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation error"
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Permission denied"
+     *     )
+     * )
+     */
+    public function store(Request $request)
+    {
+        // Nếu có auth, check permission
+        $authUser = auth()->user();
+        if ($authUser && $authUser->uRole !== 'teacher' && $authUser->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền tạo user.'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'phone' => 'required|string|unique:users,uPhone',
+            'password' => 'required|string|min:6',
+            'name' => 'nullable|string|max:150',
+            'role' => 'nullable|in:student,teacher',
+            'dob' => 'nullable|date',
+            'address' => 'nullable|string',
+            'gender' => 'nullable|boolean',
+            'class' => 'nullable|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        try {
+            $user = User::create([
+                'uPhone' => trim($request->phone),
+                'uPassword' => Hash::make($request->password),
+                'uName' => $request->name,
+                'uRole' => $request->role ?? 'student',
+                'uDoB' => $request->dob,
+                'uAddress' => $request->address ?? '',
+                'uGender' => $request->gender ?? 0,
+                'uClass' => $request->class ?? 0,
+                'uStatus' => 'active',
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'User created successfully',
+                'data' => [
+                    'id' => $user->uId,
+                    'phone' => $user->uPhone,
+                    'name' => $user->uName,
+                    'role' => $user->uRole,
+                ]
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to create user: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Delete(
+     *     path="/users/{id}",
+     *     tags={"Users"},
+     *     summary="Delete user",
+     *     description="Delete a user by ID (requires teacher/admin role)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(response=200, description="User deleted successfully"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=404, description="User not found")
+     * )
+     * 
+     * DELETE /api/users/{id}
+     * Xóa user (tương thích với backend cũ)
+     */
+    public function destroy(Request $request, $id)
+    {
+        // Check permission
+        $authUser = auth()->user();
+        if (!$authUser || ($authUser->uRole !== 'teacher' && $authUser->uRole !== 'admin')) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền xóa user.'
+            ], 403);
+        }
+
+        $user = User::where('uId', $id)->whereNull('uDeleted_at')->first();
+
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        // Prevent self-deletion
+        if ($user->uId === $authUser->uId) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cannot delete yourself'
+            ], 400);
+        }
+
+        try {
+            $user->delete(); // Soft delete
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'User deleted successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to delete user: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/teacher/students",
+     *     tags={"Teachers"},
+     *     summary="Get teacher students",
+     *     description="Get list of students managed by authenticated teacher",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(response=200, description="Students retrieved successfully"),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     * 
      * GET /api/teacher/students
      * Lấy danh sách học viên (Teacher only)
      */
@@ -49,6 +260,34 @@ class UserController extends Controller
     /**
      * GET /api/teacher/student/{id}
      * Lấy chi tiết học viên
+     */
+    /**
+     * @OA\Get(
+     *     path="/teacher/student/{id}",
+     *     tags={"Student Management"},
+     *     summary="Get student details",
+     *     description="Get detailed information about a specific student",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer"),
+     *         example=2
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Student details retrieved successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Student not found"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
      */
     public function getStudentById(Request $request, $id)
     {
@@ -83,7 +322,56 @@ class UserController extends Controller
      * POST /api/teacher/student
      * Tạo học viên mới (đơn lẻ hoặc hàng loạt)
      */
-    public function store(Request $request)
+    /**
+     * @OA\Post(
+     *     path="/teacher/student",
+     *     tags={"Student Management"},
+     *     summary="Create new student(s)",
+     *     description="Create one or multiple students (teacher only)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             oneOf={
+     *                 @OA\Schema(
+     *                     type="object",
+     *                     required={"studentPhone", "studentPassword"},
+     *                     @OA\Property(property="studentPhone", type="string", example="0912345678"),
+     *                     @OA\Property(property="studentPassword", type="string", example="password123"),
+     *                     @OA\Property(property="studentName", type="string", example="Nguyen Van B"),
+     *                     @OA\Property(property="studentDoB", type="string", format="date", example="2000-01-01"),
+     *                     @OA\Property(property="uClass", type="integer", example=1)
+     *                 ),
+     *                 @OA\Schema(
+     *                     type="array",
+     *                     @OA\Items(
+     *                         type="object",
+     *                         required={"studentPhone", "studentPassword"},
+     *                         @OA\Property(property="studentPhone", type="string"),
+     *                         @OA\Property(property="studentPassword", type="string"),
+     *                         @OA\Property(property="studentName", type="string"),
+     *                         @OA\Property(property="studentDoB", type="string", format="date"),
+     *                         @OA\Property(property="uClass", type="integer")
+     *                     )
+     *                 )
+     *             }
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Students created successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation error"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     */
+    public function storeStudent(Request $request)
     {
         $user = $request->user();
 
@@ -172,6 +460,45 @@ class UserController extends Controller
      * PUT /api/teacher/student/{id}
      * Cập nhật thông tin học viên
      */
+    /**
+     * @OA\Put(
+     *     path="/teacher/student/{id}",
+     *     tags={"Student Management"},
+     *     summary="Update student",
+     *     description="Update student information",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="studentName", type="string", example="Nguyen Van C"),
+     *             @OA\Property(property="studentPhone", type="string", example="0987654321"),
+     *             @OA\Property(property="studentDoB", type="string", format="date", example="2000-01-01"),
+     *             @OA\Property(property="studentAddress", type="string", example="Can Tho City"),
+     *             @OA\Property(property="studentGender", type="boolean", example=true),
+     *             @OA\Property(property="classId", type="integer", example=1),
+     *             @OA\Property(property="studentStatus", type="string", enum={"active", "inactive"}, example="active")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Student updated successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Student not found"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     */
     public function update(Request $request, $id)
     {
         $user = $request->user();
@@ -239,7 +566,34 @@ class UserController extends Controller
      * DELETE /api/teacher/student/{id}
      * Xóa học viên (soft delete)
      */
-    public function destroy(Request $request, $id)
+    /**
+     * @OA\Delete(
+     *     path="/teacher/student/{id}",
+     *     tags={"Student Management"},
+     *     summary="Delete student",
+     *     description="Delete a student (soft delete)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Student deleted successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Student not found"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     */
+    public function destroyStudent(Request $request, $id)
     {
         $user = $request->user();
 

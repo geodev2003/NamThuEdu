@@ -13,6 +13,29 @@ use Laravel\Sanctum\PersonalAccessToken;
 class AuthController extends Controller
 {
     /**
+     * @OA\Post(
+     *     path="/login",
+     *     tags={"Authentication"},
+     *     summary="User login",
+     *     description="Authenticate user and return access token",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"phone","password"},
+     *             @OA\Property(property="phone", type="string", example="0336695863"),
+     *             @OA\Property(property="password", type="string", example="password123")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Login successful"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Invalid credentials"
+     *     )
+     * )
+     * 
      * POST /api/login
      * Đăng nhập bằng SĐT + mật khẩu
      */
@@ -86,6 +109,32 @@ class AuthController extends Controller
     }
 
     /**
+     * @OA\Post(
+     *     path="/users/accept",
+     *     tags={"Authentication"},
+     *     summary="Request OTP for password reset",
+     *     description="Request OTP code to reset password",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"phone"},
+     *             @OA\Property(property="phone", type="string", example="0336695863")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="OTP sent successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Phone number not found"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Invalid phone number"
+     *     )
+     * )
+     * 
      * POST /api/users/accept
      * Yêu cầu OTP để reset mật khẩu
      */
@@ -145,6 +194,34 @@ class AuthController extends Controller
     }
 
     /**
+     * @OA\Post(
+     *     path="/users/reset-password",
+     *     tags={"Authentication"},
+     *     summary="Reset password with OTP",
+     *     description="Reset user password using OTP verification",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"phone", "otp", "password"},
+     *             @OA\Property(property="phone", type="string", example="0336695863"),
+     *             @OA\Property(property="otp", type="string", example="123456"),
+     *             @OA\Property(property="password", type="string", example="newpassword123")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Password reset successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Invalid OTP or validation error"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="User not found"
+     *     )
+     * )
+     * 
      * POST /api/users/reset-password
      * Đặt lại mật khẩu bằng OTP
      */
@@ -208,6 +285,22 @@ class AuthController extends Controller
     }
 
     /**
+     * @OA\Post(
+     *     path="/logout",
+     *     tags={"Authentication"},
+     *     summary="User logout",
+     *     description="Logout user and invalidate token",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Logout successful"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     * 
      * POST /api/logout
      * Đăng xuất
      */

@@ -10,6 +10,16 @@ use App\Models\User;
 class CourseController extends Controller
 {
     /**
+     * @OA\Get(
+     *     path="/teacher/courses",
+     *     tags={"Teachers"},
+     *     summary="Get teacher courses",
+     *     description="Get list of courses for authenticated teacher",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(response=200, description="Courses retrieved successfully"),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     * 
      * GET /api/teacher/courses
      * Lấy danh sách khóa học của teacher
      */
@@ -37,6 +47,40 @@ class CourseController extends Controller
     }
 
     /**
+     * @OA\Post(
+     *     path="/teacher/courses",
+     *     tags={"Course Management"},
+     *     summary="Create new course",
+     *     description="Create a new course (teacher only)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"courseName", "numberOfStudent", "time", "category", "schedule", "startDate", "endDate"},
+     *             @OA\Property(property="courseName", type="string", example="VSTEP Preparation Course"),
+     *             @OA\Property(property="numberOfStudent", type="integer", example=20),
+     *             @OA\Property(property="time", type="string", example="2 hours"),
+     *             @OA\Property(property="category", type="integer", example=1),
+     *             @OA\Property(property="schedule", type="string", example="Mon, Wed, Fri - 7:00 PM"),
+     *             @OA\Property(property="startDate", type="string", format="date", example="2026-04-01"),
+     *             @OA\Property(property="endDate", type="string", format="date", example="2026-06-30"),
+     *             @OA\Property(property="description", type="string", example="Comprehensive VSTEP preparation course")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Course created successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation error"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     * 
      * POST /api/teacher/courses
      * Tạo khóa học mới
      */
@@ -90,6 +134,33 @@ class CourseController extends Controller
     }
 
     /**
+     * @OA\Get(
+     *     path="/teacher/courses/{id}",
+     *     tags={"Course Management"},
+     *     summary="Get course details",
+     *     description="Get detailed information about a specific course",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer"),
+     *         example=1
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Course details retrieved successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Course not found"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     * 
      * GET /api/teacher/courses/{id}
      * Lấy chi tiết khóa học
      */
@@ -124,6 +195,45 @@ class CourseController extends Controller
     }
 
     /**
+     * @OA\Put(
+     *     path="/teacher/courses/{id}",
+     *     tags={"Course Management"},
+     *     summary="Update course",
+     *     description="Update course information",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="courseName", type="string"),
+     *             @OA\Property(property="numberOfStudent", type="integer"),
+     *             @OA\Property(property="time", type="string"),
+     *             @OA\Property(property="category", type="integer"),
+     *             @OA\Property(property="schedule", type="string"),
+     *             @OA\Property(property="startDate", type="string", format="date"),
+     *             @OA\Property(property="endDate", type="string", format="date"),
+     *             @OA\Property(property="description", type="string")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Course updated successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Course not found"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     * 
      * PUT /api/teacher/courses/{id}
      * Cập nhật khóa học
      */
@@ -188,6 +298,32 @@ class CourseController extends Controller
     }
 
     /**
+     * @OA\Delete(
+     *     path="/teacher/courses/{id}",
+     *     tags={"Course Management"},
+     *     summary="Delete course",
+     *     description="Delete a course (soft delete)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Course deleted successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Course not found"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     * 
      * DELETE /api/teacher/courses/{id}
      * Xóa khóa học (soft delete)
      */

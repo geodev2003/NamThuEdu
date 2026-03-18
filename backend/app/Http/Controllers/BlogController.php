@@ -10,6 +10,22 @@ use App\Models\User;
 class BlogController extends Controller
 {
     /**
+     * @OA\Get(
+     *     path="/teacher/blogs",
+     *     tags={"Blog Management"},
+     *     summary="Get teacher blogs",
+     *     description="Get list of blogs created by authenticated teacher",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Blogs retrieved successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     * 
      * GET /api/teacher/blogs
      * Lấy danh sách bài viết của teacher
      */
@@ -38,6 +54,38 @@ class BlogController extends Controller
     }
 
     /**
+     * @OA\Post(
+     *     path="/teacher/blogs",
+     *     tags={"Blog Management"},
+     *     summary="Create new blog",
+     *     description="Create a new blog post (teacher only)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"blogName", "blogContent", "blogType", "blogCategory"},
+     *             @OA\Property(property="blogName", type="string", example="Grammar Tips for VSTEP"),
+     *             @OA\Property(property="blogContent", type="string", example="Detailed content about grammar..."),
+     *             @OA\Property(property="blogType", type="string", enum={"grammar", "tips", "vocabulary"}, example="grammar"),
+     *             @OA\Property(property="blogCategory", type="integer", example=1),
+     *             @OA\Property(property="blogUrl", type="string", example="grammar-tips-vstep"),
+     *             @OA\Property(property="blogThumbnail", type="string", example="thumbnail.jpg")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Blog created successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation error"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     * 
      * POST /api/teacher/blogs
      * Tạo bài viết mới
      */
@@ -89,6 +137,33 @@ class BlogController extends Controller
     }
 
     /**
+     * @OA\Get(
+     *     path="/teacher/blogs/{id}",
+     *     tags={"Blog Management"},
+     *     summary="Get blog details",
+     *     description="Get detailed information about a specific blog",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer"),
+     *         example=1
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Blog details retrieved successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Blog not found"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     * 
      * GET /api/teacher/blogs/{id}
      * Lấy chi tiết bài viết
      */
@@ -123,6 +198,44 @@ class BlogController extends Controller
     }
 
     /**
+     * @OA\Put(
+     *     path="/teacher/blogs/{id}",
+     *     tags={"Blog Management"},
+     *     summary="Update blog",
+     *     description="Update blog information",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="blogName", type="string"),
+     *             @OA\Property(property="blogContent", type="string"),
+     *             @OA\Property(property="blogType", type="string", enum={"grammar", "tips", "vocabulary"}),
+     *             @OA\Property(property="blogCategory", type="integer"),
+     *             @OA\Property(property="blogUrl", type="string"),
+     *             @OA\Property(property="blogThumbnail", type="string"),
+     *             @OA\Property(property="pStatus", type="string", enum={"active", "inactive", "draft"})
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Blog updated successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Blog not found"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     * 
      * PUT /api/teacher/blogs/{id}
      * Cập nhật bài viết
      */
@@ -190,6 +303,32 @@ class BlogController extends Controller
     }
 
     /**
+     * @OA\Delete(
+     *     path="/teacher/blogs/{id}",
+     *     tags={"Blog Management"},
+     *     summary="Delete blog",
+     *     description="Delete a blog (soft delete)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Blog deleted successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Blog not found"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     * 
      * DELETE /api/teacher/blogs/{id}
      * Xóa bài viết (soft delete)
      */

@@ -1,0 +1,2305 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "NamThu Education API",
+        "description": "Comprehensive API documentation for NamThu Education Laravel Backend",
+        "contact": {
+            "email": "support@namthuedu.com"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://127.0.0.1:8000/api",
+            "description": "Development server"
+        }
+    ],
+    "paths": {
+        "/login": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "User login",
+                "description": "Authenticate user and return access token",
+                "operationId": "2dd578ff7aba2721293dac66833b27d1",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "phone",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "phone": {
+                                        "type": "string",
+                                        "example": "0336695863"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "password123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login successful"
+                    },
+                    "401": {
+                        "description": "Invalid credentials"
+                    }
+                }
+            }
+        },
+        "/users/accept": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Request OTP for password reset",
+                "description": "Request OTP code to reset password",
+                "operationId": "2bec97be4a3ff8c391f5015cfedb51de",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "phone"
+                                ],
+                                "properties": {
+                                    "phone": {
+                                        "type": "string",
+                                        "example": "0336695863"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP sent successfully"
+                    },
+                    "404": {
+                        "description": "Phone number not found"
+                    },
+                    "401": {
+                        "description": "Invalid phone number"
+                    }
+                }
+            }
+        },
+        "/users/reset-password": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Reset password with OTP",
+                "description": "Reset user password using OTP verification",
+                "operationId": "6de8378525f3f4383dfefa4efd67f128",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "phone",
+                                    "otp",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "phone": {
+                                        "type": "string",
+                                        "example": "0336695863"
+                                    },
+                                    "otp": {
+                                        "type": "string",
+                                        "example": "123456"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "newpassword123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Password reset successfully"
+                    },
+                    "400": {
+                        "description": "Invalid OTP or validation error"
+                    },
+                    "404": {
+                        "description": "User not found"
+                    }
+                }
+            }
+        },
+        "/logout": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "User logout",
+                "description": "Logout user and invalidate token",
+                "operationId": "68a6108af04af5e3bc1ea68a6c6f1299",
+                "responses": {
+                    "200": {
+                        "description": "Logout successful"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/blogs": {
+            "get": {
+                "tags": [
+                    "Blog Management"
+                ],
+                "summary": "Get teacher blogs",
+                "description": "Get list of blogs created by authenticated teacher",
+                "operationId": "979d49eb391a96887c03b9acd01edd81",
+                "responses": {
+                    "200": {
+                        "description": "Blogs retrieved successfully"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Blog Management"
+                ],
+                "summary": "Create new blog",
+                "description": "Create a new blog post (teacher only)",
+                "operationId": "4b1a4fca3f0bd83fc5b22fc7e54f0d2d",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "blogName",
+                                    "blogContent",
+                                    "blogType",
+                                    "blogCategory"
+                                ],
+                                "properties": {
+                                    "blogName": {
+                                        "type": "string",
+                                        "example": "Grammar Tips for VSTEP"
+                                    },
+                                    "blogContent": {
+                                        "type": "string",
+                                        "example": "Detailed content about grammar..."
+                                    },
+                                    "blogType": {
+                                        "type": "string",
+                                        "enum": [
+                                            "grammar",
+                                            "tips",
+                                            "vocabulary"
+                                        ],
+                                        "example": "grammar"
+                                    },
+                                    "blogCategory": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "blogUrl": {
+                                        "type": "string",
+                                        "example": "grammar-tips-vstep"
+                                    },
+                                    "blogThumbnail": {
+                                        "type": "string",
+                                        "example": "thumbnail.jpg"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Blog created successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/blogs/{id}": {
+            "get": {
+                "tags": [
+                    "Blog Management"
+                ],
+                "summary": "Get blog details",
+                "description": "Get detailed information about a specific blog",
+                "operationId": "0f35025a43d318ca032df0ddeeb59302",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 1
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Blog details retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Blog not found"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Blog Management"
+                ],
+                "summary": "Update blog",
+                "description": "Update blog information",
+                "operationId": "b5e43b7e76acc72077f6fa13ac1c2685",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "blogName": {
+                                        "type": "string"
+                                    },
+                                    "blogContent": {
+                                        "type": "string"
+                                    },
+                                    "blogType": {
+                                        "type": "string",
+                                        "enum": [
+                                            "grammar",
+                                            "tips",
+                                            "vocabulary"
+                                        ]
+                                    },
+                                    "blogCategory": {
+                                        "type": "integer"
+                                    },
+                                    "blogUrl": {
+                                        "type": "string"
+                                    },
+                                    "blogThumbnail": {
+                                        "type": "string"
+                                    },
+                                    "pStatus": {
+                                        "type": "string",
+                                        "enum": [
+                                            "active",
+                                            "inactive",
+                                            "draft"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Blog updated successfully"
+                    },
+                    "404": {
+                        "description": "Blog not found"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Blog Management"
+                ],
+                "summary": "Delete blog",
+                "description": "Delete a blog (soft delete)",
+                "operationId": "fc71feb135db1681a33c066bd0b900f2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Blog deleted successfully"
+                    },
+                    "404": {
+                        "description": "Blog not found"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/categories": {
+            "get": {
+                "tags": [
+                    "Teachers"
+                ],
+                "summary": "Get categories",
+                "description": "Get list of available categories",
+                "operationId": "515bc95dac3e9b9053ec26bf9a38e8c1",
+                "responses": {
+                    "200": {
+                        "description": "Categories retrieved successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/classes": {
+            "get": {
+                "tags": [
+                    "Classes"
+                ],
+                "summary": "Get teacher classes",
+                "description": "Get list of classes for authenticated teacher",
+                "operationId": "155f35af6992e400c29d7d7b0150590a",
+                "responses": {
+                    "200": {
+                        "description": "Classes retrieved successfully"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Classes"
+                ],
+                "summary": "Create new class",
+                "description": "Create a new class (teacher only)",
+                "operationId": "ee17bdc759290aea3dedf50b14cd885f",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "cName"
+                                ],
+                                "properties": {
+                                    "cName": {
+                                        "type": "string",
+                                        "example": "Advanced English Class"
+                                    },
+                                    "cDescription": {
+                                        "type": "string",
+                                        "example": "Advanced level English course"
+                                    },
+                                    "cStatus": {
+                                        "type": "string",
+                                        "example": "active"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Class created successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/classes/{id}": {
+            "get": {
+                "tags": [
+                    "Classes"
+                ],
+                "summary": "Get class details",
+                "description": "Get detailed information about a specific class including enrolled students",
+                "operationId": "c5d79e7bd57bd389f6e8e456eb53a82f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 1
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Class details retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Class not found"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Classes"
+                ],
+                "summary": "Update class",
+                "description": "Update class information",
+                "operationId": "be2609e2e1bd7da1a6a73079f7f4b502",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "cName": {
+                                        "type": "string",
+                                        "example": "Advanced English Class"
+                                    },
+                                    "cDescription": {
+                                        "type": "string",
+                                        "example": "Advanced level English course"
+                                    },
+                                    "cStatus": {
+                                        "type": "string",
+                                        "enum": [
+                                            "active",
+                                            "inactive"
+                                        ],
+                                        "example": "active"
+                                    },
+                                    "course": {
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Class updated successfully"
+                    },
+                    "404": {
+                        "description": "Class not found"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Classes"
+                ],
+                "summary": "Delete class",
+                "description": "Delete a class (soft delete)",
+                "operationId": "3367a358e469960ed8e6011dbca57739",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Class deleted successfully"
+                    },
+                    "404": {
+                        "description": "Class not found"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/classes/{id}/enroll": {
+            "post": {
+                "tags": [
+                    "Classes"
+                ],
+                "summary": "Enroll students to class",
+                "description": "Enroll multiple students to a class",
+                "operationId": "99a36e757cdf5f3ea0bf5bb7e205b77d",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 1
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "student_ids"
+                                ],
+                                "properties": {
+                                    "student_ids": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        },
+                                        "example": [
+                                            2,
+                                            3,
+                                            4
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Students enrolled successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "404": {
+                        "description": "Class not found"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/courses": {
+            "get": {
+                "tags": [
+                    "Teachers"
+                ],
+                "summary": "Get teacher courses",
+                "description": "Get list of courses for authenticated teacher",
+                "operationId": "7992a68499598211686a3dae2ab2a6b6",
+                "responses": {
+                    "200": {
+                        "description": "Courses retrieved successfully"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Course Management"
+                ],
+                "summary": "Create new course",
+                "description": "Create a new course (teacher only)",
+                "operationId": "5e55d620ccfa7570febbae70e0412b76",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "courseName",
+                                    "numberOfStudent",
+                                    "time",
+                                    "category",
+                                    "schedule",
+                                    "startDate",
+                                    "endDate"
+                                ],
+                                "properties": {
+                                    "courseName": {
+                                        "type": "string",
+                                        "example": "VSTEP Preparation Course"
+                                    },
+                                    "numberOfStudent": {
+                                        "type": "integer",
+                                        "example": 20
+                                    },
+                                    "time": {
+                                        "type": "string",
+                                        "example": "2 hours"
+                                    },
+                                    "category": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "schedule": {
+                                        "type": "string",
+                                        "example": "Mon, Wed, Fri - 7:00 PM"
+                                    },
+                                    "startDate": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-04-01"
+                                    },
+                                    "endDate": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-06-30"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "example": "Comprehensive VSTEP preparation course"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Course created successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/courses/{id}": {
+            "get": {
+                "tags": [
+                    "Course Management"
+                ],
+                "summary": "Get course details",
+                "description": "Get detailed information about a specific course",
+                "operationId": "2ee19d6c327f2ad581a49e09f6e779b3",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 1
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Course details retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Course not found"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Course Management"
+                ],
+                "summary": "Update course",
+                "description": "Update course information",
+                "operationId": "db233c68b431a12fe67461451bedeb19",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "courseName": {
+                                        "type": "string"
+                                    },
+                                    "numberOfStudent": {
+                                        "type": "integer"
+                                    },
+                                    "time": {
+                                        "type": "string"
+                                    },
+                                    "category": {
+                                        "type": "integer"
+                                    },
+                                    "schedule": {
+                                        "type": "string"
+                                    },
+                                    "startDate": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "endDate": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Course updated successfully"
+                    },
+                    "404": {
+                        "description": "Course not found"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Course Management"
+                ],
+                "summary": "Delete course",
+                "description": "Delete a course (soft delete)",
+                "operationId": "98abbae0905b723cc81bddfa58285c07",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Course deleted successfully"
+                    },
+                    "404": {
+                        "description": "Course not found"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/exams": {
+            "get": {
+                "tags": [
+                    "Exams"
+                ],
+                "summary": "Get teacher exams",
+                "description": "Get list of exams created by authenticated teacher",
+                "operationId": "63acf4d32b07c20b10a3dbe3055b675f",
+                "responses": {
+                    "200": {
+                        "description": "Exams retrieved successfully"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Exams"
+                ],
+                "summary": "Create new exam",
+                "description": "Create a new exam (teacher only)",
+                "operationId": "39453d54e0ecd05395c7f96ad6452a48",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "eTitle",
+                                    "eType"
+                                ],
+                                "properties": {
+                                    "eTitle": {
+                                        "type": "string",
+                                        "example": "VSTEP Practice Test"
+                                    },
+                                    "eDescription": {
+                                        "type": "string",
+                                        "example": "Practice test for VSTEP preparation"
+                                    },
+                                    "eType": {
+                                        "type": "string",
+                                        "example": "VSTEP"
+                                    },
+                                    "eSkill": {
+                                        "type": "string",
+                                        "example": "listening"
+                                    },
+                                    "eDuration": {
+                                        "type": "integer",
+                                        "example": 90
+                                    },
+                                    "eTotal_score": {
+                                        "type": "integer",
+                                        "example": 100
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Exam created successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/exams/{id}": {
+            "get": {
+                "tags": [
+                    "Exams"
+                ],
+                "summary": "Get exam details",
+                "description": "Get detailed information about a specific exam",
+                "operationId": "8a5ff4b65f361773ba8201d8061084e0",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 1
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Exam details retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Exam not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Exams"
+                ],
+                "summary": "Update exam",
+                "description": "Update exam information",
+                "operationId": "38bd70eb822e9cf553d137bd89319b23",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "eTitle": {
+                                        "type": "string"
+                                    },
+                                    "eDescription": {
+                                        "type": "string"
+                                    },
+                                    "eDuration": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Exam updated successfully"
+                    },
+                    "404": {
+                        "description": "Exam not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Exams"
+                ],
+                "summary": "Delete exam",
+                "description": "Delete an exam (soft delete)",
+                "operationId": "483627d8103193844d486105fd02e9b0",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Exam deleted successfully"
+                    },
+                    "404": {
+                        "description": "Exam not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/exams/{id}/questions": {
+            "post": {
+                "tags": [
+                    "Exams"
+                ],
+                "summary": "Add questions to exam",
+                "description": "Add multiple questions to an exam",
+                "operationId": "21487f6c0c205024cb70ec7979706ff8",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "questions": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "qText": {
+                                                    "type": "string"
+                                                },
+                                                "qType": {
+                                                    "type": "string"
+                                                },
+                                                "qScore": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Questions added successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/submissions": {
+            "get": {
+                "tags": [
+                    "Grading"
+                ],
+                "summary": "Get submissions for grading",
+                "description": "Get list of student submissions with optional filters",
+                "operationId": "c7f4518626998e4ef68836593d735ad6",
+                "parameters": [
+                    {
+                        "name": "exam_id",
+                        "in": "query",
+                        "description": "Filter by exam ID",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filter by submission status",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "completed",
+                                "graded"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Submissions retrieved successfully"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/submissions/{id}": {
+            "get": {
+                "tags": [
+                    "Grading"
+                ],
+                "summary": "Get submission details",
+                "description": "Get detailed information about a specific submission",
+                "operationId": "a73e5991b6e08cc9687c86cc9f229d42",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Submission details retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Submission not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/submissions/{id}/grade": {
+            "post": {
+                "tags": [
+                    "Grading"
+                ],
+                "summary": "Grade submission",
+                "description": "Grade a student submission (manual grading for essay questions)",
+                "operationId": "228bf56091116fd21b0526bff9f9585f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "grades": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "question_id": {
+                                                    "type": "integer"
+                                                },
+                                                "score": {
+                                                    "type": "number",
+                                                    "format": "float"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "feedback": {
+                                        "type": "string",
+                                        "example": "Good work overall"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Submission graded successfully"
+                    },
+                    "404": {
+                        "description": "Submission not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/student/tests": {
+            "get": {
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Get student tests",
+                "description": "Get list of tests assigned to authenticated student",
+                "operationId": "da165138fff6bf43457e22aa4dab5723",
+                "responses": {
+                    "200": {
+                        "description": "Tests retrieved successfully"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/student/tests/{id}": {
+            "get": {
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Get test details",
+                "description": "Get detailed information about a specific test (without correct answers)",
+                "operationId": "a8ac21b5323c89739fcf5dca4d145375",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Test details retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Test not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/student/tests/{id}/start": {
+            "post": {
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Start test",
+                "description": "Start taking a test (creates submission)",
+                "operationId": "8fcf332569616778f7ee4eeefa8a5222",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Test started successfully"
+                    },
+                    "400": {
+                        "description": "Cannot start test (already completed, expired, etc.)"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/student/tests/{submissionId}/answer": {
+            "post": {
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Submit answer",
+                "description": "Submit answer for a question during test",
+                "operationId": "d8528ff6df4b6213d1a22a4a92b46543",
+                "parameters": [
+                    {
+                        "name": "submissionId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "question_id"
+                                ],
+                                "properties": {
+                                    "question_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "answer_id": {
+                                        "description": "For multiple choice questions",
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    "answer_text": {
+                                        "description": "For essay questions",
+                                        "type": "string",
+                                        "example": "Essay answer text"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Answer submitted successfully"
+                    },
+                    "400": {
+                        "description": "Invalid submission or question"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/student/tests/{submissionId}/submit": {
+            "post": {
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Submit test",
+                "description": "Submit completed test for grading",
+                "operationId": "d45a78274ee9e592aced67ce188e778b",
+                "parameters": [
+                    {
+                        "name": "submissionId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Test submitted successfully"
+                    },
+                    "400": {
+                        "description": "Cannot submit test (not started, already submitted, etc.)"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/student/submissions": {
+            "get": {
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Get student submissions",
+                "description": "Get submission history for authenticated student",
+                "operationId": "c09752d45338f93d3b9c3d545f000fe9",
+                "responses": {
+                    "200": {
+                        "description": "Submissions retrieved successfully"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/student/submissions/{id}": {
+            "get": {
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Get submission details",
+                "description": "Get detailed information about a specific submission with scores and feedback",
+                "operationId": "ca6600fd69c6e514456168f461ad3e70",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Submission details retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Submission not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/exams/{examId}/assign": {
+            "post": {
+                "tags": [
+                    "Assignments"
+                ],
+                "summary": "Assign exam to class or student",
+                "description": "Assign an exam to a class or individual student",
+                "operationId": "248ec6c84bf09d77987f988f3643406a",
+                "parameters": [
+                    {
+                        "name": "examId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "taTarget_type",
+                                    "taTarget_id",
+                                    "taDeadline"
+                                ],
+                                "properties": {
+                                    "taTarget_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "class",
+                                            "student"
+                                        ],
+                                        "example": "class"
+                                    },
+                                    "taTarget_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "taDeadline": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2026-04-30T23:59:59"
+                                    },
+                                    "taMax_attempt": {
+                                        "type": "integer",
+                                        "example": 3
+                                    },
+                                    "taInstructions": {
+                                        "type": "string",
+                                        "example": "Complete within time limit"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Exam assigned successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/assignments": {
+            "get": {
+                "tags": [
+                    "Assignments"
+                ],
+                "summary": "Get test assignments",
+                "description": "Get list of test assignments with optional filters",
+                "operationId": "2a0742cafbbbb04ae0eac5c624b330c8",
+                "parameters": [
+                    {
+                        "name": "exam_id",
+                        "in": "query",
+                        "description": "Filter by exam ID",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "target_type",
+                        "in": "query",
+                        "description": "Filter by target type",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "class",
+                                "student"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Assignments retrieved successfully"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/assignments/{id}": {
+            "delete": {
+                "tags": [
+                    "Assignments"
+                ],
+                "summary": "Delete test assignment",
+                "description": "Delete a test assignment",
+                "operationId": "0c7073fd1ff0ef5fad473be393adfdc1",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Assignment deleted successfully"
+                    },
+                    "404": {
+                        "description": "Assignment not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/tests/upload": {
+            "post": {
+                "tags": [
+                    "Test Management"
+                ],
+                "summary": "Upload test file",
+                "description": "Upload test file (Excel/CSV) and create exam record",
+                "operationId": "770cf94bd978c98d544aa7ddb34f75a7",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "file",
+                                    "title"
+                                ],
+                                "properties": {
+                                    "file": {
+                                        "description": "Test file (Excel/CSV, max 10MB)",
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "title": {
+                                        "type": "string",
+                                        "example": "VSTEP Sample Test"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "example": "Sample test for VSTEP preparation"
+                                    },
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "VSTEP",
+                                            "TOEIC",
+                                            "IELTS"
+                                        ],
+                                        "example": "VSTEP"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "File uploaded successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "403": {
+                        "description": "Unauthorized - teacher role required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/tests": {
+            "get": {
+                "tags": [
+                    "Tests"
+                ],
+                "summary": "Get public tests",
+                "description": "Get list of public tests available to all users",
+                "operationId": "3ca1ced0e00a5f0dd95e238ac90877cf",
+                "responses": {
+                    "200": {
+                        "description": "Tests retrieved successfully"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get users list",
+                "description": "Get list of all users (public endpoint)",
+                "operationId": "7e2f5799553ec93c9c43e2a58490d447",
+                "responses": {
+                    "200": {
+                        "description": "Users retrieved successfully"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "User Management"
+                ],
+                "summary": "Create new user",
+                "description": "Create a new user (public endpoint)",
+                "operationId": "a1fce870c566eb5fc0cf3178ec5d2fed",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "phone",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "phone": {
+                                        "type": "string",
+                                        "example": "0987654321"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "password123"
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Nguyen Van A"
+                                    },
+                                    "role": {
+                                        "type": "string",
+                                        "enum": [
+                                            "student",
+                                            "teacher"
+                                        ],
+                                        "example": "student"
+                                    },
+                                    "dob": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "1995-01-01"
+                                    },
+                                    "address": {
+                                        "type": "string",
+                                        "example": "Can Tho City"
+                                    },
+                                    "gender": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "class": {
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "User created successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "403": {
+                        "description": "Permission denied"
+                    }
+                }
+            }
+        },
+        "/users/{id}": {
+            "delete": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Delete user",
+                "description": "Delete a user by ID (requires teacher/admin role)",
+                "operationId": "43dd20becb1f47444e484cbb18ce345c",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User deleted successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "description": "User not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/students": {
+            "get": {
+                "tags": [
+                    "Teachers"
+                ],
+                "summary": "Get teacher students",
+                "description": "Get list of students managed by authenticated teacher",
+                "operationId": "2dfa2e0ffc9e6928d3ab09f4b6235689",
+                "responses": {
+                    "200": {
+                        "description": "Students retrieved successfully"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/student/{id}": {
+            "get": {
+                "tags": [
+                    "Student Management"
+                ],
+                "summary": "Get student details",
+                "description": "Get detailed information about a specific student",
+                "operationId": "c0b4347c0f268dab6492e0b4b7a9271b",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 2
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Student details retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Student not found"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Student Management"
+                ],
+                "summary": "Update student",
+                "description": "Update student information",
+                "operationId": "cffdb2dc2d26d4e694be4555b3a47f9f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "studentName": {
+                                        "type": "string",
+                                        "example": "Nguyen Van C"
+                                    },
+                                    "studentPhone": {
+                                        "type": "string",
+                                        "example": "0987654321"
+                                    },
+                                    "studentDoB": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2000-01-01"
+                                    },
+                                    "studentAddress": {
+                                        "type": "string",
+                                        "example": "Can Tho City"
+                                    },
+                                    "studentGender": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "classId": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "studentStatus": {
+                                        "type": "string",
+                                        "enum": [
+                                            "active",
+                                            "inactive"
+                                        ],
+                                        "example": "active"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Student updated successfully"
+                    },
+                    "404": {
+                        "description": "Student not found"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Student Management"
+                ],
+                "summary": "Delete student",
+                "description": "Delete a student (soft delete)",
+                "operationId": "8bc01163745268f9a584e8b8ce28de86",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Student deleted successfully"
+                    },
+                    "404": {
+                        "description": "Student not found"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/student": {
+            "post": {
+                "tags": [
+                    "Student Management"
+                ],
+                "summary": "Create new student(s)",
+                "description": "Create one or multiple students (teacher only)",
+                "operationId": "788f8513ea014624dd7c9f7590855cd8",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "oneOf": [
+                                    {
+                                        "required": [
+                                            "studentPhone",
+                                            "studentPassword"
+                                        ],
+                                        "properties": {
+                                            "studentPhone": {
+                                                "type": "string",
+                                                "example": "0912345678"
+                                            },
+                                            "studentPassword": {
+                                                "type": "string",
+                                                "example": "password123"
+                                            },
+                                            "studentName": {
+                                                "type": "string",
+                                                "example": "Nguyen Van B"
+                                            },
+                                            "studentDoB": {
+                                                "type": "string",
+                                                "format": "date",
+                                                "example": "2000-01-01"
+                                            },
+                                            "uClass": {
+                                                "type": "integer",
+                                                "example": 1
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "studentPhone",
+                                                "studentPassword"
+                                            ],
+                                            "properties": {
+                                                "studentPhone": {
+                                                    "type": "string"
+                                                },
+                                                "studentPassword": {
+                                                    "type": "string"
+                                                },
+                                                "studentName": {
+                                                    "type": "string"
+                                                },
+                                                "studentDoB": {
+                                                    "type": "string",
+                                                    "format": "date"
+                                                },
+                                                "uClass": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Students created successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "description": "Enter your Bearer token",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Authentication",
+            "description": "Authentication"
+        },
+        {
+            "name": "Blog Management",
+            "description": "Blog Management"
+        },
+        {
+            "name": "Teachers",
+            "description": "Teachers"
+        },
+        {
+            "name": "Classes",
+            "description": "Classes"
+        },
+        {
+            "name": "Course Management",
+            "description": "Course Management"
+        },
+        {
+            "name": "Exams",
+            "description": "Exams"
+        },
+        {
+            "name": "Grading",
+            "description": "Grading"
+        },
+        {
+            "name": "Students",
+            "description": "Students"
+        },
+        {
+            "name": "Assignments",
+            "description": "Assignments"
+        },
+        {
+            "name": "Test Management",
+            "description": "Test Management"
+        },
+        {
+            "name": "Tests",
+            "description": "Tests"
+        },
+        {
+            "name": "Users",
+            "description": "Users"
+        },
+        {
+            "name": "User Management",
+            "description": "User Management"
+        },
+        {
+            "name": "Student Management",
+            "description": "Student Management"
+        }
+    ]
+}
