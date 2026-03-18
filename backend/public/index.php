@@ -1,126 +1,55 @@
 <?php
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Http\Request;
 
+define('LARAVEL_START', microtime(true));
 
-/**
- * =================================================
- * Front Controller – Entry Point của Backend API
- * =================================================
- * - PHP thuần theo mô hình MVC
- * - Backend chỉ trả JSON (VueJS SPA)
- * - Autoload bằng Composer (PSR-4)
- */
+/*
+|--------------------------------------------------------------------------
+| Check If The Application Is Under Maintenance
+|--------------------------------------------------------------------------
+|
+| If the application is in maintenance / demo mode via the "down" command
+| we will load this file so that any pre-rendered content can be shown
+| instead of starting the framework, which could cause an exception.
+|
+*/
 
-/**
- * ------------------------------------------
- * 1. Load Composer Autoload
- * ------------------------------------------
- * - Tự động load toàn bộ class (Controller, Model...)
- * - Load thư viện ngoài (JWT, Dotenv, Spreadsheet...)
- */
-require_once __DIR__ . '/../vendor/autoload.php';
-
-use App\Core\Router;
-
-/**
- * ------------------------------------------
- * 2. Cấu hình header chung cho API
- * ------------------------------------------
- * - Cho phép gọi API từ frontend (VueJS)
- * - Giao tiếp bằng JSON
- */
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-
-/**
- * ------------------------------------------
- * 3. Xử lý preflight request (CORS)
- * ------------------------------------------
- */
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
+if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
+    require $maintenance;
 }
 
-/**
- * ------------------------------------------
- * 4. Khởi tạo Router
- * ------------------------------------------
- * - Router chịu trách nhiệm mapping URL → Controller
- */
-$router = new Router();
+/*
+|--------------------------------------------------------------------------
+| Register The Auto Loader
+|--------------------------------------------------------------------------
+|
+| Composer provides a convenient, automatically generated class loader for
+| this application. We just need to utilize it! We'll simply require it
+| into the script here so we don't need to manually load our classes.
+|
+*/
 
-/**
- * ------------------------------------------
- * 5. Định nghĩa các API routes
- * ------------------------------------------
- * Format:
- *   HTTP_METHOD + URI → Controller@method
- */
+require __DIR__.'/../vendor/autoload.php';
 
-/* ========= AUTH ========= */
-$router->post('/api/login', 'AuthController@login');
-$router->post('/api/logout', 'AuthController@logout');
-$router->post('/api/users/accept', 'AuthController@accept');
-$router->post('/api/users/reset-password', 'AuthController@resetPassword');
+/*
+|--------------------------------------------------------------------------
+| Run The Application
+|--------------------------------------------------------------------------
+|
+| Once we have the application, we can handle the incoming request using
+| the application's HTTP kernel. Then, we will send the response back
+| to this client's browser, allowing them to enjoy our application.
+|
+*/
 
-/* ========= USER ========= */
-$router->get('/api/users', 'UserController@index');
-$router->post('/api/users', 'UserController@store');
-$router->delete('/api/users/{id}', 'UserController@softDelete');
+$app = require_once __DIR__.'/../bootstrap/app.php';
 
-/* ========= TEST / VSTEP ========= */
-$router->post('/api/tests/upload', 'TestController@upload');
-$router->get('/api/tests', 'TestController@index');
+$kernel = $app->make(Kernel::class);
 
-/* ======== TEACHER MANAGE COURSE ========= */
-$router->get('/api/teacher/courses', 'CourseController@teacherCourses');
-$router->post('/api/teacher/courses', 'CourseController@store');
-$router->delete('/api/teacher/courses/{id}', 'CourseController@destroy');
-$router->get('/api/teacher/courses/{id}', 'CourseController@show');
-$router->put('/api/teacher/courses/{id}', 'CourseController@update');
+$response = $kernel->handle(
+    $request = Request::capture()
+)->send();
 
-/* ======== TEACHER MANAGE STUDENT ========= */
-$router->get('/api/teacher/students', 'UserController@teacherStudents');
-$router->get('/api/teacher/student/{id}', 'UserController@getStudentById');
-$router->delete('/api/teacher/student/{id}', 'UserController@destroy');
-$router->put('/api/teacher/student/{id}', 'UserController@update');
-$router->post('/api/teacher/student', 'UserController@store');
-
-/* ========= TEACHER MANAGE BLOGS ========= */
-$router->get('/api/teacher/blogs', 'BlogController@show');
-$router->post('/api/teacher/blogs', 'BlogController@store');
-$router->put('/api/teacher/blogs/{id}', 'BlogController@update');
-$router->delete('/api/teacher/blogs/{id}', 'BlogController@destroy');
-$router->get('/api/teacher/blogs/{id}', 'BlogController@getBlogById');
-
-/* ======== CATEGORY ======== */
-$router->get('/api/teacher/categories', 'CategoryController@getCategory');
-
-
-/**
- * ------------------------------------------
- * 6. Chạy Router
- * ------------------------------------------
- */
-try {
-    $router->run();
-} catch (Throwable $e) {
-    /**
-     * --------------------------------------
-     * 7. Bắt lỗi toàn cục
-     * --------------------------------------
-     * - Tránh lỗi trắng trang
-     * - Trả lỗi JSON cho frontend
-     */
-    http_response_code(500);
-    echo json_encode([
-        'status' => 'error',
-        'message' => $e->getMessage()
-    ]);
-}
+$kernel->terminate($request, $response);
