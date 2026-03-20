@@ -36,6 +36,16 @@ class CategoryController extends Controller
      * ======================================== */
 
     /**
+     * @OA\Get(
+     *     path="/admin/categories",
+     *     tags={"Admin - Content Management"},
+     *     summary="Get all categories (Admin only)",
+     *     description="Get list of all categories with usage statistics",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(response=200, description="Categories retrieved successfully"),
+     *     @OA\Response(response=403, description="Admin access required")
+     * )
+     * 
      * GET /api/admin/categories
      * Quản lý danh mục (Admin only)
      */
@@ -61,6 +71,26 @@ class CategoryController extends Controller
     }
 
     /**
+     * @OA\Post(
+     *     path="/admin/categories",
+     *     tags={"Admin - Content Management"},
+     *     summary="Create new category (Admin only)",
+     *     description="Create a new category for courses and posts",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"caName"},
+     *             @OA\Property(property="caName", type="string", example="VSTEP Listening"),
+     *             @OA\Property(property="caDescription", type="string", example="Category for VSTEP listening materials"),
+     *             @OA\Property(property="caType", type="string", enum={"VSTEP", "IELTS", "GENERAL"}, example="VSTEP")
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="Category created successfully"),
+     *     @OA\Response(response=400, description="Validation error"),
+     *     @OA\Response(response=403, description="Admin access required")
+     * )
+     * 
      * POST /api/admin/categories
      * Tạo danh mục mới
      */
@@ -103,6 +133,31 @@ class CategoryController extends Controller
     }
 
     /**
+     * @OA\Put(
+     *     path="/admin/categories/{id}",
+     *     tags={"Admin - Content Management"},
+     *     summary="Update category (Admin only)",
+     *     description="Update an existing category",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="caName", type="string", example="IELTS Speaking"),
+     *             @OA\Property(property="caDescription", type="string", example="Updated description"),
+     *             @OA\Property(property="caType", type="string", enum={"VSTEP", "IELTS", "GENERAL"})
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Category updated successfully"),
+     *     @OA\Response(response=404, description="Category not found"),
+     *     @OA\Response(response=403, description="Admin access required")
+     * )
+     * 
      * PUT /api/admin/categories/{id}
      * Cập nhật danh mục
      */
@@ -150,6 +205,24 @@ class CategoryController extends Controller
     }
 
     /**
+     * @OA\Delete(
+     *     path="/admin/categories/{id}",
+     *     tags={"Admin - Content Management"},
+     *     summary="Delete category (Admin only)",
+     *     description="Delete a category if not in use",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(response=200, description="Category deleted successfully"),
+     *     @OA\Response(response=400, description="Category is in use"),
+     *     @OA\Response(response=404, description="Category not found"),
+     *     @OA\Response(response=403, description="Admin access required")
+     * )
+     * 
      * DELETE /api/admin/categories/{id}
      * Xóa danh mục
      */

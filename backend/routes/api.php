@@ -15,6 +15,7 @@ use App\Http\Controllers\GradingController;
 use App\Http\Controllers\StudentTestController;
 use App\Http\Controllers\TestController;
 use App\Http\Controllers\SystemReportController;
+use App\Http\Controllers\PracticeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,6 +36,30 @@ Route::post('/users/reset-password', [AuthController::class, 'resetPassword']);
 
 /* ========= PUBLIC ENDPOINTS ========= */
 Route::get('/tests', [TestController::class, 'index']); // Public test list
+
+// Simple test endpoint
+Route::get('/test', function () {
+    return response()->json([
+        'status' => 'success',
+        'message' => 'NamThu Education API is working!',
+        'version' => '1.0.0',
+        'timestamp' => now()->toISOString(),
+        'documentation' => url('/docs')
+    ]);
+});
+
+// Health check endpoint
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'healthy',
+        'service' => 'NamThu Education API',
+        'timestamp' => now()->toISOString(),
+        'uptime' => 'OK'
+    ]);
+});
+
+// Public categories (không cần auth)
+Route::get('/categories', [CategoryController::class, 'index']);
 
 /* ========= AUTHENTICATED ROUTES ========= */
 Route::middleware('auth:sanctum')->group(function () {
@@ -89,6 +114,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/classes/{id}/transfer-history', [ClassController::class, 'transferHistory']);
         Route::delete('/classes/{id}/students/{studentId}', [ClassController::class, 'removeStudent']);
         
+        // Practice Sessions Routes
+        Route::prefix('practice-sessions')->group(function () {
+            Route::get('/', [PracticeController::class, 'index']);
+            Route::post('/topic-based', [PracticeController::class, 'createTopicBased']);
+            Route::post('/template-based', [PracticeController::class, 'createTemplateBased']);
+            Route::post('/random', [PracticeController::class, 'createRandom']);
+            Route::get('/statistics', [PracticeController::class, 'statistics']);
+            Route::get('/{id}', [PracticeController::class, 'show']);
+            Route::delete('/{id}', [PracticeController::class, 'destroy']);
+        });
+        
+        // Templates for practice
+        Route::get('/templates', [PracticeController::class, 'getTemplates']);
+
         // Exam Management
         Route::get('/exams', [ExamController::class, 'index']);
         Route::post('/exams', [ExamController::class, 'store']);

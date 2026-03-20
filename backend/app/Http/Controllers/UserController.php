@@ -1519,6 +1519,16 @@ class UserController extends Controller
     }
 
     /**
+     * @OA\Get(
+     *     path="/admin/users/locked",
+     *     tags={"Admin - User Management"},
+     *     summary="Get locked users list (Admin only)",
+     *     description="Get list of all locked/inactive user accounts",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(response=200, description="Locked users retrieved successfully"),
+     *     @OA\Response(response=403, description="Admin access required")
+     * )
+     * 
      * GET /api/admin/users/locked
      * Danh sách tài khoản bị khóa
      */
@@ -1548,6 +1558,16 @@ class UserController extends Controller
     }
 
     /**
+     * @OA\Get(
+     *     path="/admin/roles/statistics",
+     *     tags={"Admin - User Management"},
+     *     summary="Get role statistics (Admin only)",
+     *     description="Get statistics about user roles distribution",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(response=200, description="Role statistics retrieved successfully"),
+     *     @OA\Response(response=403, description="Admin access required")
+     * )
+     * 
      * GET /api/admin/roles/statistics
      * Thống kê phân quyền
      */
@@ -1585,6 +1605,16 @@ class UserController extends Controller
     }
 
     /**
+     * @OA\Get(
+     *     path="/admin/statistics/overview",
+     *     tags={"Admin - User Management"},
+     *     summary="Get system overview statistics (Admin only)",
+     *     description="Get comprehensive system overview and health metrics",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(response=200, description="System overview retrieved successfully"),
+     *     @OA\Response(response=403, description="Admin access required")
+     * )
+     * 
      * GET /api/admin/statistics/overview
      * Thống kê tổng quan hệ thống
      */

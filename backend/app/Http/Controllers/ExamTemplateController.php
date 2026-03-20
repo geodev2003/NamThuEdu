@@ -426,6 +426,26 @@ class ExamTemplateController extends Controller
     private function generateSampleQuestionContent($questionType, $questionNumber, $partName)
     {
         $samples = [
+            // Listening types
+            'listening_announcement' => "You will hear a short announcement. Choose the best answer for question {$questionNumber}.",
+            'listening_dialogue' => "You will hear a conversation between two people. Choose the best answer for question {$questionNumber}.",
+            'listening_lecture' => "You will hear part of a lecture. Choose the best answer for question {$questionNumber}.",
+            
+            // Reading types  
+            'reading_inference' => "Based on the passage, what can be inferred about...? (Question {$questionNumber})",
+            'reading_main_idea' => "What is the main idea of the passage? (Question {$questionNumber})",
+            'reading_vocabulary' => "The word '...' in line X is closest in meaning to: (Question {$questionNumber})",
+            
+            // Writing types
+            'short_writing' => "Task 1: Write a letter/email (150 words minimum)\n\nYou have received the following email from your friend. Write a reply.\n\n[Sample email content would go here]",
+            'essay' => "Task 2: Write an essay (250 words minimum)\n\nSome people believe that social media has a positive impact on society, while others think it has negative effects. Discuss both views and give your own opinion.\n\nGive reasons for your answer and include any relevant examples from your own knowledge or experience.",
+            
+            // Speaking types
+            'speaking_interaction' => "Part 1: Social Interaction (3 minutes)\n\nLet's talk about your daily routine.\n- What time do you usually get up?\n- What do you usually have for breakfast?\n- How do you get to work/school?",
+            'speaking_solution' => "Part 2: Solution Discussion (4 minutes)\n\nYour friend wants to improve their English but doesn't have much time. Here are three suggestions:\n1. Take an online course\n2. Watch English movies with subtitles\n3. Join an English conversation club\n\nWhich do you think is the best solution? Explain your choice.",
+            'speaking_topic' => "Part 3: Topic Development (5 minutes)\n\nDescribe the advantages and disadvantages of living in a big city.\n\nYou have 1 minute to prepare and 3 minutes to speak. The examiner may ask follow-up questions.",
+            
+            // General types
             'multiple_choice' => "Choose the correct answer for question {$questionNumber} in {$partName}.",
             'fill_blank' => "Fill in the blank for question {$questionNumber}: The cat is _____ the table.",
             'true_false' => "True or False: This is question {$questionNumber} in {$partName}.",
@@ -443,6 +463,72 @@ class ExamTemplateController extends Controller
     private function getQuestionConfig($questionType, $partConfig)
     {
         $configs = [
+            // Listening configs
+            'listening_announcement' => [
+                'audio_type' => 'announcement',
+                'play_limit' => 2,
+                'transcript_available' => true
+            ],
+            'listening_dialogue' => [
+                'audio_type' => 'dialogue',
+                'play_limit' => 2,
+                'transcript_available' => true,
+                'speakers' => 2
+            ],
+            'listening_lecture' => [
+                'audio_type' => 'lecture',
+                'play_limit' => 2,
+                'transcript_available' => true,
+                'academic_content' => true
+            ],
+            
+            // Reading configs
+            'reading_inference' => [
+                'skill_type' => 'inference',
+                'passage_length' => '400-700 words'
+            ],
+            'reading_main_idea' => [
+                'skill_type' => 'main_idea',
+                'passage_length' => '400-700 words'
+            ],
+            'reading_vocabulary' => [
+                'skill_type' => 'vocabulary',
+                'context_clues' => true
+            ],
+            
+            // Writing configs
+            'short_writing' => [
+                'min_words' => 150,
+                'task_type' => 'letter_email',
+                'time_limit' => 20, // minutes
+                'weight' => 33.33
+            ],
+            'essay' => [
+                'min_words' => 250,
+                'task_type' => 'argumentative',
+                'time_limit' => 40, // minutes
+                'weight' => 66.67
+            ],
+            
+            // Speaking configs
+            'speaking_interaction' => [
+                'duration' => 3, // minutes
+                'question_count' => '3-6',
+                'preparation_time' => 0
+            ],
+            'speaking_solution' => [
+                'duration' => 4, // minutes
+                'options_count' => 3,
+                'preparation_time' => 1 // minute
+            ],
+            'speaking_topic' => [
+                'duration' => 5, // minutes (1 prep + 3 speak + 1 follow-up)
+                'preparation_time' => 1, // minute
+                'speaking_time' => 3, // minutes
+                'follow_up' => true
+            ],
+            
+            // General configs
             'coloring' => ['colors' => ['red', 'blue', 'green', 'yellow']],
             'matching_lines' => ['items_count' => 5],
             'speaking_identification' => ['time_limit' => 30],
@@ -455,8 +541,15 @@ class ExamTemplateController extends Controller
     private function createAnswersForQuestionType($question, $questionType)
     {
         switch ($questionType) {
+            // Multiple choice types (Listening & Reading)
             case 'multiple_choice':
             case 'multiple_choice_cloze':
+            case 'listening_announcement':
+            case 'listening_dialogue':
+            case 'listening_lecture':
+            case 'reading_inference':
+            case 'reading_main_idea':
+            case 'reading_vocabulary':
                 $this->createSampleAnswers($question);
                 break;
                 
@@ -465,6 +558,29 @@ class ExamTemplateController extends Controller
                 Answer::create(['question_id' => $question->qId, 'aContent' => 'False', 'aIs_correct' => false]);
                 break;
                 
+            // Writing types - no predefined answers
+            case 'essay':
+                Answer::create(['question_id' => $question->qId, 'aContent' => 'Sample essay response (250+ words)', 'aIs_correct' => true]);
+                break;
+                
+            case 'short_writing':
+                Answer::create(['question_id' => $question->qId, 'aContent' => 'Sample letter/email response (150+ words)', 'aIs_correct' => true]);
+                break;
+                
+            // Speaking types - no predefined answers
+            case 'speaking_interaction':
+                Answer::create(['question_id' => $question->qId, 'aContent' => 'Sample speaking response for social interaction', 'aIs_correct' => true]);
+                break;
+                
+            case 'speaking_solution':
+                Answer::create(['question_id' => $question->qId, 'aContent' => 'Sample solution discussion response', 'aIs_correct' => true]);
+                break;
+                
+            case 'speaking_topic':
+                Answer::create(['question_id' => $question->qId, 'aContent' => 'Sample topic development response', 'aIs_correct' => true]);
+                break;
+                
+            // Fill-in types
             case 'fill_blank':
             case 'short_answer':
             case 'word_completion':

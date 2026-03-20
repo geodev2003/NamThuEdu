@@ -455,6 +455,27 @@ class ExamController extends Controller
     }
 
     /**
+     * @OA\Put(
+     *     path="/teacher/exams/{examId}/questions/{questionId}",
+     *     tags={"Exams"},
+     *     summary="Update question in exam",
+     *     description="Update a specific question in an exam",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="examId",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Parameter(
+     *         name="questionId",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(response=200, description="Question updated successfully")
+     * )
+     * 
      * PUT /api/teacher/exams/{examId}/questions/{questionId}
      * Cập nhật câu hỏi
      */
@@ -917,10 +938,50 @@ class ExamController extends Controller
         // Default section structure based on exam type
         if ($exam->eType === 'VSTEP') {
             $sections = [
-                'listening' => ['name' => 'Listening', 'questions' => [], 'duration' => 40],
-                'reading' => ['name' => 'Reading', 'questions' => [], 'duration' => 60],
-                'writing' => ['name' => 'Writing', 'questions' => [], 'duration' => 60],
-                'speaking' => ['name' => 'Speaking', 'questions' => [], 'duration' => 12],
+                'listening' => [
+                    'name' => 'Listening', 
+                    'questions' => [], 
+                    'duration' => 40,
+                    'total_questions' => 35,
+                    'parts' => [
+                        ['name' => 'Part 1: Announcements', 'questions' => 8, 'description' => 'Short announcements and instructions'],
+                        ['name' => 'Part 2: Dialogues', 'questions' => 12, 'description' => 'Conversations between two or more people'],
+                        ['name' => 'Part 3: Lectures', 'questions' => 15, 'description' => 'Academic lectures and presentations']
+                    ]
+                ],
+                'reading' => [
+                    'name' => 'Reading', 
+                    'questions' => [], 
+                    'duration' => 60,
+                    'total_questions' => 40,
+                    'parts' => [
+                        ['name' => 'Passage 1', 'questions' => 10, 'description' => 'Short factual text (400-500 words)'],
+                        ['name' => 'Passage 2', 'questions' => 10, 'description' => 'Descriptive or narrative text (400-500 words)'],
+                        ['name' => 'Passage 3', 'questions' => 10, 'description' => 'Argumentative text (500-600 words)'],
+                        ['name' => 'Passage 4', 'questions' => 10, 'description' => 'Academic text (600-700 words)']
+                    ]
+                ],
+                'writing' => [
+                    'name' => 'Writing', 
+                    'questions' => [], 
+                    'duration' => 60,
+                    'total_questions' => 2,
+                    'parts' => [
+                        ['name' => 'Task 1: Letter/Email', 'questions' => 1, 'description' => 'Write a letter or email (150 words minimum)', 'weight' => 33.33],
+                        ['name' => 'Task 2: Essay', 'questions' => 1, 'description' => 'Write an argumentative essay (250 words minimum)', 'weight' => 66.67]
+                    ]
+                ],
+                'speaking' => [
+                    'name' => 'Speaking', 
+                    'questions' => [], 
+                    'duration' => 12,
+                    'total_questions' => 3,
+                    'parts' => [
+                        ['name' => 'Part 1: Social Interaction', 'questions' => 1, 'description' => 'Answer questions about familiar topics (3 minutes)'],
+                        ['name' => 'Part 2: Solution Discussion', 'questions' => 1, 'description' => 'Choose and explain a solution (4 minutes)'],
+                        ['name' => 'Part 3: Topic Development', 'questions' => 1, 'description' => 'Develop a topic with follow-ups (5 minutes)']
+                    ]
+                ]
             ];
         } elseif ($exam->eType === 'IELTS') {
             $sections = [
@@ -936,18 +997,30 @@ class ExamController extends Controller
             ];
         }
 
-        // Distribute questions to sections (simple logic - can be enhanced)
-        $questionCount = $exam->questions->count();
-        $sectionCount = count($sections);
-        $questionsPerSection = $questionCount > 0 ? ceil($questionCount / $sectionCount) : 0;
+        // Distribute questions to sections based on qSection field
+        foreach ($exam->questions as $question) {
+            $sectionKey = strtolower($question->qSection ?? $exam->eSkill);
+            
+            // Map section names to keys
+            if (strpos($sectionKey, 'listening') !== false || strpos($sectionKey, 'announcement') !== false || strpos($sectionKey, 'dialogue') !== false || strpos($sectionKey, 'lecture') !== false) {
+                $sectionKey = 'listening';
+            } elseif (strpos($sectionKey, 'reading') !== false || strpos($sectionKey, 'passage') !== false) {
+                $sectionKey = 'reading';
+            } elseif (strpos($sectionKey, 'writing') !== false || strpos($sectionKey, 'task') !== false) {
+                $sectionKey = 'writing';
+            } elseif (strpos($sectionKey, 'speaking') !== false || strpos($sectionKey, 'part') !== false) {
+                $sectionKey = 'speaking';
+            }
+            
+            if (isset($sections[$sectionKey])) {
+                $sections[$sectionKey]['questions'][] = $question;
+            }
+        }
 
-        $questionIndex = 0;
+        // Calculate statistics for each section
         foreach ($sections as $sectionKey => &$section) {
-            $sectionQuestions = $exam->questions->slice($questionIndex, $questionsPerSection);
-            $section['questions'] = $sectionQuestions->values();
-            $section['question_count'] = $sectionQuestions->count();
-            $section['total_points'] = $sectionQuestions->sum('qPoints');
-            $questionIndex += $questionsPerSection;
+            $section['question_count'] = count($section['questions']);
+            $section['total_points'] = collect($section['questions'])->sum('qPoints');
         }
 
         return $sections;

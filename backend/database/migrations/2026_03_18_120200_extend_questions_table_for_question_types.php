@@ -30,7 +30,17 @@ return new class extends Migration
                 'word_completion',
                 'open_cloze',
                 'information_transfer',
-                'short_writing'
+                'short_writing',
+                // New VSTEP-specific types
+                'speaking_interaction',
+                'speaking_solution', 
+                'speaking_topic',
+                'reading_inference',
+                'reading_main_idea',
+                'reading_vocabulary',
+                'listening_announcement',
+                'listening_dialogue',
+                'listening_lecture'
             ])->default('multiple_choice')->after('qContent');
             
             // Add section information

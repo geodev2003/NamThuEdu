@@ -44,18 +44,8 @@ class EnvironmentServiceProvider extends ServiceProvider
     {
         // Register SMS service based on environment
         $this->app->singleton('sms.service', function ($app) {
-            $provider = config('namthuedu.sms.provider', 'mock');
-            
-            switch ($provider) {
-                case 'esms':
-                    return new \App\Services\SMS\ESMSService();
-                case 'twilio':
-                    return new \App\Services\SMS\TwilioService();
-                case 'aws':
-                    return new \App\Services\SMS\AWSService();
-                default:
-                    return new \App\Services\SMS\MockSMSService();
-            }
+            // For now, only use MockSMSService until other providers are implemented
+            return new \App\Services\SMS\MockSMSService();
         });
 
         // Register feature flag service

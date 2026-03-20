@@ -43,9 +43,9 @@ return [
     |
     */
     'rate_limits' => [
-        'login' => app()->environment('production') ? 5 : 10,
-        'otp' => app()->environment('production') ? 3 : 5,
-        'api' => app()->environment('production') ? 60 : 120,
+        'login' => env('APP_ENV') === 'production' ? 5 : 10,
+        'otp' => env('APP_ENV') === 'production' ? 3 : 5,
+        'api' => env('APP_ENV') === 'production' ? 60 : 120,
     ],
 
     /*
@@ -57,7 +57,7 @@ return [
     |
     */
     'sms' => [
-        'provider' => app()->environment(['local', 'development']) ? 'mock' : 'esms',
+        'provider' => in_array(env('APP_ENV'), ['local', 'development']) ? 'mock' : 'esms',
         'providers' => [
             'esms' => [
                 'api_key' => null,
@@ -77,7 +77,7 @@ return [
         'otp' => [
             'length' => 6,
             'expiry_minutes' => 5,
-            'max_attempts' => app()->environment('production') ? 3 : 5,
+            'max_attempts' => env('APP_ENV') === 'production' ? 3 : 5,
         ],
     ],
 
@@ -90,9 +90,9 @@ return [
     |
     */
     'dev_tools' => [
-        'telescope_enabled' => app()->environment(['local', 'development', 'staging']),
-        'debugbar_enabled' => app()->environment(['local', 'development']),
-        'query_log_enabled' => app()->environment(['local', 'development']),
+        'telescope_enabled' => in_array(env('APP_ENV'), ['local', 'development', 'staging']),
+        'debugbar_enabled' => in_array(env('APP_ENV'), ['local', 'development']),
+        'query_log_enabled' => in_array(env('APP_ENV'), ['local', 'development']),
     ],
 
     /*
@@ -104,15 +104,15 @@ return [
     |
     */
     'security' => [
-        'cors_allowed_origins' => app()->environment('production') 
+        'cors_allowed_origins' => env('APP_ENV') === 'production' 
             ? ['https://namthuedu.com', 'https://www.namthuedu.com']
-            : (app()->environment('staging') 
+            : (env('APP_ENV') === 'staging' 
                 ? ['https://staging.namthuedu.com']
                 : ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5173']
             ),
         'jwt_secret' => null,
-        'session_secure' => app()->environment(['staging', 'production']),
-        'force_https' => app()->environment('production'),
+        'session_secure' => in_array(env('APP_ENV'), ['staging', 'production']),
+        'force_https' => env('APP_ENV') === 'production',
     ],
 
     /*
@@ -183,9 +183,9 @@ return [
     |
     */
     'database' => [
-        'strict_mode' => app()->environment(['staging', 'production']),
-        'query_log' => app()->environment(['local', 'development']),
-        'connection_timeout' => app()->environment('production') ? 60 : 30,
+        'strict_mode' => in_array(env('APP_ENV'), ['staging', 'production']),
+        'query_log' => in_array(env('APP_ENV'), ['local', 'development']),
+        'connection_timeout' => env('APP_ENV') === 'production' ? 60 : 30,
     ],
 
     /*
@@ -197,10 +197,10 @@ return [
     |
     */
     'cache' => [
-        'default_driver' => app()->environment(['staging', 'production']) ? 'redis' : 'file',
-        'default_ttl' => app()->environment('production') ? 3600 : (app()->environment('staging') ? 1800 : 300),
-        'config_cache' => app()->environment(['staging', 'production']),
-        'redis_enabled' => app()->environment(['staging', 'production']),
+        'default_driver' => in_array(env('APP_ENV'), ['staging', 'production']) ? 'redis' : 'file',
+        'default_ttl' => env('APP_ENV') === 'production' ? 3600 : (env('APP_ENV') === 'staging' ? 1800 : 300),
+        'config_cache' => in_array(env('APP_ENV'), ['staging', 'production']),
+        'redis_enabled' => in_array(env('APP_ENV'), ['staging', 'production']),
     ],
 
     /*
@@ -212,9 +212,9 @@ return [
     |
     */
     'logging' => [
-        'level' => app()->environment('production') ? 'error' : (app()->environment('staging') ? 'info' : 'debug'),
-        'channel' => app()->environment(['staging', 'production']) ? 'daily' : 'single',
-        'days' => app()->environment('production') ? 14 : 7,
+        'level' => env('APP_ENV') === 'production' ? 'error' : (env('APP_ENV') === 'staging' ? 'info' : 'debug'),
+        'channel' => in_array(env('APP_ENV'), ['staging', 'production']) ? 'daily' : 'single',
+        'days' => env('APP_ENV') === 'production' ? 14 : 7,
     ],
 
     /*
@@ -226,10 +226,10 @@ return [
     |
     */
     'mail' => [
-        'driver' => app()->environment(['local', 'development']) ? 'log' : 'smtp',
-        'from_address' => app()->environment('production') 
+        'driver' => in_array(env('APP_ENV'), ['local', 'development']) ? 'log' : 'smtp',
+        'from_address' => env('APP_ENV') === 'production' 
             ? 'noreply@namthuedu.com' 
-            : (app()->environment('staging') 
+            : (env('APP_ENV') === 'staging' 
                 ? 'staging@namthuedu.com' 
                 : 'dev@namthuedu.local'
             ),

@@ -373,6 +373,34 @@ class BlogController extends Controller
      * ======================================== */
 
     /**
+     * @OA\Get(
+     *     path="/admin/posts",
+     *     tags={"Admin - Content Management"},
+     *     summary="Get all posts for moderation (Admin only)",
+     *     description="Get list of all posts with filtering for content moderation",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="status",
+     *         in="query",
+     *         required=false,
+     *         @OA\Schema(type="string", enum={"draft", "pending", "approved", "rejected"})
+     *     ),
+     *     @OA\Parameter(
+     *         name="author_id",
+     *         in="query",
+     *         required=false,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Parameter(
+     *         name="search",
+     *         in="query",
+     *         required=false,
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(response=200, description="Posts retrieved successfully"),
+     *     @OA\Response(response=403, description="Admin access required")
+     * )
+     * 
      * GET /api/admin/posts
      * Duyệt bài viết của giáo viên (Admin only)
      */
@@ -435,6 +463,23 @@ class BlogController extends Controller
     }
 
     /**
+     * @OA\Get(
+     *     path="/admin/posts/{id}",
+     *     tags={"Admin - Content Management"},
+     *     summary="Get post details for moderation (Admin only)",
+     *     description="Get detailed information about a specific post for moderation",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(response=200, description="Post details retrieved successfully"),
+     *     @OA\Response(response=404, description="Post not found"),
+     *     @OA\Response(response=403, description="Admin access required")
+     * )
+     * 
      * GET /api/admin/posts/{id}
      * Xem chi tiết bài viết (Admin)
      */
@@ -467,6 +512,24 @@ class BlogController extends Controller
     }
 
     /**
+     * @OA\Post(
+     *     path="/admin/posts/{id}/approve",
+     *     tags={"Admin - Content Management"},
+     *     summary="Approve post (Admin only)",
+     *     description="Approve a pending post for publication",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(response=200, description="Post approved successfully"),
+     *     @OA\Response(response=404, description="Post not found"),
+     *     @OA\Response(response=400, description="Post already approved"),
+     *     @OA\Response(response=403, description="Admin access required")
+     * )
+     * 
      * POST /api/admin/posts/{id}/approve
      * Duyệt bài viết
      */
@@ -516,6 +579,29 @@ class BlogController extends Controller
     }
 
     /**
+     * @OA\Post(
+     *     path="/admin/posts/{id}/reject",
+     *     tags={"Admin - Content Management"},
+     *     summary="Reject post (Admin only)",
+     *     description="Reject a pending post with optional reason",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=false,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="reason", type="string", example="Content does not meet guidelines")
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Post rejected successfully"),
+     *     @OA\Response(response=404, description="Post not found"),
+     *     @OA\Response(response=403, description="Admin access required")
+     * )
+     * 
      * POST /api/admin/posts/{id}/reject
      * Từ chối bài viết
      */
@@ -572,6 +658,23 @@ class BlogController extends Controller
     }
 
     /**
+     * @OA\Delete(
+     *     path="/admin/posts/{id}",
+     *     tags={"Admin - Content Management"},
+     *     summary="Delete post (Admin only)",
+     *     description="Permanently delete a post",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(response=200, description="Post deleted successfully"),
+     *     @OA\Response(response=404, description="Post not found"),
+     *     @OA\Response(response=403, description="Admin access required")
+     * )
+     * 
      * DELETE /api/admin/posts/{id}
      * Xóa bài viết (Admin)
      */
@@ -604,6 +707,16 @@ class BlogController extends Controller
     }
 
     /**
+     * @OA\Get(
+     *     path="/admin/posts/pending",
+     *     tags={"Admin - Content Management"},
+     *     summary="Get pending posts (Admin only)",
+     *     description="Get list of posts waiting for approval",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(response=200, description="Pending posts retrieved successfully"),
+     *     @OA\Response(response=403, description="Admin access required")
+     * )
+     * 
      * GET /api/admin/posts/pending
      * Danh sách bài viết chờ duyệt
      */
@@ -634,6 +747,16 @@ class BlogController extends Controller
     }
 
     /**
+     * @OA\Get(
+     *     path="/admin/content/statistics",
+     *     tags={"Admin - Content Management"},
+     *     summary="Get content statistics (Admin only)",
+     *     description="Get comprehensive content management statistics",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(response=200, description="Content statistics retrieved successfully"),
+     *     @OA\Response(response=403, description="Admin access required")
+     * )
+     * 
      * GET /api/admin/content/statistics
      * Thống kê nội dung
      */

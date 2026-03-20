@@ -13,6 +13,12 @@ use App\Models\Submission;
 use App\Models\Post;
 use App\Models\Category;
 
+/**
+ * @OA\Tag(
+ *     name="System Reports",
+ *     description="Admin system reports and analytics API endpoints"
+ * )
+ */
 class SystemReportController extends Controller
 {
     /**

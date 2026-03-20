@@ -7,6 +7,12 @@ use Illuminate\Support\Facades\Validator;
 use App\Services\TestWebSocketService;
 use App\Models\Submission;
 
+/**
+ * @OA\Tag(
+ *     name="WebSocket",
+ *     description="Real-time WebSocket API endpoints for test sessions"
+ * )
+ */
 class TestWebSocketController extends Controller
 {
     /**

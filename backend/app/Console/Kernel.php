@@ -44,10 +44,10 @@ class Kernel extends ConsoleKernel
         require base_path('routes/console.php');
         
         // Register test commands
-        if (app()->environment(['local', 'testing'])) {
-            $this->commands([
-                Commands\TestWebSocketLoad::class,
-            ]);
-        }
+        // if (app()->environment(['local', 'testing'])) {
+        //     $this->commands([
+        //         Commands\TestWebSocketLoad::class,
+        //     ]);
+        // }
     }
 }
