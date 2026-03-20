@@ -34,6 +34,11 @@ class Classes extends Model
         return $this->belongsTo(User::class, 'cTeacher_id', 'uId');
     }
 
+    public function course()
+    {
+        return $this->belongsTo(Course::class, 'course', 'cId');
+    }
+
     public function parentCourse()
     {
         return $this->belongsTo(Classes::class, 'course', 'cId');
@@ -48,5 +53,46 @@ class Classes extends Model
     {
         return $this->belongsToMany(User::class, 'class_enrollments', 'class_id', 'student_id', 'cId', 'uId')
                     ->withPivot('enrolled_at');
+    }
+
+    public function transfersFrom()
+    {
+        return $this->hasMany(ClassTransfer::class, 'from_class_id', 'cId');
+    }
+
+    public function transfersTo()
+    {
+        return $this->hasMany(ClassTransfer::class, 'to_class_id', 'cId');
+    }
+
+    /**
+     * Scopes
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('cStatus', 'active');
+    }
+
+    public function scopeByTeacher($query, $teacherId)
+    {
+        return $query->where('cTeacher_id', $teacherId);
+    }
+
+    public function scopeByCourse($query, $courseId)
+    {
+        return $query->where('course', $courseId);
+    }
+
+    /**
+     * Helper methods
+     */
+    public function getStudentCount()
+    {
+        return $this->enrollments()->count();
+    }
+
+    public function hasStudent($studentId)
+    {
+        return $this->enrollments()->where('student_id', $studentId)->exists();
     }
 }

@@ -13,9 +13,9 @@ return [
     */
 
     'app' => [
-        'name' => env('APP_NAME', 'Nam Thu Edu API'),
-        'timezone' => env('APP_TIMEZONE', 'Asia/Ho_Chi_Minh'),
-        'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
+        'name' => config('app.name', 'Nam Thu Edu API'),
+        'timezone' => config('app.timezone', 'Asia/Ho_Chi_Minh'),
+        'frontend_url' => config('app.url', 'http://localhost:3000'),
     ],
 
     /*
@@ -27,10 +27,10 @@ return [
     |
     */
     'features' => [
-        'registration_enabled' => env('FEATURE_REGISTRATION_ENABLED', true),
-        'otp_enabled' => env('FEATURE_OTP_ENABLED', true),
-        'ai_grading_enabled' => env('FEATURE_AI_GRADING_ENABLED', false),
-        'exam_templates_enabled' => env('FEATURE_EXAM_TEMPLATES_ENABLED', true),
+        'registration_enabled' => true,
+        'otp_enabled' => true,
+        'ai_grading_enabled' => false,
+        'exam_templates_enabled' => true,
     ],
 
     /*
@@ -43,9 +43,9 @@ return [
     |
     */
     'rate_limits' => [
-        'login' => app()->environment('production') ? 5 : 10,
-        'otp' => app()->environment('production') ? 3 : 5,
-        'api' => app()->environment('production') ? 60 : 120,
+        'login' => env('APP_ENV') === 'production' ? 5 : 10,
+        'otp' => env('APP_ENV') === 'production' ? 3 : 5,
+        'api' => env('APP_ENV') === 'production' ? 60 : 120,
     ],
 
     /*
@@ -57,27 +57,27 @@ return [
     |
     */
     'sms' => [
-        'provider' => app()->environment(['local', 'development']) ? 'mock' : env('SMS_PROVIDER', 'esms'),
+        'provider' => in_array(env('APP_ENV'), ['local', 'development']) ? 'mock' : 'esms',
         'providers' => [
             'esms' => [
-                'api_key' => env('ESMS_API_KEY'),
-                'secret_key' => env('ESMS_SECRET_KEY'),
-                'brandname' => env('ESMS_BRANDNAME', 'NAMTHUEDU'),
+                'api_key' => null,
+                'secret_key' => null,
+                'brandname' => 'NAMTHUEDU',
                 'url' => 'https://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json/',
             ],
             'twilio' => [
-                'sid' => env('TWILIO_SID'),
-                'token' => env('TWILIO_TOKEN'),
-                'verify_sid' => env('TWILIO_VERIFY_SID'),
+                'sid' => null,
+                'token' => null,
+                'verify_sid' => null,
             ],
             'aws_sns' => [
-                'region' => env('AWS_SNS_REGION', 'ap-southeast-1'),
+                'region' => 'ap-southeast-1',
             ],
         ],
         'otp' => [
             'length' => 6,
             'expiry_minutes' => 5,
-            'max_attempts' => app()->environment('production') ? 3 : 5,
+            'max_attempts' => env('APP_ENV') === 'production' ? 3 : 5,
         ],
     ],
 
@@ -90,9 +90,9 @@ return [
     |
     */
     'dev_tools' => [
-        'telescope_enabled' => app()->environment(['local', 'development', 'staging']),
-        'debugbar_enabled' => app()->environment(['local', 'development']),
-        'query_log_enabled' => app()->environment(['local', 'development']),
+        'telescope_enabled' => in_array(env('APP_ENV'), ['local', 'development', 'staging']),
+        'debugbar_enabled' => in_array(env('APP_ENV'), ['local', 'development']),
+        'query_log_enabled' => in_array(env('APP_ENV'), ['local', 'development']),
     ],
 
     /*
@@ -104,15 +104,15 @@ return [
     |
     */
     'security' => [
-        'cors_allowed_origins' => app()->environment('production') 
+        'cors_allowed_origins' => env('APP_ENV') === 'production' 
             ? ['https://namthuedu.com', 'https://www.namthuedu.com']
-            : (app()->environment('staging') 
+            : (env('APP_ENV') === 'staging' 
                 ? ['https://staging.namthuedu.com']
                 : ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5173']
             ),
-        'jwt_secret' => env('JWT_SECRET'),
-        'session_secure' => app()->environment(['staging', 'production']),
-        'force_https' => app()->environment('production'),
+        'jwt_secret' => null,
+        'session_secure' => in_array(env('APP_ENV'), ['staging', 'production']),
+        'force_https' => env('APP_ENV') === 'production',
     ],
 
     /*
@@ -170,11 +170,9 @@ return [
     |
     */
     'monitoring' => [
-        'sentry_dsn' => env('SENTRY_LARAVEL_DSN'),
-        'google_analytics_id' => env('GOOGLE_ANALYTICS_ID'),
+        'sentry_dsn' => null,
+        'google_analytics_id' => null,
     ],
-
-];
 
     /*
     |--------------------------------------------------------------------------
@@ -185,9 +183,9 @@ return [
     |
     */
     'database' => [
-        'strict_mode' => app()->environment(['staging', 'production']),
-        'query_log' => app()->environment(['local', 'development']),
-        'connection_timeout' => app()->environment('production') ? 60 : 30,
+        'strict_mode' => in_array(env('APP_ENV'), ['staging', 'production']),
+        'query_log' => in_array(env('APP_ENV'), ['local', 'development']),
+        'connection_timeout' => env('APP_ENV') === 'production' ? 60 : 30,
     ],
 
     /*
@@ -199,9 +197,10 @@ return [
     |
     */
     'cache' => [
-        'default_driver' => app()->environment(['staging', 'production']) ? 'redis' : 'file',
-        'default_ttl' => app()->environment('production') ? 3600 : (app()->environment('staging') ? 1800 : 300),
-        'config_cache' => app()->environment(['staging', 'production']),
+        'default_driver' => in_array(env('APP_ENV'), ['staging', 'production']) ? 'redis' : 'file',
+        'default_ttl' => env('APP_ENV') === 'production' ? 3600 : (env('APP_ENV') === 'staging' ? 1800 : 300),
+        'config_cache' => in_array(env('APP_ENV'), ['staging', 'production']),
+        'redis_enabled' => in_array(env('APP_ENV'), ['staging', 'production']),
     ],
 
     /*
@@ -213,9 +212,9 @@ return [
     |
     */
     'logging' => [
-        'level' => app()->environment('production') ? 'error' : (app()->environment('staging') ? 'info' : 'debug'),
-        'channel' => app()->environment(['staging', 'production']) ? 'daily' : 'single',
-        'days' => app()->environment('production') ? 14 : 7,
+        'level' => env('APP_ENV') === 'production' ? 'error' : (env('APP_ENV') === 'staging' ? 'info' : 'debug'),
+        'channel' => in_array(env('APP_ENV'), ['staging', 'production']) ? 'daily' : 'single',
+        'days' => env('APP_ENV') === 'production' ? 14 : 7,
     ],
 
     /*
@@ -227,11 +226,13 @@ return [
     |
     */
     'mail' => [
-        'driver' => app()->environment(['local', 'development']) ? 'log' : 'smtp',
-        'from_address' => app()->environment('production') 
+        'driver' => in_array(env('APP_ENV'), ['local', 'development']) ? 'log' : 'smtp',
+        'from_address' => env('APP_ENV') === 'production' 
             ? 'noreply@namthuedu.com' 
-            : (app()->environment('staging') 
+            : (env('APP_ENV') === 'staging' 
                 ? 'staging@namthuedu.com' 
                 : 'dev@namthuedu.local'
             ),
     ],
+
+];

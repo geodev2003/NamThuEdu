@@ -15,17 +15,17 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'docs/*', 'api-docs.json'],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => config('namthuedu.security.cors_allowed_origins', ['*']),
+    'allowed_origins' => ['*'], // config('namthuedu.security.cors_allowed_origins', ['*']),
 
     'allowed_origins_patterns' => [],
 
     'allowed_headers' => ['*'],
 
-    'exposed_headers' => [],
+    'exposed_headers' => ['Authorization', 'Content-Type', 'X-Requested-With'],
 
     'max_age' => 0,
 

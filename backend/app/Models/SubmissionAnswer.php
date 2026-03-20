@@ -19,6 +19,7 @@ class SubmissionAnswer extends Model
         'saAnswer_text',
         'saIs_correct',
         'saPoints_awarded',
+        'saTeacher_feedback',
     ];
 
     protected $casts = [

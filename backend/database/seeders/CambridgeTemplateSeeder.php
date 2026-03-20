@@ -358,22 +358,318 @@ class CambridgeTemplateSeeder extends Seeder
 
     private function createIELTSTemplate()
     {
-        ExamTemplate::create([
-            'template_code' => 'IELTS',
-            'template_name' => 'IELTS Academic/General Training',
+        // IELTS Academic Template
+        $academicTemplate = ExamTemplate::create([
+            'template_code' => 'IELTS_ACADEMIC',
+            'template_name' => 'IELTS Academic Test',
+            'category' => 'international',
+            'level' => 'b1',
+            'age_group' => 'adult',
+            'total_duration_minutes' => 165, // 30+60+60+15 (actual test time, not including breaks)
+            'skills' => ['listening', 'reading', 'writing', 'speaking'],
+            'description' => 'IELTS Academic test for university admission and professional registration.',
+            'sections' => [
+                [
+                    'name' => 'Listening',
+                    'duration' => 30, // + 10 minutes transfer time
+                    'questions' => 40,
+                    'parts' => [
+                        [
+                            'part' => 1,
+                            'name' => 'Social Context - Conversation',
+                            'questions' => 10,
+                            'type' => 'ielts_listening_part1',
+                            'description' => 'Conversation between two people in everyday social context',
+                            'context' => 'social',
+                            'speakers' => 2
+                        ],
+                        [
+                            'part' => 2,
+                            'name' => 'Social Context - Monologue',
+                            'questions' => 10,
+                            'type' => 'ielts_listening_part2',
+                            'description' => 'Monologue in everyday social context',
+                            'context' => 'social',
+                            'speakers' => 1
+                        ],
+                        [
+                            'part' => 3,
+                            'name' => 'Educational Context - Conversation',
+                            'questions' => 10,
+                            'type' => 'ielts_listening_part3',
+                            'description' => 'Conversation in educational/training context',
+                            'context' => 'educational',
+                            'speakers' => '2-4'
+                        ],
+                        [
+                            'part' => 4,
+                            'name' => 'Academic Context - Lecture',
+                            'questions' => 10,
+                            'type' => 'ielts_listening_part4',
+                            'description' => 'Monologue on academic subject',
+                            'context' => 'academic',
+                            'speakers' => 1
+                        ]
+                    ]
+                ],
+                [
+                    'name' => 'Reading',
+                    'duration' => 60,
+                    'questions' => 40,
+                    'parts' => [
+                        [
+                            'part' => 1,
+                            'name' => 'Passage 1',
+                            'questions' => 13,
+                            'type' => 'ielts_reading_academic',
+                            'description' => 'Text from books, journals, magazines for general interest',
+                            'difficulty' => 'easier'
+                        ],
+                        [
+                            'part' => 2,
+                            'name' => 'Passage 2',
+                            'questions' => 13,
+                            'type' => 'ielts_reading_academic',
+                            'description' => 'Text related to work issues and training',
+                            'difficulty' => 'medium'
+                        ],
+                        [
+                            'part' => 3,
+                            'name' => 'Passage 3',
+                            'questions' => 14,
+                            'type' => 'ielts_reading_academic',
+                            'description' => 'Academic text suitable for undergraduate students',
+                            'difficulty' => 'harder'
+                        ]
+                    ]
+                ],
+                [
+                    'name' => 'Writing',
+                    'duration' => 60,
+                    'questions' => 2,
+                    'parts' => [
+                        [
+                            'part' => 1,
+                            'name' => 'Task 1 - Data Description',
+                            'questions' => 1,
+                            'type' => 'ielts_academic_task1',
+                            'description' => 'Describe visual information (150+ words)',
+                            'min_words' => 150,
+                            'suggested_time' => 20,
+                            'weight' => 33.33
+                        ],
+                        [
+                            'part' => 2,
+                            'name' => 'Task 2 - Essay',
+                            'questions' => 1,
+                            'type' => 'ielts_academic_task2',
+                            'description' => 'Write discursive essay (250+ words)',
+                            'min_words' => 250,
+                            'suggested_time' => 40,
+                            'weight' => 66.67
+                        ]
+                    ]
+                ],
+                [
+                    'name' => 'Speaking',
+                    'duration' => 14, // 11-14 minutes
+                    'questions' => 3,
+                    'parts' => [
+                        [
+                            'part' => 1,
+                            'name' => 'Introduction and Interview',
+                            'questions' => 1,
+                            'type' => 'ielts_speaking_part1',
+                            'description' => 'General questions (4-5 minutes)',
+                            'duration' => 5
+                        ],
+                        [
+                            'part' => 2,
+                            'name' => 'Long Turn (Cue Card)',
+                            'questions' => 1,
+                            'type' => 'ielts_speaking_part2',
+                            'description' => '1-2 minutes speech after 1 minute preparation',
+                            'duration' => 4,
+                            'preparation_time' => 1
+                        ],
+                        [
+                            'part' => 3,
+                            'name' => 'Two-way Discussion',
+                            'questions' => 1,
+                            'type' => 'ielts_speaking_part3',
+                            'description' => 'Abstract discussion (4-5 minutes)',
+                            'duration' => 5
+                        ]
+                    ]
+                ]
+            ]
+        ]);
+
+        // Create template sections for Academic
+        foreach ($academicTemplate->sections as $index => $section) {
+            TemplateSection::create([
+                'template_id' => $academicTemplate->id,
+                'section_name' => $section['name'],
+                'section_order' => $index + 1,
+                'duration_minutes' => $section['duration'],
+                'question_count' => $section['questions'],
+                'question_types' => collect($section['parts'])->pluck('type')->unique()->values()->toArray(),
+                'instructions' => 'Complete all parts in this section according to IELTS format.',
+                'section_config' => $section
+            ]);
+        }
+
+        // IELTS General Training Template
+        $generalTemplate = ExamTemplate::create([
+            'template_code' => 'IELTS_GENERAL',
+            'template_name' => 'IELTS General Training Test',
             'category' => 'international',
             'level' => 'b1',
             'age_group' => 'adult',
             'total_duration_minutes' => 165,
-            'skills' => ['reading', 'writing', 'listening', 'speaking'],
-            'description' => 'International English Language Testing System - Academic and General Training versions.',
+            'skills' => ['listening', 'reading', 'writing', 'speaking'],
+            'description' => 'IELTS General Training test for immigration and work purposes.',
             'sections' => [
-                ['name' => 'Listening', 'duration' => 30, 'questions' => 40],
-                ['name' => 'Reading', 'duration' => 60, 'questions' => 40],
-                ['name' => 'Writing', 'duration' => 60, 'questions' => 2],
-                ['name' => 'Speaking', 'duration' => 15, 'questions' => 3]
+                [
+                    'name' => 'Listening',
+                    'duration' => 30,
+                    'questions' => 40,
+                    'parts' => [
+                        [
+                            'part' => 1,
+                            'name' => 'Social Context - Conversation',
+                            'questions' => 10,
+                            'type' => 'ielts_listening_part1',
+                            'description' => 'Conversation between two people in everyday social context'
+                        ],
+                        [
+                            'part' => 2,
+                            'name' => 'Social Context - Monologue',
+                            'questions' => 10,
+                            'type' => 'ielts_listening_part2',
+                            'description' => 'Monologue in everyday social context'
+                        ],
+                        [
+                            'part' => 3,
+                            'name' => 'Educational Context - Conversation',
+                            'questions' => 10,
+                            'type' => 'ielts_listening_part3',
+                            'description' => 'Conversation in educational/training context'
+                        ],
+                        [
+                            'part' => 4,
+                            'name' => 'Academic Context - Lecture',
+                            'questions' => 10,
+                            'type' => 'ielts_listening_part4',
+                            'description' => 'Monologue on academic subject'
+                        ]
+                    ]
+                ],
+                [
+                    'name' => 'Reading',
+                    'duration' => 60,
+                    'questions' => 40,
+                    'parts' => [
+                        [
+                            'part' => 1,
+                            'name' => 'Section 1 - Social Survival',
+                            'questions' => 14,
+                            'type' => 'ielts_reading_general',
+                            'description' => 'Texts for basic linguistic survival',
+                            'context' => 'everyday_life'
+                        ],
+                        [
+                            'part' => 2,
+                            'name' => 'Section 2 - Workplace Survival',
+                            'questions' => 13,
+                            'type' => 'ielts_reading_general',
+                            'description' => 'Texts related to workplace survival',
+                            'context' => 'workplace'
+                        ],
+                        [
+                            'part' => 3,
+                            'name' => 'Section 3 - General Reading',
+                            'questions' => 13,
+                            'type' => 'ielts_reading_general',
+                            'description' => 'Complex texts on general interest topics',
+                            'context' => 'general_interest'
+                        ]
+                    ]
+                ],
+                [
+                    'name' => 'Writing',
+                    'duration' => 60,
+                    'questions' => 2,
+                    'parts' => [
+                        [
+                            'part' => 1,
+                            'name' => 'Task 1 - Letter Writing',
+                            'questions' => 1,
+                            'type' => 'ielts_general_task1',
+                            'description' => 'Write a letter (150+ words)',
+                            'min_words' => 150,
+                            'suggested_time' => 20,
+                            'weight' => 33.33
+                        ],
+                        [
+                            'part' => 2,
+                            'name' => 'Task 2 - Essay',
+                            'questions' => 1,
+                            'type' => 'ielts_general_task2',
+                            'description' => 'Write an essay (250+ words)',
+                            'min_words' => 250,
+                            'suggested_time' => 40,
+                            'weight' => 66.67
+                        ]
+                    ]
+                ],
+                [
+                    'name' => 'Speaking',
+                    'duration' => 14,
+                    'questions' => 3,
+                    'parts' => [
+                        [
+                            'part' => 1,
+                            'name' => 'Introduction and Interview',
+                            'questions' => 1,
+                            'type' => 'ielts_speaking_part1',
+                            'description' => 'General questions (4-5 minutes)',
+                            'duration' => 5
+                        ],
+                        [
+                            'part' => 2,
+                            'name' => 'Long Turn (Cue Card)',
+                            'questions' => 1,
+                            'type' => 'ielts_speaking_part2',
+                            'description' => '1-2 minutes speech after 1 minute preparation',
+                            'duration' => 4
+                        ],
+                        [
+                            'part' => 3,
+                            'name' => 'Two-way Discussion',
+                            'questions' => 1,
+                            'type' => 'ielts_speaking_part3',
+                            'description' => 'Abstract discussion (4-5 minutes)',
+                            'duration' => 5
+                        ]
+                    ]
+                ]
             ]
         ]);
+
+        // Create template sections for General Training
+        foreach ($generalTemplate->sections as $index => $section) {
+            TemplateSection::create([
+                'template_id' => $generalTemplate->id,
+                'section_name' => $section['name'],
+                'section_order' => $index + 1,
+                'duration_minutes' => $section['duration'],
+                'question_count' => $section['questions'],
+                'question_types' => collect($section['parts'])->pluck('type')->unique()->values()->toArray(),
+                'instructions' => 'Complete all parts in this section according to IELTS format.',
+                'section_config' => $section
+            ]);
+        }
     }
 
     private function createVSTEPTemplate()
@@ -384,23 +680,127 @@ class CambridgeTemplateSeeder extends Seeder
             'category' => 'international',
             'level' => 'b1',
             'age_group' => 'adult',
-            'total_duration_minutes' => 150,
+            'total_duration_minutes' => 172, // 40+60+60+12
             'skills' => ['listening', 'reading', 'writing', 'speaking'],
-            'description' => 'Vietnamese national English proficiency test.',
+            'description' => 'Vietnamese national English proficiency test following official VSTEP format.',
             'sections' => [
                 [
                     'name' => 'Listening',
                     'duration' => 40,
                     'questions' => 35,
                     'parts' => [
-                        ['part' => 1, 'name' => 'Short Conversations', 'questions' => 8, 'type' => 'multiple_choice'],
-                        ['part' => 2, 'name' => 'Long Conversations', 'questions' => 12, 'type' => 'multiple_choice'],
-                        ['part' => 3, 'name' => 'Short Talks', 'questions' => 15, 'type' => 'multiple_choice']
+                        [
+                            'part' => 1, 
+                            'name' => 'Announcements', 
+                            'questions' => 8, 
+                            'type' => 'multiple_choice',
+                            'description' => 'Short announcements and instructions'
+                        ],
+                        [
+                            'part' => 2, 
+                            'name' => 'Dialogues', 
+                            'questions' => 12, 
+                            'type' => 'multiple_choice',
+                            'description' => 'Conversations between two or more people'
+                        ],
+                        [
+                            'part' => 3, 
+                            'name' => 'Lectures', 
+                            'questions' => 15, 
+                            'type' => 'multiple_choice',
+                            'description' => 'Academic lectures and presentations'
+                        ]
                     ]
                 ],
-                ['name' => 'Reading', 'duration' => 60, 'questions' => 40],
-                ['name' => 'Writing', 'duration' => 60, 'questions' => 2],
-                ['name' => 'Speaking', 'duration' => 12, 'questions' => 3]
+                [
+                    'name' => 'Reading',
+                    'duration' => 60,
+                    'questions' => 40,
+                    'parts' => [
+                        [
+                            'part' => 1,
+                            'name' => 'Passage 1',
+                            'questions' => 10,
+                            'type' => 'multiple_choice',
+                            'description' => 'Short factual text (400-500 words)'
+                        ],
+                        [
+                            'part' => 2,
+                            'name' => 'Passage 2', 
+                            'questions' => 10,
+                            'type' => 'multiple_choice',
+                            'description' => 'Descriptive or narrative text (400-500 words)'
+                        ],
+                        [
+                            'part' => 3,
+                            'name' => 'Passage 3',
+                            'questions' => 10,
+                            'type' => 'multiple_choice',
+                            'description' => 'Argumentative text (500-600 words)'
+                        ],
+                        [
+                            'part' => 4,
+                            'name' => 'Passage 4',
+                            'questions' => 10,
+                            'type' => 'multiple_choice',
+                            'description' => 'Academic text (600-700 words)'
+                        ]
+                    ]
+                ],
+                [
+                    'name' => 'Writing',
+                    'duration' => 60,
+                    'questions' => 2,
+                    'parts' => [
+                        [
+                            'part' => 1,
+                            'name' => 'Task 1 - Letter/Email',
+                            'questions' => 1,
+                            'type' => 'short_writing',
+                            'description' => 'Write a letter or email (150 words minimum)',
+                            'weight' => 33.33 // 1/3 of writing score
+                        ],
+                        [
+                            'part' => 2,
+                            'name' => 'Task 2 - Essay',
+                            'questions' => 1,
+                            'type' => 'essay',
+                            'description' => 'Write an argumentative essay (250 words minimum)',
+                            'weight' => 66.67 // 2/3 of writing score
+                        ]
+                    ]
+                ],
+                [
+                    'name' => 'Speaking',
+                    'duration' => 12,
+                    'questions' => 3,
+                    'parts' => [
+                        [
+                            'part' => 1,
+                            'name' => 'Social Interaction',
+                            'questions' => 1,
+                            'type' => 'speaking_interaction',
+                            'description' => 'Answer 3-6 questions about familiar topics (3 minutes)',
+                            'duration' => 3
+                        ],
+                        [
+                            'part' => 2,
+                            'name' => 'Solution Discussion',
+                            'questions' => 1,
+                            'type' => 'speaking_solution',
+                            'description' => 'Choose and explain a solution to a problem (4 minutes)',
+                            'duration' => 4
+                        ],
+                        [
+                            'part' => 3,
+                            'name' => 'Topic Development',
+                            'questions' => 1,
+                            'type' => 'speaking_topic',
+                            'description' => 'Develop a topic with follow-up questions (5 minutes)',
+                            'duration' => 5
+                        ]
+                    ]
+                ]
             ]
         ]);
     }

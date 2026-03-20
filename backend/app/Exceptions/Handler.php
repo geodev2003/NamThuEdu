@@ -38,4 +38,27 @@ class Handler extends ExceptionHandler
             //
         });
     }
+    
+    /**
+     * Render an exception into an HTTP response.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Throwable  $exception
+     * @return \Symfony\Component\HttpFoundation\Response
+     *
+     * @throws \Throwable
+     */
+    public function render($request, Throwable $exception)
+    {
+        // Handle authentication exceptions for API
+        if ($exception instanceof \Illuminate\Auth\AuthenticationException) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated. Please login first.',
+                'error' => 'authentication_required'
+            ], 401);
+        }
+        
+        return parent::render($request, $exception);
+    }
 }

@@ -8,6 +8,12 @@ use App\Models\Submission;
 use App\Models\TestAssignment;
 use Illuminate\Support\Facades\Redis;
 
+/**
+ * @OA\Tag(
+ *     name="Teacher Dashboard",
+ *     description="Real-time teacher dashboard and monitoring API endpoints"
+ * )
+ */
 class TeacherDashboardController extends Controller
 {
     /**

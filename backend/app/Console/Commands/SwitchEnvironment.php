@@ -148,11 +148,16 @@ class SwitchEnvironment extends Command
      */
     protected function getLogLevel(string $environment): string
     {
-        return match($environment) {
-            'local', 'development' => 'debug',
-            'staging' => 'info',
-            'production' => 'error',
-            default => 'debug'
-        };
+        switch($environment) {
+            case 'local':
+            case 'development':
+                return 'debug';
+            case 'staging':
+                return 'info';
+            case 'production':
+                return 'error';
+            default:
+                return 'debug';
+        }
     }
 }

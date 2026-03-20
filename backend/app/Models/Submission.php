@@ -20,6 +20,7 @@ class Submission extends Model
         'sAttempt',
         'sStart_time',
         'sSubmit_time',
+        'sGraded_time',
         'sScore',
         'sStatus' => 'draft',
         'sTeacher_feedback',
@@ -29,6 +30,7 @@ class Submission extends Model
     protected $casts = [
         'sStart_time' => 'datetime',
         'sSubmit_time' => 'datetime',
+        'sGraded_time' => 'datetime',
         'sScore' => 'decimal:2',
     ];
 

@@ -46,6 +46,7 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'uPassword',
+        'refresh_token',
     ];
 
     /**
@@ -58,11 +59,6 @@ class User extends Authenticatable
         'uGender' => 'boolean',
         'uCreated_at' => 'datetime',
         'refresh_token_expires_at' => 'datetime',
-    ];
-
-    protected $hidden = [
-        'uPassword',
-        'refresh_token',
     ];
 
     /**

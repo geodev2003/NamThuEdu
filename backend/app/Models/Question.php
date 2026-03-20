@@ -17,11 +17,20 @@ class Question extends Model
     protected $fillable = [
         'exam_id',
         'qContent',
+        'qType',
+        'qSection',
+        'qSection_order',
         'qMedia_url',
         'qPoints',
         'qTranscript',
         'qExplanation',
         'qListen_limit',
+        'qConfig',
+        'qDifficulty',
+        'qTags',
+        'qPassage_text', // For reading passages
+        'qWord_count',   // For writing tasks
+        'qTime_limit',   // For speaking tasks
     ];
 
     protected $casts = [
