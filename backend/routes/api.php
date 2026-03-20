@@ -31,14 +31,8 @@ Route::post('/refresh', [AuthController::class, 'refresh']);
 Route::post('/users/accept', [AuthController::class, 'accept']);
 Route::post('/users/reset-password', [AuthController::class, 'resetPassword']);
 
-/* ========= USER ========= */
-Route::get('/users', [UserController::class, 'index']);
-Route::post('/users', [UserController::class, 'store']);
-Route::delete('/users/{id}', [UserController::class, 'destroy']);
-
-/* ========= TEST / VSTEP ========= */
-Route::post('/tests/upload', [TestController::class, 'upload']);
-Route::get('/tests', [TestController::class, 'index']);
+/* ========= PUBLIC ENDPOINTS ========= */
+Route::get('/tests', [TestController::class, 'index']); // Public test list
 
 /* ========= AUTHENTICATED ROUTES ========= */
 Route::middleware('auth:sanctum')->group(function () {
@@ -98,6 +92,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/exam-templates/{id}/sections', [App\Http\Controllers\ExamTemplateController::class, 'sections']);
         Route::post('/exams/from-template/{templateId}', [App\Http\Controllers\ExamTemplateController::class, 'createFromTemplate']);
         
+        // Test Management
+        Route::post('/tests/upload', [TestController::class, 'upload']);
+        
+        // User Management (Admin functions)
+        Route::middleware('admin')->group(function () {
+            Route::get('/users', [UserController::class, 'index']);
+            Route::post('/users', [UserController::class, 'store']);
+            Route::delete('/users/{id}', [UserController::class, 'destroy']);
+        });
+        
         // Test Assignment
         Route::post('/exams/{examId}/assign', [TestAssignmentController::class, 'assign']);
         Route::get('/assignments', [TestAssignmentController::class, 'index']);
@@ -107,6 +111,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/submissions', [GradingController::class, 'index']);
         Route::get('/submissions/{id}', [GradingController::class, 'show']);
         Route::post('/submissions/{id}/grade', [GradingController::class, 'grade']);
+        
+        // Real-time Dashboard & Monitoring
+        Route::get('/dashboard/test-statistics/{examId}', [App\Http\Controllers\TeacherDashboardController::class, 'getTestStatistics']);
+        Route::get('/dashboard/active-sessions', [App\Http\Controllers\TeacherDashboardController::class, 'getActiveSessions']);
+        Route::post('/dashboard/send-message', [App\Http\Controllers\TeacherDashboardController::class, 'sendMessageToStudent']);
+        Route::get('/dashboard/connection-logs/{submissionId}', [App\Http\Controllers\TeacherDashboardController::class, 'getConnectionLogs']);
     });
     
     /* ======== STUDENT ROUTES ========= */
@@ -114,9 +124,16 @@ Route::middleware('auth:sanctum')->group(function () {
         // Test Taking
         Route::get('/tests', [StudentTestController::class, 'index']);
         Route::get('/tests/{id}', [StudentTestController::class, 'show']);
+        Route::get('/tests/{id}/resume', [StudentTestController::class, 'resume']);
         Route::post('/tests/{id}/start', [StudentTestController::class, 'start']);
         Route::post('/tests/{submissionId}/answer', [StudentTestController::class, 'answer']);
         Route::post('/tests/{submissionId}/submit', [StudentTestController::class, 'submit']);
+        
+        // WebSocket Real-time Features
+        Route::post('/websocket/connect', [App\Http\Controllers\TestWebSocketController::class, 'connect']);
+        Route::post('/websocket/answer', [App\Http\Controllers\TestWebSocketController::class, 'saveAnswer']);
+        Route::post('/websocket/reconnect', [App\Http\Controllers\TestWebSocketController::class, 'reconnect']);
+        Route::post('/websocket/sync-time', [App\Http\Controllers\TestWebSocketController::class, 'syncTime']);
         
         // Submission History
         Route::get('/submissions', [StudentTestController::class, 'submissions']);

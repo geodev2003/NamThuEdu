@@ -15,7 +15,21 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        // Tự động xử lý bài thi hết thời gian mỗi 5 phút
+        $schedule->command('tests:process-expired')
+                 ->everyFiveMinutes()
+                 ->withoutOverlapping()
+                 ->runInBackground();
+                 
+        // Monitor WebSocket connections mỗi phút
+        $schedule->call(function () {
+            \App\Services\TestWebSocketService::checkInactiveSessions();
+        })->everyMinute()->name('websocket-monitor');
+        
+        // Cleanup WebSocket statistics mỗi ngày
+        $schedule->command('websockets:clean')
+                 ->daily()
+                 ->at('02:00');
     }
 
     /**
@@ -28,5 +42,12 @@ class Kernel extends ConsoleKernel
         $this->load(__DIR__.'/Commands');
 
         require base_path('routes/console.php');
+        
+        // Register test commands
+        if (app()->environment(['local', 'testing'])) {
+            $this->commands([
+                Commands\TestWebSocketLoad::class,
+            ]);
+        }
     }
 }
