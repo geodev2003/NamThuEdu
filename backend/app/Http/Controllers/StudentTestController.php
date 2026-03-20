@@ -10,7 +10,7 @@ use App\Models\Submission;
 use App\Models\SubmissionAnswer;
 use App\Models\ClassEnrollment;
 use App\Models\Question;
-use App\Models\Answer;
+use App\Services\StudentProgressService;
 
 class StudentTestController extends Controller
 {
@@ -712,6 +712,378 @@ class StudentTestController extends Controller
                 'message' => 'Lỗi khi tự động nộp bài.',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/student/submissions/{id}/answers",
+     *     tags={"Students"},
+     *     summary="Get submission answers with correct answers and explanations",
+     *     description="Get detailed answers including correct answers and explanations after submission",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(response=200, description="Answers retrieved successfully"),
+     *     @OA\Response(response=404, description="Submission not found")
+     * )
+     * 
+     * GET /api/student/submissions/{id}/answers
+     * Xem đáp án đúng và giải thích sau khi nộp bài
+     */
+    public function submissionAnswers(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'student') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $submission = Submission::with([
+            'exam.questions.answers', 
+            'answers.question.answers'
+        ])
+        ->where('sId', $id)
+        ->where('user_id', $user->uId)
+        ->first();
+
+        if (!$submission) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy bài làm.'
+            ], 404);
+        }
+
+        // Chỉ cho phép xem đáp án sau khi nộp bài
+        if ($submission->sStatus === 'in_progress') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn chỉ có thể xem đáp án sau khi nộp bài.'
+            ], 403);
+        }
+
+        // Tạo dữ liệu chi tiết với đáp án đúng và giải thích
+        $detailedAnswers = [];
+        
+        foreach ($submission->exam->questions as $question) {
+            $studentAnswer = $submission->answers->where('question_id', $question->qId)->first();
+            $correctAnswer = $question->answers->where('aIs_correct', true)->first();
+            
+            $detailedAnswers[] = [
+                'question' => [
+                    'qId' => $question->qId,
+                    'qContent' => $question->qContent,
+                    'qType' => $question->qType,
+                    'qPoints' => $question->qPoints,
+                    'qExplanation' => $question->qExplanation,
+                    'qSection' => $question->qSection,
+                ],
+                'student_answer' => $studentAnswer ? [
+                    'saAnswer_text' => $studentAnswer->saAnswer_text,
+                    'saIs_correct' => $studentAnswer->saIs_correct,
+                    'saPoints_awarded' => $studentAnswer->saPoints_awarded,
+                ] : null,
+                'correct_answer' => $correctAnswer ? [
+                    'aContent' => $correctAnswer->aContent,
+                    'aIs_correct' => $correctAnswer->aIs_correct,
+                ] : null,
+                'all_options' => $question->answers->map(function($answer) {
+                    return [
+                        'aId' => $answer->aId,
+                        'aContent' => $answer->aContent,
+                        'aIs_correct' => $answer->aIs_correct,
+                    ];
+                }),
+                'analysis' => [
+                    'is_correct' => $studentAnswer ? $studentAnswer->saIs_correct : false,
+                    'points_earned' => $studentAnswer ? $studentAnswer->saPoints_awarded : 0,
+                    'points_possible' => $question->qPoints,
+                ]
+            ];
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'submission_info' => [
+                    'sId' => $submission->sId,
+                    'sScore' => $submission->sScore,
+                    'sStatus' => $submission->sStatus,
+                    'sSubmit_time' => $submission->sSubmit_time,
+                    'exam_title' => $submission->exam->eTitle,
+                ],
+                'detailed_answers' => $detailedAnswers,
+                'summary' => [
+                    'total_questions' => count($detailedAnswers),
+                    'answered_questions' => $submission->answers->count(),
+                    'correct_answers' => $submission->answers->where('saIs_correct', true)->count(),
+                    'total_score' => $submission->sScore,
+                ]
+            ]
+        ]);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/student/progress",
+     *     tags={"Students"},
+     *     summary="Get student learning progress",
+     *     description="Get comprehensive learning progress statistics and trends",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(response=200, description="Progress data retrieved successfully"),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     * 
+     * GET /api/student/progress
+     * Theo dõi tiến độ học tập chi tiết
+     */
+    public function progress(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'student') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $progressData = StudentProgressService::calculateDetailedProgress($user->uId);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $progressData
+        ]);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/student/submissions/{id}/compare",
+     *     tags={"Students"},
+     *     summary="Compare submission with previous attempts",
+     *     description="Compare current submission with previous attempts and class average",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(response=200, description="Comparison data retrieved successfully"),
+     *     @OA\Response(response=404, description="Submission not found")
+     * )
+     * 
+     * GET /api/student/submissions/{id}/compare
+     * So sánh kết quả với lần làm trước và trung bình lớp
+     */
+    public function compareSubmission(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'student') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $currentSubmission = Submission::with(['exam', 'assignment'])
+                                      ->where('sId', $id)
+                                      ->where('user_id', $user->uId)
+                                      ->first();
+
+        if (!$currentSubmission) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy bài làm.'
+            ], 404);
+        }
+
+        // Tìm các lần làm trước của cùng bài thi
+        $previousSubmissions = Submission::where('user_id', $user->uId)
+                                        ->where('exam_id', $currentSubmission->exam_id)
+                                        ->where('sId', '!=', $id)
+                                        ->whereIn('sStatus', ['graded', 'auto_submitted'])
+                                        ->orderBy('sSubmit_time', 'desc')
+                                        ->get();
+
+        // Lấy submission gần nhất trước đó
+        $previousSubmission = $previousSubmissions->first();
+
+        // Thống kê của tất cả học viên cùng bài thi
+        $allSubmissions = Submission::where('exam_id', $currentSubmission->exam_id)
+                                   ->whereIn('sStatus', ['graded', 'auto_submitted'])
+                                   ->get();
+
+        $classStats = [
+            'total_students' => $allSubmissions->unique('user_id')->count(),
+            'average_score' => round($allSubmissions->avg('sScore'), 2),
+            'highest_score' => $allSubmissions->max('sScore'),
+            'lowest_score' => $allSubmissions->min('sScore'),
+            'median_score' => $this->calculateMedian($allSubmissions->pluck('sScore')->toArray()),
+        ];
+
+        // So sánh với lần làm trước
+        $comparison = [];
+        if ($previousSubmission) {
+            $scoreDifference = $currentSubmission->sScore - $previousSubmission->sScore;
+            $comparison = [
+                'has_previous' => true,
+                'previous_score' => $previousSubmission->sScore,
+                'current_score' => $currentSubmission->sScore,
+                'score_difference' => round($scoreDifference, 2),
+                'improvement_percentage' => $previousSubmission->sScore > 0 ? 
+                    round(($scoreDifference / $previousSubmission->sScore) * 100, 2) : 0,
+                'previous_date' => $previousSubmission->sSubmit_time,
+                'current_date' => $currentSubmission->sSubmit_time,
+                'time_between' => $previousSubmission->sSubmit_time->diffForHumans($currentSubmission->sSubmit_time),
+            ];
+        } else {
+            $comparison = [
+                'has_previous' => false,
+                'message' => 'Đây là lần đầu tiên bạn làm bài thi này.',
+            ];
+        }
+
+        // Xếp hạng trong lớp
+        $betterThanCount = $allSubmissions->where('sScore', '<', $currentSubmission->sScore)->count();
+        $totalStudents = $allSubmissions->unique('user_id')->count();
+        $ranking = $totalStudents - $betterThanCount;
+        $percentile = $totalStudents > 0 ? round((($totalStudents - $ranking + 1) / $totalStudents) * 100, 1) : 0;
+
+        // Phân tích chi tiết theo từng câu hỏi (nếu có lần làm trước)
+        $questionAnalysis = [];
+        if ($previousSubmission) {
+            $currentAnswers = SubmissionAnswer::where('submission_id', $currentSubmission->sId)->get()->keyBy('question_id');
+            $previousAnswers = SubmissionAnswer::where('submission_id', $previousSubmission->sId)->get()->keyBy('question_id');
+
+            foreach ($currentAnswers as $questionId => $currentAnswer) {
+                $previousAnswer = $previousAnswers->get($questionId);
+                
+                $questionAnalysis[] = [
+                    'question_id' => $questionId,
+                    'current_correct' => $currentAnswer->saIs_correct,
+                    'previous_correct' => $previousAnswer ? $previousAnswer->saIs_correct : null,
+                    'current_points' => $currentAnswer->saPoints_awarded,
+                    'previous_points' => $previousAnswer ? $previousAnswer->saPoints_awarded : 0,
+                    'improvement' => $previousAnswer ? 
+                        ($currentAnswer->saPoints_awarded - $previousAnswer->saPoints_awarded) : null,
+                ];
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'current_submission' => [
+                    'sId' => $currentSubmission->sId,
+                    'sScore' => $currentSubmission->sScore,
+                    'sSubmit_time' => $currentSubmission->sSubmit_time,
+                    'exam_title' => $currentSubmission->exam->eTitle,
+                ],
+                'comparison_with_previous' => $comparison,
+                'class_statistics' => $classStats,
+                'ranking' => [
+                    'position' => $ranking,
+                    'total_students' => $totalStudents,
+                    'percentile' => $percentile,
+                    'better_than_percent' => round(($betterThanCount / max($totalStudents, 1)) * 100, 1),
+                ],
+                'question_analysis' => $questionAnalysis,
+                'all_attempts' => $previousSubmissions->map(function($submission) {
+                    return [
+                        'sId' => $submission->sId,
+                        'sScore' => $submission->sScore,
+                        'sSubmit_time' => $submission->sSubmit_time,
+                        'sAttempt' => $submission->sAttempt,
+                    ];
+                }),
+            ]
+        ]);
+    }
+
+    /**
+     * Helper methods for calculations
+     */
+    private function calculateImprovement($submissions)
+    {
+        if ($submissions->count() < 2) {
+            return null;
+        }
+
+        $first = $submissions->first()->sScore;
+        $last = $submissions->last()->sScore;
+        
+        return [
+            'first_score' => $first,
+            'latest_score' => $last,
+            'difference' => round($last - $first, 2),
+            'percentage' => $first > 0 ? round((($last - $first) / $first) * 100, 2) : 0,
+            'trend' => $last > $first ? 'improving' : ($last < $first ? 'declining' : 'stable'),
+        ];
+    }
+
+    private function calculateConsistency($submissions)
+    {
+        if ($submissions->count() < 2) {
+            return null;
+        }
+
+        $scores = $submissions->pluck('sScore')->toArray();
+        $mean = array_sum($scores) / count($scores);
+        $variance = array_sum(array_map(function($score) use ($mean) {
+            return pow($score - $mean, 2);
+        }, $scores)) / count($scores);
+        
+        $standardDeviation = sqrt($variance);
+        $coefficientOfVariation = $mean > 0 ? ($standardDeviation / $mean) * 100 : 0;
+
+        return [
+            'standard_deviation' => round($standardDeviation, 2),
+            'coefficient_of_variation' => round($coefficientOfVariation, 2),
+            'consistency_level' => $coefficientOfVariation < 15 ? 'high' : 
+                                 ($coefficientOfVariation < 25 ? 'medium' : 'low'),
+        ];
+    }
+
+    private function getStrengthAreas($statsBySkill)
+    {
+        return $statsBySkill->sortByDesc('average_score')->take(2)->map(function($stat) {
+            return [
+                'skill' => $stat['skill'],
+                'average_score' => $stat['average_score'],
+            ];
+        })->values();
+    }
+
+    private function getImprovementAreas($statsBySkill)
+    {
+        return $statsBySkill->sortBy('average_score')->take(2)->map(function($stat) {
+            return [
+                'skill' => $stat['skill'],
+                'average_score' => $stat['average_score'],
+            ];
+        })->values();
+    }
+
+    private function calculateMedian($scores)
+    {
+        sort($scores);
+        $count = count($scores);
+        
+        if ($count === 0) return 0;
+        
+        if ($count % 2 === 0) {
+            return ($scores[$count / 2 - 1] + $scores[$count / 2]) / 2;
+        } else {
+            return $scores[floor($count / 2)];
         }
     }
 

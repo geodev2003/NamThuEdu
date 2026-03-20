@@ -50,6 +50,32 @@ class Course extends Model
         return $this->belongsTo(Category::class, 'cCategory', 'caId');
     }
 
+    public function enrollments()
+    {
+        return $this->hasMany(CourseEnrollment::class, 'course_id', 'cId');
+    }
+
+    public function activeEnrollments()
+    {
+        return $this->hasMany(CourseEnrollment::class, 'course_id', 'cId')
+                    ->where('status', 'enrolled');
+    }
+
+    public function students()
+    {
+        return $this->belongsToMany(User::class, 'course_enrollments', 'course_id', 'student_id', 'cId', 'uId')
+                    ->withPivot(['status', 'enrolled_at', 'fee_paid', 'notes'])
+                    ->withTimestamps();
+    }
+
+    public function activeStudents()
+    {
+        return $this->belongsToMany(User::class, 'course_enrollments', 'course_id', 'student_id', 'cId', 'uId')
+                    ->wherePivot('status', 'enrolled')
+                    ->withPivot(['enrolled_at', 'fee_paid', 'notes'])
+                    ->withTimestamps();
+    }
+
     /**
      * Scopes
      */

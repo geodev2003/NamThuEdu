@@ -494,4 +494,363 @@ class ExamTemplateController extends Controller
             ]);
         }
     }
+
+    /* ========================================
+     * ADMIN METHODS - Template Management
+     * ======================================== */
+
+    /**
+     * GET /api/admin/exam-templates
+     * Quản lý mẫu đề thi (Admin only)
+     */
+    public function adminTemplates(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền truy cập.'
+            ], 403);
+        }
+
+        $query = ExamTemplate::query();
+
+        // Filter by category
+        if ($request->has('category')) {
+            $query->byCategory($request->category);
+        }
+
+        // Filter by level
+        if ($request->has('level')) {
+            $query->byLevel($request->level);
+        }
+
+        // Filter by status
+        if ($request->has('is_active')) {
+            $query->where('is_active', $request->is_active);
+        }
+
+        // Search
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('template_name', 'LIKE', "%{$search}%")
+                  ->orWhere('template_code', 'LIKE', "%{$search}%")
+                  ->orWhere('description', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Sort
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortOrder = $request->get('sort_order', 'desc');
+        $query->orderBy($sortBy, $sortOrder);
+
+        // Pagination
+        $perPage = $request->get('per_page', 20);
+        $templates = $query->paginate($perPage);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $templates
+        ]);
+    }
+
+    /**
+     * POST /api/admin/exam-templates
+     * Tạo mẫu đề thi mới (Admin)
+     */
+    public function adminCreateTemplate(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền tạo mẫu đề thi.'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'template_code' => 'required|string|max:50|unique:exam_templates,template_code',
+            'template_name' => 'required|string|max:255',
+            'category' => 'required|in:cambridge_young,cambridge_main,international,specialized',
+            'level' => 'required|in:pre_a1,a1,a2,b1,b2,c1,c2',
+            'age_group' => 'required|in:young_learners,adult',
+            'total_duration_minutes' => 'required|integer|min:1',
+            'skills' => 'required|array',
+            'sections' => 'required|array',
+            'description' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        $template = ExamTemplate::create([
+            'template_code' => $request->template_code,
+            'template_name' => $request->template_name,
+            'category' => $request->category,
+            'level' => $request->level,
+            'age_group' => $request->age_group,
+            'total_duration_minutes' => $request->total_duration_minutes,
+            'skills' => json_encode($request->skills),
+            'sections' => json_encode($request->sections),
+            'description' => $request->description,
+            'is_active' => true,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Tạo mẫu đề thi thành công.',
+            'data' => $template
+        ], 201);
+    }
+
+    /**
+     * PUT /api/admin/exam-templates/{id}
+     * Cập nhật mẫu đề thi (Admin)
+     */
+    public function adminUpdateTemplate(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền cập nhật mẫu đề thi.'
+            ], 403);
+        }
+
+        $template = ExamTemplate::find($id);
+
+        if (!$template) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy mẫu đề thi.'
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'template_code' => 'sometimes|required|string|max:50|unique:exam_templates,template_code,' . $id,
+            'template_name' => 'sometimes|required|string|max:255',
+            'category' => 'sometimes|required|in:cambridge_young,cambridge_main,international,specialized',
+            'level' => 'sometimes|required|in:pre_a1,a1,a2,b1,b2,c1,c2',
+            'age_group' => 'sometimes|required|in:young_learners,adult',
+            'total_duration_minutes' => 'sometimes|required|integer|min:1',
+            'skills' => 'sometimes|required|array',
+            'sections' => 'sometimes|required|array',
+            'description' => 'nullable|string',
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        $updateData = $request->only([
+            'template_code', 'template_name', 'category', 'level', 'age_group',
+            'total_duration_minutes', 'description', 'is_active'
+        ]);
+
+        if ($request->has('skills')) {
+            $updateData['skills'] = json_encode($request->skills);
+        }
+
+        if ($request->has('sections')) {
+            $updateData['sections'] = json_encode($request->sections);
+        }
+
+        $template->update($updateData);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Cập nhật mẫu đề thi thành công.',
+            'data' => $template
+        ]);
+    }
+
+    /**
+     * DELETE /api/admin/exam-templates/{id}
+     * Xóa mẫu đề thi (Admin)
+     */
+    public function adminDeleteTemplate(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền xóa mẫu đề thi.'
+            ], 403);
+        }
+
+        $template = ExamTemplate::find($id);
+
+        if (!$template) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy mẫu đề thi.'
+            ], 404);
+        }
+
+        // Check if template is being used
+        $examCount = Exam::where('template_id', $id)->count();
+        if ($examCount > 0) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không thể xóa mẫu đề thi đang được sử dụng.',
+                'data' => [
+                    'exams_using_template' => $examCount
+                ]
+            ], 400);
+        }
+
+        $template->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Xóa mẫu đề thi thành công.'
+        ]);
+    }
+
+    /**
+     * POST /api/admin/exam-templates/{id}/activate
+     * Kích hoạt mẫu đề thi
+     */
+    public function activateTemplate(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền kích hoạt mẫu đề thi.'
+            ], 403);
+        }
+
+        $template = ExamTemplate::find($id);
+
+        if (!$template) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy mẫu đề thi.'
+            ], 404);
+        }
+
+        $template->update(['is_active' => true]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Kích hoạt mẫu đề thi thành công.',
+            'data' => [
+                'template_id' => $template->id,
+                'template_name' => $template->template_name,
+                'is_active' => true
+            ]
+        ]);
+    }
+
+    /**
+     * POST /api/admin/exam-templates/{id}/deactivate
+     * Vô hiệu hóa mẫu đề thi
+     */
+    public function deactivateTemplate(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền vô hiệu hóa mẫu đề thi.'
+            ], 403);
+        }
+
+        $template = ExamTemplate::find($id);
+
+        if (!$template) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy mẫu đề thi.'
+            ], 404);
+        }
+
+        $template->update(['is_active' => false]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Vô hiệu hóa mẫu đề thi thành công.',
+            'data' => [
+                'template_id' => $template->id,
+                'template_name' => $template->template_name,
+                'is_active' => false
+            ]
+        ]);
+    }
+
+    /**
+     * GET /api/admin/templates/statistics
+     * Thống kê mẫu đề thi
+     */
+    public function templateStatistics(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền truy cập.'
+            ], 403);
+        }
+
+        // Templates statistics
+        $totalTemplates = ExamTemplate::count();
+        $activeTemplates = ExamTemplate::where('is_active', true)->count();
+        $inactiveTemplates = ExamTemplate::where('is_active', false)->count();
+
+        // Templates by category
+        $templatesByCategory = ExamTemplate::selectRaw('category, COUNT(*) as count')
+                                         ->groupBy('category')
+                                         ->pluck('count', 'category');
+
+        // Templates by level
+        $templatesByLevel = ExamTemplate::selectRaw('level, COUNT(*) as count')
+                                      ->groupBy('level')
+                                      ->pluck('count', 'level');
+
+        // Usage statistics
+        $templatesUsage = ExamTemplate::withCount('exams')
+                                    ->orderByDesc('exams_count')
+                                    ->limit(5)
+                                    ->get()
+                                    ->map(function($template) {
+                                        return [
+                                            'template_name' => $template->template_name,
+                                            'usage_count' => $template->exams_count
+                                        ];
+                                    });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'templates' => [
+                    'total' => $totalTemplates,
+                    'active' => $activeTemplates,
+                    'inactive' => $inactiveTemplates,
+                    'activation_rate' => $totalTemplates > 0 ? round(($activeTemplates / $totalTemplates) * 100, 2) : 0
+                ],
+                'by_category' => $templatesByCategory,
+                'by_level' => $templatesByLevel,
+                'usage' => $templatesUsage
+            ]
+        ]);
+    }
 }

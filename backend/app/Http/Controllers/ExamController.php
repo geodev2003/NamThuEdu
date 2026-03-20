@@ -569,4 +569,728 @@ class ExamController extends Controller
             ]
         ]);
     }
+
+    /**
+     * GET /api/teacher/exams/{id}/sections
+     * Xem cấu trúc sections của đề thi
+     */
+    /**
+     * @OA\Get(
+     *     path="/teacher/exams/{id}/sections",
+     *     tags={"Exams"},
+     *     summary="Get exam sections",
+     *     description="Get exam structure organized by sections (listening, reading, writing, speaking)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(response=200, description="Exam sections retrieved successfully"),
+     *     @OA\Response(response=404, description="Exam not found")
+     * )
+     */
+    public function sections(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $exam = Exam::where('eId', $id)
+                   ->where('eTeacher_id', $user->uId)
+                   ->with(['questions.answers'])
+                   ->first();
+
+        if (!$exam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy bài thi.'
+            ], 404);
+        }
+
+        // Organize questions by sections based on exam type
+        $sections = $this->organizeQuestionsBySection($exam);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'exam' => [
+                    'eId' => $exam->eId,
+                    'eTitle' => $exam->eTitle,
+                    'eType' => $exam->eType,
+                    'eDuration_minutes' => $exam->eDuration_minutes,
+                ],
+                'sections' => $sections,
+                'total_questions' => $exam->questions->count(),
+                'total_points' => $exam->questions->sum('qPoints'),
+            ]
+        ]);
+    }
+
+    /**
+     * POST /api/teacher/exams/{id}/clone
+     * Nhân bản đề thi
+     */
+    /**
+     * @OA\Post(
+     *     path="/teacher/exams/{id}/clone",
+     *     tags={"Exams"},
+     *     summary="Clone exam",
+     *     description="Create a copy of an existing exam with all questions and answers",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=false,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="eTitle", type="string", example="Copy of Original Exam"),
+     *             @OA\Property(property="eDescription", type="string", example="Cloned exam description")
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="Exam cloned successfully"),
+     *     @OA\Response(response=404, description="Exam not found")
+     * )
+     */
+    public function clone(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $originalExam = Exam::where('eId', $id)
+                           ->where('eTeacher_id', $user->uId)
+                           ->with(['questions.answers'])
+                           ->first();
+
+        if (!$originalExam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy bài thi.'
+            ], 404);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Clone exam
+            $newExam = Exam::create([
+                'eTitle' => $request->eTitle ?? 'Copy of ' . $originalExam->eTitle,
+                'eDescription' => $request->eDescription ?? $originalExam->eDescription,
+                'eType' => $originalExam->eType,
+                'eSkill' => $originalExam->eSkill,
+                'eTeacher_id' => $user->uId,
+                'eDuration_minutes' => $originalExam->eDuration_minutes,
+                'eIs_private' => $originalExam->eIs_private,
+                'eSource_type' => 'manual',
+                'template_id' => $originalExam->template_id,
+            ]);
+
+            // Clone questions and answers
+            foreach ($originalExam->questions as $originalQuestion) {
+                $newQuestion = Question::create([
+                    'exam_id' => $newExam->eId,
+                    'qContent' => $originalQuestion->qContent,
+                    'qPoints' => $originalQuestion->qPoints,
+                    'qMedia_url' => $originalQuestion->qMedia_url,
+                    'qTranscript' => $originalQuestion->qTranscript,
+                    'qExplanation' => $originalQuestion->qExplanation,
+                    'qListen_limit' => $originalQuestion->qListen_limit,
+                ]);
+
+                // Clone answers
+                foreach ($originalQuestion->answers as $originalAnswer) {
+                    Answer::create([
+                        'question_id' => $newQuestion->qId,
+                        'aContent' => $originalAnswer->aContent,
+                        'aIs_correct' => $originalAnswer->aIs_correct,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'examId' => $newExam->eId,
+                    'message' => 'Nhân bản đề thi thành công',
+                    'cloned_questions' => $originalExam->questions->count(),
+                ]
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Lỗi hệ thống khi nhân bản đề thi.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/teacher/exams/{id}/preview
+     * Xem trước đề thi
+     */
+    /**
+     * @OA\Get(
+     *     path="/teacher/exams/{id}/preview",
+     *     tags={"Exams"},
+     *     summary="Preview exam",
+     *     description="Get exam preview as students would see it",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(response=200, description="Exam preview retrieved successfully"),
+     *     @OA\Response(response=404, description="Exam not found")
+     * )
+     */
+    public function preview(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $exam = Exam::where('eId', $id)
+                   ->where('eTeacher_id', $user->uId)
+                   ->with(['questions.answers'])
+                   ->first();
+
+        if (!$exam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy bài thi.'
+            ], 404);
+        }
+
+        // Format for student view (hide correct answers)
+        $previewQuestions = $exam->questions->map(function($question) {
+            return [
+                'qId' => $question->qId,
+                'qContent' => $question->qContent,
+                'qPoints' => $question->qPoints,
+                'qMedia_url' => $question->qMedia_url,
+                'qTranscript' => $question->qTranscript,
+                'qListen_limit' => $question->qListen_limit,
+                'answers' => $question->answers->map(function($answer) {
+                    return [
+                        'aId' => $answer->aId,
+                        'aContent' => $answer->aContent,
+                        // Hide correct answer in preview
+                    ];
+                }),
+            ];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'exam' => [
+                    'eId' => $exam->eId,
+                    'eTitle' => $exam->eTitle,
+                    'eDescription' => $exam->eDescription,
+                    'eType' => $exam->eType,
+                    'eSkill' => $exam->eSkill,
+                    'eDuration_minutes' => $exam->eDuration_minutes,
+                ],
+                'questions' => $previewQuestions,
+                'total_questions' => $exam->questions->count(),
+                'total_points' => $exam->questions->sum('qPoints'),
+                'estimated_time' => $exam->eDuration_minutes . ' phút',
+            ]
+        ]);
+    }
+
+    /**
+     * POST /api/teacher/exams/{id}/publish
+     * Xuất bản đề thi
+     */
+    /**
+     * @OA\Post(
+     *     path="/teacher/exams/{id}/publish",
+     *     tags={"Exams"},
+     *     summary="Publish exam",
+     *     description="Publish exam to make it available for assignments",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(response=200, description="Exam published successfully"),
+     *     @OA\Response(response=400, description="Exam cannot be published"),
+     *     @OA\Response(response=404, description="Exam not found")
+     * )
+     */
+    public function publish(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $exam = Exam::where('eId', $id)
+                   ->where('eTeacher_id', $user->uId)
+                   ->with('questions')
+                   ->first();
+
+        if (!$exam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy bài thi.'
+            ], 404);
+        }
+
+        // Validate exam can be published
+        $validationErrors = [];
+
+        if ($exam->questions->count() === 0) {
+            $validationErrors[] = 'Đề thi phải có ít nhất 1 câu hỏi.';
+        }
+
+        if (!$exam->eTitle) {
+            $validationErrors[] = 'Đề thi phải có tiêu đề.';
+        }
+
+        if (!$exam->eDuration_minutes || $exam->eDuration_minutes <= 0) {
+            $validationErrors[] = 'Đề thi phải có thời gian làm bài hợp lệ.';
+        }
+
+        if (!empty($validationErrors)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không thể xuất bản đề thi.',
+                'errors' => $validationErrors
+            ], 400);
+        }
+
+        // Update exam status
+        $exam->update([
+            'eIs_private' => false,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'message' => 'Xuất bản đề thi thành công',
+                'exam_id' => $exam->eId,
+                'questions_count' => $exam->questions->count(),
+            ]
+        ]);
+    }
+
+    /**
+     * Helper method to organize questions by sections
+     */
+    private function organizeQuestionsBySection($exam)
+    {
+        $sections = [];
+        
+        // Default section structure based on exam type
+        if ($exam->eType === 'VSTEP') {
+            $sections = [
+                'listening' => ['name' => 'Listening', 'questions' => [], 'duration' => 40],
+                'reading' => ['name' => 'Reading', 'questions' => [], 'duration' => 60],
+                'writing' => ['name' => 'Writing', 'questions' => [], 'duration' => 60],
+                'speaking' => ['name' => 'Speaking', 'questions' => [], 'duration' => 12],
+            ];
+        } elseif ($exam->eType === 'IELTS') {
+            $sections = [
+                'listening' => ['name' => 'Listening', 'questions' => [], 'duration' => 30],
+                'reading' => ['name' => 'Reading', 'questions' => [], 'duration' => 60],
+                'writing' => ['name' => 'Writing', 'questions' => [], 'duration' => 60],
+                'speaking' => ['name' => 'Speaking', 'questions' => [], 'duration' => 15],
+            ];
+        } else {
+            // General exam - single section
+            $sections = [
+                $exam->eSkill => ['name' => ucfirst($exam->eSkill), 'questions' => [], 'duration' => $exam->eDuration_minutes],
+            ];
+        }
+
+        // Distribute questions to sections (simple logic - can be enhanced)
+        $questionCount = $exam->questions->count();
+        $sectionCount = count($sections);
+        $questionsPerSection = $questionCount > 0 ? ceil($questionCount / $sectionCount) : 0;
+
+        $questionIndex = 0;
+        foreach ($sections as $sectionKey => &$section) {
+            $sectionQuestions = $exam->questions->slice($questionIndex, $questionsPerSection);
+            $section['questions'] = $sectionQuestions->values();
+            $section['question_count'] = $sectionQuestions->count();
+            $section['total_points'] = $sectionQuestions->sum('qPoints');
+            $questionIndex += $questionsPerSection;
+        }
+
+        return $sections;
+    }
+
+    /* ========================================
+     * ADMIN METHODS - Exam Moderation
+     * ======================================== */
+
+    /**
+     * GET /api/admin/exams
+     * Kiểm duyệt đề thi (Admin only)
+     */
+    public function adminExams(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền truy cập.'
+            ], 403);
+        }
+
+        $query = Exam::with(['teacher'])
+                    ->withCount('questions');
+
+        // Filter by status
+        if ($request->has('is_private')) {
+            $query->where('eIs_private', $request->is_private);
+        }
+
+        // Filter by type
+        if ($request->has('type')) {
+            $query->where('eType', $request->type);
+        }
+
+        // Filter by skill
+        if ($request->has('skill')) {
+            $query->where('eSkill', $request->skill);
+        }
+
+        // Filter by teacher
+        if ($request->has('teacher_id')) {
+            $query->where('eTeacher_id', $request->teacher_id);
+        }
+
+        // Search
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('eTitle', 'LIKE', "%{$search}%")
+                  ->orWhere('eDescription', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Sort
+        $sortBy = $request->get('sort_by', 'eCreated_at');
+        $sortOrder = $request->get('sort_order', 'desc');
+        $query->orderBy($sortBy, $sortOrder);
+
+        // Pagination
+        $perPage = $request->get('per_page', 20);
+        $exams = $query->paginate($perPage);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $exams
+        ]);
+    }
+
+    /**
+     * GET /api/admin/exams/{id}
+     * Xem chi tiết đề thi (Admin)
+     */
+    public function adminExamDetail(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền truy cập.'
+            ], 403);
+        }
+
+        $exam = Exam::with(['teacher', 'questions.answers', 'template'])
+                   ->withCount('questions')
+                   ->where('eId', $id)
+                   ->first();
+
+        if (!$exam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy đề thi.'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $exam
+        ]);
+    }
+
+    /**
+     * POST /api/admin/exams/{id}/approve
+     * Duyệt đề thi
+     */
+    public function approveExam(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền duyệt đề thi.'
+            ], 403);
+        }
+
+        $exam = Exam::where('eId', $id)->first();
+
+        if (!$exam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy đề thi.'
+            ], 404);
+        }
+
+        if (!$exam->eIs_private) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đề thi đã được duyệt rồi.'
+            ], 400);
+        }
+
+        $exam->update([
+            'eIs_private' => false,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Duyệt đề thi thành công.',
+            'data' => [
+                'exam_id' => $exam->eId,
+                'exam_title' => $exam->eTitle,
+                'approved_by' => $user->uName,
+                'approved_at' => now()->toISOString()
+            ]
+        ]);
+    }
+
+    /**
+     * POST /api/admin/exams/{id}/reject
+     * Từ chối đề thi
+     */
+    public function rejectExam(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền từ chối đề thi.'
+            ], 403);
+        }
+
+        $exam = Exam::where('eId', $id)->first();
+
+        if (!$exam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy đề thi.'
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'reason' => 'required|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Vui lòng nhập lý do từ chối.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        // For now, we'll keep it private and add a note in description
+        $exam->update([
+            'eIs_private' => true,
+            'eDescription' => ($exam->eDescription ?? '') . "\n\n[ADMIN REJECTED: " . $request->reason . "]"
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Từ chối đề thi thành công.',
+            'data' => [
+                'exam_id' => $exam->eId,
+                'exam_title' => $exam->eTitle,
+                'reason' => $request->reason,
+                'rejected_by' => $user->uName,
+                'rejected_at' => now()->toISOString()
+            ]
+        ]);
+    }
+
+    /**
+     * DELETE /api/admin/exams/{id}
+     * Xóa đề thi (Admin)
+     */
+    public function adminDeleteExam(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền xóa đề thi.'
+            ], 403);
+        }
+
+        $exam = Exam::where('eId', $id)->first();
+
+        if (!$exam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy đề thi.'
+            ], 404);
+        }
+
+        // Check if exam is being used in assignments
+        $assignmentCount = DB::table('test_assignments')->where('exam_id', $id)->count();
+        if ($assignmentCount > 0) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không thể xóa đề thi đang được giao bài.',
+                'data' => [
+                    'assignments_count' => $assignmentCount
+                ]
+            ], 400);
+        }
+
+        $exam->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Xóa đề thi thành công.'
+        ]);
+    }
+
+    /**
+     * GET /api/admin/exams/pending
+     * Danh sách đề thi chờ duyệt
+     */
+    public function pendingExams(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền truy cập.'
+            ], 403);
+        }
+
+        $pendingExams = Exam::with(['teacher'])
+                           ->withCount('questions')
+                           ->where('eIs_private', true)
+                           ->orderBy('eCreated_at', 'desc')
+                           ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'pending_exams' => $pendingExams,
+                'total_pending' => $pendingExams->count()
+            ]
+        ]);
+    }
+
+    /**
+     * GET /api/admin/exams/statistics
+     * Thống kê đề thi
+     */
+    public function examStatistics(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền truy cập.'
+            ], 403);
+        }
+
+        // Exams statistics
+        $totalExams = Exam::count();
+        $publicExams = Exam::where('eIs_private', false)->count();
+        $privateExams = Exam::where('eIs_private', true)->count();
+
+        // Exams by type
+        $examsByType = Exam::selectRaw('eType, COUNT(*) as count')
+                          ->groupBy('eType')
+                          ->pluck('count', 'eType');
+
+        // Exams by skill
+        $examsBySkill = Exam::selectRaw('eSkill, COUNT(*) as count')
+                           ->groupBy('eSkill')
+                           ->pluck('count', 'eSkill');
+
+        // Exams by teacher (top 5)
+        $examsByTeacher = Exam::with('teacher')
+                             ->selectRaw('eTeacher_id, COUNT(*) as count')
+                             ->groupBy('eTeacher_id')
+                             ->orderByDesc('count')
+                             ->limit(5)
+                             ->get()
+                             ->map(function($item) {
+                                 return [
+                                     'teacher_name' => $item->teacher->uName ?? 'Unknown',
+                                     'exam_count' => $item->count
+                                 ];
+                             });
+
+        // Recent activity
+        $recentExams = Exam::where('eCreated_at', '>=', now()->subDays(7))->count();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'exams' => [
+                    'total' => $totalExams,
+                    'public' => $publicExams,
+                    'private' => $privateExams,
+                    'approval_rate' => $totalExams > 0 ? round(($publicExams / $totalExams) * 100, 2) : 0
+                ],
+                'by_type' => $examsByType,
+                'by_skill' => $examsBySkill,
+                'by_teacher' => $examsByTeacher,
+                'activity' => [
+                    'recent_exams' => $recentExams
+                ]
+            ]
+        ]);
+    }
 }

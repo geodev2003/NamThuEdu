@@ -25,12 +25,19 @@ class Post extends Model
         'pView',
         'pLike',
         'pStatus',
+        'pApproved_by',
+        'pApproved_at',
+        'pRejected_by',
+        'pRejected_at',
+        'pReject_reason',
     ];
 
     protected $casts = [
         'pCreated_at' => 'datetime',
         'pUpdated_at' => 'datetime',
         'pDeleted_at' => 'datetime',
+        'pApproved_at' => 'datetime',
+        'pRejected_at' => 'datetime',
     ];
 
     protected $dates = ['pDeleted_at'];
@@ -46,6 +53,16 @@ class Post extends Model
     public function category()
     {
         return $this->belongsTo(Category::class, 'pCategory', 'caId');
+    }
+
+    public function approvedBy()
+    {
+        return $this->belongsTo(User::class, 'pApproved_by', 'uId');
+    }
+
+    public function rejectedBy()
+    {
+        return $this->belongsTo(User::class, 'pRejected_by', 'uId');
     }
 
     /**

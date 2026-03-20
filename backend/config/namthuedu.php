@@ -13,9 +13,9 @@ return [
     */
 
     'app' => [
-        'name' => env('APP_NAME', 'Nam Thu Edu API'),
-        'timezone' => env('APP_TIMEZONE', 'Asia/Ho_Chi_Minh'),
-        'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
+        'name' => config('app.name', 'Nam Thu Edu API'),
+        'timezone' => config('app.timezone', 'Asia/Ho_Chi_Minh'),
+        'frontend_url' => config('app.url', 'http://localhost:3000'),
     ],
 
     /*
@@ -27,10 +27,10 @@ return [
     |
     */
     'features' => [
-        'registration_enabled' => env('FEATURE_REGISTRATION_ENABLED', true),
-        'otp_enabled' => env('FEATURE_OTP_ENABLED', true),
-        'ai_grading_enabled' => env('FEATURE_AI_GRADING_ENABLED', false),
-        'exam_templates_enabled' => env('FEATURE_EXAM_TEMPLATES_ENABLED', true),
+        'registration_enabled' => true,
+        'otp_enabled' => true,
+        'ai_grading_enabled' => false,
+        'exam_templates_enabled' => true,
     ],
 
     /*
@@ -57,21 +57,21 @@ return [
     |
     */
     'sms' => [
-        'provider' => app()->environment(['local', 'development']) ? 'mock' : env('SMS_PROVIDER', 'esms'),
+        'provider' => app()->environment(['local', 'development']) ? 'mock' : 'esms',
         'providers' => [
             'esms' => [
-                'api_key' => env('ESMS_API_KEY'),
-                'secret_key' => env('ESMS_SECRET_KEY'),
-                'brandname' => env('ESMS_BRANDNAME', 'NAMTHUEDU'),
+                'api_key' => null,
+                'secret_key' => null,
+                'brandname' => 'NAMTHUEDU',
                 'url' => 'https://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json/',
             ],
             'twilio' => [
-                'sid' => env('TWILIO_SID'),
-                'token' => env('TWILIO_TOKEN'),
-                'verify_sid' => env('TWILIO_VERIFY_SID'),
+                'sid' => null,
+                'token' => null,
+                'verify_sid' => null,
             ],
             'aws_sns' => [
-                'region' => env('AWS_SNS_REGION', 'ap-southeast-1'),
+                'region' => 'ap-southeast-1',
             ],
         ],
         'otp' => [
@@ -110,7 +110,7 @@ return [
                 ? ['https://staging.namthuedu.com']
                 : ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5173']
             ),
-        'jwt_secret' => env('JWT_SECRET'),
+        'jwt_secret' => null,
         'session_secure' => app()->environment(['staging', 'production']),
         'force_https' => app()->environment('production'),
     ],
@@ -170,11 +170,9 @@ return [
     |
     */
     'monitoring' => [
-        'sentry_dsn' => env('SENTRY_LARAVEL_DSN'),
-        'google_analytics_id' => env('GOOGLE_ANALYTICS_ID'),
+        'sentry_dsn' => null,
+        'google_analytics_id' => null,
     ],
-
-];
 
     /*
     |--------------------------------------------------------------------------
@@ -202,6 +200,7 @@ return [
         'default_driver' => app()->environment(['staging', 'production']) ? 'redis' : 'file',
         'default_ttl' => app()->environment('production') ? 3600 : (app()->environment('staging') ? 1800 : 300),
         'config_cache' => app()->environment(['staging', 'production']),
+        'redis_enabled' => app()->environment(['staging', 'production']),
     ],
 
     /*
@@ -235,3 +234,5 @@ return [
                 : 'dev@namthuedu.local'
             ),
     ],
+
+];
