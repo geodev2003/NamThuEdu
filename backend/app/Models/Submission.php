@@ -21,9 +21,9 @@ class Submission extends Model
         'sStart_time',
         'sSubmit_time',
         'sScore',
+        'sStatus' => 'draft',
         'sTeacher_feedback',
         'sGemini_feedback',
-        'sStatus',
     ];
 
     protected $casts = [

@@ -241,13 +241,24 @@ class StudentTestController extends Controller
                                        ->first();
 
         if ($existingSubmission) {
+            // Kiểm tra thời gian còn lại
+            $timeElapsed = now()->diffInMinutes($existingSubmission->sStart_time);
+            $timeRemaining = $assignment->exam->eDuration_minutes - $timeElapsed;
+
+            if ($timeRemaining <= 0) {
+                // Tự động nộp bài hết thời gian
+                return $this->autoSubmit($existingSubmission);
+            }
+
             return response()->json([
-                'status' => 'error',
-                'message' => 'Bạn đang có một bài làm chưa hoàn thành.',
+                'status' => 'info',
+                'message' => 'Bạn có bài thi đang làm dở. Bạn có thể tiếp tục làm bài.',
                 'data' => [
-                    'submissionId' => $existingSubmission->sId
+                    'submissionId' => $existingSubmission->sId,
+                    'timeRemaining' => $timeRemaining,
+                    'canResume' => true
                 ]
-            ], 400);
+            ], 200);
         }
 
         // Create new submission
@@ -575,6 +586,133 @@ class StudentTestController extends Controller
             'status' => 'success',
             'data' => $submission
         ]);
+    }
+
+    /**
+     * GET /api/student/tests/{id}/resume
+     * Khôi phục bài thi bị gián đoạn (cúp điện, mất mạng)
+     */
+    public function resume(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'student') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        // Tìm submission đang dở
+        $submission = Submission::with(['exam.questions.answers', 'answers'])
+                               ->where('user_id', $user->uId)
+                               ->where('assignment_id', $id)
+                               ->where('sStatus', 'in_progress')
+                               ->first();
+
+        if (!$submission) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy bài thi đang làm dở.'
+            ], 404);
+        }
+
+        // Kiểm tra thời gian còn lại
+        $timeElapsed = now()->diffInMinutes($submission->sStart_time);
+        $timeRemaining = $submission->exam->eDuration_minutes - $timeElapsed;
+
+        // Nếu hết thời gian, tự động nộp bài
+        if ($timeRemaining <= 0) {
+            return $this->autoSubmit($submission);
+        }
+
+        // Ẩn đáp án đúng
+        $exam = $submission->exam;
+        $exam->questions->each(function($question) {
+            $question->answers->each(function($answer) {
+                unset($answer->aIs_correct);
+            });
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Khôi phục bài thi thành công. Bạn có thể tiếp tục làm bài.',
+            'data' => [
+                'submissionId' => $submission->sId,
+                'sStart_time' => $submission->sStart_time,
+                'timeRemaining' => $timeRemaining,
+                'exam' => $exam,
+                'savedAnswers' => $submission->answers, // Câu trả lời đã lưu
+            ]
+        ]);
+    }
+
+    /**
+     * Auto-submit when time expires or interrupted
+     */
+    private function autoSubmit($submission)
+    {
+        DB::beginTransaction();
+        try {
+            // Tự động chấm điểm các câu đã trả lời
+            $totalScore = 0;
+            $maxScore = 0;
+
+            foreach ($submission->answers as $submissionAnswer) {
+                $question = Question::with('answers')->find($submissionAnswer->question_id);
+                $correctAnswer = $question->answers->where('aIs_correct', true)->first();
+
+                $maxScore += $question->qPoints;
+
+                if ($correctAnswer && $submissionAnswer->saAnswer_text === $correctAnswer->aContent) {
+                    $submissionAnswer->update([
+                        'saIs_correct' => true,
+                        'saPoints_awarded' => $question->qPoints,
+                    ]);
+                    $totalScore += $question->qPoints;
+                } else {
+                    $submissionAnswer->update([
+                        'saIs_correct' => false,
+                        'saPoints_awarded' => 0,
+                    ]);
+                }
+            }
+
+            // Tính điểm dựa trên câu đã trả lời
+            $answeredQuestions = $submission->answers->count();
+            $totalQuestions = $submission->exam->questions->count();
+            $scorePercentage = $maxScore > 0 ? round(($totalScore / $maxScore) * 100, 2) : 0;
+
+            // Cập nhật submission
+            $submission->update([
+                'sSubmit_time' => now(),
+                'sScore' => $scorePercentage,
+                'sStatus' => 'auto_submitted', // Đánh dấu tự động nộp
+                'sTeacher_feedback' => "Bài thi được tự động nộp do hết thời gian. Đã trả lời {$answeredQuestions}/{$totalQuestions} câu hỏi.",
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'warning',
+                'message' => 'Bài thi đã hết thời gian và được tự động nộp.',
+                'data' => [
+                    'submissionId' => $submission->sId,
+                    'sScore' => $scorePercentage,
+                    'answeredQuestions' => $answeredQuestions,
+                    'totalQuestions' => $totalQuestions,
+                    'autoSubmitted' => true,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Lỗi khi tự động nộp bài.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
