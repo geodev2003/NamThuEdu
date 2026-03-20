@@ -31,7 +31,7 @@ class TestController extends Controller
      *                 ),
      *                 @OA\Property(property="title", type="string", example="VSTEP Sample Test"),
      *                 @OA\Property(property="description", type="string", example="Sample test for VSTEP preparation"),
-     *                 @OA\Property(property="type", type="string", enum={"VSTEP", "TOEIC", "IELTS"}, example="VSTEP")
+     *                 @OA\Property(property="type", type="string", enum={"VSTEP", "IELTS"}, example="VSTEP")
      *             )
      *         )
      *     ),
@@ -60,7 +60,7 @@ class TestController extends Controller
                 'file' => 'required|file|mimes:xlsx,xls,csv|max:10240', // 10MB max
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
-                'type' => 'nullable|string|in:VSTEP,TOEIC,IELTS',
+                'type' => 'nullable|string|in:VSTEP,IELTS',
             ]);
 
             if ($validator->fails()) {

@@ -27,6 +27,7 @@ use App\Http\Controllers\TestController;
 
 /* ========= AUTH ========= */
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/refresh', [AuthController::class, 'refresh']);
 Route::post('/users/accept', [AuthController::class, 'accept']);
 Route::post('/users/reset-password', [AuthController::class, 'resetPassword']);
 

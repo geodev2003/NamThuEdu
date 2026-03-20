@@ -1221,6 +1221,220 @@
                 ]
             }
         },
+        "/teacher/exam-templates": {
+            "get": {
+                "tags": [
+                    "Exam Templates"
+                ],
+                "summary": "Get all exam templates",
+                "description": "Get list of all available exam templates",
+                "operationId": "64ca38cad96b06024f362e0d537437cf",
+                "parameters": [
+                    {
+                        "name": "category",
+                        "in": "query",
+                        "description": "Filter by category",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "cambridge_young",
+                                "cambridge_main",
+                                "international",
+                                "specialized"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "level",
+                        "in": "query",
+                        "description": "Filter by level",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pre_a1",
+                                "a1",
+                                "a2",
+                                "b1",
+                                "b2",
+                                "c1",
+                                "c2"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Templates retrieved successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/exam-templates/{category}": {
+            "get": {
+                "tags": [
+                    "Exam Templates"
+                ],
+                "summary": "Get templates by category",
+                "description": "Get exam templates filtered by category",
+                "operationId": "a75816e1a800c8f422825d03ad92c089",
+                "parameters": [
+                    {
+                        "name": "category",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Templates retrieved successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/exam-templates/{id}": {
+            "get": {
+                "tags": [
+                    "Exam Templates"
+                ],
+                "summary": "Get template details",
+                "description": "Get detailed information about a specific exam template",
+                "operationId": "c0704655d3a94993920286f68f7d2e1b",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Template details retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Template not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/exam-templates/{id}/sections": {
+            "get": {
+                "tags": [
+                    "Exam Templates"
+                ],
+                "summary": "Get template sections",
+                "description": "Get sections of a specific exam template",
+                "operationId": "3a30be41ff43a4c109044c53cb3cb5c4",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Template sections retrieved successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/teacher/exams/from-template/{templateId}": {
+            "post": {
+                "tags": [
+                    "Exam Templates"
+                ],
+                "summary": "Create exam from template",
+                "description": "Create a new exam based on a template",
+                "operationId": "e72535617104940cc9c95536ebdfca4d",
+                "parameters": [
+                    {
+                        "name": "templateId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "eTitle"
+                                ],
+                                "properties": {
+                                    "eTitle": {
+                                        "type": "string",
+                                        "example": "VSTEP Practice Test - Class A"
+                                    },
+                                    "eDescription": {
+                                        "type": "string",
+                                        "example": "Practice test based on VSTEP template"
+                                    },
+                                    "eIs_private": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "customize_duration": {
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "custom_duration_minutes": {
+                                        "type": "integer",
+                                        "example": 120
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Exam created from template successfully"
+                    },
+                    "404": {
+                        "description": "Template not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/teacher/submissions": {
             "get": {
                 "tags": [
@@ -1795,7 +2009,6 @@
                                         "type": "string",
                                         "enum": [
                                             "VSTEP",
-                                            "TOEIC",
                                             "IELTS"
                                         ],
                                         "example": "VSTEP"
@@ -2268,6 +2481,10 @@
         {
             "name": "Exams",
             "description": "Exams"
+        },
+        {
+            "name": "Exam Templates",
+            "description": "Exam Templates"
         },
         {
             "name": "Grading",

@@ -35,6 +35,8 @@ class User extends Authenticatable
         'uRole',
         'uDoB',
         'uStatus',
+        'refresh_token',
+        'refresh_token_expires_at',
     ];
 
     /**
@@ -55,6 +57,12 @@ class User extends Authenticatable
         'uDoB' => 'date',
         'uGender' => 'boolean',
         'uCreated_at' => 'datetime',
+        'refresh_token_expires_at' => 'datetime',
+    ];
+
+    protected $hidden = [
+        'uPassword',
+        'refresh_token',
     ];
 
     /**

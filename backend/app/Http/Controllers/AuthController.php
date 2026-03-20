@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\OtpLog;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -87,22 +88,32 @@ class AuthController extends Controller
         // Tính tuổi
         $age = $user->uDoB ? now()->diffInYears($user->uDoB) : null;
 
-        // Tạo token
+        // Tạo access token (sống 24h theo config sanctum.php)
         $token = $user->createToken('auth_token')->plainTextToken;
 
         // Clear rate limit on successful login
         RateLimiter::clear($key);
 
+        // Tạo refresh token (sống 30 ngày)
+        $refreshToken = Str::random(64);
+        $user->update([
+            'refresh_token'            => hash('sha256', $refreshToken),
+            'refresh_token_expires_at' => now()->addDays(30),
+        ]);
+
         return response()->json([
             'status' => 'success',
             'data' => [
-                'access_token' => $token,
+                'access_token'  => $token,
+                'token_type'    => 'Bearer',
+                'expires_in'    => 86400,
+                'refresh_token' => $refreshToken,
                 'user' => [
-                    'id' => $user->uId,
-                    'name' => $user->uName,
+                    'id'    => $user->uId,
+                    'name'  => $user->uName,
                     'phone' => $user->uPhone,
-                    'age' => $age,
-                    'role' => $user->uRole
+                    'age'   => $age,
+                    'role'  => $user->uRole
                 ]
             ]
         ]);
@@ -306,10 +317,17 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
+        // Thu hồi access token
         $request->user()->currentAccessToken()->delete();
 
+        // Xóa luôn refresh token
+        $request->user()->update([
+            'refresh_token'            => null,
+            'refresh_token_expires_at' => null,
+        ]);
+
         return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => 'Đăng xuất thành công'
         ]);
     }

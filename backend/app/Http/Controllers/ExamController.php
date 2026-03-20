@@ -92,7 +92,7 @@ class ExamController extends Controller
         $validator = Validator::make($request->all(), [
             'eTitle' => 'required|string|max:255',
             'eDescription' => 'nullable|string',
-            'eType' => 'required|in:VSTEP,IELTS,TOEIC,GENERAL',
+            'eType' => 'required|in:VSTEP,IELTS,GENERAL',
             'eSkill' => 'required|in:listening,reading,writing,speaking',
             'eDuration_minutes' => 'required|integer|min:1',
             'eIs_private' => 'nullable|boolean',
@@ -229,7 +229,7 @@ class ExamController extends Controller
         $validator = Validator::make($request->all(), [
             'eTitle' => 'sometimes|required|string|max:255',
             'eDescription' => 'nullable|string',
-            'eType' => 'sometimes|required|in:VSTEP,IELTS,TOEIC,GENERAL',
+            'eType' => 'sometimes|required|in:VSTEP,IELTS,GENERAL',
             'eSkill' => 'sometimes|required|in:listening,reading,writing,speaking',
             'eDuration_minutes' => 'sometimes|required|integer|min:1',
             'eIs_private' => 'nullable|boolean',

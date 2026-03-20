@@ -16,7 +16,7 @@ return new class extends Migration
     {
         // Update the enum to include Cambridge test types
         DB::statement("ALTER TABLE exams MODIFY COLUMN eType ENUM(
-            'VSTEP', 'IELTS', 'TOEIC', 'GENERAL',
+            'VSTEP', 'IELTS', 'GENERAL',
             'STARTERS', 'MOVERS', 'FLYERS', 
             'KET', 'PET', 'FCE', 'CAE', 'CPE',
             'TOEFL_IBT', 'PTE_ACADEMIC', 'APTIS'
@@ -32,7 +32,7 @@ return new class extends Migration
     {
         // Revert back to original enum
         DB::statement("ALTER TABLE exams MODIFY COLUMN eType ENUM(
-            'VSTEP', 'IELTS', 'TOEIC', 'GENERAL'
+            'VSTEP', 'IELTS', 'GENERAL'
         ) NOT NULL");
     }
 };

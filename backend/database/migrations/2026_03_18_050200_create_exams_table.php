@@ -17,7 +17,7 @@ class CreateExamsTable extends Migration
             $table->id('eId');
             $table->string('eTitle');
             $table->text('eDescription')->nullable();
-            $table->enum('eType', ['VSTEP', 'IELTS', 'TOEIC', 'GENERAL']);
+            $table->enum('eType', ['VSTEP', 'IELTS', 'GENERAL']);
             $table->enum('eSkill', ['listening', 'reading', 'writing', 'speaking']);
             $table->unsignedBigInteger('eTeacher_id');
             $table->integer('eDuration_minutes')->default(60);

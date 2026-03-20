@@ -15,7 +15,6 @@ class CategorySeeder extends Seeder
     public function run()
     {
         $categories = [
-            ['caName' => 'TOEIC'],
             ['caName' => 'VSTEP'],
             ['caName' => 'IELTS'],
         ];
