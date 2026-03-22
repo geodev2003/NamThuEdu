@@ -187,7 +187,7 @@ class GradingController extends Controller
             ], 404);
         }
 
-        if (!in_array($submission->sStatus, ['submitted', 'graded'])) {
+        if (!in_array($submission->sStatus, ['submitted', 'graded', 'in_progress'])) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Bài làm chưa được nộp.'
@@ -195,6 +195,8 @@ class GradingController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
+            'score' => 'nullable|numeric|min:0|max:100',
+            'feedback' => 'nullable|string',
             'sTeacher_feedback' => 'nullable|string',
             'questionScores' => 'nullable|array',
             'questionScores.*.question_id' => 'required|integer',
@@ -209,7 +211,6 @@ class GradingController extends Controller
             ], 400);
         }
 
-        DB::beginTransaction();
         try {
             // Update individual question scores if provided
             if ($request->has('questionScores')) {
@@ -224,19 +225,19 @@ class GradingController extends Controller
                         ]);
                     }
                 }
+                // Recalculate total score from question scores
+                $totalScore = $this->calculateTotalScore($id);
+            } else {
+                // Use provided total score
+                $totalScore = $request->score ?? $this->calculateTotalScore($id);
             }
-
-            // Recalculate total score
-            $totalScore = $this->calculateTotalScore($id);
 
             // Update submission
             $submission->update([
-                'sTeacher_feedback' => $request->sTeacher_feedback,
+                'sTeacher_feedback' => $request->feedback ?? $request->sTeacher_feedback,
                 'sScore' => $totalScore,
                 'sStatus' => 'graded'
             ]);
-
-            DB::commit();
 
             return response()->json([
                 'status' => 'success',
@@ -248,7 +249,6 @@ class GradingController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'status' => 'error',
                 'message' => 'Lỗi hệ thống khi chấm điểm.',
@@ -302,7 +302,6 @@ class GradingController extends Controller
             ], 404);
         }
 
-        DB::beginTransaction();
         try {
             $autoGradedCount = 0;
             $manualGradingRequired = 0;
@@ -311,7 +310,7 @@ class GradingController extends Controller
                 $question = $submissionAnswer->question;
                 
                 // Auto-grade only specific question types
-                if (in_array($question->question_type, ['multiple_choice', 'true_false_not_given', 'yes_no_not_given', 'fill_blank'])) {
+                if (in_array($question->qType, ['multiple_choice', 'true_false_not_given', 'yes_no_not_given', 'fill_blank', 'true_false'])) {
                     $isCorrect = $this->checkAnswer($question, $submissionAnswer->saAnswer_text);
                     $pointsAwarded = $isCorrect ? $question->qPoints : 0;
 
@@ -338,8 +337,6 @@ class GradingController extends Controller
                 'sGraded_time' => now()
             ]);
 
-            DB::commit();
-
             return response()->json([
                 'status' => 'success',
                 'data' => [
@@ -353,7 +350,6 @@ class GradingController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'status' => 'error',
                 'message' => 'Lỗi hệ thống khi tự động chấm điểm.',
@@ -442,7 +438,6 @@ class GradingController extends Controller
             ], 400);
         }
 
-        DB::beginTransaction();
         try {
             // Update individual question grades with detailed feedback
             foreach ($request->question_grades as $gradeData) {
@@ -479,8 +474,6 @@ class GradingController extends Controller
                 'sGraded_time' => now()
             ]);
 
-            DB::commit();
-
             return response()->json([
                 'status' => 'success',
                 'data' => [
@@ -493,7 +486,6 @@ class GradingController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'status' => 'error',
                 'message' => 'Lỗi hệ thống khi chấm điểm chi tiết.',

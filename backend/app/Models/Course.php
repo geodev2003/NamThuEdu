@@ -25,6 +25,7 @@ class Course extends Model
         'cStatus',
         'cTeacher',
         'cDescription',
+        'cDeleteAt',
     ];
 
     protected $casts = [

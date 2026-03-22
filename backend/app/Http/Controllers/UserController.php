@@ -1658,12 +1658,12 @@ class UserController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => [
-                'overview' => [
-                    'total_users' => $totalUsers,
-                    'active_users' => $activeUsers,
-                    'inactive_users' => $inactiveUsers,
-                    'deleted_users' => $deletedUsers,
-                ],
+                'total_users' => $totalUsers,
+                'active_users' => $activeUsers,
+                'inactive_users' => $inactiveUsers,
+                'deleted_users' => $deletedUsers,
+                'total_courses' => 0, // Will be implemented later
+                'total_exams' => 0, // Will be implemented later
                 'by_role' => $usersByRole,
                 'activity' => [
                     'recent_registrations' => $recentRegistrations,
@@ -1676,4 +1676,86 @@ class UserController extends Controller
             ]
         ]);
     }
+    /**
+     * Get user activity data
+     */
+    public function userActivity(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        try {
+            // Get user activity statistics
+            $totalUsers = User::count();
+            $activeUsers = User::where('uStatus', 'active')->count();
+            $recentLogins = User::where('uLast_login', '>=', now()->subDays(7))->count();
+
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'total_users' => $totalUsers,
+                    'active_users' => $activeUsers,
+                    'recent_logins' => $recentLogins,
+                    'inactive_users' => $totalUsers - $activeUsers,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Lỗi hệ thống khi lấy thống kê hoạt động người dùng.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get user activity report
+     */
+    public function userActivityReport(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        try {
+            $period = $request->get('period', '30'); // days
+
+            $report = [
+                'period_days' => (int)$period,
+                'total_users' => User::count(),
+                'new_users' => User::where('uCreated_at', '>=', now()->subDays($period))->count(),
+                'active_users' => User::where('uLast_login', '>=', now()->subDays($period))->count(),
+                'by_role' => [
+                    'students' => User::where('uRole', 'student')->count(),
+                    'teachers' => User::where('uRole', 'teacher')->count(),
+                    'admins' => User::where('uRole', 'admin')->count(),
+                ]
+            ];
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $report
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Lỗi hệ thống khi tạo báo cáo hoạt động.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
 }

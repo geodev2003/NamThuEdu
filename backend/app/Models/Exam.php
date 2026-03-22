@@ -55,6 +55,12 @@ class Exam extends Model
         return $this->belongsTo(ExamTemplate::class, 'template_id');
     }
 
+    // Alias for examTemplate relationship
+    public function template()
+    {
+        return $this->belongsTo(ExamTemplate::class, 'template_id');
+    }
+
     public function examType()
     {
         return $this->belongsTo(ExamType::class, 'exam_type_id', 'etId');
@@ -62,8 +68,7 @@ class Exam extends Model
 
     public function teacher()
     {
-        return $this->belongsTo(User::class, 'teacher_id', 'uId')
-                    ->orWhere('eTeacher_id', 'uId'); // Backward compatibility
+        return $this->belongsTo(User::class, 'eTeacher_id', 'uId');
     }
 
     public function questions()
