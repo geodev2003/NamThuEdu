@@ -22,9 +22,13 @@ class Submission extends Model
         'sSubmit_time',
         'sGraded_time',
         'sScore',
-        'sStatus' => 'draft',
+        'sStatus',
         'sTeacher_feedback',
         'sGemini_feedback',
+    ];
+
+    protected $attributes = [
+        'sStatus' => 'draft',
     ];
 
     protected $casts = [
