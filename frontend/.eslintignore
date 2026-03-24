@@ -1,0 +1,10 @@
+dist
+node_modules
+*.config.js
+*.config.ts
+vite.config.ts
+postcss.config.mjs
+coverage
+.vscode
+.idea
+*.log
