@@ -1,0 +1,399 @@
+{
+  "appName": "NamThu Education",
+  "nav": {
+    "dashboard": "Dashboard",
+    "students": "Students",
+    "classes": "Classes",
+    "courses": "Courses",
+    "examBank": "Exam Bank",
+    "assignments": "Assignments",
+    "practice": "Practice",
+    "grading": "Grading",
+    "liveMonitor": "Live Monitor",
+    "blog": "Blog & Posts",
+    "reports": "Reports",
+    "settings": "Settings",
+    "logout": "Logout",
+    "manageStudents": "Manage Students",
+    "addStudent": "Add Student",
+    "importStudents": "Import Students",
+    "classList": "Class List",
+    "createClass": "Create New",
+    "transferClass": "Transfer",
+    "classStats": "Class Statistics",
+    "courseList": "Course List",
+    "createCourse": "Create Course",
+    "manageStudents": "Manage Students",
+    "courseStats": "Statistics",
+    "allExams": "All Exams",
+    "createExam": "Create New",
+    "examTemplates": "Templates",
+    "myExams": "My Exams",
+    "assignmentList": "Assignment List",
+    "assignNew": "Assign New",
+    "bulkAssign": "Bulk Assign",
+    "assignmentStats": "Statistics",
+    "practiceList": "Practice List",
+    "byTopic": "By Topic",
+    "byTemplate": "By Template",
+    "random": "Random",
+    "pendingGrading": "Pending Grading",
+    "graded": "Graded",
+    "autoGrade": "Auto Grade",
+    "classReport": "Class Report",
+    "gradingStats": "Grading Statistics",
+    "activeSessions": "Active Sessions",
+    "connectionHistory": "Connection History",
+    "realtimeStats": "Realtime Stats",
+    "allPosts": "All Posts",
+    "createPost": "Create New Post",
+    "categories": "Categories",
+    "contentStats": "Content Statistics",
+    "blogList": "Blog List",
+    "createBlog": "Create New",
+    "reportOverview": "Overview",
+    "studentProgress": "Student Progress",
+    "analysis": "Analysis",
+    "exportReport": "Export Report",
+    "exams": "Exams",
+    "cambridgeTemplates": "Cambridge Templates",
+    "blogPosts": "Blog Posts"
+  },
+  "badge": {
+    "new": "NEW",
+    "teacher": "Teacher"
+  },
+  "header": {
+    "new": "New Test",
+    "notifications": "Notifications"
+  },
+  "breadcrumb": {
+    "dashboard": "Dashboard",
+    "home": "Home",
+    "courses": "Courses",
+    "classes": "Classes",
+    "students": "Students",
+    "exams": "Exams",
+    "cambridgeTemplates": "Cambridge Templates",
+    "assignments": "Assignments",
+    "grading": "Grading",
+    "blogPosts": "Blog Posts",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "stats": {
+      "courses": "Courses",
+      "classes": "Classes",
+      "students": "Students",
+      "exams": "Exams",
+      "thisMonth": "this month"
+    },
+    "charts": {
+      "studentPerformance": "Student Performance Overview",
+      "testCompletionRate": "Completion Rate",
+      "completed": "Completed",
+      "pending": "Pending",
+      "averageScore": "Average Score",
+      "thisMonth": "This Month",
+      "average": "Average",
+      "listening": "Listening",
+      "reading": "Reading",
+      "writing": "Writing",
+      "week": "Week"
+    },
+    "recentActivity": {
+      "title": "Recent Activity",
+      "viewAll": "View All",
+      "noMore": "No more activities",
+      "created": "Created",
+      "assigned": "Assigned test to",
+      "graded": "Graded",
+      "submissions": "submissions",
+      "hoursAgo": "hours ago",
+      "yesterday": "Yesterday"
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "createExam": "Create New Exam",
+      "createExamDesc": "Build a custom test",
+      "cambridgeTemplate": "Use Cambridge Template",
+      "cambridgeTemplateDesc": "Quick professional tests",
+      "assignTest": "Assign Test",
+      "assignTestDesc": "Send to students",
+      "viewReports": "View Reports",
+      "viewReportsDesc": "Check performance"
+    }
+  },
+  "cambridgeTemplates": {
+    "title": "Cambridge Exam Templates",
+    "subtitle": "Create professional Cambridge exams in minutes",
+    "categories": {
+      "all": "All",
+      "youngLearners": "Young Learners",
+      "mainSuite": "Main Suite",
+      "international": "International"
+    },
+    "search": "Search templates...",
+    "level": "Level",
+    "age": "Age",
+    "duration": "Duration",
+    "questions": "questions",
+    "minutes": "minutes",
+    "sections": "Sections",
+    "viewDetails": "View Details",
+    "useTemplate": "Use Template",
+    "templates": {
+      "starters": {
+        "name": "STARTERS",
+        "fullName": "Cambridge English Starters",
+        "level": "Pre A1 Level",
+        "age": "Ages 6-8",
+        "description": "Cambridge English Starters is the first of three Cambridge English Qualifications designed for young learners. It introduces children to everyday written and spoken English in a fun and motivating way.",
+        "sections": {
+          "listening": "Listening",
+          "readingWriting": "Reading & Writing",
+          "speaking": "Speaking"
+        }
+      },
+      "movers": {
+        "name": "MOVERS",
+        "fullName": "Cambridge English Movers",
+        "level": "A1 Level",
+        "age": "Ages 8-11",
+        "description": "Cambridge English Movers is the second of three Cambridge English Qualifications designed for young learners. It motivates children to learn through fun."
+      },
+      "flyers": {
+        "name": "FLYERS",
+        "fullName": "Cambridge English Flyers",
+        "level": "A2 Level",
+        "age": "Ages 9-12",
+        "description": "Cambridge English Flyers is the third of three Cambridge English Qualifications designed for young learners. It shows children can deal with everyday written and spoken English at a basic level."
+      },
+      "ket": {
+        "name": "KET",
+        "fullName": "Cambridge English Key",
+        "level": "A2 Level",
+        "age": "Adult",
+        "description": "Cambridge English Key is a basic-level qualification. It shows you can use English to communicate in simple situations."
+      },
+      "pet": {
+        "name": "PET",
+        "fullName": "Cambridge English Preliminary",
+        "level": "B1 Level",
+        "age": "Adult",
+        "description": "Cambridge English Preliminary is an intermediate-level qualification. It shows you can use English in everyday situations."
+      },
+      "fce": {
+        "name": "FCE",
+        "fullName": "Cambridge English First",
+        "level": "B2 Level",
+        "age": "Adult",
+        "description": "Cambridge English First is an upper intermediate level qualification. It proves you can use everyday written and spoken English for work or study."
+      },
+      "ielts": {
+        "name": "IELTS",
+        "fullName": "International English Language Testing System",
+        "level": "B1-C2 Level",
+        "age": "Adult",
+        "description": "IELTS is the world's most popular English language test for higher education and global migration. It assesses all of your English skills — reading, writing, listening and speaking."
+      },
+      "vstep": {
+        "name": "VSTEP",
+        "fullName": "Vietnamese Standardised Test of English Proficiency",
+        "level": "B1-C1 Level",
+        "age": "Adult",
+        "description": "VSTEP is Vietnam's standardized English proficiency test aligned with the Common European Framework of Reference for Languages (CEFR)."
+      }
+    },
+    "modal": {
+      "description": "Description",
+      "testStructure": "Test Structure",
+      "createExam": "Create Exam from Template",
+      "cancel": "Cancel"
+    },
+    "createForm": {
+      "title": "Create Exam from Cambridge Template",
+      "template": "Template",
+      "examTitle": "Exam Title",
+      "examTitleRequired": "Exam Title *",
+      "description": "Description",
+      "durationType": {
+        "label": "Duration",
+        "useTemplate": "Use template duration",
+        "custom": "Custom duration"
+      },
+      "privacy": {
+        "label": "Privacy",
+        "private": "Private (Only assigned students)",
+        "public": "Public (Available to all)"
+      },
+      "autoGenerate": {
+        "label": "Auto-generate",
+        "generate": "Generate sample questions",
+        "empty": "Create empty exam structure"
+      },
+      "submit": "Create Exam"
+    }
+  },
+  "common": {
+    "underConstruction": "This page is under construction.",
+    "newCourse": "New Course",
+    "newClass": "New Class",
+    "newStudent": "New Student",
+    "newExam": "New Exam",
+    "newAssignment": "New Assignment",
+    "newPost": "New Post"
+  },
+  "courses": {
+    "filters": {
+      "all": "All",
+      "ielts": "IELTS",
+      "toeic": "TOEIC",
+      "cambridge": "Cambridge",
+      "vstep": "VSTEP",
+      "business": "Business English"
+    },
+    "search": "Search courses by name, category...",
+    "card": {
+      "students": "students",
+      "progress": "Progress",
+      "viewDetails": "View Details"
+    },
+    "status": {
+      "active": "Active",
+      "completed": "Completed",
+      "upcoming": "Upcoming"
+    },
+    "dropdown": {
+      "viewDetails": "View Details",
+      "editCourse": "Edit Course",
+      "duplicate": "Duplicate",
+      "manageStudents": "Manage Students",
+      "viewStatistics": "View Statistics",
+      "delete": "Delete"
+    },
+    "modal": {
+      "createTitle": "Create New Course",
+      "editTitle": "Edit Course",
+      "deleteTitle": "Delete Course",
+      "deleteMessage": "Are you sure you want to delete course \"{name}\"? This action cannot be undone.",
+      "cancel": "Cancel",
+      "save": "Save Course",
+      "delete": "Delete Course",
+      "basicInfo": "Basic Information",
+      "schedule": "Schedule",
+      "courseName": "Course Name",
+      "courseNameRequired": "Course Name *",
+      "category": "Category",
+      "categoryRequired": "Category *",
+      "description": "Description",
+      "descriptionPlaceholder": "IELTS 6.5 course for intermediate students...",
+      "startDate": "Start Date",
+      "startDateRequired": "Start Date *",
+      "endDate": "End Date",
+      "endDateRequired": "End Date *",
+      "scheduleRequired": "Schedule *",
+      "time": "Time",
+      "timeRequired": "Time *",
+      "maxStudents": "Maximum Students",
+      "maxStudentsPlaceholder": "30",
+      "status": "Status",
+      "statusActive": "Active",
+      "statusUpcoming": "Upcoming",
+      "statusCompleted": "Completed",
+      "weekDays": {
+        "monday": "Monday",
+        "tuesday": "Tuesday",
+        "wednesday": "Wednesday",
+        "thursday": "Thursday",
+        "friday": "Friday",
+        "saturday": "Saturday",
+        "sunday": "Sunday"
+      }
+    },
+    "empty": {
+      "title": "No courses yet",
+      "description": "Create your first course to start managing classes and students",
+      "action": "Create New Course"
+    }
+  },
+  "classes": {
+    "title": "Classes",
+    "subtitle": "Manage your teaching classes",
+    "filters": {
+      "all": "All",
+      "active": "Active",
+      "completed": "Completed",
+      "upcoming": "Upcoming"
+    },
+    "search": "Search classes by name, course...",
+    "card": {
+      "course": "Course",
+      "students": "students",
+      "schedule": "Schedule",
+      "time": "Time",
+      "progress": "Progress",
+      "viewDetails": "View Details"
+    },
+    "status": {
+      "active": "Active",
+      "completed": "Completed",
+      "upcoming": "Upcoming"
+    },
+    "dropdown": {
+      "viewDetails": "View Details",
+      "editClass": "Edit Class",
+      "duplicate": "Duplicate",
+      "manageStudents": "Manage Students",
+      "viewAttendance": "View Attendance",
+      "delete": "Delete"
+    },
+    "modal": {
+      "createTitle": "Create New Class",
+      "editTitle": "Edit Class",
+      "deleteTitle": "Delete Class",
+      "deleteMessage": "Are you sure you want to delete class \"{name}\"? This action cannot be undone.",
+      "cancel": "Cancel",
+      "save": "Save Class",
+      "delete": "Delete Class",
+      "basicInfo": "Basic Information",
+      "schedule": "Schedule",
+      "className": "Class Name",
+      "classNameRequired": "Class Name *",
+      "course": "Course",
+      "courseRequired": "Course *",
+      "selectCourse": "Select a course",
+      "description": "Description",
+      "descriptionPlaceholder": "Morning class for intermediate students...",
+      "startDate": "Start Date",
+      "startDateRequired": "Start Date *",
+      "endDate": "End Date",
+      "endDateRequired": "End Date *",
+      "scheduleRequired": "Schedule *",
+      "time": "Time",
+      "timeRequired": "Time *",
+      "maxStudents": "Maximum Students",
+      "maxStudentsPlaceholder": "30",
+      "room": "Room/Location",
+      "roomPlaceholder": "Room 101",
+      "status": "Status",
+      "statusActive": "Active",
+      "statusUpcoming": "Upcoming",
+      "statusCompleted": "Completed",
+      "weekDays": {
+        "monday": "Monday",
+        "tuesday": "Tuesday",
+        "wednesday": "Wednesday",
+        "thursday": "Thursday",
+        "friday": "Friday",
+        "saturday": "Saturday",
+        "sunday": "Sunday"
+      }
+    },
+    "empty": {
+      "title": "No classes yet",
+      "description": "Create your first class to start teaching",
+      "action": "Create New Class"
+    }
+  }
+}

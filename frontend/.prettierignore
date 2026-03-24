@@ -1,0 +1,10 @@
+dist
+node_modules
+coverage
+*.config.js
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+.vscode
+.idea
+*.log

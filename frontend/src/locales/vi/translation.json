@@ -1,0 +1,398 @@
+{
+  "appName": "NamThu Education",
+  "nav": {
+    "dashboard": "Bảng điều khiển",
+    "students": "Học viên",
+    "classes": "Lớp học",
+    "courses": "Khóa học",
+    "examBank": "Ngân hàng đề",
+    "assignments": "Giao bài thi",
+    "practice": "Luyện tập",
+    "grading": "Chấm bài",
+    "liveMonitor": "Giám sát trực tiếp",
+    "blog": "Blog & Bài viết",
+    "reports": "Báo cáo",
+    "settings": "Cài đặt",
+    "logout": "Đăng xuất",
+    "manageStudents": "Quản lý học sinh",
+    "addStudent": "Thêm học sinh",
+    "importStudents": "Import học sinh",
+    "classList": "Danh sách lớp",
+    "createClass": "Tạo lớp mới",
+    "transferClass": "Chuyển lớp",
+    "classStats": "Thống kê lớp",
+    "courseList": "Danh sách khóa học",
+    "createCourse": "Tạo khóa học",
+    "manageStudents": "Quản lý học viên",
+    "courseStats": "Thống kê",
+    "allExams": "Tất cả đề thi",
+    "createExam": "Tạo đề mới",
+    "examTemplates": "Mẫu đề thi",
+    "myExams": "Đề thi của tôi",
+    "assignmentList": "Danh sách bài giao",
+    "assignNew": "Giao bài mới",
+    "bulkAssign": "Giao hàng loạt",
+    "assignmentStats": "Thống kê",
+    "practiceList": "Danh sách bài luyện",
+    "byTopic": "Theo chủ đề",
+    "byTemplate": "Theo mẫu",
+    "random": "Ngẫu nhiên",
+    "pendingGrading": "Bài chờ chấm",
+    "graded": "Đã chấm",
+    "autoGrade": "Chấm tự động",
+    "classReport": "Báo cáo lớp",
+    "gradingStats": "Thống kê chấm bài",
+    "activeSessions": "Phiên thi đang diễn ra",
+    "connectionHistory": "Lịch sử kết nối",
+    "realtimeStats": "Thống kê realtime",
+    "allPosts": "Tất cả bài viết",
+    "createPost": "Tạo bài viết mới",
+    "categories": "Danh mục",
+    "contentStats": "Thống kê nội dung",
+    "blogList": "Danh sách bài viết",
+    "reportOverview": "Tổng quan",
+    "studentProgress": "Tiến độ học sinh",
+    "analysis": "Phân tích kết quả",
+    "exportReport": "Xuất báo cáo",
+    "exams": "Bài kiểm tra",
+    "cambridgeTemplates": "Mẫu đề Cambridge",
+    "blogPosts": "Bài viết Blog"
+  },
+  "badge": {
+    "new": "MỚI",
+    "teacher": "Giáo viên"
+  },
+  "header": {
+    "new": "Tạo đề thi mới",
+    "notifications": "Thông báo"
+  },
+  "breadcrumb": {
+    "dashboard": "Bảng điều khiển",
+    "home": "Trang chủ",
+    "courses": "Khóa học",
+    "classes": "Lớp học",
+    "students": "Học viên",
+    "exams": "Bài kiểm tra",
+    "cambridgeTemplates": "Mẫu đề Cambridge",
+    "assignments": "Bài tập về nhà",
+    "grading": "Chấm điểm",
+    "blogPosts": "Bài viết Blog",
+    "settings": "Cài đặt"
+  },
+  "dashboard": {
+    "stats": {
+      "courses": "Khóa học",
+      "classes": "Lớp học",
+      "students": "Học viên",
+      "exams": "Bài kiểm tra",
+      "thisMonth": "trong tháng này"
+    },
+    "charts": {
+      "studentPerformance": "Tổng quan thành tích học viên",
+      "testCompletionRate": "Tỷ lệ hoàn thành",
+      "completed": "Đã hoàn thành",
+      "pending": "Đang chờ",
+      "averageScore": "Điểm trung bình",
+      "thisMonth": "Tháng này",
+      "average": "Trung bình",
+      "listening": "Nghe",
+      "reading": "Đọc",
+      "writing": "Viết",
+      "week": "Tuần"
+    },
+    "recentActivity": {
+      "title": "Hoạt động gần đây",
+      "viewAll": "Xem tất cả",
+      "noMore": "Không còn hoạt động nào",
+      "created": "Đã tạo đề thi",
+      "assigned": "Đã giao bài kiểm tra cho lớp",
+      "graded": "Đã chấm",
+      "submissions": "bài nộp",
+      "hoursAgo": "giờ trước",
+      "yesterday": "Hôm qua"
+    },
+    "quickActions": {
+      "title": "Thao tác nhanh",
+      "createExam": "Tạo đề thi mới",
+      "createExamDesc": "Xây dựng đề thi tùy chỉnh",
+      "cambridgeTemplate": "Dùng mẫu Cambridge",
+      "cambridgeTemplateDesc": "Tạo đề thi chuyên nghiệp nhanh chóng",
+      "assignTest": "Giao bài kiểm tra",
+      "assignTestDesc": "Gửi bài cho học viên",
+      "viewReports": "Xem báo cáo",
+      "viewReportsDesc": "Kiểm tra kết quả học tập"
+    }
+  },
+  "cambridgeTemplates": {
+    "title": "Thư viện mẫu đề Cambridge",
+    "subtitle": "Tạo đề thi Cambridge chuyên nghiệp chỉ trong vài phút",
+    "categories": {
+      "all": "Tất cả",
+      "youngLearners": "Trẻ em",
+      "mainSuite": "Người lớn cơ bản",
+      "international": "Chứng chỉ quốc tế"
+    },
+    "search": "Tìm kiếm mẫu đề...",
+    "level": "Trình độ",
+    "age": "Độ tuổi",
+    "duration": "Thời gian",
+    "questions": "câu hỏi",
+    "minutes": "phút",
+    "sections": "Các kỹ năng",
+    "viewDetails": "Xem chi tiết",
+    "useTemplate": "Sử dụng mẫu đề",
+    "templates": {
+      "starters": {
+        "name": "STARTERS",
+        "fullName": "Cambridge English Starters",
+        "level": "Trình độ Pre A1",
+        "age": "6-8 tuổi",
+        "description": "Cambridge English Starters là kỳ thi đầu tiên trong bộ ba chứng chỉ Cambridge English dành cho trẻ em. Giúp các em làm quen với tiếng Anh viết và nói hàng ngày một cách thú vị và có động lực.",
+        "sections": {
+          "listening": "Nghe",
+          "readingWriting": "Đọc & Viết",
+          "speaking": "Nói"
+        }
+      },
+      "movers": {
+        "name": "MOVERS",
+        "fullName": "Cambridge English Movers",
+        "level": "Trình độ A1",
+        "age": "8-11 tuổi",
+        "description": "Cambridge English Movers là kỳ thi thứ hai trong bộ ba chứng chỉ Cambridge English dành cho trẻ em. Tạo động lực cho các em học tập thông qua các hoạt động thú vị."
+      },
+      "flyers": {
+        "name": "FLYERS",
+        "fullName": "Cambridge English Flyers",
+        "level": "Trình độ A2",
+        "age": "9-12 tuổi",
+        "description": "Cambridge English Flyers là kỳ thi thứ ba trong bộ ba chứng chỉ Cambridge English dành cho trẻ em. Chứng minh các em có thể sử dụng tiếng Anh viết và nói hàng ngày ở mức độ cơ bản."
+      },
+      "ket": {
+        "name": "KET",
+        "fullName": "Cambridge English Key",
+        "level": "Trình độ A2",
+        "age": "Người lớn",
+        "description": "Cambridge English Key là chứng chỉ trình độ cơ bản. Chứng minh bạn có thể sử dụng tiếng Anh để giao tiếp trong các tình huống đơn giản."
+      },
+      "pet": {
+        "name": "PET",
+        "fullName": "Cambridge English Preliminary",
+        "level": "Trình độ B1",
+        "age": "Người lớn",
+        "description": "Cambridge English Preliminary là chứng chỉ trình độ trung cấp. Chứng minh bạn có thể sử dụng tiếng Anh trong các tình huống thường ngày."
+      },
+      "fce": {
+        "name": "FCE",
+        "fullName": "Cambridge English First",
+        "level": "Trình độ B2",
+        "age": "Người lớn",
+        "description": "Cambridge English First là chứng chỉ trình độ trung cấp cao. Chứng minh bạn có thể sử dụng tiếng Anh viết và nói hàng ngày cho công việc hoặc học tập."
+      },
+      "ielts": {
+        "name": "IELTS",
+        "fullName": "Hệ thống đánh giá Tiếng Anh Quốc tế",
+        "level": "Trình độ B1-C2",
+        "age": "Người lớn",
+        "description": "IELTS là bài kiểm tra tiếng Anh phổ biến nhất thế giới cho giáo dục đại học và định cư quốc tế. Đánh giá toàn diện 4 kỹ năng: Đọc, Viết, Nghe và Nói."
+      },
+      "vstep": {
+        "name": "VSTEP",
+        "fullName": "Kiểm tra Năng lực Tiếng Anh Chuẩn hóa Việt Nam",
+        "level": "Trình độ B1-C1",
+        "age": "Người lớn",
+        "description": "VSTEP là bài kiểm tra năng lực tiếng Anh chuẩn hóa của Việt Nam, được xây dựng theo Khung Tham chiếu Châu Âu chung cho Ngôn ngữ (CEFR)."
+      }
+    },
+    "modal": {
+      "description": "Mô tả",
+      "testStructure": "Cấu trúc đề thi",
+      "createExam": "Tạo đề thi từ mẫu",
+      "cancel": "Hủy bỏ"
+    },
+    "createForm": {
+      "title": "Tạo đề thi từ mẫu Cambridge",
+      "template": "Mẫu đề",
+      "examTitle": "Tên đề thi",
+      "examTitleRequired": "Tên đề thi *",
+      "description": "Mô tả",
+      "durationType": {
+        "label": "Thời gian làm bài",
+        "useTemplate": "Sử dụng thời gian mẫu",
+        "custom": "Tùy chỉnh thời gian"
+      },
+      "privacy": {
+        "label": "Quyền truy cập",
+        "private": "Riêng tư (Chỉ học viên được chỉ định)",
+        "public": "Công khai (Tất cả có thể truy cập)"
+      },
+      "autoGenerate": {
+        "label": "Tự động tạo nội dung",
+        "generate": "Tạo câu hỏi mẫu",
+        "empty": "Tạo cấu trúc đề thi trống"
+      },
+      "submit": "Tạo đề thi"
+    }
+  },
+  "common": {
+    "underConstruction": "Trang này đang được phát triển.",
+    "newCourse": "Khóa học mới",
+    "newClass": "Lớp học mới",
+    "newStudent": "Học viên mới",
+    "newExam": "Bài kiểm tra mới",
+    "newAssignment": "Bài tập mới",
+    "newPost": "Bài viết mới"
+  },
+  "courses": {
+    "filters": {
+      "all": "Tất cả",
+      "ielts": "IELTS",
+      "toeic": "TOEIC",
+      "cambridge": "Cambridge",
+      "vstep": "VSTEP",
+      "business": "Tiếng Anh Thương mại"
+    },
+    "search": "Tìm kiếm khóa học theo tên, danh mc...",
+    "card": {
+      "students": "học viên",
+      "progress": "Tiến độ",
+      "viewDetails": "Xem chi tiết"
+    },
+    "status": {
+      "active": "Đang diễn ra",
+      "completed": "Đã hoàn thành",
+      "upcoming": "Sắp diễn ra"
+    },
+    "dropdown": {
+      "viewDetails": "Xem chi tiết",
+      "editCourse": "Chỉnh sửa khóa học",
+      "duplicate": "Nhân bản",
+      "manageStudents": "Quản lý học viên",
+      "viewStatistics": "Xem thống kê",
+      "delete": "Xóa"
+    },
+    "modal": {
+      "createTitle": "Tạo khóa học mới",
+      "editTitle": "Chỉnh sửa khóa học",
+      "deleteTitle": "Xóa khóa học",
+      "deleteMessage": "Bạn có chắc chắn muốn xóa khóa học \\\"{name}\\\" không? Hành động này không thể hoàn tác.",
+      "cancel": "Hủy bỏ",
+      "save": "Lưu khóa học",
+      "delete": "Xóa khóa học",
+      "basicInfo": "Thông tin cơ bản",
+      "schedule": "Lịch học",
+      "courseName": "Tên khóa học",
+      "courseNameRequired": "Tên khóa học *",
+      "category": "Danh mục",
+      "categoryRequired": "Danh mục *",
+      "description": "Mô tả",
+      "descriptionPlaceholder": "Khóa học IELTS 6.5 dành cho học viên trình độ trung cấp...",
+      "startDate": "Ngày bắt đầu",
+      "startDateRequired": "Ngày bắt đầu *",
+      "endDate": "Ngày kết thúc",
+      "endDateRequired": "Ngày kết thúc *",
+      "scheduleRequired": "Lịch học *",
+      "time": "Thời gian",
+      "timeRequired": "Thời gian *",
+      "maxStudents": "Số lượng học viên tối đa",
+      "maxStudentsPlaceholder": "30",
+      "status": "Trạng thái",
+      "statusActive": "Đang diễn ra",
+      "statusUpcoming": "Sắp diễn ra",
+      "statusCompleted": "Đã hoàn thành",
+      "weekDays": {
+        "monday": "Thứ Hai",
+        "tuesday": "Thứ Ba",
+        "wednesday": "Thứ Tư",
+        "thursday": "Thứ Năm",
+        "friday": "Thứ Sáu",
+        "saturday": "Thứ Bảy",
+        "sunday": "Chủ Nhật"
+      }
+    },
+    "empty": {
+      "title": "Chưa có khóa học nào",
+      "description": "Tạo khóa học đầu tiên để bắt đầu quản lý lớp học và học viên",
+      "action": "Tạo khóa học mới"
+    }
+  },
+  "classes": {
+    "title": "Lớp học",
+    "subtitle": "Quản lý các lớp học của bạn",
+    "filters": {
+      "all": "Tất cả",
+      "active": "Đang diễn ra",
+      "completed": "Đã hoàn thành",
+      "upcoming": "Sắp diễn ra"
+    },
+    "search": "Tìm kiếm lớp học theo tên, khóa học...",
+    "card": {
+      "course": "Khóa học",
+      "students": "học viên",
+      "schedule": "Lịch học",
+      "time": "Thời gian",
+      "progress": "Tiến độ",
+      "viewDetails": "Xem chi tiết"
+    },
+    "status": {
+      "active": "Đang diễn ra",
+      "completed": "Đã hoàn thành",
+      "upcoming": "Sắp diễn ra"
+    },
+    "dropdown": {
+      "viewDetails": "Xem chi tiết",
+      "editClass": "Chỉnh sửa lớp học",
+      "duplicate": "Nhân bản",
+      "manageStudents": "Quản lý học viên",
+      "viewAttendance": "Xem điểm danh",
+      "delete": "Xóa"
+    },
+    "modal": {
+      "createTitle": "Tạo lớp học mới",
+      "editTitle": "Chỉnh sửa lớp học",
+      "deleteTitle": "Xóa lớp học",
+      "deleteMessage": "Bạn có chắc chắn muốn xóa lớp học \\\"{name}\\\" không? Hành động này không thể hoàn tác.",
+      "cancel": "Hủy bỏ",
+      "save": "Lưu lớp học",
+      "delete": "Xóa lớp học",
+      "basicInfo": "Thông tin cơ bản",
+      "schedule": "Lịch học",
+      "className": "Tên lớp học",
+      "classNameRequired": "Tên lớp học *",
+      "course": "Khóa học",
+      "courseRequired": "Khóa học *",
+      "selectCourse": "Chọn khóa học",
+      "description": "Mô tả",
+      "descriptionPlaceholder": "Lớp học buổi sáng cho học viên trung cấp...",
+      "startDate": "Ngày bắt đầu",
+      "startDateRequired": "Ngày bắt đầu *",
+      "endDate": "Ngày kết thúc",
+      "endDateRequired": "Ngày kết thúc *",
+      "scheduleRequired": "Lịch học *",
+      "time": "Thời gian",
+      "timeRequired": "Thời gian *",
+      "maxStudents": "Số lượng học viên tối đa",
+      "maxStudentsPlaceholder": "30",
+      "room": "Phòng học",
+      "roomPlaceholder": "Phòng 101",
+      "status": "Trạng thái",
+      "statusActive": "Đang diễn ra",
+      "statusUpcoming": "Sắp diễn ra",
+      "statusCompleted": "Đã hoàn thành",
+      "weekDays": {
+        "monday": "Thứ Hai",
+        "tuesday": "Thứ Ba",
+        "wednesday": "Thứ Tư",
+        "thursday": "Thứ Năm",
+        "friday": "Thứ Sáu",
+        "saturday": "Thứ Bảy",
+        "sunday": "Chủ Nhật"
+      }
+    },
+    "empty": {
+      "title": "Chưa có lớp học nào",
+      "description": "Tạo lớp học đầu tiên để bắt đầu giảng dạy",
+      "action": "Tạo lớp học mới"
+    }
+  }
+}
