@@ -1101,4 +1101,300 @@ class StudentTestController extends Controller
         }
         return false;
     }
+
+    /**
+     * Get in-progress tests for dashboard
+     */
+    public function inProgressTests(Request $request)
+    {
+        $studentId = $request->user()->id;
+
+        // Get submissions that are in progress (not submitted yet)
+        $inProgressSubmissions = Submission::where('student_id', $studentId)
+            ->where('sStatus', 'in_progress')
+            ->with(['exam'])
+            ->orderBy('sCreated_at', 'desc')
+            ->get();
+
+        $tests = $inProgressSubmissions->map(function ($submission) {
+            $exam = $submission->exam;
+            $timeElapsed = now()->diffInMinutes($submission->sCreated_at);
+            $timeRemaining = max(0, $exam->eDuration - $timeElapsed);
+
+            return [
+                'id' => $exam->eId,
+                'submission_id' => $submission->sId,
+                'title' => $exam->eTitle,
+                'time_remaining' => $timeRemaining,
+                'total_duration' => $exam->eDuration,
+                'skill' => $exam->eSkill,
+                'started_at' => $submission->sCreated_at,
+            ];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $tests,
+        ]);
+    }
+
+    /**
+     * Get upcoming tests for dashboard
+     */
+    public function upcomingTests(Request $request)
+    {
+        $studentId = $request->user()->id;
+        $days = $request->input('days', 7);
+
+        // Get assignments that are upcoming (within next X days)
+        $upcomingAssignments = TestAssignment::where(function ($query) use ($studentId) {
+                $query->where('taTarget_type', 'student')
+                      ->where('taTarget_id', $studentId)
+                      ->orWhereIn('taTarget_id', function ($subQuery) use ($studentId) {
+                          $subQuery->select('class_id')
+                                   ->from('class_enrollments')
+                                   ->where('student_id', $studentId);
+                      });
+            })
+            ->where('taStart_time', '<=', now())
+            ->where('taEnd_time', '>=', now())
+            ->where('taEnd_time', '<=', now()->addDays($days))
+            ->with(['exam'])
+            ->orderBy('taEnd_time', 'asc')
+            ->get();
+
+        $tests = $upcomingAssignments->map(function ($assignment) use ($studentId) {
+            $exam = $assignment->exam;
+            $deadline = \Carbon\Carbon::parse($assignment->taEnd_time);
+            $daysUntil = now()->diffInDays($deadline, false);
+            $isUrgent = $daysUntil <= 1;
+
+            // Check if already started
+            $hasStarted = Submission::where('student_id', $studentId)
+                ->where('exam_id', $exam->eId)
+                ->exists();
+
+            if ($hasStarted) {
+                return null; // Skip if already started
+            }
+
+            return [
+                'id' => $exam->eId,
+                'assignment_id' => $assignment->taId,
+                'title' => $exam->eTitle,
+                'deadline' => $assignment->taEnd_time,
+                'duration' => $exam->eDuration,
+                'skill' => $exam->eSkill,
+                'is_urgent' => $isUrgent,
+                'days_until' => max(0, $daysUntil),
+            ];
+        })->filter()->values();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $tests,
+        ]);
+    }
+
+    /**
+     * Get practice recommendations based on student performance
+     */
+    public function practiceRecommendations(Request $request)
+    {
+        $studentId = $request->user()->id;
+
+        // Get student's recent performance by skill
+        $recentSubmissions = Submission::where('student_id', $studentId)
+            ->where('sStatus', 'graded')
+            ->with(['exam'])
+            ->orderBy('sSubmit_time', 'desc')
+            ->take(20)
+            ->get();
+
+        $skillStats = [];
+        foreach ($recentSubmissions as $submission) {
+            $skill = $submission->exam->eSkill;
+            if (!isset($skillStats[$skill])) {
+                $skillStats[$skill] = [
+                    'count' => 0,
+                    'total_score' => 0,
+                    'scores' => [],
+                ];
+            }
+            $skillStats[$skill]['count']++;
+            $skillStats[$skill]['total_score'] += $submission->sScore;
+            $skillStats[$skill]['scores'][] = $submission->sScore;
+        }
+
+        // Calculate average and identify weak areas
+        $recommendations = [];
+        foreach ($skillStats as $skill => $stats) {
+            $avgScore = $stats['total_score'] / $stats['count'];
+            $maxScore = max($stats['scores']);
+            
+            // Recommend practice if average is below 70 or needs improvement
+            if ($avgScore < 70) {
+                $recommendations[] = [
+                    'id' => count($recommendations) + 1,
+                    'title' => 'Luyện ' . $this->getSkillName($skill) . ' - Cơ bản',
+                    'reason' => 'Điểm trung bình của bạn là ' . round($avgScore, 1) . '. Hãy luyện tập thêm để cải thiện!',
+                    'skill' => $skill,
+                    'duration' => 30,
+                    'question_count' => 15,
+                    'difficulty' => 'easy',
+                    'link' => '/luyen-tap?skill=' . $skill . '&difficulty=easy',
+                ];
+            } else if ($avgScore >= 70 && $avgScore < 85) {
+                $recommendations[] = [
+                    'id' => count($recommendations) + 1,
+                    'title' => 'Luyện ' . $this->getSkillName($skill) . ' - Nâng cao',
+                    'reason' => 'Bạn đang làm tốt! Thử thách bản thân với bài khó hơn nhé.',
+                    'skill' => $skill,
+                    'duration' => 45,
+                    'question_count' => 20,
+                    'difficulty' => 'medium',
+                    'link' => '/luyen-tap?skill=' . $skill . '&difficulty=medium',
+                ];
+            } else {
+                $recommendations[] = [
+                    'id' => count($recommendations) + 1,
+                    'title' => 'Luyện ' . $this->getSkillName($skill) . ' - Chuyên sâu',
+                    'reason' => 'Xuất sắc! Hãy thử thách với các bài tập khó nhất.',
+                    'skill' => $skill,
+                    'duration' => 60,
+                    'question_count' => 25,
+                    'difficulty' => 'hard',
+                    'link' => '/luyen-tap?skill=' . $skill . '&difficulty=hard',
+                ];
+            }
+        }
+
+        // If no data, provide general recommendations
+        if (empty($recommendations)) {
+            $recommendations = [
+                [
+                    'id' => 1,
+                    'title' => 'Bắt đầu với Listening',
+                    'reason' => 'Hãy bắt đầu hành trình học tập của bạn!',
+                    'skill' => 'listening',
+                    'duration' => 30,
+                    'question_count' => 15,
+                    'difficulty' => 'easy',
+                    'link' => '/luyen-tap?skill=listening',
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'Luyện Reading cơ bản',
+                    'reason' => 'Đọc hiểu là nền tảng quan trọng!',
+                    'skill' => 'reading',
+                    'duration' => 30,
+                    'question_count' => 15,
+                    'difficulty' => 'easy',
+                    'link' => '/luyen-tap?skill=reading',
+                ],
+            ];
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => array_slice($recommendations, 0, 3), // Return top 3
+        ]);
+    }
+
+    /**
+     * Get skill name in Vietnamese
+     */
+    private function getSkillName($skill)
+    {
+        $names = [
+            'listening' => 'Nghe',
+            'reading' => 'Đọc',
+            'writing' => 'Viết',
+            'speaking' => 'Nói',
+        ];
+        return $names[$skill] ?? $skill;
+    }
+
+    /**
+     * Get important notifications (mock implementation)
+     * TODO: Implement proper notification system with database table
+     */
+    public function getNotifications(Request $request)
+    {
+        $studentId = $request->user()->id;
+        $urgent = $request->input('urgent', false);
+        $limit = $request->input('limit', 10);
+
+        $notifications = [];
+
+        // Check for urgent assignments (ending soon)
+        $urgentAssignments = TestAssignment::where(function ($query) use ($studentId) {
+                $query->where('taTarget_type', 'student')
+                      ->where('taTarget_id', $studentId)
+                      ->orWhereIn('taTarget_id', function ($subQuery) use ($studentId) {
+                          $subQuery->select('class_id')
+                                   ->from('class_enrollments')
+                                   ->where('student_id', $studentId);
+                      });
+            })
+            ->where('taStart_time', '<=', now())
+            ->where('taEnd_time', '>=', now())
+            ->where('taEnd_time', '<=', now()->addDay())
+            ->with(['exam'])
+            ->get();
+
+        foreach ($urgentAssignments as $assignment) {
+            $hoursLeft = now()->diffInHours($assignment->taEnd_time);
+            $notifications[] = [
+                'id' => 'assignment_' . $assignment->taId,
+                'title' => 'Bài thi sắp hết hạn',
+                'message' => $assignment->exam->eTitle . ' sẽ hết hạn trong ' . $hoursLeft . ' giờ nữa. Hãy hoàn thành ngay!',
+                'type' => 'urgent',
+                'created_at' => $assignment->taCreated_at,
+                'action_url' => '/bai-tap',
+                'action_label' => 'Làm bài ngay',
+            ];
+        }
+
+        // Check for recently graded submissions
+        $recentGraded = Submission::where('student_id', $studentId)
+            ->where('sStatus', 'graded')
+            ->where('sGraded_time', '>=', now()->subDay())
+            ->with(['exam'])
+            ->orderBy('sGraded_time', 'desc')
+            ->take(3)
+            ->get();
+
+        foreach ($recentGraded as $submission) {
+            $notifications[] = [
+                'id' => 'graded_' . $submission->sId,
+                'title' => 'Kết quả bài thi đã có',
+                'message' => 'Kết quả bài thi ' . $submission->exam->eTitle . ' đã được chấm. Điểm của bạn: ' . $submission->sScore,
+                'type' => 'info',
+                'created_at' => $submission->sGraded_time,
+                'action_url' => '/lich-su',
+                'action_label' => 'Xem kết quả',
+            ];
+        }
+
+        // Sort by created_at desc
+        usort($notifications, function ($a, $b) {
+            return strtotime($b['created_at']) - strtotime($a['created_at']);
+        });
+
+        // Filter by urgent if requested
+        if ($urgent) {
+            $notifications = array_filter($notifications, function ($n) {
+                return $n['type'] === 'urgent';
+            });
+        }
+
+        // Limit results
+        $notifications = array_slice($notifications, 0, $limit);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => array_values($notifications),
+        ]);
+    }
 }

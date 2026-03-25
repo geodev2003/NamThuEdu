@@ -133,7 +133,7 @@ export function ReportsOverview() {
             Tổng quan
           </Link>
           <Link
-            to="/giao-vien/bao-cao/tien-do-hoc-sinh"
+            to="/giao-vien/bao-cao/tien-do-students"
             className="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg hover:bg-gray-50 whitespace-nowrap"
           >
             Tiến độ học sinh
@@ -353,7 +353,7 @@ export function ReportsOverview() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-gray-900">Hoạt động gần đây</h3>
             <Link
-              to="/giao-vien/bao-cao/tien-do-hoc-sinh"
+              to="/giao-vien/bao-cao/tien-do-students"
               className="text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center gap-1"
             >
               Xem tất cả

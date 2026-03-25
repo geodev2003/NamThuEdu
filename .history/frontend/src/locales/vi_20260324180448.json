@@ -1,0 +1,299 @@
+{
+  "appName": "NamThuEdu",
+  "breadcrumb": {
+    "dashboard": "Trang chủ",
+    "home": "Dashboard",
+    "courses": "Khóa học",
+    "classes": "Lớp học",
+    "students": "Học viên",
+    "exams": "Ngân hàng đề",
+    "assignments": "Giao bài tập",
+    "grading": "Chấm điểm",
+    "liveMonitoring": "Giám sát trực tiếp",
+    "blog": "Bài viết",
+    "reports": "Báo cáo",
+    "settings": "Cài đặt"
+  },
+  "header": {
+    "new": "Tạo mới",
+    "notifications": "Thông báo"
+  },
+  "nav": {
+    "dashboard": "Trang chủ",
+    "students": "Học viên",
+    "manageStudents": "Quản lý học viên",
+    "addStudent": "Thêm học viên",
+    "importStudents": "Import học viên",
+    "classes": "Lớp học",
+    "classList": "Danh sách lớp",
+    "createClass": "Tạo lớp mới",
+    "transferClass": "Chuyển lớp",
+    "classStats": "Thống kê lớp",
+    "courses": "Khóa học",
+    "courseList": "Danh sách khóa học",
+    "createCourse": "Tạo khóa học",
+    "courseStats": "Thống kê khóa học",
+    "examBank": "Ngân hàng đề",
+    "allExams": "Tất cả đề thi",
+    "createExam": "Tạo đề thi",
+    "examTemplates": "Mẫu đề Cambridge",
+    "myExams": "Đề thi của tôi",
+    "assignments": "Giao bài tập",
+    "assignmentList": "Danh sách bài tập",
+    "assignmentStats": "Thống kê bài tập",
+    "practice": "Luyện tập",
+    "practiceList": "Danh sách luyện tập",
+    "byTopic": "Theo chủ đề",
+    "byTemplate": "Theo mẫu",
+    "random": "Ngẫu nhiên",
+    "grading": "Chấm điểm",
+    "pendingGrading": "Chờ chấm",
+    "classReport": "Báo cáo lớp",
+    "gradingStats": "Thống kê chấm điểm",
+    "liveMonitor": "Giám sát trực tiếp",
+    "activeSessions": "Phiên đang hoạt động",
+    "connectionHistory": "Lịch sử kết nối",
+    "realtimeStats": "Thống kê realtime",
+    "blog": "Bài viết",
+    "allPosts": "Tất cả bài viết",
+    "createPost": "Tạo bài viết",
+    "categories": "Danh mục",
+    "contentStats": "Thống kê nội dung",
+    "reports": "Báo cáo",
+    "reportOverview": "Tổng quan báo cáo",
+    "studentProgress": "Tiến độ học sinh",
+    "analysis": "Phân tích",
+    "exportReport": "Xuất báo cáo",
+    "settings": "Cài đặt"
+  },
+  "dashboard": {
+    "stats": {
+      "courses": "Khóa học",
+      "classes": "Lớp học",
+      "students": "Học viên",
+      "exams": "Đề thi"
+    },
+    "charts": {
+      "studentPerformance": "Hiệu suất học sinh",
+      "average": "Trung bình",
+      "listening": "Nghe",
+      "reading": "Đọc",
+      "writing": "Viết"
+    },
+    "recentActivity": {
+      "title": "Hoạt động gần đây",
+      "viewAll": "Xem tất cả"
+    },
+    "quickActions": {
+      "createExam": "Tạo đề thi mới",
+      "createExamDesc": "Tạo đề thi từ đầu hoặc từ mẫu",
+      "cambridgeTemplate": "Mẫu đề Cambridge",
+      "cambridgeTemplateDesc": "Sử dụng mẫu đề chuẩn quốc tế",
+      "assignTest": "Giao bài tập",
+      "assignTestDesc": "Giao bài thi cho lớp hoặc học sinh",
+      "viewReports": "Xem báo cáo",
+      "viewReportsDesc": "Theo dõi tiến độ và kết quả"
+    }
+  },
+  "assignments": {
+    "createNew": "Giao bài mới"
+  },
+  "student": {
+    "nav": {
+      "dashboard": "Trang chủ",
+      "tests": "Bài tập",
+      "practice": "Luyện tập",
+      "progress": "Tiến độ",
+      "history": "Lịch sử",
+      "profile": {
+        "student": "Học viên",
+        "myProfile": "Hồ sơ của tôi",
+        "settings": "Cài đặt",
+        "logout": "Đăng xuất"
+      },
+      "streak": {
+        "days": "ngày",
+        "keepGoing": "Tiếp tục phát huy!"
+      },
+      "language": "Ngôn ngữ"
+    },
+    "dashboard": {
+      "greeting": {
+        "morning": "Chào buổi sáng",
+        "afternoon": "Chào buổi chiều",
+        "evening": "Chào buổi tối"
+      },
+      "loading": "Đang tải...",
+      "student": "Học viên",
+      "stats": {
+        "pendingTests": "Bài tập đang chờ",
+        "todayTests": "bài hôm nay",
+        "averageScore": "Điểm trung bình",
+        "testsCompleted": "bài đã làm",
+        "recentScore": "Điểm gần nhất",
+        "totalTests": "Tổng bài thi",
+        "completed": "Hoàn thành"
+      },
+      "pendingAssignments": {
+        "title": "Bài tập đang chờ",
+        "viewAll": "Xem tất cả",
+        "empty": "Chưa có bài tập nào được giao",
+        "startTest": "Làm bài"
+      },
+      "skills": {
+        "title": "Kỹ năng",
+        "description": "Đánh giá năng lực các kỹ năng",
+        "highest": "Điểm cao nhất",
+        "needImprovement": "Cần cải thiện",
+        "noData": "Chưa có dữ liệu"
+      },
+      "progress": {
+        "title": "Tiến độ gần đây",
+        "points": "điểm",
+        "noData": "Chưa có dữ liệu"
+      },
+      "recentResults": {
+        "title": "Kết quả gần đây",
+        "viewAll": "Tất cả",
+        "noResults": "Chưa có kết quả"
+      },
+      "quickPractice": {
+        "title": "Luyện tập nhanh"
+      },
+      "skillNames": {
+        "listening": "Nghe",
+        "reading": "Đọc",
+        "writing": "Viết",
+        "speaking": "Nói"
+      }
+    },
+    "tests": {
+      "title": "Bài thi của tôi",
+      "available": "Bài thi khả dụng",
+      "inProgress": "Đang làm",
+      "completed": "Đã hoàn thành",
+      "startTest": "Bắt đầu làm bài",
+      "continueTest": "Tiếp tục",
+      "viewResult": "Xem kết quả",
+      "dueIn": "Hạn nộp trong {{time}}",
+      "urgent": "Gấp",
+      "attemptsLeft": "Còn {{count}} lượt"
+    },
+    "practice": {
+      "title": "Luyện tập",
+      "subtitle": "Rèn luyện kỹ năng theo chủ đề",
+      "allSkills": "Tất cả",
+      "startPractice": "Bắt đầu luyện tập",
+      "continue": "Tiếp tục",
+      "quickStart": "Luyện tập nhanh",
+      "random10": "Ngẫu nhiên 10 câu",
+      "recentMistakes": "Câu sai gần đây",
+      "unanswered": "Câu chưa làm",
+      "custom": "Tạo bộ tùy chỉnh"
+    },
+    "notifications": {
+      "title": "Thông báo",
+      "unreadCount": "{{count}} chưa đọc",
+      "markAllRead": "Đánh dấu tất cả đã đọc",
+      "deleteRead": "Xóa đã đọc",
+      "empty": {
+        "title": "Không có thông báo mới",
+        "subtitle": "Bạn sẽ nhận thông báo khi có bài tập mới"
+      }
+    },
+    "profile": {
+      "title": "Hồ sơ cá nhân",
+      "tabs": {
+        "info": "Thông tin cá nhân",
+        "goals": "Mục tiêu học tập",
+        "settings": "Cài đặt",
+        "security": "Bảo mật",
+        "stats": "Thống kê"
+      }
+    },
+    "examLobby": {
+      "subtitle": "Vui lòng kiểm tra camera, tai nghe/loa và microphone trước khi nhận đề thi.",
+      "sectionExamStructure": "CẤU TRÚC BÀI THI",
+      "skill1": "Kỹ năng 1: NGHE - 3 phần (47 phút)",
+      "skill2": "Kỹ năng 2: ĐỌC - 4 phần (60 phút)",
+      "skill3": "Kỹ năng 3: VIẾT - 2 phần (60 phút)",
+      "skill4": "Kỹ năng 4: NÓI - 3 phần (12 phút)",
+      "sectionDeviceCheck": "KIỂM TRA THIẾT BỊ",
+      "enableCamera": "Bật camera",
+      "testSpeaker": "Test loa",
+      "testMic": "Test mic",
+      "recording": "Đang thu...",
+      "sectionReady": "TRẠNG THÁI SẴN SÀNG",
+      "camera": "Camera",
+      "speaker": "Loa",
+      "microphone": "Microphone",
+      "enterExam": "NHẬN ĐỀ",
+      "alertMicPermission": "Không thể truy cập microphone. Vui lòng cấp quyền và thử lại."
+    },
+    "examTaking": {
+      "unansweredTitle": "Còn câu chưa trả lời",
+      "readyTitle": "Sẵn sàng nộp bài",
+      "unansweredText": "Bạn còn {{count}} câu chưa trả lời.",
+      "answeredText": "Bạn đã trả lời {{answered}}/{{total}} câu.",
+      "continue": "Tiếp tục",
+      "submitting": "Đang nộp...",
+      "submit": "Nộp bài",
+      "alertMockMode": "Không kết nối được Backend. Tự động chuyển sang Mock Mode để xem giao diện thi.",
+      "alertSubmitMock": "Mock Mode: Nộp bài thành công (Local)",
+      "alertMicPermission": "Không thể truy cập microphone. Vui lòng cấp quyền và thử lại.",
+      "answered": "Đã trả lời: {{answered}}/{{total}}",
+      "currentSkill": "Kỹ năng:",
+      "part": "Phần",
+      "saving": "Đang lưu bài...",
+      "saved": "Đã lưu",
+      "listeningInstruction": "Ở phần này, bạn sẽ nghe đoạn audio đúng một lần. Hãy đọc câu hỏi bên dưới và chọn đáp án đúng A, B, C hoặc D.",
+      "audioOneTime": "Audio (chỉ nghe 1 lần)",
+      "audioFinished": "Đã nghe xong",
+      "writePlaceholder": "Nhập bài viết của bạn...",
+      "stop": "Dừng",
+      "record": "Thu âm",
+      "play": "Nghe lại",
+      "recording": "Đang thu âm...",
+      "recorded": "Đã có bản ghi âm",
+      "notRecorded": "Chưa có bản ghi âm",
+      "speakingNote": "Ghi chú câu trả lời (nếu cần)...",
+      "save": "Lưu bài",
+      "hideMenu": "Ẩn menu",
+      "showMenu": "Hiện menu"
+    }
+  },
+  "common": {
+    "loading": "Đang tải...",
+    "error": "Đã có lỗi xảy ra",
+    "success": "Thành công",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "edit": "Sửa",
+    "view": "Xem",
+    "back": "Quay lại",
+    "next": "Tiếp theo",
+    "previous": "Trước",
+    "submit": "Nộp bài",
+    "start": "Bắt đầu",
+    "continue": "Tiếp tục",
+    "finish": "Hoàn thành",
+    "search": "Tìm kiếm",
+    "filter": "Lọc",
+    "sort": "Sắp xếp",
+    "all": "Tất cả"
+  },
+  "difficulty": {
+    "all": "Tất cả",
+    "easy": "Dễ",
+    "medium": "Trung bình",
+    "hard": "Khó"
+  },
+  "status": {
+    "pending": "Đang chờ",
+    "inProgress": "Đang làm",
+    "completed": "Hoàn thành",
+    "graded": "Đã chấm",
+    "expired": "Hết hạn"
+  }
+}

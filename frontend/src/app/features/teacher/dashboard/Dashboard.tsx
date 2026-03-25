@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
-import { Header } from "../components/Header";
-import teacherBg from "figma:asset/579b340be62d322502d88520e9c8562ec7809ac1.png";
+import { Header } from "../../../components/shared/Header";
 import {
   BookOpen,
   School,
@@ -246,16 +245,6 @@ export function Dashboard() {
           />
 
           <div className="relative px-8 pt-8 pb-20">
-            {/* Background Image with Overlay */}
-            <div className="absolute inset-0 overflow-hidden rounded-t-2xl">
-              <img
-                src={teacherBg}
-                alt="Teacher background"
-                className="w-full h-full object-cover opacity-90"
-              />
-              {/* Gradient overlay removed - using background image only */}
-            </div>
-
             <div className="flex items-start justify-between relative z-10">
               {/* Left: greeting */}
               <div

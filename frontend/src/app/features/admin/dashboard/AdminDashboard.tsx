@@ -100,7 +100,7 @@ const recentActivities = [
 ];
 
 const pendingAlerts = [
-  { id: 1, text: "12 học viên chờ duyệt đăng ký", severity: "warning", path: "/admin/hoc-vien/dang-ky" },
+  { id: 1, text: "12 học viên chờ duyệt đăng ký", severity: "warning", path: "/admin/students/dang-ky" },
   { id: 2, text: "2 giáo viên yêu cầu cấp lại mật khẩu", severity: "info", path: "/admin/giao-vien" },
   { id: 3, text: "Server disk 78% — cần dọn cache", severity: "danger", path: "/admin/he-thong/server" },
   { id: 4, text: "Cập nhật hệ thống v2.4.1 có sẵn", severity: "info", path: "/admin/cai-dat" },

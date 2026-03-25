@@ -288,7 +288,7 @@ export function AssignmentProgress() {
                       )}
                     </div>
                     <Link
-                      to={`/bai-tap/${assignment.id}/hoc-sinh/${student.id}`}
+                      to={`/bai-tap/${assignment.id}/students/${student.id}`}
                       className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-1"
                     >
                       <Eye className="w-4 h-4" />

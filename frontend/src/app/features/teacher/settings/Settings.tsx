@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
-import { Header } from "../components/Header";
+import { Header } from "../../../components/shared/Header";
 import {
   User,
   Bell,

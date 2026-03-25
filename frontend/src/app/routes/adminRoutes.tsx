@@ -19,9 +19,9 @@ export const adminRoutes = {
     { path: "giao-vien/phan-cong", Component: UnderConstruction },
 
     // Học viên
-    { path: "hoc-vien", Component: UnderConstruction },
-    { path: "hoc-vien/dang-ky", Component: UnderConstruction },
-    { path: "hoc-vien/khieu-nai", Component: UnderConstruction },
+    { path: "students", Component: UnderConstruction },
+    { path: "students/dang-ky", Component: UnderConstruction },
+    { path: "students/khieu-nai", Component: UnderConstruction },
 
     // Khóa học
     { path: "khoa-hoc", Component: UnderConstruction },
@@ -34,7 +34,7 @@ export const adminRoutes = {
 
     // Báo cáo
     { path: "bao-cao/doanh-thu", Component: UnderConstruction },
-    { path: "bao-cao/hoc-vien", Component: UnderConstruction },
+    { path: "bao-cao/students", Component: UnderConstruction },
     { path: "bao-cao/giao-vien", Component: UnderConstruction },
 
     // Hệ thống

@@ -1,22 +1,19 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
 import {
   Plus,
   Users,
   User,
-  Clock,
-  TrendingUp,
   Search,
-  Filter,
   Eye,
   Bell,
   Trash2,
   AlertCircle,
-  CheckCircle2,
   BarChart3,
   Send,
 } from "lucide-react";
-import { CreateAssignment } from "./CreateAssignment";
+import { Header } from "../../../components/shared/Header";
 import { BulkAssignment } from "./BulkAssignment";
 import { ReminderModal } from "./ReminderModal";
 
@@ -34,10 +31,11 @@ interface Assignment {
 }
 
 export function AssignmentList() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [examFilter, setExamFilter] = useState("all");
   const [targetFilter, setTargetFilter] = useState("all");
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
@@ -151,57 +149,53 @@ export function AssignmentList() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Quản lý giao bài thi 📝</h1>
-            <p className="text-gray-600 mt-1">Giao và theo dõi bài thi cho học sinh</p>
-          </div>
-          <div className="flex gap-3">
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <Header
+        breadcrumb={[t("breadcrumb.dashboard"), t("breadcrumb.assignments")]}
+        action={{
+          label: t("assignments.createNew"),
+          onClick: () => navigate("/giao-vien/bai-tap/giao-moi"),
+        }}
+      />
+
+      <div className="flex-1 overflow-y-auto" style={{ background: "#EEEEF3" }}>
+        <div className="px-8 py-6 space-y-6">
+          {/* Quick Actions */}
+          <div className="flex items-center justify-end gap-3">
             <button
               onClick={() => setShowBulkModal(true)}
-              className="px-6 py-3 bg-white border-2 border-blue-200 text-blue-600 font-semibold rounded-xl hover:bg-blue-50 transition-all duration-200 flex items-center gap-2 shadow-sm"
+              className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center gap-2"
             >
-              <Send className="w-5 h-5" />
+              <Send className="w-4 h-4" />
               Giao hàng loạt
             </button>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 flex items-center gap-2 shadow-lg shadow-blue-500/30"
-            >
-              <Plus className="w-5 h-5" />
-              Giao bài mới
-            </button>
           </div>
-        </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
-            <div
-              key={index}
-              className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 group"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-2">{stat.label}</p>
-                  <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-                </div>
-                <div
-                  className={`w-12 h-12 ${stat.bgColor} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}
-                >
-                  <stat.icon className={`w-6 h-6 ${stat.iconColor}`} />
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {stats.map((stat, index) => (
+              <div
+                key={index}
+                className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 mb-2">{stat.label}</p>
+                    <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                  </div>
+                  <div
+                    className={`w-12 h-12 ${stat.bgColor} rounded-xl flex items-center justify-center`}
+                  >
+                    <stat.icon className={`w-6 h-6 ${stat.iconColor}`} />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        {/* Filters */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Filters */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -210,38 +204,38 @@ export function AssignmentList() {
                 placeholder="Tìm kiếm bài thi..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
             </div>
 
-            {/* Exam Filter */}
-            <select
-              value={examFilter}
-              onChange={(e) => setExamFilter(e.target.value)}
-              className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            >
-              <option value="all">Tất cả đề thi</option>
-              <option value="Cambridge KET">Cambridge KET</option>
-              <option value="IELTS">IELTS</option>
-              <option value="TOEFL">TOEFL</option>
-            </select>
+              {/* Exam Filter */}
+              <select
+                value={examFilter}
+                onChange={(e) => setExamFilter(e.target.value)}
+                className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+                <option value="all">Tất cả đề thi</option>
+                <option value="Cambridge KET">Cambridge KET</option>
+                <option value="IELTS">IELTS</option>
+                <option value="TOEFL">TOEFL</option>
+              </select>
 
-            {/* Target Filter */}
-            <select
-              value={targetFilter}
-              onChange={(e) => setTargetFilter(e.target.value)}
-              className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            >
-              <option value="all">Tất cả đối tượng</option>
-              <option value="class">Lớp học</option>
-              <option value="student">Học sinh</option>
-            </select>
+              {/* Target Filter */}
+              <select
+                value={targetFilter}
+                onChange={(e) => setTargetFilter(e.target.value)}
+                className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+                <option value="all">Tất cả đối tượng</option>
+                <option value="class">Lớp học</option>
+                <option value="student">Học sinh</option>
+              </select>
+            </div>
           </div>
-        </div>
 
-        {/* Assignments Table */}
-        {filteredAssignments.length > 0 ? (
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 overflow-hidden">
+          {/* Assignments Table */}
+          {filteredAssignments.length > 0 ? (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
@@ -270,7 +264,7 @@ export function AssignmentList() {
                   {filteredAssignments.map((assignment) => (
                     <tr
                       key={assignment.id}
-                      className="hover:bg-blue-50/50 transition-colors group"
+                      className="hover:bg-gray-50 transition-colors group"
                     >
                       <td className="px-6 py-4">
                         <p className="font-medium text-gray-900">{assignment.examTitle}</p>
@@ -343,11 +337,11 @@ export function AssignmentList() {
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-2">
                           <Link
-                            to={`/bai-tap/${assignment.id}/tien-do`}
+                            to={`/giao-vien/bai-tap/${assignment.id}/tien-do`}
                             className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                             title="Xem tiến độ"
                           >
-                            <Eye className="w-5 h-5" />
+                            <Eye className="w-4 h-4" />
                           </Link>
                           <button
                             onClick={() => {
@@ -357,13 +351,13 @@ export function AssignmentList() {
                             className="p-2 text-orange-600 hover:bg-orange-100 rounded-lg transition-colors"
                             title="Gửi nhắc nhở"
                           >
-                            <Bell className="w-5 h-5" />
+                            <Bell className="w-4 h-4" />
                           </button>
                           <button
                             className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
                             title="Xóa"
                           >
-                            <Trash2 className="w-5 h-5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
@@ -373,9 +367,9 @@ export function AssignmentList() {
               </table>
             </div>
           </div>
-        ) : (
-          /* Empty State */
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-12 text-center">
+          ) : (
+            /* Empty State */
+            <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <div className="max-w-md mx-auto space-y-4">
               <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
                 <BarChart3 className="w-12 h-12 text-blue-600" />
@@ -385,22 +379,17 @@ export function AssignmentList() {
                 Bắt đầu giao bài thi cho học sinh hoặc lớp học để theo dõi tiến độ học tập
               </p>
               <button
-                onClick={() => setShowCreateModal(true)}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 inline-flex items-center gap-2 shadow-lg shadow-blue-500/30"
+                onClick={() => navigate("/giao-vien/bai-tap/giao-moi")}
+                className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all inline-flex items-center gap-2"
               >
                 <Plus className="w-5 h-5" />
                 Giao bài thi đầu tiên
               </button>
             </div>
           </div>
-        )}
+          )}
+        </div>
       </div>
-
-      {/* Create Assignment Modal */}
-      <CreateAssignment
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-      />
 
       {/* Bulk Assignment Modal */}
       <BulkAssignment
