@@ -1,0 +1,694 @@
+{
+  "appName": "NamThuEdu",
+  "breadcrumb": {
+    "dashboard": "Home",
+    "home": "Dashboard",
+    "courses": "Courses",
+    "classes": "Classes",
+    "students": "Students",
+    "exams": "Exam Bank",
+    "assignments": "Assignments",
+    "grading": "Grading",
+    "liveMonitoring": "Live Monitoring",
+    "blog": "Blog",
+    "reports": "Reports",
+    "settings": "Settings"
+  },
+  "header": {
+    "new": "Create New",
+    "notifications": "Notifications"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "students": "Students",
+    "manageStudents": "Manage Students",
+    "addStudent": "Add Student",
+    "importStudents": "Import Students",
+    "classes": "Classes",
+    "classList": "Class List",
+    "createClass": "Create Class",
+    "transferClass": "Transfer Class",
+    "classStats": "Class Statistics",
+    "courses": "Courses",
+    "courseList": "Course List",
+    "createCourse": "Create Course",
+    "courseStats": "Course Statistics",
+    "examBank": "Exam Bank",
+    "allExams": "All Exams",
+    "createExam": "Create Exam",
+    "examTemplates": "Cambridge Templates",
+    "myExams": "My Exams",
+    "assignments": "Assignments",
+    "assignmentList": "Assignment List",
+    "assignmentStats": "Assignment Statistics",
+    "practice": "Practice",
+    "practiceList": "Practice List",
+    "byTopic": "By Topic",
+    "byTemplate": "By Template",
+    "random": "Random",
+    "grading": "Grading",
+    "pendingGrading": "Pending",
+    "classReport": "Class Report",
+    "gradingStats": "Grading Statistics",
+    "liveMonitor": "Live Monitor",
+    "activeSessions": "Active Sessions",
+    "connectionHistory": "Connection History",
+    "realtimeStats": "Realtime Stats",
+    "blog": "Blog",
+    "allPosts": "All Posts",
+    "createPost": "Create Post",
+    "categories": "Categories",
+    "contentStats": "Content Statistics",
+    "reports": "Reports",
+    "reportOverview": "Report Overview",
+    "studentProgress": "Student Progress",
+    "analysis": "Analysis",
+    "exportReport": "Export Report",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "stats": {
+      "courses": "Courses",
+      "classes": "Classes",
+      "students": "Students",
+      "exams": "Exams"
+    },
+    "charts": {
+      "studentPerformance": "Student Performance",
+      "average": "Average",
+      "listening": "Listening",
+      "reading": "Reading",
+      "writing": "Writing"
+    },
+    "recentActivity": {
+      "title": "Recent Activity",
+      "viewAll": "View All"
+    },
+    "quickActions": {
+      "createExam": "Create New Exam",
+      "createExamDesc": "Create exam from scratch or template",
+      "cambridgeTemplate": "Cambridge Templates",
+      "cambridgeTemplateDesc": "Use international standard templates",
+      "assignTest": "Assign Test",
+      "assignTestDesc": "Assign test to class or student",
+      "viewReports": "View Reports",
+      "viewReportsDesc": "Track progress and results"
+    }
+  },
+  "teacher": {
+    "dashboard": {
+      "greeting": "Welcome back",
+      "overview": "Overview",
+      "todayClasses": "classes today",
+      "pendingGrading": "pending grading",
+      "deadlinesThisWeek": "deadlines this week",
+      "goodActivity": "Good activity",
+      "thisWeek": "This week",
+      "lastSixWeeks": "Last 6 weeks",
+      "stats": {
+        "courses": "Courses",
+        "classes": "Classes",
+        "students": "Students",
+        "exams": "Exams"
+      },
+      "performance": {
+        "title": "Student Performance",
+        "average": "Average",
+        "listening": "Listening",
+        "reading": "Reading",
+        "writing": "Writing"
+      },
+      "recentActivity": {
+        "title": "Recent Activity",
+        "viewAll": "View All",
+        "created": "Created exam",
+        "assigned": "Assigned to class",
+        "graded": "Graded",
+        "hoursAgo": "hours ago",
+        "daysAgo": "days ago",
+        "yesterday": "Yesterday",
+        "submissions": "submissions"
+      },
+      "quickActions": {
+        "title": "Quick Actions",
+        "createExam": "Create New Exam",
+        "createExamDesc": "Create exam from scratch or template",
+        "cambridgeTemplate": "Cambridge Templates",
+        "cambridgeTemplateDesc": "Use international standard templates",
+        "assignTest": "Assign Test",
+        "assignTestDesc": "Assign test to class or student",
+        "viewReports": "View Reports",
+        "viewReportsDesc": "Track progress and results"
+      },
+      "time": {
+        "morning": "Good morning",
+        "afternoon": "Good afternoon",
+        "evening": "Good evening"
+      }
+    },
+    "grading": {
+      "title": "Grading",
+      "queue": "Grading Queue",
+      "allExams": "All Exams",
+      "allStatuses": "All Statuses",
+      "searchPlaceholder": "Search student or exam...",
+      "viewDetail": "View Detail",
+      "status": {
+        "submitted": "Pending",
+        "graded": "Graded",
+        "partiallyGraded": "Partially Graded"
+      },
+      "stats": {
+        "total": "Total Submissions",
+        "graded": "Graded",
+        "pending": "Pending",
+        "completionRate": "Completion Rate"
+      }
+    },
+    "courses": {
+      "title": "Courses",
+      "allCategories": "All Categories",
+      "allStatuses": "All Statuses",
+      "searchPlaceholder": "Search courses...",
+      "editCourse": "Edit Course",
+      "createCourse": "Create New Course",
+      "status": {
+        "draft": "Draft",
+        "active": "Active",
+        "completed": "Completed",
+        "archived": "Archived"
+      },
+      "stats": {
+        "totalCourses": "Total Courses",
+        "activeCourses": "Active",
+        "totalStudents": "Total Students",
+        "completionRate": "Completion Rate"
+      }
+    },
+    "classes": {
+      "title": "Classes",
+      "allCourses": "All Courses",
+      "allStatuses": "All Statuses",
+      "searchPlaceholder": "Search classes...",
+      "createClass": "Create New Class",
+      "editClass": "Edit Class",
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "stats": {
+        "totalClasses": "Total Classes",
+        "activeClasses": "Active Classes",
+        "totalStudents": "Total Students"
+      }
+    },
+    "assignments": {
+      "title": "Assignments",
+      "allExams": "All Exams",
+      "allTargets": "All Targets",
+      "searchPlaceholder": "Search assignments...",
+      "targetType": {
+        "class": "Class",
+        "student": "Student"
+      }
+    },
+    "common": {
+      "all": "All",
+      "create": "Create",
+      "edit": "Edit",
+      "delete": "Delete",
+      "save": "Save",
+      "cancel": "Cancel",
+      "viewDetail": "View Detail",
+      "clearFilters": "Clear Filters",
+      "search": "Search",
+      "filter": "Filter",
+      "actions": "Actions",
+      "saveDraft": "Save Draft",
+      "autoSave": "Auto Save",
+      "saveChanges": "Save Changes",
+      "cancelAction": "Cancel"
+    }
+  },
+  "assignments": {
+    "createNew": "Create Assignment"
+  },
+  "student": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "tests": "Tests",
+      "practice": "Practice",
+      "progress": "Progress",
+      "history": "History",
+      "profile": {
+        "student": "Student",
+        "myProfile": "My Profile",
+        "settings": "Settings",
+        "logout": "Logout"
+      },
+      "streak": {
+        "days": "days",
+        "keepGoing": "Keep it up!"
+      },
+      "language": "Language"
+    },
+    "dashboard": {
+      "greeting": {
+        "morning": "Good morning",
+        "afternoon": "Good afternoon",
+        "evening": "Good evening"
+      },
+      "loading": "Loading...",
+      "student": "Student",
+      "stats": {
+        "pendingTests": "Pending Tests",
+        "todayTests": "tests today",
+        "averageScore": "Average Score",
+        "testsCompleted": "tests completed",
+        "recentScore": "Recent Score",
+        "totalTests": "Total Tests",
+        "completed": "Completed"
+      },
+      "pendingAssignments": {
+        "title": "Pending Assignments",
+        "viewAll": "View All",
+        "empty": "No assignments yet",
+        "startTest": "Start Test"
+      },
+      "skills": {
+        "title": "Skills",
+        "description": "Skill assessment",
+        "highest": "Highest",
+        "needImprovement": "Need Improvement",
+        "noData": "No data yet"
+      },
+      "progress": {
+        "title": "Recent Progress",
+        "points": "points",
+        "noData": "No data yet"
+      },
+      "recentResults": {
+        "title": "Recent Results",
+        "viewAll": "All",
+        "noResults": "No results yet"
+      },
+      "quickPractice": {
+        "title": "Quick Practice"
+      },
+      "skillNames": {
+        "listening": "Listening",
+        "reading": "Reading",
+        "writing": "Writing",
+        "speaking": "Speaking"
+      }
+    },
+    "tests": {
+      "title": "My Tests",
+      "available": "Available Tests",
+      "inProgress": "In Progress",
+      "completed": "Completed",
+      "startTest": "Start Test",
+      "continueTest": "Continue",
+      "viewResult": "View Result",
+      "dueIn": "Due in {{time}}",
+      "urgent": "Urgent",
+      "attemptsLeft": "{{count}} attempts left"
+    },
+    "practice": {
+      "title": "Practice",
+      "subtitle": "Practice skills by topic",
+      "allSkills": "All Skills",
+      "startPractice": "Start Practice",
+      "continue": "Continue",
+      "quickStart": "Quick Start",
+      "random10": "Random 10 questions",
+      "recentMistakes": "Recent mistakes",
+      "unanswered": "Unanswered",
+      "custom": "Custom set"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "unreadCount": "{{count}} unread",
+      "markAllRead": "Mark all as read",
+      "deleteRead": "Delete read",
+      "empty": {
+        "title": "No new notifications",
+        "subtitle": "You'll receive notifications when new assignments are posted"
+      }
+    },
+    "profile": {
+      "title": "Profile",
+      "tabs": {
+        "info": "Personal Info",
+        "goals": "Learning Goals",
+        "settings": "Settings",
+        "security": "Security",
+        "stats": "Statistics"
+      }
+    },
+    "examLobby": {
+      "title": "EXAM WAITING ROOM",
+      "defaultTitle": "VSTEP Integrated Test",
+      "subtitle": "Please check your camera, speaker/headphones, and microphone before receiving the test.",
+      "duration": "Test duration: {{minutes}} minutes",
+      "loadingExam": "Loading exam information...",
+      "sectionExamStructure": "EXAM STRUCTURE",
+      "skill1": "Skill 1: LISTENING - 3 parts (47 minutes)",
+      "skill2": "Skill 2: READING - 4 parts (60 minutes)",
+      "skill3": "Skill 3: WRITING - 2 parts (60 minutes)",
+      "skill4": "Skill 4: SPEAKING - 3 parts (12 minutes)",
+      "sectionDeviceCheck": "DEVICE CHECK",
+      "enableCamera": "Enable camera",
+      "testSpeaker": "Test speaker",
+      "testMic": "Test mic",
+      "recording": "Recording...",
+      "sectionReady": "READY STATUS",
+      "camera": "Camera",
+      "speaker": "Speaker",
+      "microphone": "Microphone",
+      "enterExam": "RECEIVE TEST",
+      "connecting": "Connecting...",
+      "mediaUnsupported": "Your browser does not support camera/microphone.",
+      "permissionGranted": "Camera and microphone permissions granted.",
+      "permissionRequired": "You must allow camera and microphone access before starting.",
+      "loadExamFailed": "Could not load exam details. You can still proceed with device checks.",
+      "startingSession": "Starting exam session...",
+      "sessionConnected": "Exam session connected successfully.",
+      "sessionFailed": "Failed to connect exam session.",
+      "alertMicPermission": "Cannot access microphone. Please allow permission and try again.",
+      "alertCameraMicPermission": "Please enable both camera and microphone before receiving the test.",
+      "alertSpeakerRequired": "Please test your speaker before receiving the test.",
+      "alertSessionFailed": "Cannot start exam session right now. Please try again in a few seconds."
+    },
+    "examTaking": {
+      "unansweredTitle": "There are unanswered questions",
+      "readyTitle": "Ready to submit",
+      "unansweredText": "You still have {{count}} unanswered questions.",
+      "answeredText": "You answered {{answered}}/{{total}} questions.",
+      "continue": "Continue",
+      "submitting": "Submitting...",
+      "submit": "Submit",
+      "alertMockMode": "Cannot connect to backend. Switched to Mock Mode for UI preview.",
+      "alertSubmitMock": "Mock Mode: Test submitted successfully (Local)",
+      "alertMicPermission": "Cannot access microphone. Please allow permission and try again.",
+      "answered": "Answered: {{answered}}/{{total}}",
+      "currentSkill": "Skill:",
+      "part": "Part",
+      "saving": "Saving...",
+      "saved": "Saved",
+      "listeningInstruction": "In this part, you will hear the audio once. Read the questions below and choose the best answer A, B, C, or D.",
+      "audioOneTime": "Audio (one-time playback)",
+      "audioFinished": "Playback completed",
+      "writePlaceholder": "Write your answer here...",
+      "stop": "Stop",
+      "record": "Record",
+      "play": "Play",
+      "recording": "Recording...",
+      "recorded": "Audio recorded",
+      "notRecorded": "No recording yet",
+      "speakingNote": "Optional notes for your response...",
+      "save": "Save",
+      "hideMenu": "Hide menu",
+      "showMenu": "Show menu"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "submit": "Submit",
+    "start": "Start",
+    "continue": "Continue",
+    "finish": "Finish",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "all": "All"
+  },
+  "difficulty": {
+    "all": "All",
+    "easy": "Easy",
+    "medium": "Medium",
+    "hard": "Hard"
+  },
+  "status": {
+    "pending": "Pending",
+    "inProgress": "In Progress",
+    "completed": "Completed",
+    "graded": "Graded",
+    "expired": "Expired"
+  },
+  "landing": {
+    "header": {
+      "logo": "Nam Thu EDU",
+      "tagline": "Smart English Learning",
+      "searchPlaceholder": "Search courses, lessons, vocabulary, grammar...",
+      "login": "Login",
+      "register": "Register",
+      "registerNow": "Register Now",
+      "home": "Home",
+      "courses": "Courses",
+      "exams": "Exam Prep",
+      "schedule": "Schedule",
+      "contact": "Contact",
+      "coursesKids": "Kids (6-12 years)",
+      "coursesTeens": "Teens (13-17 years)",
+      "coursesAdults": "Adults (18+)",
+      "coursesCommunication": "Communication",
+      "examsIELTS": "IELTS",
+      "examsTOEIC": "TOEIC",
+      "examsCambridge": "Cambridge",
+      "examsVSTEP": "VSTEP",
+      "examsVSAT": "V-SAT",
+      "hotline": "Hotline",
+      "promotions": "Special Offers:",
+      "promotionGroup": "Group of 3+ students",
+      "promotionDisadvantaged": "Disadvantaged students",
+      "promotionMaterials": "Free materials"
+    },
+    "hero": {
+      "badge": "Top 1 online English learning platform in Vietnam",
+      "title": "Smart English Learning",
+      "titleHighlight": "with AI Technology",
+      "subtitle": "Age-adaptive interface, accurate AI pronunciation assessment, effective IELTS/TOEIC preparation. Suitable for all ages from 6-45 years old.",
+      "featureCommunication": "Real Communication",
+      "featureCommunicationDesc": "Speak confidently",
+      "featureGrades": "Grades 1-12",
+      "featureGradesDesc": "All levels",
+      "featureExams": "IELTS/TOEIC",
+      "featureExamsDesc": "International certificates",
+      "featureAI": "AI",
+      "featureAIDesc": "Smart",
+      "ctaRegister": "Register Now",
+      "ctaDemo": "Watch Demo",
+      "trustStudents": "students",
+      "trustRating": "rating",
+      "students": "Students",
+      "rating": "Rating"
+    },
+    "stats": {
+      "students": "Students",
+      "courses": "Courses",
+      "teachers": "Teachers",
+      "satisfaction": "Satisfaction"
+    },
+    "learningPaths": {
+      "title": "Choose Your Learning Path",
+      "subtitle": "Interface and content automatically adapt to age and proficiency level",
+      "kids": {
+        "name": "Kids (6-12 years)",
+        "description": "Learn English through games, vivid images, and fun songs",
+        "feature1": "Interactive games",
+        "feature2": "Vivid images",
+        "feature3": "Fun songs",
+        "feature4": "Standard pronunciation"
+      },
+      "teens": {
+        "name": "Teens (13-17 years)",
+        "description": "Cambridge exam prep, real communication, and modern video lessons",
+        "feature1": "Cambridge YLE/KET/PET",
+        "feature2": "Video lessons",
+        "feature3": "Speaking practice",
+        "feature4": "Gamification"
+      },
+      "adults": {
+        "name": "Adults (18+ years)",
+        "description": "IELTS, TOEIC, VSTEP and professional business English communication",
+        "feature1": "IELTS/TOEIC/VSTEP",
+        "feature2": "Business English",
+        "feature3": "Interview skills",
+        "feature4": "Professional"
+      },
+      "coursesCount": "courses",
+      "startNow": "Start Now"
+    },
+    "proficiency": {
+      "title": "English Proficiency Levels",
+      "beginner": "Beginner",
+      "beginnerDesc": "A1-A2: Start with foundations",
+      "intermediate": "Intermediate",
+      "intermediateDesc": "B1-B2: Communicate confidently",
+      "advanced": "Advanced",
+      "advancedDesc": "C1-C2: Native-like proficiency",
+      "examPrep": "Exam Prep",
+      "examPrepDesc": "IELTS, TOEIC, Cambridge, VSTEP"
+    },
+    "examPrep": {
+      "title": "International Certificate Preparation",
+      "subtitle": "Achieve high scores with effective learning methods and international standard tests",
+      "viewCourses": "View Courses"
+    },
+    "features": {
+      "title": "Key Features",
+      "adaptive": "Adaptive Learning",
+      "adaptiveDesc": "Interface and content automatically adjust to age",
+      "listening": "Listening & Speaking",
+      "listeningDesc": "AI pronunciation assessment and real communication",
+      "competition": "Competition & Ranking",
+      "competitionDesc": "Compete with friends, earn medals",
+      "video": "Video Lessons",
+      "videoDesc": "Learn through interactive videos with native teachers",
+      "preview": "Preview"
+    },
+    "cta": {
+      "title": "Start Your English Learning Journey",
+      "subtitle": "Register now to get 7 days free trial with age-adaptive interface",
+      "button": "Try Free for 7 Days",
+      "noCard": "No credit card required",
+      "cancelAnytime": "Cancel anytime"
+    },
+    "footer": {
+      "description": "NamThu is a smart English learning platform with age-adaptive interface. With modern teaching methods and curriculum from top experts, NamThu meets the needs of all learners.",
+      "followUs": "Follow NamThu on:",
+      "weRecommend": "We Recommend",
+      "aboutUs": "About NamThu",
+      "forStudents": "For Students & Parents",
+      "forTeachers": "For Teachers & Schools",
+      "parentApp": "Parent APP",
+      "resources": "Resources",
+      "helpCenter": "Help Center",
+      "userGuide": "User Guide",
+      "feedback": "Feedback about NamThu",
+      "askChannel": "Ask about NamThu",
+      "mobileApp": "Mobile App",
+      "downloadOn": "Download on the",
+      "appStore": "App Store",
+      "getItOn": "GET IT ON",
+      "googlePlay": "Google Play",
+      "copyright": "© 2013 - 2026 NAMTHU.VN",
+      "email": "Email:",
+      "contactUs": "Contact"
+    },
+    "testimonials": {
+      "title": "What Our Students Say",
+      "subtitle": "Thousands of students have achieved their English goals",
+      "kids": "Kids",
+      "teens": "Teens",
+      "adults": "Adults",
+      "result": "Result"
+    },
+    "demo": {
+      "title": "Try a Sample Lesson",
+      "subtitle": "Click the card to flip and see the Vietnamese meaning",
+      "clickToFlip": "Click to flip",
+      "reset": "Reset",
+      "note": "This is just 1 of 10,000+ vocabulary words and interactive lessons",
+      "example": "Example:"
+    },
+    "page": {
+      "learningPathsTitle": "Choose Your Learning Path",
+      "learningPathsSubtitle": "Interface and content automatically adapt to age and proficiency level",
+      "proficiencyTitle": "English Proficiency Levels",
+      "examPrepTitle": "International Certificate Preparation",
+      "examPrepSubtitle": "Achieve high scores with effective learning methods and international standard tests",
+      "featuresTitle": "Key Features",
+      "ctaTitle": "Start Your English Learning Journey",
+      "ctaSubtitle": "Register now to get 7 days free trial with age-adaptive interface"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome back! 👋",
+      "subtitle": "Login to continue with Teacher Dashboard",
+      "studentSubtitle": "Login to continue learning",
+      "email": "Email",
+      "phone": "Phone number",
+      "password": "Password",
+      "rememberMe": "Remember me",
+      "forgotPassword": "Forgot password?",
+      "loginButton": "Login",
+      "loggingIn": "Logging in...",
+      "noAccount": "Don't have an account?",
+      "signUpNow": "Sign up now",
+      "orLoginWith": "Or login with email",
+      "securityBadge": "Secured with 256-bit SSL encryption",
+      "termsPrefix": "By logging in, you agree to our",
+      "terms": "Terms of Service",
+      "and": "and",
+      "privacy": "Privacy Policy",
+      "brandName": "NamThu Education",
+      "teacherDashboard": "Teacher Dashboard",
+      "platformTitle": "Modern Education",
+      "platformSubtitle": "Management Platform",
+      "platformDesc": "Comprehensive tools to help English teachers create exams, manage classes, and track student progress effectively.",
+      "features": {
+        "examManagement": "Smart Exam Management",
+        "studentTracking": "Track Student Progress",
+        "autoGrading": "Fast & Automatic Grading",
+        "analytics": "Detailed Analytics & Reports"
+      },
+      "stats": {
+        "teachers": "Teachers",
+        "students": "Students",
+        "tests": "Tests",
+        "satisfaction": "Satisfaction"
+      }
+    },
+    "register": {
+      "title": "Create Account",
+      "subtitle": "Create new student account",
+      "subtitleJourney": "Start your learning journey",
+      "createAccount": "Create new account",
+      "name": "Full name",
+      "phone": "Phone number",
+      "dateOfBirth": "Date of birth",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "required": "*",
+      "minPassword": "Minimum 6 characters",
+      "registerButton": "Register",
+      "processing": "Processing...",
+      "hasAccount": "Already have an account?",
+      "loginNow": "Login",
+      "ageGroupPreview": "Interface:",
+      "ageGroupSuitable": "Suitable interface:",
+      "ageGroups": {
+        "kids": "Kids (6-12 years)",
+        "teens": "Teens (13-17 years)",
+        "adults": "Adults (18+ years)"
+      },
+      "progress": {
+        "step1": "Information",
+        "step2": "Complete"
+      },
+      "success": {
+        "title": "Registration successful!",
+        "redirecting": "Redirecting to homepage..."
+      }
+    },
+    "common": {
+      "emailPlaceholder": "teacher@namthu.edu.vn",
+      "phonePlaceholder": "0336695863",
+      "namePlaceholder": "John Doe",
+      "passwordPlaceholder": "••••••••"
+    }
+  }
+}

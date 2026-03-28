@@ -1,0 +1,122 @@
+/**
+ * NamThu English - Color System
+ * THEME: Orange & White - Modern, Energetic, Educational
+ * Based on UI/UX Pro Max Design System
+ * 
+ * Primary: #FF8C42 (Vibrant Orange) - Energy, enthusiasm, creativity
+ * Secondary: #FF6B35 (Deep Orange) - Warmth, confidence
+ * Accent: #FFA726 (Light Orange) - Friendly, approachable
+ */
+
+:root {
+  /* Primary Colors - Orange Palette */
+  --color-primary: #FF8C42;
+  --color-primary-dark: #FF6B35;
+  --color-primary-light: #FFA726;
+  --color-primary-soft: #FFF4E6;
+  --color-primary-pale: #FFF9F0;
+  
+  /* Accent Colors */
+  --color-accent: #FFB74D;
+  --color-accent-soft: #FFE0B2;
+  
+  /* Neutral Colors */
+  --color-text-dark: #2D2D2D;
+  --color-text-gray: #666666;
+  --color-bg: #FFFFFF;
+  --color-bg-light: #FAFAFA;
+  
+  /* Semantic Colors */
+  --color-success: #4CAF50;
+  --color-warning: #FF9800;
+  --color-error: #F44336;
+  --color-info: #2196F3;
+  
+  /* Spacing System (8px base unit) */
+  --space-xs: 0.25rem;  /* 4px */
+  --space-sm: 0.5rem;   /* 8px */
+  --space-md: 1rem;     /* 16px */
+  --space-lg: 1.5rem;   /* 24px */
+  --space-xl: 2rem;     /* 32px */
+  --space-2xl: 3rem;    /* 48px */
+  --space-3xl: 4rem;    /* 64px */
+  
+  /* Shadow Depths */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+  --shadow-xl: 0 20px 25px rgba(0,0,0,0.15);
+  
+  /* Animation Durations */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  
+  /* Easing Functions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.87, 0, 0.13, 1);
+}
+
+/* Smooth Scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Respect Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Utility Classes */
+.bg-primary {
+  background-color: var(--color-primary);
+}
+
+.bg-primary-light {
+  background-color: var(--color-primary-light);
+}
+
+.bg-primary-soft {
+  background-color: var(--color-primary-soft);
+}
+
+.bg-accent {
+  background-color: var(--color-accent);
+}
+
+.bg-accent-soft {
+  background-color: var(--color-accent-soft);
+}
+
+.text-primary {
+  color: var(--color-primary);
+}
+
+.text-accent {
+  color: var(--color-accent);
+}
+
+.border-primary {
+  border-color: var(--color-primary);
+}
+
+.border-accent {
+  border-color: var(--color-accent);
+}
+
+/* Hover States */
+.hover-accent:hover {
+  color: var(--color-accent);
+}
+
+.hover-primary:hover {
+  color: var(--color-primary);
+}

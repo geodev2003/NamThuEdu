@@ -308,7 +308,7 @@ export function StudentProgress() {
 
             {/* Actions */}
             <Link
-              to={`/bao-cao/hoc-sinh/${student.id}`}
+              to={`/bao-cao/students/${student.id}`}
               className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all flex items-center justify-center gap-2"
             >
               Xem chi tiết

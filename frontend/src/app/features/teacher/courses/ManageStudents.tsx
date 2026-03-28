@@ -620,7 +620,7 @@ export function ManageStudents() {
                 </div>
                 <p className="text-sm text-gray-500 mt-1">
                   Hoặc{" "}
-                  <Link to="/giao-vien/hoc-vien/them-moi" className="text-blue-600 hover:underline">
+                  <Link to="/giao-vien/students/them-moi" className="text-blue-600 hover:underline">
                     tạo học sinh mới
                   </Link>
                 </p>
@@ -909,7 +909,7 @@ export function ManageStudents() {
                   Gửi tin nhắn
                 </button>
                 <Link
-                  to={`/hoc-vien/${selectedStudent.id}`}
+                  to={`/students/${selectedStudent.id}`}
                   className="w-full px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all flex items-center justify-center gap-2 font-medium"
                 >
                   <Eye className="w-4 h-4" />

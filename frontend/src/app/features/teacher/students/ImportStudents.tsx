@@ -184,7 +184,7 @@ export function ImportStudents() {
       {/* Header */}
       <div className="mb-6">
         <Link
-          to="/giao-vien/hoc-vien"
+          to="/giao-vien/students"
           className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#2563EB] mb-4 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -561,7 +561,7 @@ export function ImportStudents() {
             {/* Actions */}
             <div className="flex items-center justify-between">
               <Link
-                to="/giao-vien/hoc-vien"
+                to="/giao-vien/students"
                 className="px-6 py-2.5 border border-[#E5E7EB] text-[#374151] rounded-lg hover:bg-[#F9FAFB] transition-colors font-medium"
               >
                 Về trang quản lý

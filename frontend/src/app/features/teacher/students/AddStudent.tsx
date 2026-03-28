@@ -64,7 +64,7 @@ export function AddStudent() {
       {/* Header */}
       <div className="mb-8">
         <Link
-          to="/giao-vien/hoc-vien"
+          to="/giao-vien/students"
           className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#2563EB] mb-6 transition-colors group"
         >
           <div className="p-1.5 rounded-lg bg-white border border-[#E5E7EB] group-hover:border-[#2563EB] transition-colors">
@@ -517,7 +517,7 @@ export function AddStudent() {
         {/* Action Buttons */}
         <div className="sticky bottom-0 bg-white/95 backdrop-blur-sm border-t-2 border-[#E5E7EB] -mx-8 px-8 py-5 flex items-center justify-between shadow-2xl rounded-t-2xl">
           <Link
-            to="/giao-vien/hoc-vien"
+            to="/giao-vien/students"
             className="flex items-center gap-2 px-6 py-3.5 border-2 border-[#E5E7EB] text-[#374151] rounded-xl hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-all font-semibold"
           >
             <X className="w-5 h-5" />

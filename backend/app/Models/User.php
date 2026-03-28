@@ -35,6 +35,10 @@ class User extends Authenticatable
         'uRole',
         'uDoB',
         'uStatus',
+        'age_group',
+        'date_of_birth',
+        'theme_preference',
+        'theme_updated_at',
         'refresh_token',
         'refresh_token_expires_at',
     ];
@@ -56,8 +60,10 @@ class User extends Authenticatable
      */
     protected $casts = [
         'uDoB' => 'date',
+        'date_of_birth' => 'date',
         'uGender' => 'boolean',
         'uCreated_at' => 'datetime',
+        'theme_updated_at' => 'datetime',
         'refresh_token_expires_at' => 'datetime',
     ];
 

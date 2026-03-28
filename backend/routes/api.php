@@ -16,6 +16,7 @@ use App\Http\Controllers\StudentTestController;
 use App\Http\Controllers\TestController;
 use App\Http\Controllers\SystemReportController;
 use App\Http\Controllers\PracticeController;
+use App\Http\Controllers\AgeGroupController;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,6 +31,7 @@ use App\Http\Controllers\PracticeController;
 
 /* ========= AUTH ========= */
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register']);
 Route::post('/refresh', [AuthController::class, 'refresh']);
 Route::post('/users/accept', [AuthController::class, 'accept']);
 Route::post('/users/reset-password', [AuthController::class, 'resetPassword']);
@@ -66,6 +68,15 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
+    
+    /* ======== AGE GROUP & THEME ROUTES ========= */
+    Route::prefix('user')->group(function () {
+        Route::get('/profile', [AuthController::class, 'profile']);
+        Route::get('/age-group', [AgeGroupController::class, 'getAgeGroup']);
+        Route::post('/age-group', [AgeGroupController::class, 'updateAgeGroup']);
+        Route::get('/theme-preference', [AgeGroupController::class, 'getThemePreference']);
+        Route::post('/theme-preference', [AgeGroupController::class, 'updateThemePreference']);
+    });
     
     /* ======== TEACHER ROUTES ========= */
     Route::middleware('role:teacher')->prefix('teacher')->group(function () {
@@ -193,6 +204,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/tests/{id}/start', [StudentTestController::class, 'start']);
         Route::post('/tests/{submissionId}/answer', [StudentTestController::class, 'answer']);
         Route::post('/tests/{submissionId}/submit', [StudentTestController::class, 'submit']);
+        
+        // Dashboard specific endpoints
+        Route::get('/tests/in-progress', [StudentTestController::class, 'inProgressTests']);
+        Route::get('/tests/upcoming', [StudentTestController::class, 'upcomingTests']);
+        Route::get('/recommendations/practice', [StudentTestController::class, 'practiceRecommendations']);
+        Route::get('/notifications', [StudentTestController::class, 'getNotifications']);
         
         // WebSocket Real-time Features
         Route::post('/websocket/connect', [App\Http\Controllers\TestWebSocketController::class, 'connect']);

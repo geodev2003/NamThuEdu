@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
-import { Header } from "../components/Header";
-import teacherBg from "figma:asset/579b340be62d322502d88520e9c8562ec7809ac1.png";
+import { Header } from "../../../components/shared/Header";
 import {
   BookOpen,
   School,
@@ -46,7 +45,8 @@ const recentActivities = [
     id: 1,
     type: "created",
     detail: "IELTS Reading Test",
-    time: "2 giờ trước",
+    time: "2",
+    timeUnit: "hoursAgo",
     color: "#2563EB",
     bg: "#EFF6FF",
   },
@@ -54,15 +54,18 @@ const recentActivities = [
     id: 2,
     type: "assigned",
     detail: "Morning Class",
-    time: "5 giờ trước",
+    time: "5",
+    timeUnit: "hoursAgo",
     color: "#10B981",
     bg: "#F0FDF4",
   },
   {
     id: 3,
     type: "graded",
-    detail: "12 bài nộp",
-    time: "Hôm qua",
+    detail: "12",
+    detailType: "submissions",
+    time: "",
+    timeUnit: "yesterday",
     color: "#F59E0B",
     bg: "#FFFBEB",
   },
@@ -70,7 +73,8 @@ const recentActivities = [
     id: 4,
     type: "created",
     detail: "Cambridge B2 Mock",
-    time: "2 ngày trước",
+    time: "2",
+    timeUnit: "daysAgo",
     color: "#8B5CF6",
     bg: "#F5F3FF",
   },
@@ -105,10 +109,10 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   return null;
 }
 
-const activityLabel = (type: string, detail: string) => {
-  if (type === "created") return `Tạo đề thi "${detail}"`;
-  if (type === "assigned") return `Giao bài cho lớp "${detail}"`;
-  if (type === "graded") return `Đã chấm ${detail}`;
+const activityLabel = (type: string, detail: string, t: any, detailType?: string) => {
+  if (type === "created") return `${t('teacher.dashboard.recentActivity.created')} "${detail}"`;
+  if (type === "assigned") return `${t('teacher.dashboard.recentActivity.assigned')} "${detail}"`;
+  if (type === "graded") return `${t('teacher.dashboard.recentActivity.graded')} ${detail} ${detailType ? t(`teacher.dashboard.recentActivity.${detailType}`) : ''}`;
   return detail;
 };
 
@@ -120,13 +124,13 @@ const activityIcon = (type: string) => {
 };
 
 export function Dashboard() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
 
   const hour = new Date().getHours();
   const greeting =
-    hour < 12 ? "Chào buổi sáng" : hour < 18 ? "Chào buổi chiều" : "Chào buổi tối";
+    hour < 12 ? t('teacher.dashboard.time.morning') : hour < 18 ? t('teacher.dashboard.time.afternoon') : t('teacher.dashboard.time.evening');
   const greetingEmoji = hour < 12 ? "☀️" : hour < 18 ? "🌤️" : "🌙";
 
   useEffect(() => {
@@ -246,16 +250,6 @@ export function Dashboard() {
           />
 
           <div className="relative px-8 pt-8 pb-20">
-            {/* Background Image with Overlay */}
-            <div className="absolute inset-0 overflow-hidden rounded-t-2xl">
-              <img
-                src={teacherBg}
-                alt="Teacher background"
-                className="w-full h-full object-cover opacity-90"
-              />
-              {/* Gradient overlay removed - using background image only */}
-            </div>
-
             <div className="flex items-start justify-between relative z-10">
               {/* Left: greeting */}
               <div
@@ -277,15 +271,15 @@ export function Dashboard() {
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className="flex items-center gap-1.5 bg-white/10 text-white/80 text-xs px-3 py-1.5 rounded-full border border-white/10">
                     <Clock className="w-3.5 h-3.5" />
-                    3 lớp học hôm nay
+                    3 {t('teacher.dashboard.todayClasses')}
                   </span>
                   <span className="flex items-center gap-1.5 bg-amber-400/20 text-amber-300 text-xs px-3 py-1.5 rounded-full border border-amber-400/20">
                     <AlertCircle className="w-3.5 h-3.5" />
-                    12 bài chưa chấm
+                    12 {t('teacher.dashboard.pendingGrading')}
                   </span>
                   <span className="flex items-center gap-1.5 bg-emerald-400/20 text-emerald-300 text-xs px-3 py-1.5 rounded-full border border-emerald-400/20">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    2 deadline tuần này
+                    2 {t('teacher.dashboard.deadlinesThisWeek')}
                   </span>
                 </div>
               </div>
@@ -297,7 +291,7 @@ export function Dashboard() {
                 style={{ fontSize: "14px", fontWeight: 600 }}
               >
                 <Zap className="w-4 h-4" />
-                Tạo đề thi mới
+                {t('teacher.dashboard.quickActions.createExam')}
               </button>
             </div>
           </div>
@@ -387,7 +381,7 @@ export function Dashboard() {
                     {t("dashboard.charts.studentPerformance")}
                   </h3>
                   <p className="text-[#9CA3AF] mt-0.5" style={{ fontSize: "13px" }}>
-                    6 tuần gần nhất
+                    {t('teacher.dashboard.lastSixWeeks')}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -551,10 +545,15 @@ export function Dashboard() {
                           className="text-[#374151] leading-snug"
                           style={{ fontSize: "13px", fontWeight: 500 }}
                         >
-                          {activityLabel(activity.type, activity.detail)}
+                          {activityLabel(activity.type, activity.detail, t, (activity as any).detailType)}
                         </p>
                         <p className="text-[#9CA3AF] mt-0.5" style={{ fontSize: "11px" }}>
-                          {activity.time}
+                          {activity.timeUnit === 'yesterday' 
+                            ? t('teacher.dashboard.recentActivity.yesterday')
+                            : activity.time && activity.timeUnit
+                            ? `${activity.time} ${t(`teacher.dashboard.recentActivity.${activity.timeUnit}`)}`
+                            : activity.time
+                          }
                         </p>
                       </div>
                     </div>
@@ -567,14 +566,14 @@ export function Dashboard() {
                 className="mt-4 pt-4 border-t border-[#F3F4F6] flex items-center justify-between"
               >
                 <span className="text-[#9CA3AF]" style={{ fontSize: "12px" }}>
-                  Tuần này
+                  {t('teacher.dashboard.thisWeek')}
                 </span>
                 <span
                   className="flex items-center gap-1"
                   style={{ fontSize: "12px", color: "#10B981", fontWeight: 600 }}
                 >
                   <TrendingUp className="w-3 h-3" />
-                  Hoạt động tốt
+                  {t('teacher.dashboard.goodActivity')}
                 </span>
               </div>
             </div>

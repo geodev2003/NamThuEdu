@@ -43,9 +43,9 @@ const adminNav: NavItem[] = [
     icon: Users,
     badge: 12,
     submenu: [
-      { label: "Tất cả học viên", href: "/admin/hoc-vien" },
-      { label: "Đăng ký mới", href: "/admin/hoc-vien/dang-ky" },
-      { label: "Khiếu nại", href: "/admin/hoc-vien/khieu-nai" },
+      { label: "Tất cả học viên", href: "/admin/students" },
+      { label: "Đăng ký mới", href: "/admin/students/dang-ky" },
+      { label: "Khiếu nại", href: "/admin/students/khieu-nai" },
     ],
   },
   {
@@ -70,7 +70,7 @@ const adminNav: NavItem[] = [
     icon: BarChart3,
     submenu: [
       { label: "Doanh thu", href: "/admin/bao-cao/doanh-thu" },
-      { label: "Học viên", href: "/admin/bao-cao/hoc-vien" },
+      { label: "Học viên", href: "/admin/bao-cao/students" },
       { label: "Hiệu suất GV", href: "/admin/bao-cao/giao-vien" },
     ],
   },

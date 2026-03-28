@@ -1,7 +1,7 @@
 import { Bell, Plus, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
 interface HeaderProps {

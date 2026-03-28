@@ -46,9 +46,9 @@ const navigationData: MenuItem[] = [
     name: "students",
     icon: Users,
     submenu: [
-      { name: "manageStudents", href: "/giao-vien/hoc-vien" },
-      { name: "addStudent", href: "/giao-vien/hoc-vien/them-moi" },
-      { name: "importStudents", href: "/giao-vien/hoc-vien/import" },
+      { name: "manageStudents", href: "/giao-vien/students" },
+      { name: "addStudent", href: "/giao-vien/students/them-moi" },
+      { name: "importStudents", href: "/giao-vien/students/import" },
     ],
   },
   {
@@ -67,7 +67,7 @@ const navigationData: MenuItem[] = [
     submenu: [
       { name: "courseList", href: "/giao-vien/khoa-hoc" },
       { name: "createCourse", href: "/giao-vien/khoa-hoc/tao-moi" },
-      { name: "manageStudents", href: "/giao-vien/khoa-hoc/quan-ly-hoc-vien" },
+      { name: "manageStudents", href: "/giao-vien/khoa-hoc/quan-ly-students" },
       { name: "courseStats", href: "/giao-vien/khoa-hoc/thong-ke" },
     ],
   },
@@ -135,7 +135,7 @@ const navigationData: MenuItem[] = [
     icon: BarChart3,
     submenu: [
       { name: "reportOverview", href: "/giao-vien/bao-cao" },
-      { name: "studentProgress", href: "/giao-vien/bao-cao/tien-do-hoc-sinh" },
+      { name: "studentProgress", href: "/giao-vien/bao-cao/tien-do-students" },
       { name: "analysis", href: "/giao-vien/bao-cao/phan-tich" },
       { name: "exportReport", href: "/giao-vien/bao-cao/xuat-bao-cao" },
     ],

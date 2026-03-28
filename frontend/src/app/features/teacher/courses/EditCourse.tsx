@@ -38,13 +38,13 @@ export function EditCourse() {
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-1">Chỉnh sửa khóa học</h1>
+                <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('teacher.courses.editCourse')}</h1>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <Link to="/giao-vien" className="hover:text-blue-600">Dashboard</Link>
                   <span>/</span>
                   <Link to="/giao-vien/khoa-hoc" className="hover:text-blue-600">Khóa học</Link>
                   <span>/</span>
-                  <span className="text-gray-900 font-medium">Chỉnh sửa</span>
+                  <span className="text-gray-900 font-medium">{t('teacher.common.edit')}</span>
                 </div>
               </div>
             </div>
@@ -53,14 +53,14 @@ export function EditCourse() {
                 onClick={() => navigate(`/khoa-hoc/${courseId}`)}
                 className="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium"
               >
-                Hủy
+                {t('teacher.common.cancel')}
               </button>
               <button
                 onClick={handleSubmit}
                 className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all flex items-center gap-2 font-medium"
               >
                 <Save className="w-4 h-4" />
-                Lưu thay đổi
+                {t('teacher.common.saveChanges')}
               </button>
             </div>
           </div>

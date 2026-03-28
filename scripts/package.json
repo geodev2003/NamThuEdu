@@ -1,0 +1,17 @@
+{
+  "name": "namthuedu-svg-generator",
+  "version": "1.0.0",
+  "description": "Generate SVG illustrations using Quiver AI for NamThuEdu",
+  "type": "module",
+  "scripts": {
+    "generate": "node generate-svgs.js",
+    "test": "node generate-svgs.js test",
+    "grades": "node generate-svgs.js single grades",
+    "subjects": "node generate-svgs.js single subjects",
+    "features": "node generate-svgs.js single features",
+    "decorative": "node generate-svgs.js single decorative"
+  },
+  "keywords": ["svg", "quiver-ai", "generator", "education"],
+  "author": "NamThuEdu",
+  "license": "MIT"
+}

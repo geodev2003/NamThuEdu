@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
+import { useTranslation } from "react-i18next";
 import {
   Users,
   Activity,
@@ -16,6 +17,7 @@ import {
   Wifi,
   Clock,
 } from "lucide-react";
+import { Header } from "../../../components/shared/Header";
 
 interface StudentSession {
   id: string;
@@ -34,6 +36,7 @@ interface StudentSession {
 }
 
 export function LiveMonitoring() {
+  const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [filterExam, setFilterExam] = useState("");
   const [filterClass, setFilterClass] = useState("");
@@ -152,29 +155,30 @@ export function LiveMonitoring() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-gray-900">Giám sát trực tiếp 🎥</h1>
-            {/* LIVE Indicator */}
-            <div className="flex items-center gap-2 px-4 py-2 bg-green-100 rounded-lg">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-green-700 font-bold text-sm">LIVE</span>
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <Header
+        breadcrumb={[t("breadcrumb.dashboard"), t("breadcrumb.liveMonitoring")]}
+      />
+
+      <div className="flex-1 overflow-y-auto" style={{ background: "#EEEEF3" }}>
+        <div className="px-8 py-6 space-y-6">
+          {/* Live Indicator */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-4 py-2 bg-green-100 rounded-lg">
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-green-700 font-bold text-sm">LIVE</span>
+              </div>
+              <span className="text-sm text-gray-600">
+                Cập nhật {Math.floor((Date.now() - lastUpdate.getTime()) / 1000)} giây trước
+              </span>
             </div>
           </div>
-          <div className="text-sm text-gray-600">
-            Cập nhật {Math.floor((Date.now() - lastUpdate.getTime()) / 1000)} giây trước
-          </div>
-        </div>
-        <p className="text-gray-600">Theo dõi học sinh trong các kỳ thi trực tiếp</p>
-      </div>
 
-      {/* Quick Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        {/* Active Students */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
+          {/* Quick Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Active Students */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
               <Users className="w-6 h-6 text-green-600" />
@@ -185,8 +189,8 @@ export function LiveMonitoring() {
           <p className="text-3xl font-bold text-gray-900">{stats.activeStudents}</p>
         </div>
 
-        {/* Total Sessions */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
+            {/* Total Sessions */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
               <Activity className="w-6 h-6 text-blue-600" />
@@ -196,8 +200,8 @@ export function LiveMonitoring() {
           <p className="text-3xl font-bold text-gray-900">{stats.totalSessions}</p>
         </div>
 
-        {/* Average Completion */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
+            {/* Average Completion */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-purple-600" />
@@ -207,12 +211,12 @@ export function LiveMonitoring() {
           <p className="text-3xl font-bold text-gray-900">{stats.avgCompletion}%</p>
         </div>
 
-        {/* Connection Issues */}
-        <div
-          className={`bg-white/80 backdrop-blur-sm rounded-2xl border p-6 ${
-            stats.connectionIssues > 0 ? "border-red-300" : "border-gray-200"
-          }`}
-        >
+            {/* Connection Issues */}
+            <div
+              className={`bg-white rounded-xl border p-5 ${
+                stats.connectionIssues > 0 ? "border-red-300" : "border-gray-200"
+              }`}
+            >
           <div className="flex items-center justify-between mb-3">
             <div
               className={`w-12 h-12 rounded-xl flex items-center justify-center ${
@@ -315,12 +319,12 @@ export function LiveMonitoring() {
               <List className="w-5 h-5" />
             </button>
           </div>
+          </div>
         </div>
-      </div>
 
-      {/* Student Sessions Grid */}
-      {viewMode === "grid" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Student Sessions Grid */}
+        {viewMode === "grid" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredSessions.map((session) => {
             const badge = getConnectionBadge(session.connectionStatus);
             const Icon = badge.icon;
@@ -331,7 +335,7 @@ export function LiveMonitoring() {
             return (
               <div
                 key={session.id}
-                className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6 hover:shadow-lg transition-all"
+                className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all"
               >
                 {/* Student Info */}
                 <div className="flex items-center gap-3 mb-4">
@@ -406,7 +410,7 @@ export function LiveMonitoring() {
                 {/* Actions */}
                 <div className="flex gap-2">
                   <Link
-                    to={`/giam-sat-truc-tiep/${session.id}`}
+                    to={`/giao-vien/giam-sat-truc-tiep/${session.id}`}
                     className="flex-1 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all flex items-center justify-center gap-2 font-semibold text-sm"
                   >
                     <Eye className="w-4 h-4" />
@@ -422,9 +426,9 @@ export function LiveMonitoring() {
               </div>
             );
           })}
-        </div>
-      ) : (
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 overflow-hidden">
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
@@ -495,12 +499,12 @@ export function LiveMonitoring() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
-                        <Link
-                          to={`/giam-sat-truc-tiep/${session.id}`}
-                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Link>
+                      <Link
+                        to={`/giao-vien/giam-sat-truc-tiep/${session.id}`}
+                        className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Link>
                         <button className="p-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-all">
                           <MessageCircle className="w-4 h-4" />
                         </button>
@@ -519,7 +523,7 @@ export function LiveMonitoring() {
 
       {/* Empty State */}
       {filteredSessions.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200">
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl border border-gray-200">
           <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
             <Users className="w-10 h-10 text-gray-400" />
           </div>
@@ -527,6 +531,8 @@ export function LiveMonitoring() {
           <p className="text-sm text-gray-500">Khi có học sinh bắt đầu thi, họ sẽ xuất hiện ở đây</p>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

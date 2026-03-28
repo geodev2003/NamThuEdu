@@ -19,6 +19,205 @@
         }
     ],
     "paths": {
+        "/api/user/age-group": {
+            "get": {
+                "tags": [
+                    "Age Group"
+                ],
+                "summary": "Get user's age group",
+                "operationId": "5902e81b49fcc6591a6357fdaca0ec66",
+                "responses": {
+                    "200": {
+                        "description": "Age group retrieved successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Age Group"
+                ],
+                "summary": "Update user's age group",
+                "operationId": "3e224c29d34489f766724e72bc2061e1",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "date_of_birth": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2010-05-15"
+                                    },
+                                    "age_group": {
+                                        "type": "string",
+                                        "enum": [
+                                            "kids",
+                                            "teens",
+                                            "adults"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Age group updated successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/user/theme-preference": {
+            "get": {
+                "tags": [
+                    "Age Group"
+                ],
+                "summary": "Get user's theme preference",
+                "operationId": "55bdbc92bc004d100d1964a10eb1d6e4",
+                "responses": {
+                    "200": {
+                        "description": "Theme preference retrieved"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Age Group"
+                ],
+                "summary": "Update user's theme preference",
+                "operationId": "4e0bed699c7a93fa6bc4c431b67e8935",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "theme_preference": {
+                                        "type": "string",
+                                        "enum": [
+                                            "auto",
+                                            "kids",
+                                            "teens",
+                                            "adults"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Theme preference updated"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/register": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "User registration",
+                "description": "Register new student user with age-based theme",
+                "operationId": "0903f2e0df1a8857bee538fc055417f0",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "phone",
+                                    "password",
+                                    "password_confirmation",
+                                    "date_of_birth"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Nguyễn Văn A"
+                                    },
+                                    "phone": {
+                                        "type": "string",
+                                        "example": "0336695863"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "password123"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string",
+                                        "example": "password123"
+                                    },
+                                    "date_of_birth": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2010-05-15"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Registration successful"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/user/profile": {
+            "get": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get user profile",
+                "description": "Get complete user profile including age_group and theme_preference",
+                "operationId": "e03e8d2f281c6476ae23fe430f36b12a",
+                "responses": {
+                    "200": {
+                        "description": "Profile retrieved successfully"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/login": {
             "post": {
                 "tags": [
@@ -5287,6 +5486,10 @@
     },
     "tags": [
         {
+            "name": "Age Group",
+            "description": "Age group and theme management endpoints"
+        },
+        {
             "name": "Practice",
             "description": "API endpoints for practice sessions and question banks"
         },
@@ -5305,6 +5508,10 @@
         {
             "name": "Authentication",
             "description": "Authentication"
+        },
+        {
+            "name": "User",
+            "description": "User"
         },
         {
             "name": "Blog Management",

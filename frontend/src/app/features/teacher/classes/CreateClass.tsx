@@ -101,7 +101,7 @@ export function CreateClass() {
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-[#D1FAE5] text-[#10B981] rounded-lg text-sm font-semibold">
             <Check className="w-4 h-4" />
-            Tự động lưu
+            {t('teacher.common.autoSave')}
           </div>
         </div>
       </div>
@@ -589,14 +589,14 @@ export function CreateClass() {
             className="flex items-center gap-2 px-6 py-3.5 border-2 border-[#E5E7EB] text-[#374151] rounded-xl hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-all font-semibold"
           >
             <X className="w-5 h-5" />
-            Hủy bỏ
+            {t('teacher.common.cancelAction')}
           </Link>
           <div className="flex items-center gap-3">
             <button
               type="button"
               className="px-6 py-3.5 border-2 border-[#E5E7EB] text-[#374151] rounded-xl hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-all font-semibold"
             >
-              Lưu nháp
+              {t('teacher.common.saveDraft')}
             </button>
             <button
               type="submit"

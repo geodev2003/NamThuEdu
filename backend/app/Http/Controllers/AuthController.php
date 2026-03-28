@@ -10,9 +10,179 @@ use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\OtpLog;
 use Laravel\Sanctum\PersonalAccessToken;
+use Carbon\Carbon;
 
 class AuthController extends Controller
 {
+    /**
+     * @OA\Post(
+     *     path="/register",
+     *     tags={"Authentication"},
+     *     summary="User registration",
+     *     description="Register new student user with age-based theme",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"name","phone","password","password_confirmation","date_of_birth"},
+     *             @OA\Property(property="name", type="string", example="Nguyễn Văn A"),
+     *             @OA\Property(property="phone", type="string", example="0336695863"),
+     *             @OA\Property(property="password", type="string", example="password123"),
+     *             @OA\Property(property="password_confirmation", type="string", example="password123"),
+     *             @OA\Property(property="date_of_birth", type="string", format="date", example="2010-05-15")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Registration successful"
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation error"
+     *     )
+     * )
+     * 
+     * POST /api/register
+     * Đăng ký tài khoản học sinh mới
+     */
+    public function register(Request $request)
+    {
+        // Validation
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'phone' => 'required|string|unique:users,uPhone',
+            'password' => 'required|string|min:6|confirmed',
+            'date_of_birth' => 'required|date|before:today|after:' . now()->subYears(100)->toDateString(),
+        ], [
+            'name.required' => 'Vui lòng nhập họ tên',
+            'phone.required' => 'Vui lòng nhập số điện thoại',
+            'phone.unique' => 'Số điện thoại đã được sử dụng',
+            'password.required' => 'Vui lòng nhập mật khẩu',
+            'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
+            'password.confirmed' => 'Mật khẩu xác nhận không khớp',
+            'date_of_birth.required' => 'Vui lòng nhập ngày sinh',
+            'date_of_birth.before' => 'Ngày sinh phải là ngày trong quá khứ',
+            'date_of_birth.date' => 'Ngày sinh không hợp lệ',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Vui lòng nhập đầy đủ thông tin',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        // Calculate age
+        $dateOfBirth = Carbon::parse($request->date_of_birth);
+        $age = $dateOfBirth->age;
+
+        // Validate minimum age
+        if ($age < 6) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Người dùng phải từ 6 tuổi trở lên'
+            ], 400);
+        }
+
+        // Calculate age_group
+        $ageGroup = $this->calculateAgeGroup($age);
+
+        // Create user
+        $user = User::create([
+            'uName' => $request->name,
+            'uPhone' => $request->phone,
+            'uPassword' => Hash::make($request->password),
+            'uDoB' => $dateOfBirth,
+            'age_group' => $ageGroup,
+            'theme_preference' => 'auto',
+            'uRole' => 'student',
+            'uStatus' => 'active',
+        ]);
+
+        // Auto-login: Create token
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        // Create refresh token
+        $refreshToken = Str::random(64);
+        $user->update([
+            'refresh_token' => hash('sha256', $refreshToken),
+            'refresh_token_expires_at' => now()->addDays(30),
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+                'expires_in' => 86400,
+                'refresh_token' => $refreshToken,
+                'user' => [
+                    'id' => $user->uId,
+                    'name' => $user->uName,
+                    'phone' => $user->uPhone,
+                    'age' => $age,
+                    'role' => $user->uRole,
+                    'age_group' => $user->age_group,
+                    'theme_preference' => $user->theme_preference,
+                ]
+            ]
+        ], 201);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/user/profile",
+     *     tags={"User"},
+     *     summary="Get user profile",
+     *     description="Get complete user profile including age_group and theme_preference",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Profile retrieved successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     * 
+     * GET /api/user/profile
+     * Lấy thông tin profile đầy đủ
+     */
+    public function profile(Request $request)
+    {
+        $user = $request->user();
+        $age = $user->uDoB ? now()->diffInYears($user->uDoB) : null;
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'id' => $user->uId,
+                'name' => $user->uName,
+                'phone' => $user->uPhone,
+                'email' => $user->uEmail ?? null,
+                'age' => $age,
+                'role' => $user->uRole,
+                'age_group' => $user->age_group,
+                'date_of_birth' => $user->uDoB ? $user->uDoB->format('Y-m-d') : null,
+                'theme_preference' => $user->theme_preference ?? 'auto',
+                'theme_updated_at' => $user->theme_updated_at,
+            ]
+        ]);
+    }
+
+    /**
+     * Calculate age group from age
+     */
+    private function calculateAgeGroup(int $age): string
+    {
+        if ($age >= 6 && $age <= 12) {
+            return 'kids';
+        } elseif ($age >= 13 && $age <= 17) {
+            return 'teens';
+        }
+        return 'adults';
+    }
     /**
      * @OA\Post(
      *     path="/login",
@@ -113,7 +283,9 @@ class AuthController extends Controller
                     'name'  => $user->uName,
                     'phone' => $user->uPhone,
                     'age'   => $age,
-                    'role'  => $user->uRole
+                    'role'  => $user->uRole,
+                    'age_group' => $user->age_group ?? 'teens',
+                    'theme_preference' => $user->theme_preference ?? 'auto',
                 ]
             ]
         ]);

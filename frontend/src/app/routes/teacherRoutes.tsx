@@ -68,9 +68,9 @@ export const teacherRoutes = {
     { index: true, Component: Dashboard },
 
     // Học viên
-    { path: "hoc-vien", Component: StudentManagement },
-    { path: "hoc-vien/them-moi", Component: AddStudent },
-    { path: "hoc-vien/import", Component: ImportStudents },
+    { path: "students", Component: StudentManagement },
+    { path: "students/them-moi", Component: AddStudent },
+    { path: "students/import", Component: ImportStudents },
 
     // Lớp học
     { path: "lop-hoc", Component: ClassList },
@@ -82,7 +82,7 @@ export const teacherRoutes = {
     // Khóa học
     { path: "khoa-hoc", Component: CourseList },
     { path: "khoa-hoc/tao-moi", Component: CreateCourse },
-    { path: "khoa-hoc/quan-ly-hoc-vien", Component: ManageStudents },
+    { path: "khoa-hoc/quan-ly-students", Component: ManageStudents },
     { path: "khoa-hoc/thong-ke", Component: CourseStats },
     { path: "khoa-hoc/:courseId", Component: CourseDetail },
     { path: "khoa-hoc/:courseId/chinh-sua", Component: EditCourse },
@@ -132,7 +132,7 @@ export const teacherRoutes = {
 
     // Báo cáo
     { path: "bao-cao", Component: ReportsOverview },
-    { path: "bao-cao/tien-do-hoc-sinh", Component: StudentProgress },
+    { path: "bao-cao/tien-do-students", Component: StudentProgress },
     { path: "bao-cao/phan-tich", Component: ResultsAnalysis },
     { path: "bao-cao/xuat-bao-cao", Component: ExportReports },
 

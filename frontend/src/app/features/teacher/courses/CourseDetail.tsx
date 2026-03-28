@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, useSearchParams } from "react-router";
-import { Header } from "../components/Header";
+import { Header } from "../../../components/shared/Header";
 import {
   BookOpen,
   Users,
@@ -27,9 +27,9 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { CourseAIInsights } from "./courses/components/CourseAIInsights";
-import { CourseScheduleBuilder } from "./courses/components/CourseScheduleBuilder";
-import { CourseDetailedStats } from "./courses/components/CourseDetailedStats";
+import { CourseAIInsights } from "./components/CourseAIInsights";
+import { CourseScheduleBuilder } from "./components/CourseScheduleBuilder";
+import { CourseDetailedStats } from "./components/CourseDetailedStats";
 
 // Mock data for course detail
 const mockCourseDetail = {
@@ -265,9 +265,8 @@ export function CourseDetail() {
           mockCourseDetail.name,
         ]}
         action={{
-          label: "Chỉnh sửa khóa học",
+          label: t('teacher.courses.editCourse'),
           onClick: () => navigate(`/khoa-hoc/${mockCourseDetail.id}/chinh-sua`),
-          icon: Edit,
         }}
       />
 

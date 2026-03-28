@@ -1,13 +1,21 @@
 @custom-variant dark (&:is(.dark *));
 
+/* THEME: Forest+Coral color system */
+@import './colors.css';
+
 :root {
   /* NamThu Education Design System */
   --font-size: 16px;
   
-  /* Primary Colors */
-  --blue-primary: #2563EB;
-  --blue-hover: #1D4ED8;
-  --blue-light: #DBEAFE;
+  /* Primary Colors - THEME: updated to Forest+Coral */
+  --blue-primary: #1A5C45; /* Forest Green */
+  --blue-hover: #2E8B6A; /* Forest Green Light */
+  --blue-light: #E8F5EF; /* Forest Green Soft */
+  
+  /* Accent Colors - THEME: updated to Forest+Coral */
+  --accent-primary: #FF6B5B; /* Coral */
+  --accent-hover: #FF5544; /* Coral Dark */
+  --accent-light: #FFD6D2; /* Coral Soft */
   
   /* Secondary Colors */
   --green: #10B981;
@@ -286,12 +294,59 @@
   }
 }
 
+@keyframes loading-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-4px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(4px);
+  }
+}
+
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
 
 .animate-float-slow {
   animation: float-slow 10s ease-in-out infinite;
+}
+
+.animate-loading-bar {
+  animation: loading-bar 1.5s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite linear;
+  background-size: 1000px 100%;
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
 }
 
 .delay-300 {

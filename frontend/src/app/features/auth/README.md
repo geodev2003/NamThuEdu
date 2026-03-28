@@ -1,92 +1,88 @@
-# NamThu Education - Authentication Pages
+# Authentication Features
 
-## 🎨 Design Highlights
+Organized authentication components by role for better maintainability and clarity.
 
-### Visual Features
-- **Dark gradient backgrounds**: Slate → Blue → Purple/Pink gradients
-- **Glassmorphism**: Backdrop blur effects with semi-transparent panels
-- **Animated backgrounds**: Floating orbs, particles, and geometric shapes
-- **Custom animations**: Float, pulse, and fade-in effects
-- **Responsive design**: Mobile-first approach with elegant tablet/desktop layouts
-
-### Pages
-
-#### 1. Login (`/login`)
-- Split-screen layout (desktop)
-- Left side: Product branding, features, stats, testimonial
-- Right side: Login form with email/password
-- Social login: Google, GitHub
-- Remember me checkbox
-- Forgot password link
-- Security badge (SSL 256-bit)
-
-#### 2. Register (`/register`)
-- Split-screen layout (desktop)
-- Left side: Benefits list, testimonial
-- Right side: Registration form
-- Fields: Full name, Email, Phone, School, Password, Confirm Password
-- Terms & conditions checkbox
-- 30-day free trial badge
-
-#### 3. Forgot Password (`/forgot-password`)
-- Centered layout
-- Single email input
-- Success state with instructions
-- Resend email option
-- Back to login link
-
-## 🚀 Routes
+## Folder Structure
 
 ```
-/login          → Login page
-/register       → Registration page
-/forgot-password → Password reset page
+auth/
+├── student/              # Student authentication
+│   ├── StudentLogin.tsx
+│   ├── StudentRegister.tsx
+│   └── index.ts
+├── teacher/              # Teacher authentication
+│   ├── TeacherLogin.tsx
+│   └── index.ts
+├── shared/               # Shared auth components
+│   ├── ForgotPassword.tsx
+│   └── index.ts
+├── Login.tsx            # Legacy - Generic login (for admin)
+├── Register.tsx         # Legacy - Generic register
+└── index.ts             # Main exports
 ```
 
-## 🎯 Navigation Flow
+## Usage
 
-```
-Login ←→ Register
-  ↓
-Forgot Password → Email Sent → Back to Login
-  ↓
-Dashboard (after successful login)
+### Student Authentication
+
+```tsx
+import { StudentLogin, StudentRegister } from '@/app/features/auth/student';
 ```
 
-## 🎨 Brand Colors
+**Routes:**
+- `/dang-nhap` - Student login
+- `/dang-ky` - Student registration
 
-- **Primary**: Blue (#2563EB) → Purple (#8B5CF6)
-- **Secondary**: Pink (#EC4899) → Rose (#F43F5E)
-- **Background**: Dark gradients (Slate/Blue/Purple/Pink)
-- **Glass panels**: White/10 with backdrop blur
+**Features:**
+- Age-based theme integration
+- Date of birth collection
+- Age group preview
+- Auto-login after registration
 
-## ✨ Animations
+### Teacher Authentication
 
-All animations defined in `/src/styles/theme.css`:
-- `animate-float`: Floating shapes (6s)
-- `animate-float-slow`: Slow particle movement (10s)
-- `animate-pulse`: Gradient orbs
-- Animation delays: 300ms, 500ms, 700ms, 1000ms
+```tsx
+import { TeacherLogin } from '@/app/features/auth/teacher';
+```
 
-## 📱 Responsive Breakpoints
+**Routes:**
+- `/giao-vien/dang-nhap` - Teacher login
 
-- Mobile: Single column, stacked layout
-- Tablet (lg): Two-column split layout appears
-- Desktop: Full split-screen with side branding
+**Features:**
+- Professional UI
+- Email-based login
+- Social login options (Google, GitHub)
 
-## 🔐 Security Features
+### Shared Components
 
-- Password visibility toggle
-- SSL encryption badge
-- Terms & privacy policy links
-- Email validation
-- Password strength indicator (Register page)
+```tsx
+import { ForgotPassword } from '@/app/features/auth/shared';
+```
 
-## 💡 Usage
+**Routes:**
+- `/forgot-password` - Password reset
+- `/quen-mat-khau` - Password reset (Vietnamese)
 
-Navigate to `/login` to see the login page. The form will redirect to `/` (Dashboard) after successful login simulation (1.5s delay).
+## Design Principles
 
-For development, you can access:
-- Login: `http://localhost:5173/login`
-- Register: `http://localhost:5173/register`
-- Forgot: `http://localhost:5173/forgot-password`
+1. **Role-Based Organization**: Each role has its own folder
+2. **Clear Naming**: Component names include role prefix (Student*, Teacher*)
+3. **Shared Components**: Common functionality in `/shared`
+4. **Backward Compatibility**: Legacy components maintained for existing routes
+5. **Index Exports**: Clean imports via index files
+
+## Adding New Auth Components
+
+1. Determine the role (student/teacher/admin)
+2. Create component in appropriate folder
+3. Export from folder's index.ts
+4. Add route in authRoutes.tsx
+5. Update this README
+
+## Migration Notes
+
+- Old `StudentLogin.tsx` → `student/StudentLogin.tsx`
+- Old `RegisterEnhanced.tsx` → `student/StudentRegister.tsx`
+- Old `TeacherLogin.tsx` → `teacher/TeacherLogin.tsx`
+- Old `ForgotPassword.tsx` → `shared/ForgotPassword.tsx`
+- `Login.tsx` and `Register.tsx` kept for backward compatibility

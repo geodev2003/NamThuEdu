@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVG Viewer - NamThuEdu</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      color: #667eea;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 1rem;
+    }
+
+    .controls {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 1rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      margin-bottom: 2rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .file-input {
+      flex: 1;
+      min-width: 300px;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid #e0e0e0;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    input[type="file"]:hover {
+      border-color: #667eea;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .svg-card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 1rem;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+
+    .svg-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .svg-preview {
+      width: 100%;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f5f5f5;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+      overflow: hidden;
+    }
+
+    .svg-preview svg {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    .svg-name {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .svg-size {
+      color: #999;
+      font-size: 0.8rem;
+    }
+
+    .empty-state {
+      background: white;
+      padding: 4rem 2rem;
+      border-radius: 1rem;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .empty-state svg {
+      width: 100px;
+      height: 100px;
+      margin-bottom: 1rem;
+      opacity: 0.3;
+    }
+
+    .empty-state h2 {
+      color: #666;
+      margin-bottom: 0.5rem;
+    }
+
+    .empty-state p {
+      color: #999;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 1000;
+      padding: 2rem;
+      overflow: auto;
+    }
+
+    .modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      max-width: 800px;
+      width: 100%;
+      max-height: 90vh;
+      overflow: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 2rem;
+      cursor: pointer;
+      color: #999;
+    }
+
+    .modal-close:hover {
+      color: #333;
+    }
+
+    .modal-svg {
+      width: 100%;
+      max-height: 500px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f5f5f5;
+      border-radius: 0.5rem;
+      padding: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .modal-actions .btn {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎨 SVG Viewer</h1>
+      <p class="subtitle">Preview generated SVGs from Quiver AI</p>
+    </header>
+
+    <div class="controls">
+      <div class="file-input">
+        <input type="file" id="fileInput" multiple accept=".svg" />
+      </div>
+      <button class="btn" onclick="loadFolder()">Load Folder</button>
+      <button class="btn" onclick="clearAll()">Clear All</button>
+    </div>
+
+    <div id="gallery" class="gallery">
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        <h2>No SVGs loaded</h2>
+        <p>Select SVG files to preview them here</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal" class="modal" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 id="modalTitle">SVG Preview</h2>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div id="modalSvg" class="modal-svg"></div>
+      <div class="modal-actions">
+        <button class="btn" onclick="downloadSvg()">Download</button>
+        <button class="btn" onclick="copySvg()">Copy Code</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentSvgs = [];
+    let currentSvgData = null;
+
+    document.getElementById('fileInput').addEventListener('change', handleFiles);
+
+    function handleFiles(e) {
+      const files = Array.from(e.target.files);
+      currentSvgs = [];
+      
+      files.forEach(file => {
+        if (file.type === 'image/svg+xml' || file.name.endsWith('.svg')) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            currentSvgs.push({
+              name: file.name,
+              size: formatSize(file.size),
+              content: e.target.result
+            });
+            
+            if (currentSvgs.length === files.length) {
+              renderGallery();
+            }
+          };
+          reader.readAsText(file);
+        }
+      });
+    }
+
+    function renderGallery() {
+      const gallery = document.getElementById('gallery');
+      
+      if (currentSvgs.length === 0) {
+        gallery.innerHTML = `
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+            <h2>No SVGs loaded</h2>
+            <p>Select SVG files to preview them here</p>
+          </div>
+        `;
+        return;
+      }
+
+      gallery.innerHTML = currentSvgs.map((svg, index) => `
+        <div class="svg-card" onclick="openModal(${index})">
+          <div class="svg-preview">
+            ${svg.content}
+          </div>
+          <div class="svg-name">${svg.name}</div>
+          <div class="svg-size">${svg.size}</div>
+        </div>
+      `).join('');
+    }
+
+    function openModal(index) {
+      const svg = currentSvgs[index];
+      currentSvgData = svg;
+      
+      document.getElementById('modalTitle').textContent = svg.name;
+      document.getElementById('modalSvg').innerHTML = svg.content;
+      document.getElementById('modal').classList.add('active');
+    }
+
+    function closeModal(event) {
+      if (!event || event.target.id === 'modal') {
+        document.getElementById('modal').classList.remove('active');
+        currentSvgData = null;
+      }
+    }
+
+    function downloadSvg() {
+      if (!currentSvgData) return;
+      
+      const blob = new Blob([currentSvgData.content], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = currentSvgData.name;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function copySvg() {
+      if (!currentSvgData) return;
+      
+      navigator.clipboard.writeText(currentSvgData.content).then(() => {
+        alert('SVG code copied to clipboard!');
+      });
+    }
+
+    function loadFolder() {
+      document.getElementById('fileInput').click();
+    }
+
+    function clearAll() {
+      currentSvgs = [];
+      currentSvgData = null;
+      document.getElementById('fileInput').value = '';
+      renderGallery();
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+    });
+  </script>
+</body>
+</html>

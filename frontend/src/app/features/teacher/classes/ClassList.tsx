@@ -281,13 +281,13 @@ export function ClassList() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] font-medium"
           >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="active">Đang hoạt động</option>
-            <option value="inactive">Tạm dừng</option>
+            <option value="all">{t('teacher.classes.allStatuses')}</option>
+            <option value="active">{t('teacher.classes.status.active')}</option>
+            <option value="inactive">{t('teacher.classes.status.inactive')}</option>
           </select>
 
           <select className="px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] font-medium">
-            <option>Tất cả khóa học</option>
+            <option>{t('teacher.classes.allCourses')}</option>
             <option>IELTS</option>
             <option>TOEIC</option>
             <option>Cambridge</option>

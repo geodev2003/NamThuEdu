@@ -111,7 +111,7 @@ export function StudentManagement() {
           </div>
           <div className="flex items-center gap-3">
             <Link
-              to="/giao-vien/hoc-vien/them-moi"
+              to="/giao-vien/students/them-moi"
               className="flex items-center gap-2 px-4 py-2.5 bg-[#2563EB] text-white rounded-lg hover:bg-[#1D4ED8] transition-colors font-medium"
             >
               <UserPlus className="w-5 h-5" />
