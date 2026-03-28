@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { useThemeContext } from '../../../contexts/ThemeContext';
 import { register, RegisterFormData } from '../../../services/authApi';
 import { calculateAgeGroup } from '../../../utils/ageDetection';
@@ -27,17 +28,17 @@ function calculateAge(dateOfBirth: string): number {
 
 // Helper to get age group label in Vietnamese
 function getAgeGroupLabel(ageGroup: AgeGroup): string {
-  const labels = {
-    kids: 'Trẻ em (6-12 tuổi)',
-    teens: 'Thiếu niên (13-17 tuổi)',
-    adults: 'Người lớn (18+ tuổi)',
-  };
-  return labels[ageGroup];
+  return {
+    kids: 'auth.register.ageGroups.kids',
+    teens: 'auth.register.ageGroups.teens',
+    adults: 'auth.register.ageGroups.adults',
+  }[ageGroup];
 }
 
 export function Register() {
   const navigate = useNavigate();
   const { syncWithAuth } = useThemeContext();
+  const { t } = useTranslation();
   
   const [formData, setFormData] = useState<RegisterFormData>({
     name: '',
@@ -110,7 +111,7 @@ export function Register() {
         // Field-specific errors
         setFieldErrors(err.response.data.errors);
       }
-      setError(err.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+      setError(err.response?.data?.message || t('common.error'));
     } finally {
       setIsLoading(false);
     }
@@ -120,17 +121,17 @@ export function Register() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 p-8 shadow-2xl">
         <h2 className="text-3xl font-bold text-white mb-2 text-center">
-          Đăng ký tài khoản
+          {t('auth.register.title')}
         </h2>
         <p className="text-blue-200 text-center mb-8">
-          Tạo tài khoản học sinh mới
+          {t('auth.register.subtitle')}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Name Input */}
           <div>
             <label htmlFor="name" className="block text-sm font-semibold text-white mb-2">
-              Họ và tên <span className="text-red-400">*</span>
+              {t('auth.register.name')} <span className="text-red-400">{t('auth.register.required')}</span>
             </label>
             <input
               type="text"
@@ -142,7 +143,7 @@ export function Register() {
               className={`w-full px-4 py-3 bg-white/10 backdrop-blur-sm border ${
                 fieldErrors.name ? 'border-red-500' : 'border-white/20'
               } rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all`}
-              placeholder="Nguyễn Văn A"
+              placeholder={t('auth.common.namePlaceholder')}
             />
             {fieldErrors.name && (
               <p className="mt-1 text-sm text-red-300">{fieldErrors.name[0]}</p>
@@ -152,7 +153,7 @@ export function Register() {
           {/* Phone Input */}
           <div>
             <label htmlFor="phone" className="block text-sm font-semibold text-white mb-2">
-              Số điện thoại <span className="text-red-400">*</span>
+              {t('auth.register.phone')} <span className="text-red-400">{t('auth.register.required')}</span>
             </label>
             <input
               type="tel"
@@ -164,7 +165,7 @@ export function Register() {
               className={`w-full px-4 py-3 bg-white/10 backdrop-blur-sm border ${
                 fieldErrors.phone ? 'border-red-500' : 'border-white/20'
               } rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all`}
-              placeholder="0336695863"
+              placeholder={t('auth.common.phonePlaceholder')}
             />
             {fieldErrors.phone && (
               <p className="mt-1 text-sm text-red-300">{fieldErrors.phone[0]}</p>
@@ -174,7 +175,7 @@ export function Register() {
           {/* Date of Birth Input */}
           <div>
             <label htmlFor="date_of_birth" className="block text-sm font-semibold text-white mb-2">
-              Ngày sinh <span className="text-red-400">*</span>
+              {t('auth.register.dateOfBirth')} <span className="text-red-400">{t('auth.register.required')}</span>
             </label>
             <input
               type="date"
@@ -195,7 +196,7 @@ export function Register() {
               <div className="mt-2 flex items-center gap-2">
                 <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
                 <p className="text-sm text-blue-300">
-                  Giao diện: <span className="font-semibold text-white">{getAgeGroupLabel(previewAgeGroup)}</span>
+                  {t('auth.register.ageGroupPreview')} <span className="font-semibold text-white">{t(getAgeGroupLabel(previewAgeGroup))}</span>
                 </p>
               </div>
             )}
@@ -204,7 +205,7 @@ export function Register() {
           {/* Password Input */}
           <div>
             <label htmlFor="password" className="block text-sm font-semibold text-white mb-2">
-              Mật khẩu <span className="text-red-400">*</span>
+              {t('auth.register.password')} <span className="text-red-400">{t('auth.register.required')}</span>
             </label>
             <input
               type="password"
@@ -217,18 +218,18 @@ export function Register() {
               className={`w-full px-4 py-3 bg-white/10 backdrop-blur-sm border ${
                 fieldErrors.password ? 'border-red-500' : 'border-white/20'
               } rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all`}
-              placeholder="••••••••"
+              placeholder={t('auth.common.passwordPlaceholder')}
             />
             {fieldErrors.password && (
               <p className="mt-1 text-sm text-red-300">{fieldErrors.password[0]}</p>
             )}
-            <p className="mt-1 text-xs text-blue-300">Tối thiểu 6 ký tự</p>
+            <p className="mt-1 text-xs text-blue-300">{t('auth.register.minPassword')}</p>
           </div>
 
           {/* Confirm Password Input */}
           <div>
             <label htmlFor="password_confirmation" className="block text-sm font-semibold text-white mb-2">
-              Xác nhận mật khẩu <span className="text-red-400">*</span>
+              {t('auth.register.confirmPassword')} <span className="text-red-400">{t('auth.register.required')}</span>
             </label>
             <input
               type="password"
@@ -241,7 +242,7 @@ export function Register() {
               className={`w-full px-4 py-3 bg-white/10 backdrop-blur-sm border ${
                 fieldErrors.password_confirmation ? 'border-red-500' : 'border-white/20'
               } rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all`}
-              placeholder="••••••••"
+              placeholder={t('auth.common.passwordPlaceholder')}
             />
             {fieldErrors.password_confirmation && (
               <p className="mt-1 text-sm text-red-300">{fieldErrors.password_confirmation[0]}</p>
@@ -267,10 +268,10 @@ export function Register() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Đang xử lý...
+                {t('auth.register.processing')}
               </span>
             ) : (
-              'Đăng ký'
+              t('auth.register.registerButton')
             )}
           </button>
         </form>
@@ -278,12 +279,12 @@ export function Register() {
         {/* Login Link */}
         <div className="mt-6 text-center">
           <p className="text-blue-200">
-            Đã có tài khoản?{' '}
+            {t('auth.register.hasAccount')}{' '}
             <Link 
               to="/dang-nhap" 
               className="text-white font-bold hover:text-blue-300 transition-colors underline"
             >
-              Đăng nhập
+              {t('auth.register.loginNow')}
             </Link>
           </p>
         </div>

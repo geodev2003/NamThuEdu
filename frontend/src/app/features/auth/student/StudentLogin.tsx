@@ -6,13 +6,17 @@
 
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { useThemeContext } from '../../../../contexts/ThemeContext';
 import { login, LoginFormData } from '../../../../services/authApi';
+import { usePageTitle, PAGE_TITLES } from '../../../../hooks/usePageTitle';
 import { Eye, EyeOff, Sparkles } from 'lucide-react';
 
 export function StudentLogin() {
   const navigate = useNavigate();
   const { syncWithAuth } = useThemeContext();
+  const { t } = useTranslation();
+  usePageTitle(PAGE_TITLES.LOGIN);
   
   const [formData, setFormData] = useState<LoginFormData>({
     phone: '',
@@ -49,7 +53,7 @@ export function StudentLogin() {
       // Redirect to dashboard
       navigate('/hoc-sinh');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
+      setError(err.response?.data?.message || t('common.error'));
       // Clear password on error
       setFormData(prev => ({ ...prev, password: '' }));
     } finally {
@@ -73,17 +77,17 @@ export function StudentLogin() {
               <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-lg text-white">NamThu Education</span>
+              <span className="font-bold text-lg text-white">{t('auth.login.brandName')}</span>
             </div>
           </div>
 
           {/* Header */}
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-white mb-2">
-              Chào mừng trở lại! 👋
+              {t('auth.login.title')}
             </h2>
             <p className="text-blue-200">
-              Đăng nhập để tiếp tục học tập
+              {t('auth.login.studentSubtitle')}
             </p>
           </div>
 
@@ -92,7 +96,7 @@ export function StudentLogin() {
             {/* Phone Input */}
             <div>
               <label htmlFor="phone" className="block text-sm font-semibold text-white mb-2">
-                Số điện thoại
+                {t('auth.login.phone')}
               </label>
               <input
                 type="tel"
@@ -103,14 +107,14 @@ export function StudentLogin() {
                 required
                 autoFocus
                 className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
-                placeholder="0336695863"
+                placeholder={t('auth.common.phonePlaceholder')}
               />
             </div>
 
             {/* Password Input */}
             <div>
               <label htmlFor="password" className="block text-sm font-semibold text-white mb-2">
-                Mật khẩu
+                {t('auth.login.password')}
               </label>
               <div className="relative">
                 <input
@@ -121,7 +125,7 @@ export function StudentLogin() {
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 pr-12 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
-                  placeholder="••••••••"
+                  placeholder={t('auth.common.passwordPlaceholder')}
                 />
                 <button
                   type="button"
@@ -139,7 +143,7 @@ export function StudentLogin() {
                 to="/quen-mat-khau"
                 className="text-sm text-blue-300 hover:text-white transition-colors"
               >
-                Quên mật khẩu?
+                {t('auth.login.forgotPassword')}
               </Link>
             </div>
 
@@ -162,10 +166,10 @@ export function StudentLogin() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Đang đăng nhập...
+                  {t('auth.login.loggingIn')}
                 </span>
               ) : (
-                'Đăng nhập'
+                t('auth.login.loginButton')
               )}
             </button>
           </form>
@@ -173,12 +177,12 @@ export function StudentLogin() {
           {/* Register Link */}
           <div className="mt-8 text-center">
             <p className="text-blue-200">
-              Chưa có tài khoản?{' '}
+              {t('auth.login.noAccount')}{' '}
               <Link 
                 to="/dang-ky" 
                 className="text-white font-bold hover:text-blue-300 transition-colors underline"
               >
-                Đăng ký ngay
+                {t('auth.login.signUpNow')}
               </Link>
             </p>
           </div>
@@ -187,9 +191,9 @@ export function StudentLogin() {
         {/* Bottom Note */}
         <div className="mt-6 text-center text-sm text-blue-200">
           <p>
-            Bằng việc đăng nhập, bạn đồng ý với{' '}
+            {t('auth.login.termsPrefix')}{' '}
             <Link to="/dieu-khoan" className="text-white hover:underline">
-              Điều khoản sử dụng
+              {t('auth.login.terms')}
             </Link>
           </p>
         </div>

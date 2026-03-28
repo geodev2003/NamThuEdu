@@ -95,6 +95,141 @@
       "viewReportsDesc": "Theo dõi tiến độ và kết quả"
     }
   },
+  "teacher": {
+    "dashboard": {
+      "greeting": "Chào mừng trở lại",
+      "overview": "Tổng quan",
+      "todayClasses": "lớp học hôm nay",
+      "pendingGrading": "bài chờ chấm",
+      "deadlinesThisWeek": "deadline tuần này",
+      "goodActivity": "Hoạt động tốt",
+      "thisWeek": "Tuần này",
+      "lastSixWeeks": "6 tuần gần nhất",
+      "stats": {
+        "courses": "Khóa học",
+        "classes": "Lớp học",
+        "students": "Học viên",
+        "exams": "Đề thi"
+      },
+      "performance": {
+        "title": "Hiệu suất học sinh",
+        "average": "Trung bình",
+        "listening": "Nghe",
+        "reading": "Đọc",
+        "writing": "Viết"
+      },
+      "recentActivity": {
+        "title": "Hoạt động gần đây",
+        "viewAll": "Xem tất cả",
+        "created": "Tạo đề thi",
+        "assigned": "Giao bài cho lớp",
+        "graded": "Đã chấm",
+        "hoursAgo": "giờ trước",
+        "daysAgo": "ngày trước",
+        "yesterday": "Hôm qua",
+        "submissions": "bài nộp"
+      },
+      "quickActions": {
+        "title": "Thao tác nhanh",
+        "createExam": "Tạo đề thi mới",
+        "createExamDesc": "Tạo đề thi từ đầu hoặc từ mẫu",
+        "cambridgeTemplate": "Mẫu đề Cambridge",
+        "cambridgeTemplateDesc": "Sử dụng mẫu đề chuẩn quốc tế",
+        "assignTest": "Giao bài tập",
+        "assignTestDesc": "Giao bài thi cho lớp hoặc học sinh",
+        "viewReports": "Xem báo cáo",
+        "viewReportsDesc": "Theo dõi tiến độ và kết quả"
+      },
+      "time": {
+        "morning": "Chào buổi sáng",
+        "afternoon": "Chào buổi chiều",
+        "evening": "Chào buổi tối"
+      }
+    },
+    "grading": {
+      "title": "Chấm điểm",
+      "queue": "Hàng đợi chấm điểm",
+      "allExams": "Tất cả đề thi",
+      "allStatuses": "Tất cả trạng thái",
+      "searchPlaceholder": "Tìm kiếm học sinh hoặc đề thi...",
+      "viewDetail": "Xem chi tiết",
+      "status": {
+        "submitted": "Chờ chấm",
+        "graded": "Đã chấm",
+        "partiallyGraded": "Chấm 1 phần"
+      },
+      "stats": {
+        "total": "Tổng bài nộp",
+        "graded": "Đã chấm",
+        "pending": "Chờ chấm",
+        "completionRate": "Tỷ lệ hoàn thành"
+      }
+    },
+    "courses": {
+      "title": "Khóa học",
+      "allCategories": "Tất cả danh mục",
+      "allStatuses": "Tất cả trạng thái",
+      "searchPlaceholder": "Tìm kiếm khóa học...",
+      "editCourse": "Chỉnh sửa khóa học",
+      "createCourse": "Tạo khóa học mới",
+      "status": {
+        "draft": "Nháp",
+        "active": "Đang diễn ra",
+        "completed": "Hoàn thành",
+        "archived": "Đã lưu trữ"
+      },
+      "stats": {
+        "totalCourses": "Tổng khóa học",
+        "activeCourses": "Đang hoạt động",
+        "totalStudents": "Tổng học viên",
+        "completionRate": "Tỷ lệ hoàn thành"
+      }
+    },
+    "classes": {
+      "title": "Lớp học",
+      "allCourses": "Tất cả khóa học",
+      "allStatuses": "Tất cả trạng thái",
+      "searchPlaceholder": "Tìm kiếm lớp học...",
+      "createClass": "Tạo lớp mới",
+      "editClass": "Chỉnh sửa lớp học",
+      "status": {
+        "active": "Đang hoạt động",
+        "inactive": "Tạm dừng"
+      },
+      "stats": {
+        "totalClasses": "Tổng số lớp",
+        "activeClasses": "Lớp đang hoạt động",
+        "totalStudents": "Tổng số học sinh"
+      }
+    },
+    "assignments": {
+      "title": "Giao bài tập",
+      "allExams": "Tất cả đề thi",
+      "allTargets": "Tất cả đối tượng",
+      "searchPlaceholder": "Tìm kiếm bài tập...",
+      "targetType": {
+        "class": "Lớp học",
+        "student": "Học sinh"
+      }
+    },
+    "common": {
+      "all": "Tất cả",
+      "create": "Tạo mới",
+      "edit": "Chỉnh sửa",
+      "delete": "Xóa",
+      "save": "Lưu",
+      "cancel": "Hủy",
+      "viewDetail": "Xem chi tiết",
+      "clearFilters": "Xóa bộ lọc",
+      "search": "Tìm kiếm",
+      "filter": "Lọc",
+      "actions": "Thao tác",
+      "saveDraft": "Lưu nháp",
+      "autoSave": "Tự động lưu",
+      "saveChanges": "Lưu thay đổi",
+      "cancelAction": "Hủy bỏ"
+    }
+  },
   "assignments": {
     "createNew": "Giao bài mới"
   },
@@ -310,5 +445,250 @@
     "completed": "Hoàn thành",
     "graded": "Đã chấm",
     "expired": "Hết hạn"
+  },
+  "landing": {
+    "header": {
+      "logo": "Nam Thu EDU",
+      "tagline": "Học tiếng Anh thông minh",
+      "searchPlaceholder": "Tìm kiếm khóa học, bài học, từ vựng, ngữ pháp...",
+      "login": "Đăng nhập",
+      "register": "Đăng ký",
+      "registerNow": "Đăng ký ngay",
+      "home": "Trang chủ",
+      "courses": "Khóa học",
+      "exams": "Luyện thi",
+      "schedule": "Lịch học",
+      "contact": "Liên hệ",
+      "coursesKids": "Trẻ em (6-12 tuổi)",
+      "coursesTeens": "Thiếu niên (13-17 tuổi)",
+      "coursesAdults": "Người lớn (18+)",
+      "coursesCommunication": "Giao tiếp",
+      "examsIELTS": "IELTS",
+      "examsTOEIC": "TOEIC",
+      "examsCambridge": "Cambridge",
+      "examsVSTEP": "VSTEP",
+      "examsVSAT": "V-SAT",
+      "hotline": "Hotline",
+      "promotions": "Ưu đãi hấp dẫn:",
+      "promotionGroup": "Nhóm từ 3 học viên",
+      "promotionDisadvantaged": "Học viên khó khăn",
+      "promotionMaterials": "Miễn phí tài liệu"
+    },
+    "hero": {
+      "badge": "Top 1 nền tảng học tiếng Anh online tại Việt Nam",
+      "title": "Học tiếng Anh thông minh",
+      "titleHighlight": "cùng công nghệ AI",
+      "subtitle": "Giao diện thích ứng theo độ tuổi, AI đánh giá phát âm chính xác, luyện thi IELTS/TOEIC hiệu quả. Phù hợp cho mọi lứa tuổi từ 6-45 tuổi.",
+      "featureCommunication": "Giao tiếp thực tế",
+      "featureCommunicationDesc": "Luyện nói tự tin",
+      "featureGrades": "Lớp 1-12",
+      "featureGradesDesc": "Mọi cấp độ",
+      "featureExams": "IELTS/TOEIC",
+      "featureExamsDesc": "Chứng chỉ quốc tế",
+      "featureAI": "AI",
+      "featureAIDesc": "Thông minh",
+      "ctaRegister": "Đăng ký học ngay",
+      "ctaDemo": "Xem demo",
+      "trustStudents": "học viên",
+      "trustRating": "đánh giá",
+      "students": "Học viên",
+      "rating": "Đánh giá"
+    },
+    "stats": {
+      "students": "Học viên",
+      "courses": "Khóa học",
+      "teachers": "Giáo viên",
+      "satisfaction": "Hài lòng"
+    },
+    "learningPaths": {
+      "title": "Chọn lộ trình học phù hợp với bạn",
+      "subtitle": "Giao diện và nội dung tự động thích ứng theo độ tuổi và trình độ",
+      "kids": {
+        "name": "Trẻ em (6-12 tuổi)",
+        "description": "Học tiếng Anh qua trò chơi, hình ảnh sinh động và bài hát vui nhộn",
+        "feature1": "Trò chơi tương tác",
+        "feature2": "Hình ảnh sinh động",
+        "feature3": "Bài hát vui nhộn",
+        "feature4": "Phát âm chuẩn"
+      },
+      "teens": {
+        "name": "Thiếu niên (13-17 tuổi)",
+        "description": "Luyện thi Cambridge, giao tiếp thực tế và học qua video hiện đại",
+        "feature1": "Cambridge YLE/KET/PET",
+        "feature2": "Video lessons",
+        "feature3": "Speaking practice",
+        "feature4": "Gamification"
+      },
+      "adults": {
+        "name": "Người lớn (18+ tuổi)",
+        "description": "IELTS, TOEIC, VSTEP và tiếng Anh giao tiếp công sở chuyên nghiệp",
+        "feature1": "IELTS/TOEIC/VSTEP",
+        "feature2": "Business English",
+        "feature3": "Interview skills",
+        "feature4": "Professional"
+      },
+      "coursesCount": "khóa học",
+      "startNow": "Bắt đầu ngay"
+    },
+    "proficiency": {
+      "title": "Trình độ tiếng Anh",
+      "beginner": "Sơ cấp",
+      "beginnerDesc": "A1-A2: Bắt đầu với nền tảng",
+      "intermediate": "Trung cấp",
+      "intermediateDesc": "B1-B2: Giao tiếp tự tin",
+      "advanced": "Cao cấp",
+      "advancedDesc": "C1-C2: Thành thạo như người bản xứ",
+      "examPrep": "Luyện thi",
+      "examPrepDesc": "IELTS, TOEIC, Cambridge, VSTEP"
+    },
+    "examPrep": {
+      "title": "Luyện thi chứng chỉ quốc tế",
+      "subtitle": "Đạt điểm cao với phương pháp học hiệu quả và đề thi chuẩn quốc tế",
+      "viewCourses": "Xem khóa học"
+    },
+    "features": {
+      "title": "Tính năng nổi bật",
+      "adaptive": "Học tập thích ứng",
+      "adaptiveDesc": "Giao diện và nội dung tự động điều chỉnh theo độ tuổi",
+      "listening": "Luyện nghe - nói",
+      "listeningDesc": "AI đánh giá phát âm và giao tiếp thực tế",
+      "competition": "Thi đấu & Xếp hạng",
+      "competitionDesc": "Cạnh tranh với bạn bè, nhận huy chương",
+      "video": "Video bài giảng",
+      "videoDesc": "Học qua video tương tác với giáo viên bản xứ",
+      "preview": "Preview"
+    },
+    "cta": {
+      "title": "Bắt đầu hành trình chinh phục tiếng Anh",
+      "subtitle": "Đăng ký ngay để nhận 7 ngày học thử miễn phí với giao diện thích ứng theo độ tuổi",
+      "button": "Học thử miễn phí 7 ngày",
+      "noCard": "Không cần thẻ tín dụng",
+      "cancelAnytime": "Hủy bất cứ lúc nào"
+    },
+    "footer": {
+      "description": "NamThu là nền tảng học tiếng Anh thông minh với giao diện tự động thích ứng theo độ tuổi. Với phương pháp giảng dạy hiện đại và giáo khoa từ các chuyên gia hàng đầu, NamThu đáp ứng nhu cầu của mọi người học.",
+      "followUs": "Theo dõi NamThu trên:",
+      "weRecommend": "Chúng tôi đề xuất",
+      "aboutUs": "Về NamThu",
+      "forStudents": "Dành cho HS & PHHS",
+      "forTeachers": "Dành cho GV và Nhà trường",
+      "parentApp": "APP Phụ huynh",
+      "resources": "Tài nguyên",
+      "helpCenter": "Trung tâm trợ giúp",
+      "userGuide": "Hướng dẫn sử dụng",
+      "feedback": "Phản hồi về NamThu",
+      "askChannel": "Kênh hỏi về NamThu",
+      "mobileApp": "Ứng dụng mobile",
+      "downloadOn": "Download on the",
+      "appStore": "App Store",
+      "getItOn": "GET IT ON",
+      "googlePlay": "Google Play",
+      "copyright": "© 2013 - 2026 NAMTHU.VN",
+      "email": "Email:",
+      "contactUs": "Liên hệ"
+    },
+    "testimonials": {
+      "title": "Học viên nói gì về chúng tôi",
+      "subtitle": "Hàng ngàn học viên đã đạt mục tiêu tiếng Anh của mình",
+      "kids": "Trẻ em",
+      "teens": "Thiếu niên",
+      "adults": "Người lớn",
+      "result": "Kết quả"
+    },
+    "demo": {
+      "title": "Thử ngay một bài học mẫu",
+      "subtitle": "Click vào thẻ để lật và xem nghĩa tiếng Việt",
+      "clickToFlip": "Click to flip",
+      "reset": "Lật lại",
+      "note": "Đây chỉ là 1 trong 10,000+ từ vựng và bài học tương tác",
+      "example": "Ví dụ:"
+    },
+    "page": {
+      "learningPathsTitle": "Chọn lộ trình học phù hợp với bạn",
+      "learningPathsSubtitle": "Giao diện và nội dung tự động thích ứng theo độ tuổi và trình độ",
+      "proficiencyTitle": "Trình độ tiếng Anh",
+      "examPrepTitle": "Luyện thi chứng chỉ quốc tế",
+      "examPrepSubtitle": "Đạt điểm cao với phương pháp học hiệu quả và đề thi chuẩn quốc tế",
+      "featuresTitle": "Tính năng nổi bật",
+      "ctaTitle": "Bắt đầu hành trình chinh phục tiếng Anh",
+      "ctaSubtitle": "Đăng ký ngay để nhận 7 ngày học thử miễn phí với giao diện thích ứng theo độ tuổi"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Chào mừng trở lại! 👋",
+      "subtitle": "Đăng nhập để tiếp tục với Teacher Dashboard",
+      "studentSubtitle": "Đăng nhập để tiếp tục học tập",
+      "email": "Email",
+      "phone": "Số điện thoại",
+      "password": "Mật khẩu",
+      "rememberMe": "Ghi nhớ đăng nhập",
+      "forgotPassword": "Quên mật khẩu?",
+      "loginButton": "Đăng nhập",
+      "loggingIn": "Đang đăng nhập...",
+      "noAccount": "Chưa có tài khoản?",
+      "signUpNow": "Đăng ký ngay",
+      "orLoginWith": "Hoặc đăng nhập bằng email",
+      "securityBadge": "Bảo mật với mã hóa SSL 256-bit",
+      "termsPrefix": "Bằng việc đăng nhập, bạn đồng ý với",
+      "terms": "Điều khoản sử dụng",
+      "and": "và",
+      "privacy": "Chính sách bảo mật",
+      "brandName": "NamThu Education",
+      "teacherDashboard": "Teacher Dashboard",
+      "platformTitle": "Nền tảng quản lý",
+      "platformSubtitle": "giáo dục hiện đại",
+      "platformDesc": "Công cụ toàn diện giúp giáo viên tiếng Anh tạo đề thi, quản lý lớp học và theo dõi tiến độ học sinh một cách hiệu quả.",
+      "features": {
+        "examManagement": "Quản lý đề thi thông minh",
+        "studentTracking": "Theo dõi tiến độ học sinh",
+        "autoGrading": "Chấm điểm tự động & nhanh chóng",
+        "analytics": "Phân tích & thống kê chi tiết"
+      },
+      "stats": {
+        "teachers": "Giáo viên",
+        "students": "Học sinh",
+        "tests": "Bài kiểm tra",
+        "satisfaction": "Hài lòng"
+      }
+    },
+    "register": {
+      "title": "Đăng ký tài khoản",
+      "subtitle": "Tạo tài khoản học sinh mới",
+      "subtitleJourney": "Bắt đầu hành trình học tập của bạn",
+      "createAccount": "Tạo tài khoản mới",
+      "name": "Họ và tên",
+      "phone": "Số điện thoại",
+      "dateOfBirth": "Ngày sinh",
+      "password": "Mật khẩu",
+      "confirmPassword": "Xác nhận mật khẩu",
+      "required": "*",
+      "minPassword": "Tối thiểu 6 ký tự",
+      "registerButton": "Đăng ký",
+      "processing": "Đang xử lý...",
+      "hasAccount": "Đã có tài khoản?",
+      "loginNow": "Đăng nhập",
+      "ageGroupPreview": "Giao diện:",
+      "ageGroupSuitable": "Giao diện phù hợp:",
+      "ageGroups": {
+        "kids": "Trẻ em (6-12 tuổi)",
+        "teens": "Thiếu niên (13-17 tuổi)",
+        "adults": "Người lớn (18+ tuổi)"
+      },
+      "progress": {
+        "step1": "Thông tin",
+        "step2": "Hoàn tất"
+      },
+      "success": {
+        "title": "Đăng ký thành công!",
+        "redirecting": "Đang chuyển đến trang chủ..."
+      }
+    },
+    "common": {
+      "emailPlaceholder": "teacher@namthu.edu.vn",
+      "phonePlaceholder": "0336695863",
+      "namePlaceholder": "Nguyễn Văn A",
+      "passwordPlaceholder": "••••••••"
+    }
   }
 }

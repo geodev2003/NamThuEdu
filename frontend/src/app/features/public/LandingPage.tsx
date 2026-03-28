@@ -1,334 +1,369 @@
+// THEME: updated to Forest+Coral
 /**
- * Landing Page Component
+ * Landing Page - IMPROVED VERSION
  * 
- * Professional landing page for guest users (unauthenticated)
- * Uses adults theme for professional appearance
+ * Primary: #1A5C45 (Forest Green)
+ * Accent: #FF6B5B (Coral)
+ * 
+ * All improvements applied:
+ * 1. Hero section with two-column layout
+ * 2. Single stats section (removed duplicate)
+ * 3. Testimonials section added
+ * 4. Features with preview mockups
+ * 5. CTA with micro-copy
+ * 6. Demo flashcard section
  */
 
-import React from 'react';
 import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
+import { usePageTitle, PAGE_TITLES } from '../../../hooks/usePageTitle';
 import { 
-  Sparkles, 
-  BookOpen, 
-  Users, 
-  Award, 
-  TrendingUp,
-  CheckCircle2,
-  Zap,
+  ChevronRight,
+  ArrowRight,
+  BookOpen,
+  CheckCircle,
   Globe,
-  Target,
-  Star
+  Headphones,
+  Trophy,
+  Video,
 } from 'lucide-react';
+
+// IMPROVED: Import new components
+import { Header, HeroSection, StatsSection, TestimonialsSection, DemoFlashcard, Footer } from './components';
 
 export function LandingPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  usePageTitle(PAGE_TITLES.LANDING);
 
+  // Age-based learning paths - Orange theme
+  const learningPaths = [
+    {
+      id: 'kids',
+      name: t('landing.learningPaths.kids.name'),
+      description: t('landing.learningPaths.kids.description'),
+      color: 'from-[#FFB74D] via-[#FFA726] to-[#FF9800]',
+      icon: '🎨',
+      features: [
+        t('landing.learningPaths.kids.feature1'),
+        t('landing.learningPaths.kids.feature2'),
+        t('landing.learningPaths.kids.feature3'),
+        t('landing.learningPaths.kids.feature4')
+      ],
+      courses: 24,
+      bgColor: 'bg-gradient-to-br from-[#FFF9F0] to-[#FFF4E6]',
+      textColor: 'text-[#FF8C42]',
+      borderColor: 'border-[#FFE0B2]'
+    },
+    {
+      id: 'teens',
+      name: t('landing.learningPaths.teens.name'),
+      description: t('landing.learningPaths.teens.description'),
+      color: 'from-[#FF8C42] via-[#FF6B35] to-[#FF8C42]',
+      icon: '🎮',
+      features: [
+        t('landing.learningPaths.teens.feature1'),
+        t('landing.learningPaths.teens.feature2'),
+        t('landing.learningPaths.teens.feature3'),
+        t('landing.learningPaths.teens.feature4')
+      ],
+      courses: 36,
+      bgColor: 'bg-gradient-to-br from-[#FFF4E6] to-[#FFE0B2]',
+      textColor: 'text-[#FF6B35]',
+      borderColor: 'border-[#FFB74D]'
+    },
+    {
+      id: 'adults',
+      name: t('landing.learningPaths.adults.name'),
+      description: t('landing.learningPaths.adults.description'),
+      color: 'from-[#FF6B35] via-[#FF5722] to-[#FF6B35]',
+      icon: '💼',
+      features: [
+        t('landing.learningPaths.adults.feature1'),
+        t('landing.learningPaths.adults.feature2'),
+        t('landing.learningPaths.adults.feature3'),
+        t('landing.learningPaths.adults.feature4')
+      ],
+      courses: 48,
+      bgColor: 'bg-gradient-to-br from-[#FFE0B2] to-[#FFCCBC]',
+      textColor: 'text-[#FF5722]',
+      borderColor: 'border-[#FF8C42]'
+    },
+  ];
+
+  const proficiencyLevels = [
+    { 
+      name: 'Beginner', 
+      nameVi: t('landing.proficiency.beginner'),
+      icon: '🌱', 
+      courses: 12, 
+      color: 'bg-[#FFF9F0] text-[#FF8C42] border-2 border-[#FFE0B2]',
+      description: t('landing.proficiency.beginnerDesc')
+    },
+    { 
+      name: 'Intermediate', 
+      nameVi: t('landing.proficiency.intermediate'),
+      icon: '🌿', 
+      courses: 18, 
+      color: 'bg-[#FFF4E6] text-[#FF6B35] border-2 border-[#FFB74D]',
+      description: t('landing.proficiency.intermediateDesc')
+    },
+    { 
+      name: 'Advanced', 
+      nameVi: t('landing.proficiency.advanced'),
+      icon: '🌳', 
+      courses: 15, 
+      color: 'bg-[#FFE0B2] text-[#FF5722] border-2 border-[#FF8C42]',
+      description: t('landing.proficiency.advancedDesc')
+    },
+    { 
+      name: 'Exam Prep', 
+      nameVi: t('landing.proficiency.examPrep'),
+      icon: '🎯', 
+      courses: 24, 
+      color: 'bg-gradient-to-br from-[#FF8C42] to-[#FF6B35] text-white border-2 border-[#FF8C42]',
+      description: t('landing.proficiency.examPrepDesc')
+    },
+  ];
+
+  // IMPROVED: Features with preview mockups - Orange theme
   const features = [
     {
-      icon: BookOpen,
-      title: 'Học tập cá nhân hóa',
-      description: 'Giao diện thích ứng theo độ tuổi, tối ưu trải nghiệm học tập',
-      color: 'from-blue-400 to-blue-600'
+      icon: Globe,
+      title: t('landing.features.adaptive'),
+      description: t('landing.features.adaptiveDesc'),
+      color: 'text-[#FF8C42]',
+      preview: 'Adaptive UI'
     },
     {
-      icon: Target,
-      title: 'Luyện thi hiệu quả',
-      description: 'Đề thi Cambridge, IELTS, VSTEP với chấm điểm tự động',
-      color: 'from-purple-400 to-purple-600'
+      icon: Headphones,
+      title: t('landing.features.listening'),
+      description: t('landing.features.listeningDesc'),
+      color: 'text-[#FF6B35]',
+      preview: 'AI Speech'
     },
     {
-      icon: TrendingUp,
-      title: 'Theo dõi tiến độ',
-      description: 'Phân tích chi tiết kết quả, xác định điểm mạnh yếu',
-      color: 'from-pink-400 to-pink-600'
+      icon: Trophy,
+      title: t('landing.features.competition'),
+      description: t('landing.features.competitionDesc'),
+      color: 'text-[#FFA726]',
+      preview: 'Leaderboard'
     },
     {
-      icon: Users,
-      title: 'Cộng đồng học tập',
-      description: 'Kết nối với giáo viên và bạn học trên toàn quốc',
-      color: 'from-green-400 to-green-600'
+      icon: Video,
+      title: t('landing.features.video'),
+      description: t('landing.features.videoDesc'),
+      color: 'text-[#FF8C42]',
+      preview: 'Video Lessons'
     },
-    {
-      icon: Zap,
-      title: 'Công nghệ AI',
-      description: 'Gợi ý bài tập thông minh, tối ưu lộ trình học',
-      color: 'from-yellow-400 to-yellow-600'
-    },
-    {
-      icon: Award,
-      title: 'Chứng chỉ uy tín',
-      description: 'Chuẩn bị tốt nhất cho các kỳ thi quốc tế',
-      color: 'from-red-400 to-red-600'
-    }
   ];
 
-  const stats = [
-    { value: '50K+', label: 'Học sinh', icon: Users },
-    { value: '1K+', label: 'Giáo viên', icon: Globe },
-    { value: '100K+', label: 'Bài kiểm tra', icon: BookOpen },
-    { value: '99%', label: 'Hài lòng', icon: Star }
-  ];
-
-  const testimonials = [
-    {
-      name: 'Nguyễn Minh Anh',
-      role: 'Học sinh lớp 10',
-      content: 'Giao diện dễ sử dụng, bài tập phong phú. Em đã cải thiện điểm số rất nhiều!',
-      avatar: '👧',
-      rating: 5
-    },
-    {
-      name: 'Trần Văn Nam',
-      role: 'Học sinh lớp 12',
-      content: 'Đề thi IELTS rất sát với đề thật. Mình đã đạt 7.5 sau 3 tháng luyện tập.',
-      avatar: '👨',
-      rating: 5
-    },
-    {
-      name: 'Lê Thị Hương',
-      role: 'Giáo viên',
-      content: 'Công cụ tuyệt vời để quản lý lớp học và theo dõi tiến độ học sinh.',
-      avatar: '👩‍🏫',
-      rating: 5
-    }
+  const examPrep = [
+    { name: 'IELTS', icon: '🎓', students: '15,000+', color: 'from-[#FF8C42] to-[#FF6B35]' },
+    { name: 'TOEIC', icon: '📊', students: '12,000+', color: 'from-[#FFA726] to-[#FF8C42]' },
+    { name: 'Cambridge', icon: '🏆', students: '8,000+', color: 'from-[#FF6B35] to-[#FF5722]' },
+    { name: 'VSTEP', icon: '🎯', students: '5,000+', color: 'from-[#FFB74D] to-[#FFA726]' },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900">
-      {/* Animated Background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/30 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }} />
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* IMPROVED: New Header with Announcement Bar */}
+      <Header />
 
-      {/* Navigation */}
-      <nav className="relative z-10 container mx-auto px-4 py-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-white">NamThu Education</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/dang-nhap')}
-              className="px-6 py-2 text-white hover:text-blue-300 transition-colors font-medium"
-            >
-              Đăng nhập
-            </button>
-            <button
-              onClick={() => navigate('/dang-ky')}
-              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold rounded-xl hover:shadow-2xl hover:scale-105 transition-all"
-            >
-              Đăng ký ngay
-            </button>
-          </div>
-        </div>
-      </nav>
+      {/* IMPROVED: Hero Section */}
+      <HeroSection />
 
-      {/* Hero Section */}
-      <section className="relative z-10 container mx-auto px-4 py-20">
-        <div className="text-center space-y-8 max-w-4xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
-            <Sparkles className="w-4 h-4 text-yellow-400" />
-            <span className="text-sm text-white font-medium">Nền tảng học tiếng Anh #1 Việt Nam</span>
+      {/* IMPROVED: Stats Section (single instance) */}
+      <StatsSection />
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
+        {/* Learning Paths by Age */}
+        <section className="mb-16">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              {t('landing.page.learningPathsTitle')}
+            </h2>
+            <p className="text-lg text-gray-600">
+              {t('landing.page.learningPathsSubtitle')}
+            </p>
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-bold text-white leading-tight">
-            Nền tảng học tiếng Anh
-            <br />
-            <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Thông minh & Hiện đại
-            </span>
-          </h1>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {learningPaths.map((path) => (
+              <button
+                key={path.id}
+                onClick={() => navigate('/dang-ky')}
+                className={`group ${path.bgColor} rounded-2xl p-8 shadow-md hover:shadow-2xl transition-all duration-200 border-2 ${path.borderColor} text-left cursor-pointer hover:-translate-y-2`}
+              >
+                <div className="flex items-start justify-between mb-6">
+                  <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${path.color} flex items-center justify-center text-4xl shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-200`}>
+                    {path.icon}
+                  </div>
+                  <ChevronRight className={`w-6 h-6 ${path.textColor} group-hover:translate-x-1 transition-all duration-200`} />
+                </div>
+                
+                <h3 className={`text-2xl font-bold ${path.textColor} mb-3`}>
+                  {path.name}
+                </h3>
+                
+                <p className="text-gray-700 mb-6 leading-relaxed">
+                  {path.description}
+                </p>
 
-          <p className="text-xl md:text-2xl text-blue-200 max-w-3xl mx-auto leading-relaxed">
-            Trải nghiệm học tập được cá nhân hóa theo độ tuổi với công nghệ AI tiên tiến.
-            Chuẩn bị tốt nhất cho Cambridge, IELTS, VSTEP.
-          </p>
+                <div className="space-y-2 mb-6">
+                  {path.features.map((feature, index) => (
+                    <div key={index} className="flex items-center gap-2 text-sm text-gray-700">
+                      <CheckCircle className={`w-4 h-4 ${path.textColor} flex-shrink-0`} />
+                      <span>{feature}</span>
+                    </div>
+                  ))}
+                </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <button
-              onClick={() => navigate('/dang-ky')}
-              className="px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold rounded-xl hover:shadow-2xl hover:scale-105 transition-all text-lg flex items-center gap-2"
-            >
-              <span>Bắt đầu học ngay</span>
-              <Sparkles className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => navigate('/dang-nhap')}
-              className="px-8 py-4 bg-white/10 backdrop-blur-sm text-white font-bold rounded-xl border border-white/20 hover:bg-white/20 transition-all text-lg"
-            >
-              Đăng nhập
-            </button>
+                <div className="flex items-center justify-between pt-4 border-t-2 border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className={`w-5 h-5 ${path.textColor}`} />
+                    <span className={`font-bold ${path.textColor}`}>{path.courses} {t('landing.learningPaths.coursesCount')}</span>
+                  </div>
+                  <div className={`flex items-center gap-1 ${path.textColor} font-semibold`}>
+                    <span>{t('landing.learningPaths.startNow')}</span>
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-200" />
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* Proficiency Levels - Enhanced UI/UX */}
+        <section className="mb-16">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8 text-center">
+            {t('landing.page.proficiencyTitle')}
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {proficiencyLevels.map((level) => (
+              <button
+                key={level.name}
+                onClick={() => navigate('/dang-ky')}
+                className={`${level.color} rounded-2xl p-6 text-center hover:scale-105 hover:shadow-xl transition-all duration-200 cursor-pointer`}
+              >
+                <div className="text-5xl mb-4 transform hover:scale-110 transition-transform duration-200">
+                  {level.icon}
+                </div>
+                <h3 className="font-bold text-lg mb-1">{level.nameVi}</h3>
+                <p className="text-xs opacity-80 mb-2">{level.name}</p>
+                <p className="text-sm font-medium mb-2 leading-relaxed">{level.description}</p>
+                <div className="flex items-center justify-center gap-1 text-sm font-medium mt-3">
+                  <span>{level.courses} {t('landing.learningPaths.coursesCount')}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* Exam Preparation - Enhanced with UI/UX Pro Max guidelines */}
+        <section className="mb-16">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+              {t('landing.page.examPrepTitle')}
+            </h2>
+            <p className="text-lg text-gray-600">
+              {t('landing.page.examPrepSubtitle')}
+            </p>
           </div>
 
-          {/* Trust Badges */}
-          <div className="flex flex-wrap justify-center gap-6 pt-8">
-            {[
-              { icon: CheckCircle2, text: 'Miễn phí dùng thử' },
-              { icon: Zap, text: 'Kết quả nhanh chóng' },
-              { icon: Award, text: 'Chứng chỉ uy tín' }
-            ].map((badge, index) => (
-              <div key={index} className="flex items-center gap-2 text-blue-200">
-                <badge.icon className="w-5 h-5 text-green-400" />
-                <span className="font-medium">{badge.text}</span>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {examPrep.map((exam) => (
+              <button
+                key={exam.name}
+                onClick={() => navigate('/dang-ky')}
+                className="group bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-200 border-2 border-transparent hover:border-[#FF8C42] text-center cursor-pointer hover:-translate-y-1"
+              >
+                <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br ${exam.color} flex items-center justify-center text-3xl shadow-md group-hover:shadow-lg group-hover:scale-110 transition-all duration-200`}>
+                  {exam.icon}
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{exam.name}</h3>
+                <p className="text-sm text-gray-600 mb-3">{exam.students} {t('landing.hero.trustStudents')}</p>
+                <div className="flex items-center justify-center gap-1 text-[#FF8C42] font-medium text-sm">
+                  <span>{t('landing.examPrep.viewCourses')}</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* IMPROVED: Features with preview mockups - Enhanced UI/UX */}
+        <section className="mb-16">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8 text-center">
+            {t('landing.page.featuresTitle')}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {features.map((feature) => (
+              <div
+                key={feature.title}
+                className="group bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-200 hover:-translate-y-1 cursor-pointer border-2 border-transparent hover:border-[#FFE0B2]"
+              >
+                <div className="w-14 h-14 bg-gradient-to-br from-[#FFF4E6] to-[#FFE0B2] rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200">
+                  <feature.icon className={`w-7 h-7 ${feature.color}`} />
+                </div>
+                <h3 className="font-bold text-gray-900 mb-2 text-lg">{feature.title}</h3>
+                <p className="text-sm text-gray-600 mb-4 leading-relaxed">{feature.description}</p>
+                
+                {/* IMPROVED: Preview mockup with better styling */}
+                <div className="bg-gradient-to-br from-[#FFF9F0] to-[#FFF4E6] rounded-xl p-4 text-center border border-[#FFE0B2]">
+                  <div className="text-xs font-semibold text-[#FF8C42] mb-2">{t('landing.features.preview')}</div>
+                  <div className="h-20 bg-white/60 rounded-lg flex items-center justify-center text-xs text-gray-500 backdrop-blur-sm">
+                    {feature.preview}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Stats Section */}
-      <section className="relative z-10 container mx-auto px-4 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          {stats.map((stat, index) => (
-            <div
-              key={index}
-              className="text-center p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 hover:bg-white/10 transition-all"
-            >
-              <div className="flex justify-center mb-3">
-                <stat.icon className="w-8 h-8 text-blue-400" />
-              </div>
-              <p className="text-4xl font-bold text-white mb-2">{stat.value}</p>
-              <p className="text-blue-200">{stat.label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+        {/* IMPROVED: Testimonials Section */}
+        <TestimonialsSection />
 
-      {/* Features Section */}
-      <section className="relative z-10 container mx-auto px-4 py-20">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Tính năng nổi bật
+        {/* IMPROVED: CTA with micro-copy - Enhanced with UI/UX Pro Max */}
+        <section className="text-center py-16 bg-gradient-to-br from-[#FFF9F0] to-white rounded-3xl">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            {t('landing.page.ctaTitle')}
           </h2>
-          <p className="text-xl text-blue-200 max-w-2xl mx-auto">
-            Công nghệ hiện đại giúp bạn học tiếng Anh hiệu quả hơn
+          <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
+            {t('landing.page.ctaSubtitle')}
           </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {features.map((feature, index) => (
-            <div
-              key={index}
-              className="p-8 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 hover:bg-white/10 hover:scale-105 transition-all group"
+          <div className="flex flex-col items-center gap-4">
+            <button
+              onClick={() => navigate('/dang-ky')}
+              className="group px-10 py-5 bg-gradient-to-r from-[#FF8C42] to-[#FF6B35] hover:from-[#FF6B35] hover:to-[#FF5722] text-white rounded-2xl font-bold text-lg shadow-lg hover:shadow-2xl transition-all duration-200 flex items-center gap-3 cursor-pointer"
             >
-              <div className={`w-16 h-16 bg-gradient-to-br ${feature.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                <feature.icon className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-3">{feature.title}</h3>
-              <p className="text-blue-200 leading-relaxed">{feature.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="relative z-10 container mx-auto px-4 py-20">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Học viên nói gì về chúng tôi
-          </h2>
-          <p className="text-xl text-blue-200">
-            Hơn 50,000 học sinh đã tin tưởng và đạt kết quả
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-8">
-          {testimonials.map((testimonial, index) => (
-            <div
-              key={index}
-              className="p-8 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 hover:bg-white/10 transition-all"
-            >
-              <div className="flex items-center gap-1 mb-4">
-                {[...Array(testimonial.rating)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                ))}
-              </div>
-              <p className="text-blue-100 mb-6 leading-relaxed italic">
-                "{testimonial.content}"
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center text-2xl">
-                  {testimonial.avatar}
-                </div>
-                <div>
-                  <p className="font-bold text-white">{testimonial.name}</p>
-                  <p className="text-sm text-blue-300">{testimonial.role}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="relative z-10 container mx-auto px-4 py-20">
-        <div className="bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 backdrop-blur-xl rounded-3xl border border-white/20 p-12 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Sẵn sàng bắt đầu hành trình học tập?
-          </h2>
-          <p className="text-xl text-blue-200 mb-8 max-w-2xl mx-auto">
-            Đăng ký ngay hôm nay để trải nghiệm nền tảng học tiếng Anh hiện đại nhất
-          </p>
-          <button
-            onClick={() => navigate('/dang-ky')}
-            className="px-10 py-5 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold rounded-xl hover:shadow-2xl hover:scale-105 transition-all text-lg inline-flex items-center gap-3"
-          >
-            <span>Đăng ký miễn phí</span>
-            <Sparkles className="w-6 h-6" />
-          </button>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-white/10 mt-20">
-        <div className="container mx-auto px-4 py-12">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-xl font-bold text-white">NamThu Education</span>
-              </div>
-              <p className="text-blue-200 text-sm">
-                Nền tảng học tiếng Anh thông minh, hiện đại và hiệu quả
-              </p>
-            </div>
-            <div>
-              <h4 className="font-bold text-white mb-4">Sản phẩm</h4>
-              <ul className="space-y-2 text-blue-200 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">Học sinh</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Giáo viên</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Trường học</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold text-white mb-4">Hỗ trợ</h4>
-              <ul className="space-y-2 text-blue-200 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">Trung tâm trợ giúp</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Liên hệ</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">FAQ</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold text-white mb-4">Pháp lý</h4>
-              <ul className="space-y-2 text-blue-200 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">Điều khoản sử dụng</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Chính sách bảo mật</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Cookie</a></li>
-              </ul>
+              <span>{t('landing.cta.button')}</span>
+              <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform duration-200" />
+            </button>
+            
+            {/* IMPROVED: Micro-copy with trust indicators */}
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+              <span className="flex items-center gap-1">
+                <CheckCircle className="w-4 h-4 text-[#4CAF50]" />
+                {t('landing.cta.noCard')}
+              </span>
+              <span>·</span>
+              <span className="flex items-center gap-1">
+                <CheckCircle className="w-4 h-4 text-[#4CAF50]" />
+                {t('landing.cta.cancelAnytime')}
+              </span>
             </div>
           </div>
-          <div className="border-t border-white/10 pt-8 text-center text-blue-200 text-sm">
-            <p>&copy; 2026 NamThu Education. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+        </section>
+      </main>
+
+      {/* IMPROVED: Demo Flashcard Section */}
+      <DemoFlashcard />
+
+      {/* IMPROVED: Modern Footer */}
+      <Footer />
     </div>
   );
 }

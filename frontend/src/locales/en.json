@@ -95,6 +95,141 @@
       "viewReportsDesc": "Track progress and results"
     }
   },
+  "teacher": {
+    "dashboard": {
+      "greeting": "Welcome back",
+      "overview": "Overview",
+      "todayClasses": "classes today",
+      "pendingGrading": "pending grading",
+      "deadlinesThisWeek": "deadlines this week",
+      "goodActivity": "Good activity",
+      "thisWeek": "This week",
+      "lastSixWeeks": "Last 6 weeks",
+      "stats": {
+        "courses": "Courses",
+        "classes": "Classes",
+        "students": "Students",
+        "exams": "Exams"
+      },
+      "performance": {
+        "title": "Student Performance",
+        "average": "Average",
+        "listening": "Listening",
+        "reading": "Reading",
+        "writing": "Writing"
+      },
+      "recentActivity": {
+        "title": "Recent Activity",
+        "viewAll": "View All",
+        "created": "Created exam",
+        "assigned": "Assigned to class",
+        "graded": "Graded",
+        "hoursAgo": "hours ago",
+        "daysAgo": "days ago",
+        "yesterday": "Yesterday",
+        "submissions": "submissions"
+      },
+      "quickActions": {
+        "title": "Quick Actions",
+        "createExam": "Create New Exam",
+        "createExamDesc": "Create exam from scratch or template",
+        "cambridgeTemplate": "Cambridge Templates",
+        "cambridgeTemplateDesc": "Use international standard templates",
+        "assignTest": "Assign Test",
+        "assignTestDesc": "Assign test to class or student",
+        "viewReports": "View Reports",
+        "viewReportsDesc": "Track progress and results"
+      },
+      "time": {
+        "morning": "Good morning",
+        "afternoon": "Good afternoon",
+        "evening": "Good evening"
+      }
+    },
+    "grading": {
+      "title": "Grading",
+      "queue": "Grading Queue",
+      "allExams": "All Exams",
+      "allStatuses": "All Statuses",
+      "searchPlaceholder": "Search student or exam...",
+      "viewDetail": "View Detail",
+      "status": {
+        "submitted": "Pending",
+        "graded": "Graded",
+        "partiallyGraded": "Partially Graded"
+      },
+      "stats": {
+        "total": "Total Submissions",
+        "graded": "Graded",
+        "pending": "Pending",
+        "completionRate": "Completion Rate"
+      }
+    },
+    "courses": {
+      "title": "Courses",
+      "allCategories": "All Categories",
+      "allStatuses": "All Statuses",
+      "searchPlaceholder": "Search courses...",
+      "editCourse": "Edit Course",
+      "createCourse": "Create New Course",
+      "status": {
+        "draft": "Draft",
+        "active": "Active",
+        "completed": "Completed",
+        "archived": "Archived"
+      },
+      "stats": {
+        "totalCourses": "Total Courses",
+        "activeCourses": "Active",
+        "totalStudents": "Total Students",
+        "completionRate": "Completion Rate"
+      }
+    },
+    "classes": {
+      "title": "Classes",
+      "allCourses": "All Courses",
+      "allStatuses": "All Statuses",
+      "searchPlaceholder": "Search classes...",
+      "createClass": "Create New Class",
+      "editClass": "Edit Class",
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "stats": {
+        "totalClasses": "Total Classes",
+        "activeClasses": "Active Classes",
+        "totalStudents": "Total Students"
+      }
+    },
+    "assignments": {
+      "title": "Assignments",
+      "allExams": "All Exams",
+      "allTargets": "All Targets",
+      "searchPlaceholder": "Search assignments...",
+      "targetType": {
+        "class": "Class",
+        "student": "Student"
+      }
+    },
+    "common": {
+      "all": "All",
+      "create": "Create",
+      "edit": "Edit",
+      "delete": "Delete",
+      "save": "Save",
+      "cancel": "Cancel",
+      "viewDetail": "View Detail",
+      "clearFilters": "Clear Filters",
+      "search": "Search",
+      "filter": "Filter",
+      "actions": "Actions",
+      "saveDraft": "Save Draft",
+      "autoSave": "Auto Save",
+      "saveChanges": "Save Changes",
+      "cancelAction": "Cancel"
+    }
+  },
   "assignments": {
     "createNew": "Create Assignment"
   },
@@ -310,5 +445,250 @@
     "completed": "Completed",
     "graded": "Graded",
     "expired": "Expired"
+  },
+  "landing": {
+    "header": {
+      "logo": "Nam Thu EDU",
+      "tagline": "Smart English Learning",
+      "searchPlaceholder": "Search courses, lessons, vocabulary, grammar...",
+      "login": "Login",
+      "register": "Register",
+      "registerNow": "Register Now",
+      "home": "Home",
+      "courses": "Courses",
+      "exams": "Exam Prep",
+      "schedule": "Schedule",
+      "contact": "Contact",
+      "coursesKids": "Kids (6-12 years)",
+      "coursesTeens": "Teens (13-17 years)",
+      "coursesAdults": "Adults (18+)",
+      "coursesCommunication": "Communication",
+      "examsIELTS": "IELTS",
+      "examsTOEIC": "TOEIC",
+      "examsCambridge": "Cambridge",
+      "examsVSTEP": "VSTEP",
+      "examsVSAT": "V-SAT",
+      "hotline": "Hotline",
+      "promotions": "Special Offers:",
+      "promotionGroup": "Group of 3+ students",
+      "promotionDisadvantaged": "Disadvantaged students",
+      "promotionMaterials": "Free materials"
+    },
+    "hero": {
+      "badge": "Top 1 online English learning platform in Vietnam",
+      "title": "Smart English Learning",
+      "titleHighlight": "with AI Technology",
+      "subtitle": "Age-adaptive interface, accurate AI pronunciation assessment, effective IELTS/TOEIC preparation. Suitable for all ages from 6-45 years old.",
+      "featureCommunication": "Real Communication",
+      "featureCommunicationDesc": "Speak confidently",
+      "featureGrades": "Grades 1-12",
+      "featureGradesDesc": "All levels",
+      "featureExams": "IELTS/TOEIC",
+      "featureExamsDesc": "International certificates",
+      "featureAI": "AI",
+      "featureAIDesc": "Smart",
+      "ctaRegister": "Register Now",
+      "ctaDemo": "Watch Demo",
+      "trustStudents": "students",
+      "trustRating": "rating",
+      "students": "Students",
+      "rating": "Rating"
+    },
+    "stats": {
+      "students": "Students",
+      "courses": "Courses",
+      "teachers": "Teachers",
+      "satisfaction": "Satisfaction"
+    },
+    "learningPaths": {
+      "title": "Choose Your Learning Path",
+      "subtitle": "Interface and content automatically adapt to age and proficiency level",
+      "kids": {
+        "name": "Kids (6-12 years)",
+        "description": "Learn English through games, vivid images, and fun songs",
+        "feature1": "Interactive games",
+        "feature2": "Vivid images",
+        "feature3": "Fun songs",
+        "feature4": "Standard pronunciation"
+      },
+      "teens": {
+        "name": "Teens (13-17 years)",
+        "description": "Cambridge exam prep, real communication, and modern video lessons",
+        "feature1": "Cambridge YLE/KET/PET",
+        "feature2": "Video lessons",
+        "feature3": "Speaking practice",
+        "feature4": "Gamification"
+      },
+      "adults": {
+        "name": "Adults (18+ years)",
+        "description": "IELTS, TOEIC, VSTEP and professional business English communication",
+        "feature1": "IELTS/TOEIC/VSTEP",
+        "feature2": "Business English",
+        "feature3": "Interview skills",
+        "feature4": "Professional"
+      },
+      "coursesCount": "courses",
+      "startNow": "Start Now"
+    },
+    "proficiency": {
+      "title": "English Proficiency Levels",
+      "beginner": "Beginner",
+      "beginnerDesc": "A1-A2: Start with foundations",
+      "intermediate": "Intermediate",
+      "intermediateDesc": "B1-B2: Communicate confidently",
+      "advanced": "Advanced",
+      "advancedDesc": "C1-C2: Native-like proficiency",
+      "examPrep": "Exam Prep",
+      "examPrepDesc": "IELTS, TOEIC, Cambridge, VSTEP"
+    },
+    "examPrep": {
+      "title": "International Certificate Preparation",
+      "subtitle": "Achieve high scores with effective learning methods and international standard tests",
+      "viewCourses": "View Courses"
+    },
+    "features": {
+      "title": "Key Features",
+      "adaptive": "Adaptive Learning",
+      "adaptiveDesc": "Interface and content automatically adjust to age",
+      "listening": "Listening & Speaking",
+      "listeningDesc": "AI pronunciation assessment and real communication",
+      "competition": "Competition & Ranking",
+      "competitionDesc": "Compete with friends, earn medals",
+      "video": "Video Lessons",
+      "videoDesc": "Learn through interactive videos with native teachers",
+      "preview": "Preview"
+    },
+    "cta": {
+      "title": "Start Your English Learning Journey",
+      "subtitle": "Register now to get 7 days free trial with age-adaptive interface",
+      "button": "Try Free for 7 Days",
+      "noCard": "No credit card required",
+      "cancelAnytime": "Cancel anytime"
+    },
+    "footer": {
+      "description": "NamThu is a smart English learning platform with age-adaptive interface. With modern teaching methods and curriculum from top experts, NamThu meets the needs of all learners.",
+      "followUs": "Follow NamThu on:",
+      "weRecommend": "We Recommend",
+      "aboutUs": "About NamThu",
+      "forStudents": "For Students & Parents",
+      "forTeachers": "For Teachers & Schools",
+      "parentApp": "Parent APP",
+      "resources": "Resources",
+      "helpCenter": "Help Center",
+      "userGuide": "User Guide",
+      "feedback": "Feedback about NamThu",
+      "askChannel": "Ask about NamThu",
+      "mobileApp": "Mobile App",
+      "downloadOn": "Download on the",
+      "appStore": "App Store",
+      "getItOn": "GET IT ON",
+      "googlePlay": "Google Play",
+      "copyright": "© 2013 - 2026 NAMTHU.VN",
+      "email": "Email:",
+      "contactUs": "Contact"
+    },
+    "testimonials": {
+      "title": "What Our Students Say",
+      "subtitle": "Thousands of students have achieved their English goals",
+      "kids": "Kids",
+      "teens": "Teens",
+      "adults": "Adults",
+      "result": "Result"
+    },
+    "demo": {
+      "title": "Try a Sample Lesson",
+      "subtitle": "Click the card to flip and see the Vietnamese meaning",
+      "clickToFlip": "Click to flip",
+      "reset": "Reset",
+      "note": "This is just 1 of 10,000+ vocabulary words and interactive lessons",
+      "example": "Example:"
+    },
+    "page": {
+      "learningPathsTitle": "Choose Your Learning Path",
+      "learningPathsSubtitle": "Interface and content automatically adapt to age and proficiency level",
+      "proficiencyTitle": "English Proficiency Levels",
+      "examPrepTitle": "International Certificate Preparation",
+      "examPrepSubtitle": "Achieve high scores with effective learning methods and international standard tests",
+      "featuresTitle": "Key Features",
+      "ctaTitle": "Start Your English Learning Journey",
+      "ctaSubtitle": "Register now to get 7 days free trial with age-adaptive interface"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome back! 👋",
+      "subtitle": "Login to continue with Teacher Dashboard",
+      "studentSubtitle": "Login to continue learning",
+      "email": "Email",
+      "phone": "Phone number",
+      "password": "Password",
+      "rememberMe": "Remember me",
+      "forgotPassword": "Forgot password?",
+      "loginButton": "Login",
+      "loggingIn": "Logging in...",
+      "noAccount": "Don't have an account?",
+      "signUpNow": "Sign up now",
+      "orLoginWith": "Or login with email",
+      "securityBadge": "Secured with 256-bit SSL encryption",
+      "termsPrefix": "By logging in, you agree to our",
+      "terms": "Terms of Service",
+      "and": "and",
+      "privacy": "Privacy Policy",
+      "brandName": "NamThu Education",
+      "teacherDashboard": "Teacher Dashboard",
+      "platformTitle": "Modern Education",
+      "platformSubtitle": "Management Platform",
+      "platformDesc": "Comprehensive tools to help English teachers create exams, manage classes, and track student progress effectively.",
+      "features": {
+        "examManagement": "Smart Exam Management",
+        "studentTracking": "Track Student Progress",
+        "autoGrading": "Fast & Automatic Grading",
+        "analytics": "Detailed Analytics & Reports"
+      },
+      "stats": {
+        "teachers": "Teachers",
+        "students": "Students",
+        "tests": "Tests",
+        "satisfaction": "Satisfaction"
+      }
+    },
+    "register": {
+      "title": "Create Account",
+      "subtitle": "Create new student account",
+      "subtitleJourney": "Start your learning journey",
+      "createAccount": "Create new account",
+      "name": "Full name",
+      "phone": "Phone number",
+      "dateOfBirth": "Date of birth",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "required": "*",
+      "minPassword": "Minimum 6 characters",
+      "registerButton": "Register",
+      "processing": "Processing...",
+      "hasAccount": "Already have an account?",
+      "loginNow": "Login",
+      "ageGroupPreview": "Interface:",
+      "ageGroupSuitable": "Suitable interface:",
+      "ageGroups": {
+        "kids": "Kids (6-12 years)",
+        "teens": "Teens (13-17 years)",
+        "adults": "Adults (18+ years)"
+      },
+      "progress": {
+        "step1": "Information",
+        "step2": "Complete"
+      },
+      "success": {
+        "title": "Registration successful!",
+        "redirecting": "Redirecting to homepage..."
+      }
+    },
+    "common": {
+      "emailPlaceholder": "teacher@namthu.edu.vn",
+      "phonePlaceholder": "0336695863",
+      "namePlaceholder": "John Doe",
+      "passwordPlaceholder": "••••••••"
+    }
   }
 }

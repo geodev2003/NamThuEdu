@@ -214,7 +214,7 @@ export function AssignmentList() {
                 onChange={(e) => setExamFilter(e.target.value)}
                 className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
-                <option value="all">Tất cả đề thi</option>
+                <option value="all">{t('teacher.assignments.allExams')}</option>
                 <option value="Cambridge KET">Cambridge KET</option>
                 <option value="IELTS">IELTS</option>
                 <option value="TOEFL">TOEFL</option>
@@ -226,9 +226,9 @@ export function AssignmentList() {
                 onChange={(e) => setTargetFilter(e.target.value)}
                 className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
-                <option value="all">Tất cả đối tượng</option>
-                <option value="class">Lớp học</option>
-                <option value="student">Học sinh</option>
+                <option value="all">{t('teacher.assignments.allTargets')}</option>
+                <option value="class">{t('teacher.assignments.targetType.class')}</option>
+                <option value="student">{t('teacher.assignments.targetType.student')}</option>
               </select>
             </div>
           </div>
@@ -355,7 +355,7 @@ export function AssignmentList() {
                           </button>
                           <button
                             className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                            title="Xóa"
+                            title={t('teacher.common.delete')}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

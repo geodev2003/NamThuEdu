@@ -265,7 +265,7 @@ export function CourseDetail() {
           mockCourseDetail.name,
         ]}
         action={{
-          label: "Chỉnh sửa khóa học",
+          label: t('teacher.courses.editCourse'),
           onClick: () => navigate(`/khoa-hoc/${mockCourseDetail.id}/chinh-sua`),
         }}
       />

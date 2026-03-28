@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { usePageTitle, PAGE_TITLES } from "../../../../hooks";
 import {
   ClipboardList,
   Clock,
@@ -80,6 +81,7 @@ function getFormatMeta(format?: string) {
 
 export function TestList() {
   const { t } = useTranslation();
+  usePageTitle(PAGE_TITLES.STUDENT_TESTS);
   const [status, setStatus] = useState<TestStatus>('pending');
   const [type, setType] = useState<TestType>('all');
   const [format, setFormat] = useState<TestFormat>('all');

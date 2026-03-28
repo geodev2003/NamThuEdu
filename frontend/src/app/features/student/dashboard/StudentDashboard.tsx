@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
 import {
   ClipboardList,
   Trophy,
@@ -118,6 +119,7 @@ function Skeleton({ className = "" }: { className?: string }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function StudentDashboard() {
   const { t } = useTranslation();
+  usePageTitle(PAGE_TITLES.STUDENT_DASHBOARD);
 
   // Fetch data
   const { data: testsData, isLoading: testsLoading } = useQuery({

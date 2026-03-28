@@ -6,10 +6,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { useThemeContext } from '../../../../contexts/ThemeContext';
 import { register, RegisterFormData } from '../../../../services/authApi';
 import { calculateAgeGroup } from '../../../../utils/ageDetection';
 import { AgeGroup } from '../../../../utils/ageDetection';
+import { usePageTitle, PAGE_TITLES } from '../../../../hooks/usePageTitle';
 import { CheckCircle2, Sparkles, User, Phone, Calendar, Lock, Eye, EyeOff } from 'lucide-react';
 
 // Helper functions
@@ -27,12 +29,11 @@ function calculateAge(dateOfBirth: string): number {
 }
 
 function getAgeGroupLabel(ageGroup: AgeGroup): string {
-  const labels = {
-    kids: 'Trẻ em (6-12 tuổi)',
-    teens: 'Thiếu niên (13-17 tuổi)',
-    adults: 'Người lớn (18+ tuổi)',
-  };
-  return labels[ageGroup];
+  return {
+    kids: 'auth.register.ageGroups.kids',
+    teens: 'auth.register.ageGroups.teens',
+    adults: 'auth.register.ageGroups.adults',
+  }[ageGroup];
 }
 
 function getAgeGroupEmoji(ageGroup: AgeGroup): string {
@@ -47,6 +48,8 @@ function getAgeGroupEmoji(ageGroup: AgeGroup): string {
 export function StudentRegister() {
   const navigate = useNavigate();
   const { syncWithAuth } = useThemeContext();
+  const { t } = useTranslation();
+  usePageTitle(PAGE_TITLES.REGISTER);
   
   const [step, setStep] = useState<1 | 2>(1);
   const [showPassword, setShowPassword] = useState(false);
@@ -118,7 +121,7 @@ export function StudentRegister() {
       if (err.response?.data?.errors) {
         setFieldErrors(err.response.data.errors);
       }
-      setError(err.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+      setError(err.response?.data?.message || t('common.error'));
     } finally {
       setIsLoading(false);
     }
@@ -142,14 +145,14 @@ export function StudentRegister() {
                 <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-bold shadow-lg">
                   1
                 </div>
-                <span className="text-white text-sm font-medium">Thông tin</span>
+                <span className="text-white text-sm font-medium">{t('auth.register.progress.step1')}</span>
               </div>
               <div className="w-12 h-0.5 bg-white/20" />
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white/50 text-sm font-bold">
                   2
                 </div>
-                <span className="text-white/50 text-sm font-medium">Hoàn tất</span>
+                <span className="text-white/50 text-sm font-medium">{t('auth.register.progress.step2')}</span>
               </div>
             </div>
 
@@ -157,13 +160,13 @@ export function StudentRegister() {
             <div className="text-center mb-8">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 mb-4">
                 <Sparkles className="w-4 h-4 text-yellow-400" />
-                <span className="text-sm text-white font-medium">Tạo tài khoản mới</span>
+                <span className="text-sm text-white font-medium">{t('auth.register.createAccount')}</span>
               </div>
               <h2 className="text-3xl font-bold text-white mb-2">
-                Đăng ký tài khoản
+                {t('auth.register.title')}
               </h2>
               <p className="text-blue-200">
-                Bắt đầu hành trình học tập của bạn
+                {t('auth.register.subtitleJourney')}
               </p>
             </div>
 
@@ -171,7 +174,7 @@ export function StudentRegister() {
               {/* Name Input */}
               <div>
                 <label htmlFor="name" className="block text-sm font-semibold text-white mb-2">
-                  Họ và tên <span className="text-red-400">*</span>
+                  {t('auth.register.name')} <span className="text-red-400">{t('auth.register.required')}</span>
                 </label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-300" />
@@ -185,7 +188,7 @@ export function StudentRegister() {
                     className={`w-full pl-12 pr-4 py-3 bg-white/10 backdrop-blur-sm border ${
                       fieldErrors.name ? 'border-red-500' : 'border-white/20'
                     } rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all`}
-                    placeholder="Nguyễn Văn A"
+                    placeholder={t('auth.common.namePlaceholder')}
                   />
                 </div>
                 {fieldErrors.name && (
@@ -198,7 +201,7 @@ export function StudentRegister() {
               {/* Phone Input */}
               <div>
                 <label htmlFor="phone" className="block text-sm font-semibold text-white mb-2">
-                  Số điện thoại <span className="text-red-400">*</span>
+                  {t('auth.register.phone')} <span className="text-red-400">{t('auth.register.required')}</span>
                 </label>
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-300" />
@@ -212,7 +215,7 @@ export function StudentRegister() {
                     className={`w-full pl-12 pr-4 py-3 bg-white/10 backdrop-blur-sm border ${
                       fieldErrors.phone ? 'border-red-500' : 'border-white/20'
                     } rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all`}
-                    placeholder="0336695863"
+                    placeholder={t('auth.common.phonePlaceholder')}
                   />
                 </div>
                 {fieldErrors.phone && (
@@ -225,7 +228,7 @@ export function StudentRegister() {
               {/* Date of Birth Input */}
               <div>
                 <label htmlFor="date_of_birth" className="block text-sm font-semibold text-white mb-2">
-                  Ngày sinh <span className="text-red-400">*</span>
+                  {t('auth.register.dateOfBirth')} <span className="text-red-400">{t('auth.register.required')}</span>
                 </label>
                 <div className="relative">
                   <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-300" />
@@ -252,8 +255,8 @@ export function StudentRegister() {
                     <div className="flex items-center gap-3">
                       <div className="text-3xl">{getAgeGroupEmoji(previewAgeGroup)}</div>
                       <div>
-                        <p className="text-sm text-blue-200">Giao diện phù hợp:</p>
-                        <p className="font-semibold text-white">{getAgeGroupLabel(previewAgeGroup)}</p>
+                        <p className="text-sm text-blue-200">{t('auth.register.ageGroupSuitable')}</p>
+                        <p className="font-semibold text-white">{t(getAgeGroupLabel(previewAgeGroup))}</p>
                       </div>
                     </div>
                   </div>
@@ -263,7 +266,7 @@ export function StudentRegister() {
               {/* Password Input */}
               <div>
                 <label htmlFor="password" className="block text-sm font-semibold text-white mb-2">
-                  Mật khẩu <span className="text-red-400">*</span>
+                  {t('auth.register.password')} <span className="text-red-400">{t('auth.register.required')}</span>
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-300" />
@@ -278,7 +281,7 @@ export function StudentRegister() {
                     className={`w-full pl-12 pr-12 py-3 bg-white/10 backdrop-blur-sm border ${
                       fieldErrors.password ? 'border-red-500' : 'border-white/20'
                     } rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all`}
-                    placeholder="••••••••"
+                    placeholder={t('auth.common.passwordPlaceholder')}
                   />
                   <button
                     type="button"
@@ -293,13 +296,13 @@ export function StudentRegister() {
                     <span>⚠️</span> {fieldErrors.password[0]}
                   </p>
                 )}
-                <p className="mt-1 text-xs text-blue-300">Tối thiểu 6 ký tự</p>
+                <p className="mt-1 text-xs text-blue-300">{t('auth.register.minPassword')}</p>
               </div>
 
               {/* Confirm Password Input */}
               <div>
                 <label htmlFor="password_confirmation" className="block text-sm font-semibold text-white mb-2">
-                  Xác nhận mật khẩu <span className="text-red-400">*</span>
+                  {t('auth.register.confirmPassword')} <span className="text-red-400">{t('auth.register.required')}</span>
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-300" />
@@ -314,7 +317,7 @@ export function StudentRegister() {
                     className={`w-full pl-12 pr-12 py-3 bg-white/10 backdrop-blur-sm border ${
                       fieldErrors.password_confirmation ? 'border-red-500' : 'border-white/20'
                     } rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all`}
-                    placeholder="••••••••"
+                    placeholder={t('auth.common.passwordPlaceholder')}
                   />
                   <button
                     type="button"
@@ -352,11 +355,11 @@ export function StudentRegister() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    <span>Đang xử lý...</span>
+                    <span>{t('auth.register.processing')}</span>
                   </>
                 ) : (
                   <>
-                    <span>Đăng ký</span>
+                    <span>{t('auth.register.registerButton')}</span>
                     <Sparkles className="w-5 h-5" />
                   </>
                 )}
@@ -366,12 +369,12 @@ export function StudentRegister() {
             {/* Login Link */}
             <div className="mt-6 text-center">
               <p className="text-blue-200">
-                Đã có tài khoản?{' '}
+                {t('auth.register.hasAccount')}{' '}
                 <Link 
                   to="/dang-nhap" 
                   className="text-white font-bold hover:text-blue-300 transition-colors underline"
                 >
-                  Đăng nhập
+                  {t('auth.register.loginNow')}
                 </Link>
               </p>
             </div>
@@ -382,8 +385,8 @@ export function StudentRegister() {
             <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full flex items-center justify-center animate-bounce">
               <CheckCircle2 className="w-10 h-10 text-white" />
             </div>
-            <h3 className="text-3xl font-bold text-white mb-3">Đăng ký thành công!</h3>
-            <p className="text-blue-200 mb-6">Đang chuyển đến trang chủ...</p>
+            <h3 className="text-3xl font-bold text-white mb-3">{t('auth.register.success.title')}</h3>
+            <p className="text-blue-200 mb-6">{t('auth.register.success.redirecting')}</p>
             <div className="w-48 h-2 bg-white/10 rounded-full overflow-hidden mx-auto">
               <div className="h-full bg-gradient-to-r from-green-400 to-emerald-400 animate-loading-bar" />
             </div>

@@ -345,7 +345,7 @@ export function CourseList() {
                 onChange={(e) => setFilterCategory(e.target.value)}
                 className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
               >
-                <option value="all">Tất cả danh mục</option>
+                <option value="all">{t('teacher.courses.allCategories')}</option>
                 <option value="VSTEP">VSTEP</option>
                 <option value="IELTS">IELTS</option>
                 <option value="Cambridge">Cambridge</option>
@@ -360,11 +360,11 @@ export function CourseList() {
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
               >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="draft">Nháp</option>
-                <option value="active">Đang diễn ra</option>
-                <option value="completed">Hoàn thành</option>
-                <option value="archived">Đã lưu trữ</option>
+                <option value="all">{t('teacher.courses.allStatuses')}</option>
+                <option value="draft">{t('teacher.courses.status.draft')}</option>
+                <option value="active">{t('teacher.courses.status.active')}</option>
+                <option value="completed">{t('teacher.courses.status.completed')}</option>
+                <option value="archived">{t('teacher.courses.status.archived')}</option>
               </select>
               <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
@@ -476,7 +476,7 @@ export function CourseList() {
                         to={`/khoa-hoc/${course.id}`}
                         className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-center text-sm font-medium"
                       >
-                        Xem chi tiết
+                        {t('teacher.common.viewDetail')}
                       </Link>
                       <Link
                         to={`/khoa-hoc/chinh-sua/${course.id}`}
@@ -591,14 +591,14 @@ export function CourseList() {
                             <Link
                               to={`/khoa-hoc/${course.id}`}
                               className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                              title="Xem chi tiết"
+                              title={t('teacher.common.viewDetail')}
                             >
                               <Eye className="w-4 h-4" />
                             </Link>
                             <Link
                               to={`/khoa-hoc/chinh-sua/${course.id}`}
                               className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
-                              title="Chỉnh sửa"
+                              title={t('teacher.common.edit')}
                             >
                               <Edit className="w-4 h-4" />
                             </Link>
@@ -610,7 +610,7 @@ export function CourseList() {
                             </button>
                             <button
                               className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                              title="Xóa"
+                              title={t('teacher.common.delete')}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
