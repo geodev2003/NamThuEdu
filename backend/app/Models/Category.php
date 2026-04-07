@@ -19,6 +19,10 @@ class Category extends Model
         'caType',
     ];
 
+    protected $appends = [
+        'cId',
+    ];
+
     /**
      * Relationships
      */
@@ -30,5 +34,10 @@ class Category extends Model
     public function posts()
     {
         return $this->hasMany(Post::class, 'pCategory', 'caId');
+    }
+
+    public function getCIdAttribute()
+    {
+        return $this->caId;
     }
 }

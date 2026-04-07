@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Services\TestWebSocketService;
 use App\Models\Submission;
+use App\Models\Question;
 
 /**
  * @OA\Tag(
@@ -108,7 +109,7 @@ class TestWebSocketController extends Controller
         $validator = Validator::make($request->all(), [
             'submission_id' => 'required|integer|exists:submissions,sId',
             'question_id' => 'required|integer|exists:questions,qId',
-            'answer_text' => 'required|string'
+            'answer_text' => 'required|string|max:5000'
         ]);
 
         if ($validator->fails()) {
@@ -118,10 +119,39 @@ class TestWebSocketController extends Controller
             ], 400);
         }
 
+        $submission = Submission::where('sId', $request->submission_id)
+            ->where('user_id', $user->uId)
+            ->first();
+
+        if (!$submission) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Submission not found'
+            ], 404);
+        }
+
+        if ($submission->sStatus !== 'in_progress') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cannot update answer for submitted test'
+            ], 400);
+        }
+
+        $question = Question::where('qId', $request->question_id)
+            ->where('exam_id', $submission->exam_id)
+            ->first();
+
+        if (!$question) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Question does not belong to this test'
+            ], 403);
+        }
+
         $result = TestWebSocketService::handleAnswerUpdate(
             $request->submission_id,
             $user->uId,
-            $request->question_id,
+            $question->qId,
             $request->answer_text
         );
 

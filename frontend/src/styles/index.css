@@ -1,3 +1,10 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+
+/* Force transparent background for particles */
+#tsparticles-white,
+#tsparticles-white canvas {
+  background: transparent !important;
+  background-color: transparent !important;
+}

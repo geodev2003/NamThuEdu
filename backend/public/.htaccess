@@ -19,3 +19,29 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# PHP Upload Settings
+<IfModule mod_php.c>
+    php_value upload_max_filesize 60M
+    php_value post_max_size 64M
+    php_value max_execution_time 300
+    php_value memory_limit 256M
+</IfModule>
+
+# CORS Headers for Audio Files
+<IfModule mod_headers.c>
+    <FilesMatch "\.(mp3|wav|m4a|aac|ogg)$">
+        Header set Access-Control-Allow-Origin "*"
+        Header set Access-Control-Allow-Methods "GET, OPTIONS"
+        Header set Access-Control-Allow-Headers "Content-Type"
+    </FilesMatch>
+</IfModule>
+
+# MIME Types for Audio Files
+<IfModule mod_mime.c>
+    AddType audio/mpeg .mp3
+    AddType audio/wav .wav
+    AddType audio/x-m4a .m4a
+    AddType audio/aac .aac
+    AddType audio/ogg .ogg
+</IfModule>

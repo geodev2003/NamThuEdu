@@ -1,22 +1,28 @@
 /**
  * Student Login Component
  * 
- * Login form for students with theme sync integration
+ * Clean login form for students matching admin login style
  */
 
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useThemeContext } from '../../../../contexts/ThemeContext';
 import { login, LoginFormData } from '../../../../services/authApi';
 import { usePageTitle, PAGE_TITLES } from '../../../../hooks/usePageTitle';
-import { Eye, EyeOff, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Phone, Lock, GraduationCap } from 'lucide-react';
+import { ParticlesBackgroundWhite } from '../../public/components/ParticlesBackgroundWhite';
+import studentLoginText from '../../../../locales/student-login.json';
 
 export function StudentLogin() {
   const navigate = useNavigate();
   const { syncWithAuth } = useThemeContext();
-  const { t } = useTranslation();
+  const { i18n } = useTranslation();
   usePageTitle(PAGE_TITLES.LOGIN);
+  
+  // Get text based on current language
+  const lang = i18n.language as 'vi' | 'en';
+  const text = studentLoginText[lang] || studentLoginText.vi;
   
   const [formData, setFormData] = useState<LoginFormData>({
     phone: '',
@@ -24,6 +30,7 @@ export function StudentLogin() {
   });
   
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,20 +48,29 @@ export function StudentLogin() {
       const response = await login(formData);
       const { access_token, user } = response.data;
 
+      if (user.role !== 'student') {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_role');
+        setError(text.errorWrongRole);
+        return;
+      }
+
       // Store token
       localStorage.setItem('auth_token', access_token);
+      localStorage.setItem('auth_role', user.role);
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      if (rememberMe) {
+        localStorage.setItem('remember_me', 'true');
+      }
 
-      // Sync theme with user data (includes age_group)
+      // Sync theme with user data
       syncWithAuth(user);
 
-      // Small delay to ensure theme applies
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Redirect to dashboard
-      navigate('/hoc-sinh');
+      // Redirect to student portal
+      navigate('/hoc-vien');
     } catch (err: any) {
-      setError(err.response?.data?.message || t('common.error'));
-      // Clear password on error
+      setError(err.response?.data?.message || text.errorDefault);
       setFormData(prev => ({ ...prev, password: '' }));
     } finally {
       setIsLoading(false);
@@ -62,95 +78,104 @@ export function StudentLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
-      {/* Animated Background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/30 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-      </div>
-
-      <div className="relative w-full max-w-md">
-        <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 p-8 shadow-2xl">
-          {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <div className="inline-flex items-center gap-3 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-bold text-lg text-white">{t('auth.login.brandName')}</span>
+    <div className="relative w-full min-h-screen flex flex-col bg-white">
+      {/* Particles Background */}
+      <ParticlesBackgroundWhite />
+      
+      {/* Login Card */}
+      <div className="flex-1 flex items-center justify-center p-2 md:p-4">
+        <div className="w-full max-w-md relative z-10">
+        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+          {/* Badge */}
+          <div className="flex justify-center mb-6">
+            <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full" style={{
+              background: 'linear-gradient(135deg, #EA580C 0%, #C2410C 100%)',
+              boxShadow: '0 4px 12px rgba(234, 88, 12, 0.35)'
+            }}>
+              <GraduationCap className="w-5 h-5 text-white" />
+              <span className="text-white font-bold text-sm">{text.badge}</span>
             </div>
           </div>
 
-          {/* Header */}
+          {/* Title */}
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-white mb-2">
-              {t('auth.login.title')}
-            </h2>
-            <p className="text-blue-200">
-              {t('auth.login.studentSubtitle')}
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {text.title}
+            </h1>
+            <p className="text-gray-600">
+              {text.subtitle}
             </p>
           </div>
 
-          {/* Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Phone Input */}
             <div>
-              <label htmlFor="phone" className="block text-sm font-semibold text-white mb-2">
-                {t('auth.login.phone')}
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                {text.phoneLabel} <span className="text-red-500">{text.required}</span>
               </label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                required
-                autoFocus
-                className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
-                placeholder={t('auth.common.phonePlaceholder')}
-              />
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Phone className="w-5 h-5" />
+                </div>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  required
+                  autoFocus
+                  placeholder={text.phonePlaceholder}
+                   className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent transition-all"
+                />
+              </div>
             </div>
 
             {/* Password Input */}
             <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-white mb-2">
-                {t('auth.login.password')}
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                {text.passwordLabel} <span className="text-red-500">{text.required}</span>
               </label>
               <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Lock className="w-5 h-5" />
+                </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  id="password"
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 pr-12 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
-                  placeholder={t('auth.common.passwordPlaceholder')}
+                  placeholder={text.passwordPlaceholder}
+                   className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-300 hover:text-white transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
 
-            {/* Forgot Password Link */}
-            <div className="flex justify-end">
-              <Link
-                to="/quen-mat-khau"
-                className="text-sm text-blue-300 hover:text-white transition-colors"
-              >
-                {t('auth.login.forgotPassword')}
-              </Link>
+            {/* Remember Me */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                   className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-300 cursor-pointer"
+                />
+                <span className="text-sm text-gray-600">{text.rememberMe}</span>
+              </label>
             </div>
 
             {/* Error Message */}
             {error && (
-              <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl">
-                <p className="text-red-200 text-sm">{error}</p>
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-red-700 text-sm">{error}</p>
               </div>
             )}
 
@@ -158,7 +183,23 @@ export function StudentLogin() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold rounded-xl hover:shadow-2xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="w-full py-4 font-bold text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              style={{
+                background: isLoading ? '#94A3B8' : 'linear-gradient(135deg, #EA580C 0%, #C2410C 100%)',
+                boxShadow: isLoading ? 'none' : '0 4px 12px rgba(234, 88, 12, 0.45)',
+              }}
+              onMouseEnter={(e) => {
+                if (!isLoading) {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(249, 115, 22, 0.45)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isLoading) {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(249, 115, 22, 0.35)';
+                }
+              }}
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -166,36 +207,25 @@ export function StudentLogin() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  {t('auth.login.loggingIn')}
+                  {text.loggingIn}
                 </span>
               ) : (
-                t('auth.login.loginButton')
+                <>
+                  <GraduationCap className="inline w-5 h-5 mr-2" />
+                  {text.loginButton}
+                </>
               )}
             </button>
           </form>
 
-          {/* Register Link */}
-          <div className="mt-8 text-center">
-            <p className="text-blue-200">
-              {t('auth.login.noAccount')}{' '}
-              <Link 
-                to="/dang-ky" 
-                className="text-white font-bold hover:text-blue-300 transition-colors underline"
-              >
-                {t('auth.login.signUpNow')}
-              </Link>
+          {/* Security Note */}
+          <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <p className="text-sm text-amber-900">
+              <strong>{text.securityTitle}</strong><br />
+              {text.securityNote}
             </p>
           </div>
         </div>
-
-        {/* Bottom Note */}
-        <div className="mt-6 text-center text-sm text-blue-200">
-          <p>
-            {t('auth.login.termsPrefix')}{' '}
-            <Link to="/dieu-khoan" className="text-white hover:underline">
-              {t('auth.login.terms')}
-            </Link>
-          </p>
         </div>
       </div>
     </div>

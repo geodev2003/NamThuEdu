@@ -1,7 +1,11 @@
 /**
  * teacherRoutes — Tất cả route dành cho giáo viên.
  * Base path: "/giao-vien" — Layout: TeacherLayout (sidebar xanh dương).
+ * 
+ * ✅ Protected by authentication - requires teacher role
  */
+import { lazy } from "react";
+import { ProtectedRoute } from "../../components/auth";
 import { TeacherLayout } from "../layouts/TeacherLayout";
 import { Dashboard } from "../features/teacher/dashboard";
 import { CambridgeTemplates } from "../features/teacher/exams/CambridgeTemplates";
@@ -20,7 +24,8 @@ import { CourseStats } from "../features/teacher/courses/CourseStats";
 
 // Exam
 import { AllExams } from "../features/teacher/exams/AllExams";
-import { CreateExam } from "../features/teacher/exams/CreateExam";
+import CreateExam from "../features/teacher/exams/CreateExam";
+import { CreateVSTEPExam } from "../features/teacher/exams/CreateVSTEPExam";
 import { ExamDetail } from "../features/teacher/exams/ExamDetail";
 import { EditExam } from "../features/teacher/exams/EditExam";
 import { ExamTemplates } from "../features/teacher/exams/ExamTemplates";
@@ -60,9 +65,18 @@ import { StudentProgress } from "../features/teacher/reports/StudentProgress";
 import { ResultsAnalysis } from "../features/teacher/reports/ResultsAnalysis";
 import { ExportReports } from "../features/teacher/reports/ExportReports";
 
+// Protected Teacher Layout
+function ProtectedTeacherLayout() {
+  return (
+    <ProtectedRoute requiredRole="teacher">
+      <TeacherLayout />
+    </ProtectedRoute>
+  );
+}
+
 export const teacherRoutes = {
   path: "/giao-vien",
-  Component: TeacherLayout,
+  Component: ProtectedTeacherLayout,
   children: [
     // Dashboard
     { index: true, Component: Dashboard },
@@ -91,6 +105,9 @@ export const teacherRoutes = {
     { path: "de-thi", Component: AllExams },
     { path: "de-thi/tat-ca", Component: AllExams },
     { path: "de-thi/tao-moi", Component: CreateExam },
+    { path: "de-thi/tao-moi/:examId", Component: CreateExam }, // With exam ID
+    { path: "de-thi/tao-thu-cong", Component: lazy(() => import("@/app/features/teacher/exams/CreateExamManual").then(m => ({ default: m.CreateExamManual }))) },
+    { path: "de-thi/import", Component: lazy(() => import("@/app/features/teacher/exams/ImportExam").then(m => ({ default: m.ImportExam }))) },
     { path: "de-thi/mau-de", Component: ExamTemplates },
     { path: "de-thi/cua-toi", Component: MyExams },
     { path: "mau-de-cambridge", Component: CambridgeTemplates },

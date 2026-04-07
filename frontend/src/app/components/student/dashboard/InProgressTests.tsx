@@ -3,6 +3,7 @@ import { Clock, Play, AlertCircle } from "lucide-react";
 
 const PURPLE = "#7C3AED";
 const PURPLE_LIGHT = "#EDE9FE";
+const STUDENT_BASE_PATH = "/hoc-vien";
 
 interface InProgressTest {
   id: number;
@@ -122,7 +123,7 @@ export function InProgressTests({ tests, isLoading }: InProgressTestsProps) {
                 </div>
               </div>
               <Link
-                to={`/lam-bai/${test.id}?submissionId=${test.submissionId}`}
+                to={`${STUDENT_BASE_PATH}/lam-bai/${test.id}?submissionId=${test.submissionId}`}
                 className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-white text-sm font-bold transition-opacity hover:opacity-90 flex-shrink-0"
                 style={{ background: PURPLE }}
               >

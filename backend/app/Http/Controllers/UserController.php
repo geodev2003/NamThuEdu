@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use App\Models\Classes;
+use App\Models\ClassEnrollment;
 use App\Models\User;
 
 class UserController extends Controller
@@ -442,6 +444,7 @@ class UserController extends Controller
                 'studentName' => 'nullable|string|max:150',
                 'studentDoB' => 'nullable|date',
                 'uClass' => 'nullable|integer',
+                'age_group' => 'nullable|in:kids,teens,adults',
             ]);
 
             if ($validator->fails()) {
@@ -454,12 +457,27 @@ class UserController extends Controller
             }
 
             try {
+                // Calculate age_group from DoB if not provided
+                $ageGroup = $data['age_group'] ?? 'teens';
+                if (isset($data['studentDoB']) && !isset($data['age_group'])) {
+                    $age = \Carbon\Carbon::parse($data['studentDoB'])->age;
+                    if ($age >= 6 && $age <= 12) {
+                        $ageGroup = 'kids';
+                    } elseif ($age >= 13 && $age <= 17) {
+                        $ageGroup = 'teens';
+                    } else {
+                        $ageGroup = 'adults';
+                    }
+                }
+
                 $student = User::create([
                     'uPhone' => trim($data['studentPhone']),
                     'uPassword' => Hash::make($data['studentPassword']),
                     'uName' => $data['studentName'] ?? null,
                     'uDoB' => $data['studentDoB'] ?? null,
                     'uClass' => $data['uClass'] ?? null,
+                    'age_group' => $ageGroup,
+                    'theme_preference' => 'auto',
                     'uRole' => 'student',
                     'uStatus' => 'active',
                 ]);
@@ -743,11 +761,13 @@ class UserController extends Controller
                                 WHEN TIMESTAMPDIFF(YEAR, uDoB, CURDATE()) BETWEEN 18 AND 25 THEN "18_25"
                                 WHEN TIMESTAMPDIFF(YEAR, uDoB, CURDATE()) BETWEEN 26 AND 35 THEN "26_35"
                                 ELSE "over_35"
-                            END as age_group,
-                            COUNT(*) as count
+                            END as age_group
                         ')
+                        ->get()
                         ->groupBy('age_group')
-                        ->pluck('count', 'age_group');
+                        ->map(function($group) {
+                            return $group->count();
+                        });
 
         $statistics = [
             'overview' => [
@@ -1664,6 +1684,7 @@ class UserController extends Controller
                 'deleted_users' => $deletedUsers,
                 'total_courses' => 0, // Will be implemented later
                 'total_exams' => 0, // Will be implemented later
+                'active_sessions' => 0, // Placeholder for realtime sessions
                 'by_role' => $usersByRole,
                 'activity' => [
                     'recent_registrations' => $recentRegistrations,
@@ -1695,10 +1716,16 @@ class UserController extends Controller
             $totalUsers = User::count();
             $activeUsers = User::where('uStatus', 'active')->count();
             $recentLogins = User::where('uLast_login', '>=', now()->subDays(7))->count();
+            $dailyActiveUsers = User::where('uLast_login', '>=', now()->subDay())->count();
+            $weeklyActiveUsers = User::where('uLast_login', '>=', now()->subDays(7))->count();
+            $monthlyActiveUsers = User::where('uLast_login', '>=', now()->subDays(30))->count();
 
             return response()->json([
                 'status' => 'success',
                 'data' => [
+                    'daily_active_users' => $dailyActiveUsers,
+                    'weekly_active_users' => $weeklyActiveUsers,
+                    'monthly_active_users' => $monthlyActiveUsers,
                     'total_users' => $totalUsers,
                     'active_users' => $activeUsers,
                     'recent_logins' => $recentLogins,
@@ -1746,7 +1773,10 @@ class UserController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'data' => $report
+                'data' => [
+                    'report_data' => $report,
+                    'generated_at' => now()->toISOString(),
+                ]
             ]);
 
         } catch (\Exception $e) {
@@ -1756,6 +1786,848 @@ class UserController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * POST /api/admin/users/bulk-action
+     * Thực hiện thao tác hàng loạt trên user
+     */
+    public function bulkUserAction(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền thực hiện thao tác này.'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'action' => 'required|in:lock,unlock,activate,deactivate,delete,restore,change_role',
+            'user_ids' => 'required|array|min:1|max:500',
+            'user_ids.*' => 'required|integer',
+            'role' => 'required_if:action,change_role|in:student,teacher,admin',
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors(),
+            ], 400);
+        }
+
+        $action = $request->action;
+        $targetIds = collect($request->user_ids)->unique()->values()->all();
+        $canIncludeDeleted = in_array($action, ['restore'], true);
+        $targetUsers = ($canIncludeDeleted ? User::withTrashed() : User::query())
+            ->whereIn('uId', $targetIds)
+            ->get()
+            ->keyBy('uId');
+
+        $changed = 0;
+        $skipped = [];
+
+        foreach ($targetIds as $targetId) {
+            /** @var \App\Models\User|null $targetUser */
+            $targetUser = $targetUsers->get($targetId);
+
+            if (!$targetUser) {
+                $skipped[] = [
+                    'user_id' => $targetId,
+                    'reason' => 'Không tìm thấy người dùng.',
+                ];
+                continue;
+            }
+
+            if ($targetUser->uId === $user->uId && in_array($action, ['delete', 'deactivate', 'lock', 'change_role'], true)) {
+                $skipped[] = [
+                    'user_id' => $targetUser->uId,
+                    'reason' => 'Không thể thao tác trên tài khoản của chính mình.',
+                ];
+                continue;
+            }
+
+            if ($action === 'change_role' && $request->role === $targetUser->uRole) {
+                $skipped[] = [
+                    'user_id' => $targetUser->uId,
+                    'reason' => 'Người dùng đã có quyền này.',
+                ];
+                continue;
+            }
+
+            if ($action === 'lock' || $action === 'deactivate') {
+                if ($targetUser->uStatus === 'inactive') {
+                    $skipped[] = [
+                        'user_id' => $targetUser->uId,
+                        'reason' => 'Tài khoản đã ở trạng thái inactive.',
+                    ];
+                    continue;
+                }
+                $targetUser->update(['uStatus' => 'inactive']);
+                $changed++;
+                continue;
+            }
+
+            if ($action === 'unlock' || $action === 'activate') {
+                if ($targetUser->uStatus === 'active') {
+                    $skipped[] = [
+                        'user_id' => $targetUser->uId,
+                        'reason' => 'Tài khoản đã ở trạng thái active.',
+                    ];
+                    continue;
+                }
+                $targetUser->update(['uStatus' => 'active']);
+                $changed++;
+                continue;
+            }
+
+            if ($action === 'delete') {
+                if ($targetUser->trashed()) {
+                    $skipped[] = [
+                        'user_id' => $targetUser->uId,
+                        'reason' => 'Tài khoản đã bị xóa mềm trước đó.',
+                    ];
+                    continue;
+                }
+                $targetUser->delete();
+                $changed++;
+                continue;
+            }
+
+            if ($action === 'restore') {
+                if (!$targetUser->trashed()) {
+                    $skipped[] = [
+                        'user_id' => $targetUser->uId,
+                        'reason' => 'Tài khoản chưa bị xóa mềm.',
+                    ];
+                    continue;
+                }
+                $targetUser->restore();
+                $changed++;
+                continue;
+            }
+
+            if ($action === 'change_role') {
+                $targetUser->update(['uRole' => $request->role]);
+                $changed++;
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Đã xử lý thao tác hàng loạt.',
+            'data' => [
+                'action' => $action,
+                'requested_count' => count($targetIds),
+                'updated_count' => $changed,
+                'skipped_count' => count($skipped),
+                'skipped' => $skipped,
+                'changed_by' => $user->uId,
+                'changed_at' => now()->toISOString(),
+            ]
+        ]);
+    }
+
+    /**
+     * POST /api/admin/users/bulk-import
+     * Import tài khoản hàng loạt
+     */
+    public function bulkImportUsers(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền import tài khoản.'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'users' => 'required|array|min:1|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu import không hợp lệ.',
+                'errors' => $validator->errors(),
+            ], 400);
+        }
+
+        $createdCount = 0;
+        $errors = [];
+
+        foreach ($request->users as $index => $userData) {
+            $rowValidator = Validator::make($userData, [
+                'phone' => 'required|string',
+                'password' => 'required|string|min:6',
+                'name' => 'required|string|max:150',
+                'role' => 'nullable|in:student,teacher,admin',
+                'status' => 'nullable|in:active,inactive',
+                'dob' => 'nullable|date',
+                'address' => 'nullable|string',
+                'gender' => 'nullable|boolean',
+                'class' => 'nullable|integer',
+                'age_group' => 'nullable|in:kids,teens,adults',
+            ]);
+
+            if ($rowValidator->fails()) {
+                $errors[] = [
+                    'index' => $index,
+                    'phone' => $userData['phone'] ?? null,
+                    'reason' => $rowValidator->errors()->first(),
+                ];
+                continue;
+            }
+
+            $phone = trim($userData['phone']);
+            $phoneExists = User::withTrashed()->where('uPhone', $phone)->exists();
+            if ($phoneExists) {
+                $errors[] = [
+                    'index' => $index,
+                    'phone' => $phone,
+                    'reason' => 'Số điện thoại đã tồn tại.',
+                ];
+                continue;
+            }
+
+            User::create([
+                'uPhone' => $phone,
+                'uPassword' => Hash::make($userData['password']),
+                'uName' => $userData['name'],
+                'uRole' => $userData['role'] ?? 'student',
+                'uStatus' => $userData['status'] ?? 'active',
+                'uDoB' => $userData['dob'] ?? null,
+                'uAddress' => $userData['address'] ?? '',
+                'uGender' => $userData['gender'] ?? 0,
+                'uClass' => $userData['class'] ?? 0,
+                'age_group' => $userData['age_group'] ?? 'teens',
+            ]);
+
+            $createdCount++;
+        }
+
+        if ($createdCount === 0) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tạo được tài khoản nào từ dữ liệu import.',
+                'data' => [
+                    'created_count' => 0,
+                    'error_count' => count($errors),
+                    'errors' => $errors,
+                ]
+            ], 400);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Import người dùng hoàn tất.',
+            'data' => [
+                'created_count' => $createdCount,
+                'error_count' => count($errors),
+                'errors' => $errors,
+                'imported_by' => $user->uId,
+                'imported_at' => now()->toISOString(),
+            ]
+        ], 201);
+    }
+
+    /**
+     * GET /api/admin/users/export
+     * Tạo thông tin export người dùng cho admin
+     */
+    public function adminExportUsers(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền export dữ liệu người dùng.'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'format' => 'nullable|in:csv,json',
+            'role' => 'nullable|in:student,teacher,admin',
+            'status' => 'nullable|in:active,inactive',
+            'include_deleted' => 'nullable|in:true,false',
+            'search' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tham số export không hợp lệ.',
+                'errors' => $validator->errors(),
+            ], 400);
+        }
+
+        $query = User::query();
+        $includeDeleted = $request->get('include_deleted') === 'true';
+        if ($includeDeleted) {
+            $query->withTrashed();
+        } else {
+            $query->whereNull('uDeleted_at');
+        }
+
+        if ($request->filled('role')) {
+            $query->where('uRole', $request->role);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('uStatus', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('uName', 'LIKE', "%{$search}%")
+                  ->orWhere('uPhone', 'LIKE', "%{$search}%")
+                  ->orWhere('uAddress', 'LIKE', "%{$search}%");
+            });
+        }
+
+        $totalRecords = $query->count();
+        $format = $request->get('format', 'csv');
+        $generatedAt = now()->toISOString();
+        $fileName = 'admin_users_export_' . now()->format('Ymd_His') . '.' . $format;
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'export_url' => url('/exports/' . $fileName),
+                'file_name' => $fileName,
+                'format' => $format,
+                'total_records' => $totalRecords,
+                'filters' => [
+                    'role' => $request->role,
+                    'status' => $request->status,
+                    'include_deleted' => $includeDeleted,
+                    'search' => $request->search,
+                ],
+                'generated_at' => $generatedAt,
+                'generated_by' => $user->uId,
+            ]
+        ]);
+    }
+
+    /**
+     * GET /api/admin/classes/assignments
+     * Danh sách phân công giáo viên - lớp cho admin
+     */
+    public function adminClassAssignments(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền truy cập.'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'search' => 'nullable|string|max:255',
+            'status' => 'nullable|in:active,inactive',
+            'teacher_id' => 'nullable|integer|exists:users,uId',
+            'paginate' => 'nullable|in:true,false',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors(),
+            ], 400);
+        }
+
+        $query = Classes::query()
+            ->with([
+                'teacher:uId,uName,uPhone,uStatus',
+                'course:cId,cName,cStatus',
+            ])
+            ->withCount('enrollments')
+            ->orderBy('cCreated_at', 'desc');
+
+        if ($request->filled('status')) {
+            $query->where('cStatus', $request->status);
+        }
+
+        if ($request->filled('teacher_id')) {
+            $query->where('cTeacher_id', $request->teacher_id);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('cName', 'LIKE', "%{$search}%")
+                    ->orWhere('cDescription', 'LIKE', "%{$search}%")
+                    ->orWhereHas('teacher', function ($tq) use ($search) {
+                        $tq->where('uName', 'LIKE', "%{$search}%")
+                            ->orWhere('uPhone', 'LIKE', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($request->get('paginate') === 'false') {
+            $rows = $query->get();
+            $data = $rows->map(function ($class) {
+                $course = $class->getRelation('course');
+                return [
+                    'class_id' => $class->cId,
+                    'class_name' => $class->cName,
+                    'class_status' => $class->cStatus,
+                    'description' => $class->cDescription,
+                    'teacher' => $class->teacher ? [
+                        'id' => $class->teacher->uId,
+                        'name' => $class->teacher->uName,
+                        'phone' => $class->teacher->uPhone,
+                        'status' => $class->teacher->uStatus,
+                    ] : null,
+                    'course' => $course ? [
+                        'id' => $course->cId,
+                        'name' => $course->cName,
+                        'status' => $course->cStatus ?? null,
+                    ] : null,
+                    'student_count' => (int) ($class->enrollments_count ?? 0),
+                    'created_at' => $class->cCreated_at,
+                ];
+            })->values();
+
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'data' => $data,
+                    'total' => $data->count(),
+                ]
+            ]);
+        }
+
+        $perPage = (int) $request->get('per_page', 20);
+        $paginated = $query->paginate($perPage);
+
+        $transformed = collect($paginated->items())->map(function ($class) {
+            $course = $class->getRelation('course');
+            return [
+                'class_id' => $class->cId,
+                'class_name' => $class->cName,
+                'class_status' => $class->cStatus,
+                'description' => $class->cDescription,
+                'teacher' => $class->teacher ? [
+                    'id' => $class->teacher->uId,
+                    'name' => $class->teacher->uName,
+                    'phone' => $class->teacher->uPhone,
+                    'status' => $class->teacher->uStatus,
+                ] : null,
+                'course' => $course ? [
+                    'id' => $course->cId,
+                    'name' => $course->cName,
+                    'status' => $course->cStatus ?? null,
+                ] : null,
+                'student_count' => (int) ($class->enrollments_count ?? 0),
+                'created_at' => $class->cCreated_at,
+            ];
+        })->values();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'data' => $transformed,
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+            ]
+        ]);
+    }
+
+    /**
+     * GET /api/admin/classes/assignment-teachers
+     * Danh sách giáo viên để phân công lớp
+     */
+    public function adminAssignmentTeachers(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền truy cập.'
+            ], 403);
+        }
+
+        $teachers = User::where('uRole', 'teacher')
+            ->where('uStatus', 'active')
+            ->whereNull('uDeleted_at')
+            ->orderBy('uName')
+            ->get(['uId', 'uName', 'uPhone', 'uStatus']);
+
+        $teacherIds = $teachers->pluck('uId');
+        $classCounts = Classes::whereIn('cTeacher_id', $teacherIds)
+            ->selectRaw('cTeacher_id, COUNT(*) as assigned_classes')
+            ->groupBy('cTeacher_id')
+            ->pluck('assigned_classes', 'cTeacher_id');
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'teachers' => $teachers->map(function ($teacher) use ($classCounts) {
+                    return [
+                        'id' => $teacher->uId,
+                        'name' => $teacher->uName,
+                        'phone' => $teacher->uPhone,
+                        'status' => $teacher->uStatus,
+                        'assigned_classes' => (int) ($classCounts[$teacher->uId] ?? 0),
+                    ];
+                })->values(),
+                'total' => $teachers->count(),
+            ]
+        ]);
+    }
+
+    /**
+     * PUT /api/admin/classes/{id}/assign-teacher
+     * Đổi giáo viên phụ trách lớp
+     */
+    public function adminAssignTeacherToClass(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền thực hiện thao tác này.'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'teacher_id' => 'required|integer|exists:users,uId',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors(),
+            ], 400);
+        }
+
+        $class = Classes::find($id);
+        if (!$class) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy lớp học.'
+            ], 404);
+        }
+
+        $teacher = User::where('uId', $request->teacher_id)
+            ->where('uRole', 'teacher')
+            ->where('uStatus', 'active')
+            ->whereNull('uDeleted_at')
+            ->first();
+
+        if (!$teacher) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Giáo viên không hợp lệ hoặc không còn hoạt động.'
+            ], 400);
+        }
+
+        if ((int) $class->cTeacher_id === (int) $teacher->uId) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Lớp đã được gán cho giáo viên này.'
+            ], 400);
+        }
+
+        $oldTeacherId = $class->cTeacher_id;
+        $class->update([
+            'cTeacher_id' => $teacher->uId,
+        ]);
+
+        $oldTeacher = User::withTrashed()->find($oldTeacherId);
+        $studentCount = ClassEnrollment::where('class_id', $class->cId)->count();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Cập nhật phân công giáo viên thành công.',
+            'data' => [
+                'class' => [
+                    'id' => $class->cId,
+                    'name' => $class->cName,
+                    'status' => $class->cStatus,
+                    'student_count' => $studentCount,
+                ],
+                'old_teacher' => $oldTeacher ? [
+                    'id' => $oldTeacher->uId,
+                    'name' => $oldTeacher->uName,
+                ] : null,
+                'new_teacher' => [
+                    'id' => $teacher->uId,
+                    'name' => $teacher->uName,
+                    'phone' => $teacher->uPhone,
+                ],
+                'updated_by' => $user->uId,
+                'updated_at' => now()->toISOString(),
+            ]
+        ]);
+    }
+
+    /**
+     * GET /api/admin/students/new-registrations
+     * Danh sách học viên đăng ký mới
+     */
+    public function adminStudentNewRegistrations(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền truy cập.'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'period_days' => 'nullable|integer|min:1|max:365',
+            'search' => 'nullable|string|max:255',
+            'status' => 'nullable|in:active,inactive',
+            'paginate' => 'nullable|in:true,false',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors(),
+            ], 400);
+        }
+
+        $periodDays = (int) $request->get('period_days', 30);
+        $fromDate = now()->subDays($periodDays);
+
+        $query = User::where('uRole', 'student')
+            ->whereNull('uDeleted_at')
+            ->where('uCreated_at', '>=', $fromDate)
+            ->orderBy('uCreated_at', 'desc');
+
+        if ($request->filled('status')) {
+            $query->where('uStatus', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('uName', 'LIKE', "%{$search}%")
+                    ->orWhere('uPhone', 'LIKE', "%{$search}%")
+                    ->orWhere('uAddress', 'LIKE', "%{$search}%");
+            });
+        }
+
+        $summaryBase = User::where('uRole', 'student')
+            ->whereNull('uDeleted_at')
+            ->where('uCreated_at', '>=', $fromDate);
+
+        $summary = [
+            'period_days' => $periodDays,
+            'total_new' => (clone $summaryBase)->count(),
+            'active' => (clone $summaryBase)->where('uStatus', 'active')->count(),
+            'inactive' => (clone $summaryBase)->where('uStatus', 'inactive')->count(),
+            'last_7_days' => (clone $summaryBase)->where('uCreated_at', '>=', now()->subDays(7))->count(),
+        ];
+
+        $transform = function ($student) {
+            return [
+                'id' => $student->uId,
+                'name' => $student->uName,
+                'phone' => $student->uPhone,
+                'status' => $student->uStatus,
+                'address' => $student->uAddress,
+                'created_at' => $student->uCreated_at,
+                'last_login' => $student->uLast_login,
+            ];
+        };
+
+        if ($request->get('paginate') === 'false') {
+            $rows = $query->get()->map($transform)->values();
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'summary' => $summary,
+                    'data' => $rows,
+                    'total' => $rows->count(),
+                ]
+            ]);
+        }
+
+        $perPage = (int) $request->get('per_page', 20);
+        $paginated = $query->paginate($perPage);
+        $rows = collect($paginated->items())->map($transform)->values();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'summary' => $summary,
+                'data' => $rows,
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+            ]
+        ]);
+    }
+
+    /**
+     * GET /api/admin/students/complaints
+     * Danh sách khiếu nại học viên (luồng xử lý tài khoản inactive)
+     */
+    public function adminStudentComplaints(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền truy cập.'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'search' => 'nullable|string|max:255',
+            'paginate' => 'nullable|in:true,false',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors(),
+            ], 400);
+        }
+
+        $query = User::where('uRole', 'student')
+            ->where('uStatus', 'inactive')
+            ->whereNull('uDeleted_at')
+            ->orderBy('uCreated_at', 'desc');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('uName', 'LIKE', "%{$search}%")
+                    ->orWhere('uPhone', 'LIKE', "%{$search}%")
+                    ->orWhere('uAddress', 'LIKE', "%{$search}%");
+            });
+        }
+
+        $summary = [
+            'total_complaints' => User::where('uRole', 'student')->where('uStatus', 'inactive')->whereNull('uDeleted_at')->count(),
+            'new_last_7_days' => User::where('uRole', 'student')->where('uStatus', 'inactive')->whereNull('uDeleted_at')->where('uCreated_at', '>=', now()->subDays(7))->count(),
+        ];
+
+        $transform = function ($student) {
+            return [
+                'complaint_id' => $student->uId,
+                'student' => [
+                    'id' => $student->uId,
+                    'name' => $student->uName,
+                    'phone' => $student->uPhone,
+                    'address' => $student->uAddress,
+                ],
+                'type' => 'account_inactive',
+                'status' => 'open',
+                'submitted_at' => $student->uCreated_at,
+                'note' => 'Tài khoản học viên đang ở trạng thái inactive và cần admin xử lý.',
+            ];
+        };
+
+        if ($request->get('paginate') === 'false') {
+            $rows = $query->get()->map($transform)->values();
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'summary' => $summary,
+                    'data' => $rows,
+                    'total' => $rows->count(),
+                ]
+            ]);
+        }
+
+        $perPage = (int) $request->get('per_page', 20);
+        $paginated = $query->paginate($perPage);
+        $rows = collect($paginated->items())->map($transform)->values();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'summary' => $summary,
+                'data' => $rows,
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+            ]
+        ]);
+    }
+
+    /**
+     * POST /api/admin/students/complaints/{id}/resolve
+     * Đánh dấu đã xử lý khiếu nại (mở lại tài khoản học viên)
+     */
+    public function resolveStudentComplaint(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền thực hiện thao tác này.'
+            ], 403);
+        }
+
+        $student = User::where('uId', $id)
+            ->where('uRole', 'student')
+            ->whereNull('uDeleted_at')
+            ->first();
+
+        if (!$student) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy học viên.'
+            ], 404);
+        }
+
+        if ($student->uStatus === 'active') {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Khiếu nại đã được xử lý trước đó.',
+                'data' => [
+                    'student_id' => $student->uId,
+                    'status' => $student->uStatus,
+                ]
+            ]);
+        }
+
+        $student->update(['uStatus' => 'active']);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Đã xử lý khiếu nại và mở lại tài khoản học viên.',
+            'data' => [
+                'student_id' => $student->uId,
+                'student_name' => $student->uName,
+                'status' => $student->uStatus,
+                'resolved_by' => $user->uId,
+                'resolved_at' => now()->toISOString(),
+            ]
+        ]);
     }
 
 }

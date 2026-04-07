@@ -9,6 +9,13 @@ class ExamTemplate extends Model
 {
     use HasFactory;
 
+    protected $appends = [
+        'etId',
+        'etName',
+        'etCategory',
+        'etStatus',
+    ];
+
     protected $fillable = [
         'template_code',
         'template_name',
@@ -118,5 +125,25 @@ class ExamTemplate extends Model
     {
         $section = $this->getSectionByName($sectionName);
         return $section['parts'] ?? [];
+    }
+
+    public function getEtIdAttribute()
+    {
+        return $this->attributes['etId'] ?? $this->getKey();
+    }
+
+    public function getEtNameAttribute()
+    {
+        return $this->template_name ?? null;
+    }
+
+    public function getEtCategoryAttribute()
+    {
+        return $this->category ?? null;
+    }
+
+    public function getEtStatusAttribute()
+    {
+        return ($this->is_active ?? false) ? 'active' : 'inactive';
     }
 }

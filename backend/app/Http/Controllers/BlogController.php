@@ -452,9 +452,10 @@ class BlogController extends Controller
         $sortOrder = $request->get('sort_order', 'desc');
         $query->orderBy($sortBy, $sortOrder);
 
-        // Pagination
-        $perPage = $request->get('per_page', 20);
-        $posts = $query->paginate($perPage);
+        $paginate = $request->get('paginate') === 'true';
+        $posts = $paginate
+            ? $query->paginate((int) $request->get('per_page', 20))
+            : $query->get();
 
         return response()->json([
             'status' => 'success',
@@ -568,7 +569,7 @@ class BlogController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Duyệt bài viết thành công.',
+            'message' => 'Post approved successfully',
             'data' => [
                 'post_id' => $post->pId,
                 'post_title' => $post->pTitle,
@@ -646,7 +647,7 @@ class BlogController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Từ chối bài viết thành công.',
+            'message' => 'Post rejected successfully',
             'data' => [
                 'post_id' => $post->pId,
                 'post_title' => $post->pTitle,
@@ -702,7 +703,7 @@ class BlogController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Xóa bài viết thành công.'
+            'message' => 'Post deleted successfully'
         ]);
     }
 
@@ -732,17 +733,14 @@ class BlogController extends Controller
         }
 
         $pendingPosts = Post::with(['author', 'category'])
-                           ->where('pStatus', 'draft')
+                           ->where('pStatus', 'pending')
                            ->whereNull('pDeleted_at')
                            ->orderBy('pCreated_at', 'desc')
                            ->get();
 
         return response()->json([
             'status' => 'success',
-            'data' => [
-                'pending_posts' => $pendingPosts,
-                'total_pending' => $pendingPosts->count()
-            ]
+            'data' => $pendingPosts
         ]);
     }
 
@@ -806,18 +804,13 @@ class BlogController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => [
-                'posts' => [
-                    'total' => $totalPosts,
-                    'active' => $activePosts,
-                    'draft' => $draftPosts,
-                    'inactive' => $inactivePosts,
-                    'approval_rate' => $totalPosts > 0 ? round(($activePosts / $totalPosts) * 100, 2) : 0
-                ],
+                'total_posts' => $totalPosts,
+                'approved_posts' => $activePosts,
+                'pending_posts' => $draftPosts,
+                'rejected_posts' => $inactivePosts,
                 'by_type' => $postsByType,
                 'by_author' => $postsByAuthor,
-                'activity' => [
-                    'recent_posts' => $recentPosts
-                ]
+                'recent_posts' => $recentPosts,
             ]
         ]);
     }

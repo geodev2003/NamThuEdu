@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
+import { useApiQuery } from "../../../../hooks/useTeacherApi";
+import { teacherApi } from "../../../../services/teacherApi";
+import { handleApiError } from "../../../../components/shared/ErrorHandler";
+import type { TestStatistics, ApiResponse } from "../../../../types/teacher";
 import {
   Users,
   CheckCircle,
@@ -27,22 +31,25 @@ import {
 
 export function RealtimeStats() {
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [examId, setExamId] = useState<number | null>(null); // Get from URL params or props
 
-  // Mock data
-  const exam = {
-    title: "Cambridge KET - Reading & Writing Test 1",
-    type: "Cambridge KET",
-  };
+  // Fetch test statistics with polling
+  const { data: statsData, loading, error } = useApiQuery(
+    () => examId 
+      ? teacherApi.dashboard.getTestStatistics(examId) 
+      : Promise.resolve({ status: 'success', data: null } as ApiResponse<TestStatistics | null>),
+    {
+      enabled: !!examId,
+      refetchInterval: 10000, // 10 seconds
+      onError: (error: any) => {
+        handleApiError(error, () => window.location.reload());
+      }
+    }
+  );
 
-  const overviewStats = {
-    started: 45,
-    inProgress: 12,
-    completed: 28,
-    avgScore: 78.5,
-    avgTimeSpent: "42 phút",
-  };
+  const stats: TestStatistics | null = statsData;
 
-  // Simulate auto-refresh
+  // Simulate auto-refresh for last update time
   useEffect(() => {
     const interval = setInterval(() => {
       setLastUpdate(new Date());
@@ -50,8 +57,8 @@ export function RealtimeStats() {
     return () => clearInterval(interval);
   }, []);
 
-  // Students active over time
-  const activeStudentsData = [
+  // Students active over time - use real data if available
+  const activeStudentsData = stats?.active_students_over_time || [
     { time: "14:00", count: 5 },
     { time: "14:10", count: 12 },
     { time: "14:20", count: 18 },
@@ -62,7 +69,7 @@ export function RealtimeStats() {
   ];
 
   // Questions answered distribution
-  const questionsData = [
+  const questionsData = stats?.questions_distribution || [
     { range: "0-5", count: 2 },
     { range: "6-10", count: 5 },
     { range: "11-15", count: 8 },
@@ -72,14 +79,14 @@ export function RealtimeStats() {
   ];
 
   // Connection status breakdown
-  const connectionData = [
+  const connectionData = stats?.connection_status || [
     { name: "Kết nối tốt", value: 35, color: "#10B981" },
     { name: "Không ổn định", value: 7, color: "#F59E0B" },
     { name: "Mất kết nối", value: 3, color: "#EF4444" },
   ];
 
   // Question difficulty analysis
-  const questionAnalysis = [
+  const questionAnalysis = stats?.question_analysis || [
     {
       id: "1",
       number: 1,
@@ -128,7 +135,7 @@ export function RealtimeStats() {
   ];
 
   // Student progress
-  const studentProgress = [
+  const studentProgress = stats?.student_progress || [
     {
       id: "1",
       name: "Nguyễn Văn An",
@@ -183,7 +190,7 @@ export function RealtimeStats() {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold text-gray-900">
-              Thống kê: {exam.title} 📊
+              Thống kê: {stats?.exam_title || "Đang tải..."} 📊
             </h1>
             {/* LIVE Indicator */}
             <div className="flex items-center gap-2 px-4 py-2 bg-green-100 rounded-lg">
@@ -198,59 +205,65 @@ export function RealtimeStats() {
         <p className="text-gray-600">Thống kê thời gian thực về bài thi đang diễn ra</p>
       </div>
 
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-              <Users className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-          <p className="text-gray-600 text-sm mb-1">Đã bắt đầu</p>
-          <p className="text-3xl font-bold text-gray-900">{overviewStats.started}</p>
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
+      ) : (
+        <>
+          {/* Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                  <Users className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm mb-1">Đã bắt đầu</p>
+              <p className="text-3xl font-bold text-gray-900">{stats?.total_started || 0}</p>
+            </div>
 
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-              <Clock className="w-6 h-6 text-orange-600" />
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-orange-600" />
+                </div>
+                <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse" />
+              </div>
+              <p className="text-gray-600 text-sm mb-1">Đang làm bài</p>
+              <p className="text-3xl font-bold text-gray-900">{stats?.in_progress || 0}</p>
             </div>
-            <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse" />
-          </div>
-          <p className="text-gray-600 text-sm mb-1">Đang làm bài</p>
-          <p className="text-3xl font-bold text-gray-900">{overviewStats.inProgress}</p>
-        </div>
 
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-green-600" />
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm mb-1">Đã hoàn thành</p>
+              <p className="text-3xl font-bold text-gray-900">{stats?.completed || 0}</p>
             </div>
-          </div>
-          <p className="text-gray-600 text-sm mb-1">Đã hoàn thành</p>
-          <p className="text-3xl font-bold text-gray-900">{overviewStats.completed}</p>
-        </div>
 
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-              <Award className="w-6 h-6 text-purple-600" />
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                  <Award className="w-6 h-6 text-purple-600" />
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm mb-1">Điểm trung bình</p>
+              <p className="text-3xl font-bold text-gray-900">{stats?.average_score || 0}</p>
             </div>
-          </div>
-          <p className="text-gray-600 text-sm mb-1">Điểm trung bình</p>
-          <p className="text-3xl font-bold text-gray-900">{overviewStats.avgScore}</p>
-        </div>
 
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center">
-              <Timer className="w-6 h-6 text-pink-600" />
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center">
+                  <Timer className="w-6 h-6 text-pink-600" />
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm mb-1">Thời gian TB</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.average_time_spent || "0 phút"}</p>
             </div>
           </div>
-          <p className="text-gray-600 text-sm mb-1">Thời gian TB</p>
-          <p className="text-2xl font-bold text-gray-900">{overviewStats.avgTimeSpent}</p>
-        </div>
-      </div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -486,6 +499,8 @@ export function RealtimeStats() {
           </table>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

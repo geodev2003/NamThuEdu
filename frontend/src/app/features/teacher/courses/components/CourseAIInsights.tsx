@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { Sparkles, TrendingUp, AlertTriangle, Lightbulb, Target, BrainCircuit, Users } from "lucide-react";
 
 export function CourseAIInsights() {

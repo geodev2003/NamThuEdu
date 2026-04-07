@@ -15,10 +15,24 @@ class UserSeeder extends Seeder
      */
     public function run()
     {
-        // Create teacher user
-        User::create([
-            'uName' => 'Nhựt Tuấn',
+        // Create/update admin user (stable credentials for local/dev)
+        User::updateOrCreate([
+            'uPhone' => '0900000000',
+        ], [
+            'uName' => 'System Admin',
+            'uPassword' => Hash::make('admin123'),
+            'uRole' => 'admin',
+            'uStatus' => 'active',
+            'uDoB' => '1992-01-01',
+            'uGender' => true,
+            'uAddress' => 'Can Tho',
+        ]);
+
+        // Create/update teacher user
+        User::updateOrCreate([
             'uPhone' => '0336695863',
+        ], [
+            'uName' => 'Nhựt Tuấn',
             'uPassword' => Hash::make('password123'),
             'uRole' => 'teacher',
             'uStatus' => 'active',
@@ -65,7 +79,10 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($students as $student) {
-            User::create($student);
+            User::updateOrCreate(
+                ['uPhone' => $student['uPhone']],
+                $student
+            );
         }
     }
 }

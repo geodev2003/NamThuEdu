@@ -4,6 +4,7 @@ import { formatDate } from "../../../../utils/formatters";
 
 const PURPLE = "#7C3AED";
 const PURPLE_LIGHT = "#EDE9FE";
+const STUDENT_BASE_PATH = "/hoc-vien";
 
 interface UpcomingTest {
   id: number;
@@ -90,7 +91,7 @@ export function UpcomingCalendar({ tests, isLoading }: UpcomingCalendarProps) {
           return (
             <Link
               key={test.id}
-              to={`/bai-tap`}
+              to={`${STUDENT_BASE_PATH}/bai-tap`}
               className="flex items-center gap-4 p-3 rounded-xl transition-all duration-200 hover:shadow-md"
               style={{
                 border: test.isUrgent

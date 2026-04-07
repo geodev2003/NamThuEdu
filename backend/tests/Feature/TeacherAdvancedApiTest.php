@@ -190,10 +190,13 @@ class TeacherAdvancedApiTest extends TestCase
             'questions' => [
                 [
                     'qContent' => 'What is PHP?',
-                    'qType' => 'multiple_choice',
-                    'qOptions' => json_encode(['A' => 'Language', 'B' => 'Framework']),
-                    'qCorrect_answer' => 'A',
-                    'qPoints' => 10
+                    'qPoints' => 10,
+                    'answers' => [
+                        ['aContent' => 'A programming language', 'aIs_correct' => true],
+                        ['aContent' => 'A framework', 'aIs_correct' => false],
+                        ['aContent' => 'A database', 'aIs_correct' => false],
+                        ['aContent' => 'An operating system', 'aIs_correct' => false],
+                    ]
                 ]
             ]
         ]);

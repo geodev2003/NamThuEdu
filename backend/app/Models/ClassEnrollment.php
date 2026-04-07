@@ -10,6 +10,7 @@ class ClassEnrollment extends Model
     use HasFactory;
 
     protected $table = 'class_enrollments';
+    protected $primaryKey = ['class_id', 'student_id'];
     public $timestamps = false;
     public $incrementing = false;
 

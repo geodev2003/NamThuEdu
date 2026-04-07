@@ -51,19 +51,24 @@ class ClassController extends Controller
 
         // Thêm thống kê cho mỗi lớp
         $classesWithStats = $classes->map(function($class) {
+            $courseData = null;
+            if ($class->course) {
+                $courseData = [
+                    'cId' => $class->course->cId ?? null,
+                    'cName' => $class->course->cName ?? null,
+                ];
+            }
+            
             return [
                 'cId' => $class->cId,
                 'cName' => $class->cName,
                 'cDescription' => $class->cDescription,
                 'cStatus' => $class->cStatus,
                 'cCreated_at' => $class->cCreated_at,
-                'course' => $class->course ? [
-                    'cId' => $class->course->cId,
-                    'cName' => $class->course->cName,
-                ] : null,
+                'course' => $courseData,
                 'enrollment_stats' => [
-                    'total_students' => $class->enrollments->count(),
-                    'active_students' => $class->enrollments->count(), // All enrollments are active in current schema
+                    'total_students' => $class->enrollments ? $class->enrollments->count() : 0,
+                    'active_students' => $class->enrollments ? $class->enrollments->count() : 0,
                 ],
             ];
         });
@@ -659,7 +664,9 @@ class ClassController extends Controller
 
                 // Perform transfer
                 // 1. Remove from source class
-                $fromEnrollment->delete();
+                ClassEnrollment::where('class_id', $fromId)
+                              ->where('student_id', $studentId)
+                              ->delete();
 
                 // 2. Add to destination class
                 ClassEnrollment::create([
@@ -889,7 +896,11 @@ class ClassController extends Controller
         }
 
         $student = User::find($studentId);
-        $enrollment->delete();
+        
+        // Delete using composite key
+        ClassEnrollment::where('class_id', $id)
+                      ->where('student_id', $studentId)
+                      ->delete();
 
         return response()->json([
             'status' => 'success',

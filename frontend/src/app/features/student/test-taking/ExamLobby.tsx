@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { studentApi } from "@/services/studentApi";
 
 const BRAND = "#7C3AED";
+const STUDENT_BASE_PATH = "/hoc-vien";
 
 type ExamLobbyInfo = {
   title: string;
@@ -234,7 +235,7 @@ export function ExamLobby() {
         await studentApi.reconnectTestWebsocket(sid);
       }
       setStatusMessage(t("student.examLobby.sessionConnected"));
-      navigate(`/lam-bai/${assignmentId}?autostart=1&submissionId=${sid}`);
+      navigate(`${STUDENT_BASE_PATH}/lam-bai/${assignmentId}?autostart=1&submissionId=${sid}`);
     } catch {
       setStatusMessage(t("student.examLobby.sessionFailed"));
       alert(t("student.examLobby.alertSessionFailed"));
@@ -250,7 +251,7 @@ export function ExamLobby() {
 
       <div className="relative max-w-[1360px] mx-auto rounded-[32px] border-[3px] border-[#BFDBFE] bg-white p-4 md:p-8 shadow-[0_18px_60px_rgba(15,23,42,0.12)]">
         <button
-          onClick={() => navigate("/bai-tap")}
+          onClick={() => navigate(`${STUDENT_BASE_PATH}/bai-tap`)}
           className="mb-4 inline-flex items-center gap-2 rounded-xl border-2 border-[#BFDBFE] bg-white px-3 py-2 text-sm font-bold text-[#1D4ED8] transition-colors hover:bg-[#EFF6FF]"
         >
           <ArrowLeft className="w-4 h-4" />

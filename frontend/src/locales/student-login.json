@@ -1,0 +1,38 @@
+{
+  "vi": {
+    "badge": "Học Viên",
+    "title": "Đăng nhập Học viên",
+    "subtitle": "Truy cập hệ thống học tập trực tuyến",
+    "phoneLabel": "Số điện thoại",
+    "phonePlaceholder": "Nhập số điện thoại học viên",
+    "passwordLabel": "Mật khẩu",
+    "passwordPlaceholder": "Nhập mật khẩu",
+    "rememberMe": "Ghi nhớ đăng nhập",
+    "forgotPassword": "Quên mật khẩu?",
+    "loginButton": "Đăng nhập Học viên",
+    "loggingIn": "Đang đăng nhập...",
+    "securityTitle": "Lưu ý bảo mật:",
+    "securityNote": "Hãy liên hệ với giáo viên để cấp lại mật khẩu ",
+    "errorWrongRole": "Tài khoản này không thuộc cổng học viên.",
+    "errorDefault": "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.",
+    "required": "*"
+  },
+  "en": {
+    "badge": "Student",
+    "title": "Student Login",
+    "subtitle": "Access online learning system",
+    "phoneLabel": "Phone Number",
+    "phonePlaceholder": "Enter student phone number",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter password",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "loginButton": "Student Login",
+    "loggingIn": "Logging in...",
+    "securityTitle": "Security Note:",
+    "securityNote": "Only login from trusted devices.",
+    "errorWrongRole": "This account does not belong to the student portal.",
+    "errorDefault": "Login failed. Please check your information.",
+    "required": "*"
+  }
+}

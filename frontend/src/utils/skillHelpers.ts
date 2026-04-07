@@ -5,6 +5,7 @@ export const SKILL_COLORS = {
   reading: '#10B981',
   writing: '#F59E0B',
   speaking: '#2563EB',
+  mixed: '#7C3AED',
 } as const;
 
 export const SKILL_NAMES = {
@@ -12,6 +13,7 @@ export const SKILL_NAMES = {
   reading: 'Đọc',
   writing: 'Viết',
   speaking: 'Nói',
+  mixed: 'Full 4 kỹ năng',
 } as const;
 
 export const SKILL_ICONS = {
@@ -19,6 +21,7 @@ export const SKILL_ICONS = {
   reading: Eye,
   writing: PenTool,
   speaking: Mic,
+  mixed: Eye,
 } as const;
 
 export function getSkillColor(skill: string): string {

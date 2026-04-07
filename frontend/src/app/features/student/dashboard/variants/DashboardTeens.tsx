@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { AdaptiveCard, AdaptiveButton, AdaptiveHeading2, AdaptiveBody } from '../../../../../components/adaptive';
 import { useTheme } from '../../../../../hooks/useTheme';
+const STUDENT_BASE_PATH = '/hoc-vien';
 
 interface DashboardTeensProps {
   stats: {
@@ -186,7 +187,7 @@ export function DashboardTeens({ stats, isLoading = false }: DashboardTeensProps
         
         {/* Làm bài tập */}
         <AdaptiveCard variant="elevated" hoverable>
-          <Link to="/bai-tap" className="block">
+          <Link to={`${STUDENT_BASE_PATH}/bai-tap`} className="block">
             <div className="flex items-center gap-4">
               <div
                 className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -210,7 +211,7 @@ export function DashboardTeens({ stats, isLoading = false }: DashboardTeensProps
 
         {/* Luyện tập */}
         <AdaptiveCard variant="elevated" hoverable>
-          <Link to="/luyen-tap" className="block">
+          <Link to={`${STUDENT_BASE_PATH}/luyen-tap`} className="block">
             <div className="flex items-center gap-4">
               <div
                 className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -234,7 +235,7 @@ export function DashboardTeens({ stats, isLoading = false }: DashboardTeensProps
 
         {/* Bảng xếp hạng */}
         <AdaptiveCard variant="elevated" hoverable>
-          <Link to="/bang-xep-hang" className="block">
+          <Link to={`${STUDENT_BASE_PATH}/bang-xep-hang`} className="block">
             <div className="flex items-center gap-4">
               <div
                 className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -361,7 +362,7 @@ export function DashboardTeens({ stats, isLoading = false }: DashboardTeensProps
               Hoàn thành bài tập hôm nay để duy trì streak!
             </AdaptiveBody>
           </div>
-          <Link to="/bai-tap">
+          <Link to={`${STUDENT_BASE_PATH}/bai-tap`}>
             <AdaptiveButton variant="primary" size="md">
               Bắt đầu ngay
             </AdaptiveButton>

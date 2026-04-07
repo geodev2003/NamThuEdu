@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
+import { useApiQuery, useApiMutation } from "../../../../hooks/useTeacherApi";
+import { teacherApi } from "../../../../services/teacherApi";
+import { showSuccessToast, handleApiError } from "../../../../components/shared/ErrorHandler";
+import type { ActiveSession } from "../../../../types/teacher";
 import {
   Users,
   Activity,
@@ -19,22 +23,6 @@ import {
 } from "lucide-react";
 import { Header } from "../../../components/shared/Header";
 
-interface StudentSession {
-  id: string;
-  studentName: string;
-  studentAvatar: string;
-  examTitle: string;
-  examId: string;
-  connectionStatus: "connected" | "disconnected" | "unstable";
-  startTime: Date;
-  duration: number; // minutes
-  timeElapsed: number; // seconds
-  questionsAnswered: number;
-  totalQuestions: number;
-  lastActivity: Date;
-  hasWarning: boolean;
-}
-
 export function LiveMonitoring() {
   const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -44,91 +32,62 @@ export function LiveMonitoring() {
   const [searchQuery, setSearchQuery] = useState("");
   const [lastUpdate, setLastUpdate] = useState(new Date());
 
-  // Mock data
-  const [sessions, setSessions] = useState<StudentSession[]>([
+  // Fetch active sessions with 10-second polling
+  const { data: sessionsData, loading, error } = useApiQuery(
+    () => teacherApi.dashboard.getActiveSessions(),
     {
-      id: "1",
-      studentName: "Nguyễn Văn An",
-      studentAvatar: "NA",
-      examTitle: "Cambridge KET - Reading Test 1",
-      examId: "ket-1",
-      connectionStatus: "connected",
-      startTime: new Date(Date.now() - 25 * 60 * 1000),
-      duration: 60,
-      timeElapsed: 25 * 60,
-      questionsAnswered: 18,
-      totalQuestions: 30,
-      lastActivity: new Date(Date.now() - 10 * 1000),
-      hasWarning: false,
-    },
+      refetchInterval: 10000, // 10 seconds
+      onError: (error: any) => {
+        handleApiError(error, () => window.location.reload());
+      }
+    }
+  );
+
+  // Send message mutation
+  const { mutate: sendMessage, loading: sendingMessage } = useApiMutation(
+    (variables: { submissionId: number; message: string }) =>
+      teacherApi.dashboard.sendMessage(variables.submissionId, variables.message),
     {
-      id: "2",
-      studentName: "Trần Thị Bình",
-      studentAvatar: "TB",
-      examTitle: "IELTS Reading Practice",
-      examId: "ielts-1",
-      connectionStatus: "unstable",
-      startTime: new Date(Date.now() - 35 * 60 * 1000),
-      duration: 60,
-      timeElapsed: 35 * 60,
-      questionsAnswered: 12,
-      totalQuestions: 25,
-      lastActivity: new Date(Date.now() - 45 * 1000),
-      hasWarning: true,
-    },
-    {
-      id: "3",
-      studentName: "Lê Hoàng Cường",
-      studentAvatar: "LC",
-      examTitle: "TOEFL Speaking Section",
-      examId: "toefl-1",
-      connectionStatus: "disconnected",
-      startTime: new Date(Date.now() - 40 * 60 * 1000),
-      duration: 45,
-      timeElapsed: 40 * 60,
-      questionsAnswered: 8,
-      totalQuestions: 20,
-      lastActivity: new Date(Date.now() - 5 * 60 * 1000),
-      hasWarning: true,
-    },
-  ]);
+      onSuccess: () => {
+        showSuccessToast("Tin nhắn đã được gửi");
+      },
+      onError: (error: any) => {
+        handleApiError(error);
+      }
+    }
+  );
+
+  const sessions: ActiveSession[] = sessionsData || [];
 
   const stats = {
-    activeStudents: sessions.filter((s) => s.connectionStatus === "connected").length,
-    totalSessions: 45,
-    avgCompletion: 68,
-    connectionIssues: sessions.filter((s) => s.hasWarning).length,
+    activeStudents: sessions.filter((s) => s.connection_status === "connected").length,
+    totalSessions: sessions.length,
+    avgCompletion: sessions.length > 0 
+      ? Math.round(sessions.reduce((acc, s) => acc + (s.answers_count / (s.exam?.total_questions || 1)) * 100, 0) / sessions.length)
+      : 0,
+    connectionIssues: sessions.filter((s) => s.connection_status === "disconnected" || s.disconnection_count > 2).length,
   };
 
-  // Simulate auto-refresh
+  // Update last update time
   useEffect(() => {
     const interval = setInterval(() => {
       setLastUpdate(new Date());
-      // Update time elapsed
-      setSessions((prev) =>
-        prev.map((s) => ({
-          ...s,
-          timeElapsed: s.timeElapsed + 5,
-        }))
-      );
     }, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  const getConnectionBadge = (status: StudentSession["connectionStatus"]) => {
+  const getConnectionBadge = (status: ActiveSession["connection_status"]) => {
     const badges = {
       connected: { icon: Wifi, color: "text-green-600", bg: "bg-green-100" },
       disconnected: { icon: WifiOff, color: "text-red-600", bg: "bg-red-100" },
-      unstable: { icon: Activity, color: "text-yellow-600", bg: "bg-yellow-100" },
     };
-    return badges[status];
+    return badges[status] || badges.disconnected;
   };
 
-  const formatTimeRemaining = (timeElapsed: number, duration: number) => {
-    const remaining = duration * 60 - timeElapsed;
-    if (remaining <= 0) return "Hết giờ";
-    const minutes = Math.floor(remaining / 60);
-    const seconds = remaining % 60;
+  const formatTimeRemaining = (timeRemaining: number) => {
+    if (timeRemaining <= 0) return "Hết giờ";
+    const minutes = Math.floor(timeRemaining / 60);
+    const seconds = timeRemaining % 60;
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
@@ -138,19 +97,28 @@ export function LiveMonitoring() {
     return `${minutes}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const formatLastActivity = (date: Date) => {
-    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  const formatLastActivity = (lastSeen: string) => {
+    const lastSeenDate = new Date(lastSeen);
+    const seconds = Math.floor((Date.now() - lastSeenDate.getTime()) / 1000);
     if (seconds < 60) return `${seconds} giây trước`;
     const minutes = Math.floor(seconds / 60);
     return `${minutes} phút trước`;
   };
 
+  const getStudentInitials = (name: string) => {
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+      return parts[0][0] + parts[parts.length - 1][0];
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   const filteredSessions = sessions.filter((session) => {
     const matchSearch =
       searchQuery === "" ||
-      session.studentName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchExam = filterExam === "" || session.examId === filterExam;
-    const matchActive = !showActiveOnly || session.connectionStatus !== "disconnected";
+      session.user.uName.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchExam = filterExam === "" || session.exam.eId.toString() === filterExam;
+    const matchActive = !showActiveOnly || session.connection_status !== "disconnected";
     return matchSearch && matchExam && matchActive;
   });
 
@@ -323,32 +291,40 @@ export function LiveMonitoring() {
         </div>
 
         {/* Student Sessions Grid */}
-        {viewMode === "grid" ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredSessions.map((session) => {
-            const badge = getConnectionBadge(session.connectionStatus);
+            const badge = getConnectionBadge(session.connection_status);
             const Icon = badge.icon;
-            const progress = (session.questionsAnswered / session.totalQuestions) * 100;
-            const timeRemaining = formatTimeRemaining(session.timeElapsed, session.duration);
-            const isLowTime = session.duration * 60 - session.timeElapsed < 600; // < 10 min
+            const progress = session.exam?.total_questions 
+              ? (session.answers_count / session.exam.total_questions) * 100 
+              : 0;
+            const timeRemaining = formatTimeRemaining(session.time_remaining);
+            const isLowTime = session.time_remaining < 600; // < 10 min
+            const hasWarning = session.connection_status === "disconnected" || session.disconnection_count > 2;
+            const studentInitials = getStudentInitials(session.user.uName);
 
             return (
               <div
-                key={session.id}
+                key={session.submission_id}
                 className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all"
               >
                 {/* Student Info */}
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                    {session.studentAvatar}
+                    {studentInitials}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-gray-900 truncate">{session.studentName}</p>
+                    <p className="font-bold text-gray-900 truncate">{session.user.uName}</p>
                     <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
-                      {session.examTitle}
+                      {session.exam.eTitle}
                     </span>
                   </div>
-                  {session.hasWarning && (
+                  {hasWarning && (
                     <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
                   )}
                 </div>
@@ -359,11 +335,12 @@ export function LiveMonitoring() {
                     <Icon className={`w-4 h-4 ${badge.color}`} />
                   </div>
                   <span className={`text-sm font-semibold ${badge.color}`}>
-                    {session.connectionStatus === "connected"
+                    {session.connection_status === "connected"
                       ? "Đang kết nối"
-                      : session.connectionStatus === "disconnected"
-                      ? "Mất kết nối"
-                      : "Không ổn định"}
+                      : "Mất kết nối"}
+                  </span>
+                  <span className="text-xs text-gray-500 ml-auto">
+                    {session.connection_count} kết nối / {session.disconnection_count} mất
                   </span>
                 </div>
 
@@ -372,7 +349,7 @@ export function LiveMonitoring() {
                   <div className="p-3 bg-gray-50 rounded-lg">
                     <p className="text-xs text-gray-600 mb-1">Đã làm</p>
                     <p className="text-sm font-bold text-gray-900">
-                      {formatTimeElapsed(session.timeElapsed)}
+                      {formatTimeElapsed(session.time_elapsed)}
                     </p>
                   </div>
                   <div className={`p-3 rounded-lg ${isLowTime ? "bg-red-50" : "bg-gray-50"}`}>
@@ -390,7 +367,7 @@ export function LiveMonitoring() {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-semibold text-gray-700">Tiến độ</span>
                     <span className="text-sm font-bold text-blue-600">
-                      {session.questionsAnswered}/{session.totalQuestions} câu
+                      {session.answers_count}/{session.exam?.total_questions || 0} câu
                     </span>
                   </div>
                   <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -404,19 +381,28 @@ export function LiveMonitoring() {
                 {/* Last Activity */}
                 <div className="flex items-center gap-2 mb-4 text-sm text-gray-500">
                   <Clock className="w-4 h-4" />
-                  <span>Hoạt động {formatLastActivity(session.lastActivity)}</span>
+                  <span>Hoạt động {formatLastActivity(session.last_seen)}</span>
                 </div>
 
                 {/* Actions */}
                 <div className="flex gap-2">
                   <Link
-                    to={`/giao-vien/giam-sat-truc-tiep/${session.id}`}
+                    to={`/giao-vien/giam-sat-truc-tiep/${session.submission_id}`}
                     className="flex-1 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all flex items-center justify-center gap-2 font-semibold text-sm"
                   >
                     <Eye className="w-4 h-4" />
                     Chi tiết
                   </Link>
-                  <button className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-all">
+                  <button 
+                    onClick={() => {
+                      const message = prompt("Nhập tin nhắn gửi đến học sinh:");
+                      if (message) {
+                        sendMessage({ submissionId: session.submission_id, message });
+                      }
+                    }}
+                    disabled={sendingMessage}
+                    className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-all disabled:opacity-50"
+                  >
                     <MessageCircle className="w-4 h-4" />
                   </button>
                   <button className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-all">
@@ -454,35 +440,41 @@ export function LiveMonitoring() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredSessions.map((session) => {
-                const badge = getConnectionBadge(session.connectionStatus);
+                const badge = getConnectionBadge(session.connection_status);
                 const Icon = badge.icon;
-                const progress = (session.questionsAnswered / session.totalQuestions) * 100;
+                const progress = session.exam?.total_questions 
+                  ? (session.answers_count / session.exam.total_questions) * 100 
+                  : 0;
+                const studentInitials = getStudentInitials(session.user.uName);
 
                 return (
-                  <tr key={session.id} className="hover:bg-blue-50/50 transition-colors">
+                  <tr key={session.submission_id} className="hover:bg-blue-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                          {session.studentAvatar}
+                          {studentInitials}
                         </div>
-                        <p className="font-semibold text-gray-900">{session.studentName}</p>
+                        <div>
+                          <p className="font-semibold text-gray-900">{session.user.uName}</p>
+                          <p className="text-xs text-gray-500">{session.user.uPhone}</p>
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
-                        {session.examTitle}
+                        {session.exam.eTitle}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <Icon className={`w-4 h-4 ${badge.color}`} />
                         <span className={`text-sm font-semibold ${badge.color}`}>
-                          {session.connectionStatus === "connected" ? "Kết nối" : "Mất kết nối"}
+                          {session.connection_status === "connected" ? "Kết nối" : "Mất kết nối"}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900 font-semibold">
-                      {formatTimeRemaining(session.timeElapsed, session.duration)}
+                      {formatTimeRemaining(session.time_remaining)}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -493,19 +485,28 @@ export function LiveMonitoring() {
                           />
                         </div>
                         <span className="text-sm font-bold text-blue-600">
-                          {session.questionsAnswered}/{session.totalQuestions}
+                          {session.answers_count}/{session.exam?.total_questions || 0}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
                       <Link
-                        to={`/giao-vien/giam-sat-truc-tiep/${session.id}`}
+                        to={`/giao-vien/giam-sat-truc-tiep/${session.submission_id}`}
                         className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all"
                       >
                         <Eye className="w-4 h-4" />
                       </Link>
-                        <button className="p-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-all">
+                        <button 
+                          onClick={() => {
+                            const message = prompt("Nhập tin nhắn gửi đến học sinh:");
+                            if (message) {
+                              sendMessage({ submissionId: session.submission_id, message });
+                            }
+                          }}
+                          disabled={sendingMessage}
+                          className="p-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-all disabled:opacity-50"
+                        >
                           <MessageCircle className="w-4 h-4" />
                         </button>
                         <button className="p-2 bg-purple-100 text-purple-600 rounded-lg hover:bg-purple-200 transition-all">

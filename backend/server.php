@@ -8,8 +8,14 @@
  */
 
 $uri = urldecode(
-    parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? ''
+    parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)
 );
+
+// Force storage routes through Laravel - use substr for PHP 7.4 compatibility
+if (substr($uri, 0, 19) === '/storage/exam_audio' || substr($uri, 0, 20) === '/storage/exam_images') {
+    // Return false to let Laravel handle it
+    return false;
+}
 
 // This file allows us to emulate Apache's "mod_rewrite" functionality from the
 // built-in PHP web server. This provides a convenient way to test a Laravel

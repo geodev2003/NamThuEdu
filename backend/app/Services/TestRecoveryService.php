@@ -63,7 +63,7 @@ class TestRecoveryService
                 $correctAnswer = $question->answers->where('aIs_correct', true)->first();
                 $maxScore += $question->qPoints;
 
-                if ($correctAnswer && $submissionAnswer->saAnswer_text === $correctAnswer->aContent) {
+                if ($correctAnswer && self::isCorrectAnswer($submissionAnswer->saAnswer_text, $correctAnswer->aContent)) {
                     $submissionAnswer->update([
                         'saIs_correct' => true,
                         'saPoints_awarded' => $question->qPoints,
@@ -85,6 +85,7 @@ class TestRecoveryService
             // Cập nhật submission
             $submission->update([
                 'sSubmit_time' => now(),
+                'sGraded_time' => now(),
                 'sScore' => $scorePercentage,
                 'sStatus' => 'auto_submitted',
                 'sTeacher_feedback' => "Bài thi được tự động nộp do hết thời gian (có thể do cúp điện/mất mạng). Đã trả lời {$answeredQuestions}/{$totalQuestions} câu hỏi.",
@@ -132,5 +133,16 @@ class TestRecoveryService
             'time_remaining' => $timeRemaining,
             'can_resume' => true
         ];
+    }
+
+    private static function normalizeAnswer($value)
+    {
+        $normalized = trim((string) $value);
+        return function_exists('mb_strtolower') ? mb_strtolower($normalized, 'UTF-8') : strtolower($normalized);
+    }
+
+    private static function isCorrectAnswer($studentAnswer, $correctAnswer)
+    {
+        return self::normalizeAnswer($studentAnswer) === self::normalizeAnswer($correctAnswer);
     }
 }

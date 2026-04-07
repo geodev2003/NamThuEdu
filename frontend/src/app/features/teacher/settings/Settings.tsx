@@ -36,6 +36,13 @@ export function Settings() {
   const [showPassword, setShowPassword] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Get user info from localStorage
+  const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : null;
+  const userName = user?.name || user?.uName || 'Teacher';
+  const userPhone = user?.phone || user?.uPhone || '';
+  const userEmail = `${userPhone}@namthuedu.com`;
+
   const activeTab = searchParams.get("tab") || "profile";
 
   useEffect(() => {
@@ -193,7 +200,7 @@ function ProfileTab({ onSave, saveSuccess }: { onSave: () => void; saveSuccess: 
               className="text-[#111827] mb-1"
               style={{ fontSize: "16px", fontWeight: 600 }}
             >
-              Nguyễn Văn Thuận
+              {userName}
             </h4>
             <p className="text-[#6B7280] mb-3" style={{ fontSize: "14px" }}>
               Giáo viên
@@ -230,7 +237,7 @@ function ProfileTab({ onSave, saveSuccess }: { onSave: () => void; saveSuccess: 
             </label>
             <input
               type="text"
-              defaultValue="Nguyễn Văn Thuận"
+              defaultValue={userName}
               className="w-full h-11 px-4 border border-[#D1D5DB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all"
               style={{ fontSize: "14px" }}
             />

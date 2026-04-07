@@ -38,6 +38,7 @@ const PRIMARY_LIGHT = "#E0F2FE"; // Light Sky
 const PRIMARY_MID = "#38BDF8"; // Bright Sky
 const ACCENT = "#06B6D4"; // Cyan
 const ACCENT_LIGHT = "#CFFAFE"; // Light Cyan
+const STUDENT_BASE_PATH = "/hoc-vien";
 
 function mergeVstepIntoSingleTest(items: any[]) {
   const vstepItems = items.filter((t) => String(t.exam_type || "").toUpperCase() === "VSTEP");
@@ -508,7 +509,7 @@ export function TestList() {
 
                    {/* Action Button */}
                    {isCompleted ? (
-                      <Link to={`/ket-qua/${test.submission_id}`}
+                      <Link to={`${STUDENT_BASE_PATH}/ket-qua/${test.submission_id}`}
                             className="w-full flex justify-between items-center px-5 py-4 rounded-xl font-bold transition-all hover:scale-[1.02]"
                             style={{ background: "#F0FDF4", color: "#16A34A", border: "2px solid #86EFAC" }}>
                          <span className="flex items-center gap-2">
@@ -518,7 +519,7 @@ export function TestList() {
                          <ArrowRight className="w-5 h-5" />
                       </Link>
                    ) : (
-                      <Link to={`/phong-cho/${test.assignment_id}`}
+                      <Link to={`${STUDENT_BASE_PATH}/phong-cho/${test.assignment_id}`}
                             className={`w-full flex justify-between items-center px-5 py-4 rounded-xl font-bold transition-all ${canStart ? 'hover:scale-[1.02]' : 'opacity-50 cursor-not-allowed'}`}
                             style={{ background: color, color: "#fff", boxShadow: `0 4px 16px ${color}40` }}
                             onClick={(e) => !canStart && e.preventDefault()}>
@@ -628,14 +629,14 @@ export function TestList() {
                     {/* Action Button */}
                     <div className="flex-shrink-0">
                       {isCompleted ? (
-                        <Link to={`/ket-qua/${test.submission_id}`}
+                        <Link to={`${STUDENT_BASE_PATH}/ket-qua/${test.submission_id}`}
                               className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold transition-all hover:scale-105"
                               style={{ background: "#F0FDF4", color: "#16A34A" }}>
                            <CheckCircle className="w-5 h-5" />
                            Xem kết quả
                         </Link>
                       ) : (
-                        <Link to={`/phong-cho/${test.assignment_id}`}
+                        <Link to={`${STUDENT_BASE_PATH}/phong-cho/${test.assignment_id}`}
                               className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold transition-all ${canStart ? 'hover:scale-105' : 'opacity-50 cursor-not-allowed'}`}
                               style={{ background: color, color: "#fff" }}
                               onClick={(e) => !canStart && e.preventDefault()}>

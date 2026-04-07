@@ -83,6 +83,17 @@ Route::get('/test', function () {
     ]);
 });
 
+Route::get('/test-cors-direct', function() {
+    return response('CORS Test Direct')
+        ->header('Access-Control-Allow-Origin', '*')
+        ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        ->header('X-Test-Header', 'TestValue');
+});
+
+// File serving routes (with CORS)
+Route::get('/files/audio/{filename}', [App\Http\Controllers\FileServeController::class, 'serveAudio']);
+Route::get('/files/image/{filename}', [App\Http\Controllers\FileServeController::class, 'serveImage']);
+
 Route::get('/docs-test', function () {
     return response()->json([
         'status' => 'success',

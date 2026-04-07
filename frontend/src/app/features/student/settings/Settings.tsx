@@ -1,4 +1,4 @@
-import { ThemeSwitcher } from '../../../../components/theme/ThemeSwitcher';
+import ThemeSwitcher from './ThemeSwitcher';
 import { User, Bell, Shield, Globe } from 'lucide-react';
 
 export function Settings() {

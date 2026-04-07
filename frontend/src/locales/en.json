@@ -240,6 +240,7 @@
       "practice": "Practice",
       "progress": "Progress",
       "history": "History",
+      "notifications": "Notifications",
       "profile": {
         "student": "Student",
         "myProfile": "My Profile",
@@ -344,6 +345,66 @@
         "settings": "Settings",
         "security": "Security",
         "stats": "Statistics"
+      }
+    },
+    "settings": {
+      "theme": {
+        "title": "Theme Preference",
+        "description": "Choose the look and feel that works best for you. Your theme preference will be saved and synced across devices.",
+        "playful": {
+          "label": "Playful",
+          "description": "Bright, fun, and encouraging - perfect for young learners"
+        },
+        "dynamic": {
+          "label": "Dynamic",
+          "description": "Modern, energetic, and achievement-focused"
+        },
+        "professional": {
+          "label": "Professional",
+          "description": "Clean, efficient, and focused - optimized for serious learners"
+        },
+        "auto": {
+          "label": "Auto (Age-based)",
+          "description": "Automatically select theme based on your age"
+        },
+        "currentlyLabel": "Currently",
+        "tipTitle": "Tip",
+        "tipDescription": "Your selected theme will change the colors, fonts, spacing, and overall feel of the interface. Try different options to find what works best for you!"
+      }
+    },
+    "themeSelection": {
+      "title": "Choose Your Learning Style",
+      "subtitle": "Select the interface that works best for you",
+      "skipForNow": "Skip for now",
+      "confirmSelection": "Choose this theme",
+      "recommended": "Recommended for you",
+      "canChangeAnytime": "You can change your theme anytime in Settings",
+      "kids": {
+        "title": "Playful",
+        "description": "Vibrant interface with colorful images, perfect for young learners",
+        "ageRange": "Ages 6-12",
+        "feature1": "⭐ Stars and rewards",
+        "feature2": "🎮 Learning games",
+        "feature3": "🎨 Vibrant illustrations",
+        "feature4": "🏆 Friend leaderboards"
+      },
+      "teens": {
+        "title": "Dynamic",
+        "description": "Modern, energetic interface focused on achievements",
+        "ageRange": "Ages 13-17",
+        "feature1": "🔥 Streak tracking",
+        "feature2": "📊 Detailed statistics",
+        "feature3": "🏅 National leaderboards",
+        "feature4": "💪 Weekly challenges"
+      },
+      "adults": {
+        "title": "Professional",
+        "description": "Clean, efficient interface focused on learning outcomes",
+        "ageRange": "18+ years",
+        "feature1": "📈 Clear learning roadmap",
+        "feature2": "📊 Detailed progress reports",
+        "feature3": "🎯 IELTS/TOEIC/VSTEP goals",
+        "feature4": "📚 In-depth resources"
       }
     },
     "examLobby": {
@@ -612,6 +673,188 @@
       "featuresTitle": "Key Features",
       "ctaTitle": "Start Your English Learning Journey",
       "ctaSubtitle": "Register now to get 7 days free trial with age-adaptive interface"
+    },
+    "guest": {
+      "header": {
+        "logo": "NamThuEdu",
+        "menu": {
+          "features": "Features",
+          "paths": "Paths",
+          "testimonials": "Testimonials",
+          "faq": "FAQ"
+        },
+        "login": "Login",
+        "trial": "Start Free Trial"
+      },
+      "hero": {
+        "badge": "Next-generation English learning platform",
+        "title": "Learn English better with",
+        "titleHighlight": "personalized AI",
+        "subtitle": "NamThuEdu helps you learn the right focus, track clear progress, and reach your goals faster.",
+        "ctaTrial": "Start Free Trial",
+        "ctaDemo": "Watch Demo",
+        "trust": {
+          "students": "50,000+ students",
+          "duration": "15 minutes/session"
+        }
+      },
+      "roles": {
+        "title": "One platform for every role",
+        "subtitle": "Choose the right portal to get started quickly.",
+        "items": {
+          "student": {
+            "title": "Student",
+            "desc": "Personalized learning path, daily practice, and clear progress tracking.",
+            "cta": "Start Free Trial"
+          },
+          "teacher": {
+            "title": "Teacher",
+            "desc": "Manage classes, create tests, track learners, and grade efficiently.",
+            "cta": "Go to Teacher Portal"
+          },
+          "admin": {
+            "title": "Administrator",
+            "desc": "Operate the system, control data, and manage secure permissions.",
+            "cta": "Go to Admin Portal"
+          }
+        }
+      },
+      "stats": {
+        "students": "Active students",
+        "rating": "Average rating",
+        "goal": "Goal completion"
+      },
+      "courses": {
+        "title": "Courses at our center",
+        "subtitle": "Live list of currently open courses from the center system.",
+        "loading": "Loading courses...",
+        "empty": "No open courses at the moment.",
+        "emptyFiltered": "No course matches the selected filter.",
+        "error": "Unable to load courses.",
+        "general": "General",
+        "noDescription": "No description available for this course.",
+        "time": "Duration",
+        "schedule": "Schedule",
+        "seats": "Max students",
+        "updating": "Updating",
+        "filters": {
+          "all": "All",
+          "ielts": "IELTS",
+          "toeic": "TOEIC",
+          "communication": "Communication",
+          "kids": "Kids"
+        }
+      },
+      "teachers": {
+        "title": "Featured teachers",
+        "subtitle": "Experienced, certified instructors who closely support learners.",
+        "items": {
+          "1": {
+            "name": "Ms. Minh Anh",
+            "role": "IELTS Instructor",
+            "cert": "Certificate: IELTS 8.0",
+            "exp": "Experience: 7+ years test preparation"
+          },
+          "2": {
+            "name": "Mr. Quang Hai",
+            "role": "TOEIC & Communication Coach",
+            "cert": "Certificate: TESOL",
+            "exp": "Experience: 10+ years teaching"
+          },
+          "3": {
+            "name": "Ms. Thuy Linh",
+            "role": "Kids English Specialist",
+            "cert": "Certificate: Cambridge TKT",
+            "exp": "Experience: 6+ years teaching kids"
+          }
+        }
+      },
+      "stickyContact": {
+        "hotline": "Hotline 0776.818.160",
+        "call": "Call",
+        "zalo": "Zalo",
+        "register": "Register consult"
+      },
+      "paths": {
+        "title": "Goal-based learning paths",
+        "subtitle": "Pick your goal and get recommendations that match your level.",
+        "tabs": {
+          "ielts": "IELTS",
+          "toeic": "TOEIC",
+          "communication": "Communication",
+          "cambridge": "Cambridge",
+          "kids": "Kids"
+        },
+        "ielts": "Roadmap from band 4.5 to 6.5+ with mock tests and AI feedback.",
+        "toeic": "Roadmap from 450 to 750+ focused on Listening/Reading.",
+        "communication": "Daily speaking practice with real-world conversation scenarios.",
+        "cambridge": "Prepare for KET/PET/FCE with structured level-based tests.",
+        "kids": "Learn through games, audio, and visuals to keep kids engaged."
+      },
+      "features": {
+        "title": "Key features",
+        "subtitle": "Everything you need to improve every day.",
+        "items": {
+          "ai": {
+            "title": "Instant AI feedback",
+            "desc": "Get immediate feedback on Writing/Speaking to improve faster."
+          },
+          "report": {
+            "title": "Visual progress reports",
+            "desc": "Track strengths, weaknesses, and growth by week and month."
+          },
+          "path": {
+            "title": "Goal-focused roadmap",
+            "desc": "Focus on IELTS, TOEIC, communication, or academic English."
+          }
+        }
+      },
+      "testimonials": {
+        "title": "What learners say",
+        "items": {
+          "1": {
+            "name": "Linh Anh",
+            "role": "IELTS learner",
+            "text": "I improved by 1.0 band in 8 weeks thanks to the clear roadmap."
+          },
+          "2": {
+            "name": "Mr. Quang",
+            "role": "Teacher",
+            "text": "The class dashboard saves me a lot of time every week."
+          },
+          "3": {
+            "name": "Parent An",
+            "role": "Parent",
+            "text": "Tracking my child’s progress is much easier now."
+          }
+        }
+      },
+      "faq": {
+        "title": "Frequently asked questions",
+        "items": {
+          "1": {
+            "q": "Can I try before paying?",
+            "a": "Yes. You can start with a trial account to explore the interface and learning paths."
+          },
+          "2": {
+            "q": "Who is this platform for?",
+            "a": "NamThuEdu supports students, university learners, and working adults with tailored paths."
+          },
+          "3": {
+            "q": "Is there a dedicated teacher dashboard?",
+            "a": "Yes. The teacher portal supports class management, test creation, and progress tracking."
+          }
+        }
+      },
+      "cta": {
+        "title": "Ready to start your learning journey?",
+        "subtitle": "Create a trial account and experience it today.",
+        "button": "Start Free Trial"
+      },
+      "footer": {
+        "copyright": "© 2026 NamThuEdu. Modern knowledge architecture platform.",
+        "contact": "Hotline: 1900 6868 • support@namthuedu.vn"
+      }
     }
   },
   "auth": {
@@ -659,6 +902,7 @@
       "createAccount": "Create new account",
       "name": "Full name",
       "phone": "Phone number",
+      "emailOptional": "Email (optional)",
       "dateOfBirth": "Date of birth",
       "password": "Password",
       "confirmPassword": "Confirm password",
@@ -670,10 +914,18 @@
       "loginNow": "Login",
       "ageGroupPreview": "Interface:",
       "ageGroupSuitable": "Suitable interface:",
+      "calculatedAge": "Current age: {{age}}",
       "ageGroups": {
         "kids": "Kids (6-12 years)",
         "teens": "Teens (13-17 years)",
         "adults": "Adults (18+ years)"
+      },
+      "ageValidation": {
+        "min": "The system only supports learners aged 6 and above.",
+        "max": "Invalid date of birth (age exceeds system limit)."
+      },
+      "errors": {
+        "invalidAge": "Please provide a valid date of birth (age 6-100)."
       },
       "progress": {
         "step1": "Information",
@@ -689,6 +941,25 @@
       "phonePlaceholder": "0336695863",
       "namePlaceholder": "John Doe",
       "passwordPlaceholder": "••••••••"
+    },
+    "adminLogin": {
+      "badge": "Administrator",
+      "title": "Admin Login",
+      "subtitle": "Access the system administration dashboard",
+      "phone": "Phone number",
+      "phonePlaceholder": "Enter admin phone number",
+      "password": "Password",
+      "passwordPlaceholder": "Enter password",
+      "rememberMe": "Remember login",
+      "forgotPassword": "Forgot password?",
+      "authenticating": "Authenticating...",
+      "loginButton": "Login as Admin",
+      "securityTitle": "Security note",
+      "securityText": "Only sign in from trusted devices.",
+      "errors": {
+        "notAdmin": "This account does not have admin privileges.",
+        "failed": "Login failed."
+      }
     }
   }
 }
