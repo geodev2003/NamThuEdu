@@ -21,7 +21,6 @@ class ExamApiTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->artisan('migrate:fresh');
 
         $this->teacher = User::factory()->create(['uRole' => 'teacher']);
 
@@ -119,7 +118,7 @@ class ExamApiTest extends TestCase
             ]
         ]);
 
-        $response->assertStatus(200);
+        $response->assertStatus(201);
 
         $this->assertDatabaseHas('questions', [
             'exam_id' => $exam->eId,

@@ -164,6 +164,11 @@ const mutation = useMutation({
 - [ ] Offline support
 - [ ] Mobile app (React Native)
 
+## 🧭 Route Base (Updated)
+
+- Student portal chính dùng base: `/hoc-vien/*`
+- Legacy route `/hoc-sinh/*` được redirect sang `/hoc-vien/*` để tương thích link cũ
+
 ## 🎯 Best Practices
 
 1. **Component Organization**: Mỗi feature có folder riêng

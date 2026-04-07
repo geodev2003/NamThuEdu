@@ -16,6 +16,7 @@ import { useEffect, useRef } from "react";
 
 const PRIMARY = "#0EA5E9"; // Sky Blue
 const PRIMARY_LIGHT = "#E0F2FE"; // Light Sky
+const STUDENT_BASE_PATH = "/hoc-vien";
 
 // ─── Confetti (CSS-based) ─────────────────────────────────────────────────────
 function Confetti() {
@@ -119,7 +120,7 @@ export function ResultDetail() {
       {showConfetti && <Confetti />}
 
       {/* Back */}
-      <button onClick={() => navigate("/bai-tap")}
+      <button onClick={() => navigate(`${STUDENT_BASE_PATH}/bai-tap`)}
         className="flex items-center gap-2 text-sm font-medium transition-colors hover:underline"
         style={{ color: PRIMARY }}>
         <ArrowLeft className="w-4 h-4" /> Về danh sách bài tập
@@ -185,13 +186,13 @@ export function ResultDetail() {
 
       {/* CTA Buttons */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Link to={`/dap-an/${submissionId}`}
+        <Link to={`${STUDENT_BASE_PATH}/dap-an/${submissionId}`}
           className="flex items-center justify-center gap-2 py-4 rounded-2xl font-bold transition-opacity hover:opacity-90"
           style={{ background: `linear-gradient(135deg, ${PRIMARY}, #38BDF8)`, color: "#fff", fontSize: 15 }}>
           <Eye className="w-5 h-5" /> Xem đáp án
         </Link>
         {assignmentId && (
-          <Link to={`/lam-bai/${assignmentId}`}
+          <Link to={`${STUDENT_BASE_PATH}/lam-bai/${assignmentId}`}
             className="flex items-center justify-center gap-2 py-4 rounded-2xl font-bold border-2 transition-colors hover:bg-sky-50"
             style={{ borderColor: PRIMARY, color: PRIMARY, fontSize: 15 }}>
             <RotateCcw className="w-5 h-5" /> Làm lại

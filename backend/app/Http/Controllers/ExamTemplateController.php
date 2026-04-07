@@ -662,9 +662,10 @@ class ExamTemplateController extends Controller
         $sortOrder = $request->get('sort_order', 'desc');
         $query->orderBy($sortBy, $sortOrder);
 
-        // Pagination
-        $perPage = $request->get('per_page', 20);
-        $templates = $query->paginate($perPage);
+        $paginate = $request->get('paginate') === 'true';
+        $templates = $paginate
+            ? $query->paginate((int) $request->get('per_page', 20))
+            : $query->get();
 
         return response()->json([
             'status' => 'success',
@@ -688,15 +689,9 @@ class ExamTemplateController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'template_code' => 'required|string|max:50|unique:exam_templates,template_code',
-            'template_name' => 'required|string|max:255',
-            'category' => 'required|in:cambridge_young,cambridge_main,international,specialized',
-            'level' => 'required|in:pre_a1,a1,a2,b1,b2,c1,c2',
-            'age_group' => 'required|in:young_learners,adult',
-            'total_duration_minutes' => 'required|integer|min:1',
-            'skills' => 'required|array',
-            'sections' => 'required|array',
-            'description' => 'nullable|string',
+            'etName' => 'required|string|max:255',
+            'etCategory' => 'required|string|max:100',
+            'etDescription' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -708,15 +703,18 @@ class ExamTemplateController extends Controller
         }
 
         $template = ExamTemplate::create([
-            'template_code' => $request->template_code,
-            'template_name' => $request->template_name,
-            'category' => $request->category,
-            'level' => $request->level,
-            'age_group' => $request->age_group,
-            'total_duration_minutes' => $request->total_duration_minutes,
-            'skills' => json_encode($request->skills),
-            'sections' => json_encode($request->sections),
-            'description' => $request->description,
+            'template_code' => strtoupper(substr(md5(uniqid((string) mt_rand(), true)), 0, 8)),
+            'template_name' => $request->etName,
+            'category' => $this->mapAdminCategoryToEnum($request->etCategory),
+            'level' => 'a2',
+            'age_group' => 'adult',
+            'total_duration_minutes' => 60,
+            'skills' => ['reading', 'listening'],
+            'sections' => [
+                ['name' => 'Section 1', 'duration' => 30, 'questions' => 20],
+                ['name' => 'Section 2', 'duration' => 30, 'questions' => 20],
+            ],
+            'description' => $request->etDescription,
             'is_active' => true,
         ]);
 
@@ -752,16 +750,9 @@ class ExamTemplateController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'template_code' => 'sometimes|required|string|max:50|unique:exam_templates,template_code,' . $id,
-            'template_name' => 'sometimes|required|string|max:255',
-            'category' => 'sometimes|required|in:cambridge_young,cambridge_main,international,specialized',
-            'level' => 'sometimes|required|in:pre_a1,a1,a2,b1,b2,c1,c2',
-            'age_group' => 'sometimes|required|in:young_learners,adult',
-            'total_duration_minutes' => 'sometimes|required|integer|min:1',
-            'skills' => 'sometimes|required|array',
-            'sections' => 'sometimes|required|array',
-            'description' => 'nullable|string',
-            'is_active' => 'sometimes|boolean',
+            'etName' => 'sometimes|required|string|max:255',
+            'etCategory' => 'sometimes|required|string|max:100',
+            'etDescription' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -772,24 +763,16 @@ class ExamTemplateController extends Controller
             ], 400);
         }
 
-        $updateData = $request->only([
-            'template_code', 'template_name', 'category', 'level', 'age_group',
-            'total_duration_minutes', 'description', 'is_active'
-        ]);
-
-        if ($request->has('skills')) {
-            $updateData['skills'] = json_encode($request->skills);
-        }
-
-        if ($request->has('sections')) {
-            $updateData['sections'] = json_encode($request->sections);
-        }
+        $updateData = [];
+        if ($request->has('etName')) $updateData['template_name'] = $request->etName;
+        if ($request->has('etCategory')) $updateData['category'] = $this->mapAdminCategoryToEnum($request->etCategory);
+        if ($request->has('etDescription')) $updateData['description'] = $request->etDescription;
 
         $template->update($updateData);
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Cập nhật mẫu đề thi thành công.',
+            'message' => 'Exam template updated successfully',
             'data' => $template
         ]);
     }
@@ -834,7 +817,7 @@ class ExamTemplateController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Xóa mẫu đề thi thành công.'
+            'message' => 'Exam template deleted successfully'
         ]);
     }
 
@@ -866,7 +849,7 @@ class ExamTemplateController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Kích hoạt mẫu đề thi thành công.',
+            'message' => 'Exam template activated successfully',
             'data' => [
                 'template_id' => $template->id,
                 'template_name' => $template->template_name,
@@ -903,7 +886,7 @@ class ExamTemplateController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Vô hiệu hóa mẫu đề thi thành công.',
+            'message' => 'Exam template deactivated successfully',
             'data' => [
                 'template_id' => $template->id,
                 'template_name' => $template->template_name,
@@ -957,16 +940,27 @@ class ExamTemplateController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => [
-                'templates' => [
-                    'total' => $totalTemplates,
-                    'active' => $activeTemplates,
-                    'inactive' => $inactiveTemplates,
-                    'activation_rate' => $totalTemplates > 0 ? round(($activeTemplates / $totalTemplates) * 100, 2) : 0
-                ],
+                'total_templates' => $totalTemplates,
+                'active_templates' => $activeTemplates,
+                'inactive_templates' => $inactiveTemplates,
+                'usage_count' => $templatesUsage->sum('usage_count'),
                 'by_category' => $templatesByCategory,
                 'by_level' => $templatesByLevel,
-                'usage' => $templatesUsage
             ]
         ]);
+    }
+
+    private function mapAdminCategoryToEnum(string $category): string
+    {
+        $normalized = strtoupper(trim($category));
+
+        if (in_array($normalized, ['CAMBRIDGE', 'CAMBRIDGE_YOUNG'])) {
+            return 'cambridge_young';
+        } elseif ($normalized === 'CAMBRIDGE_MAIN') {
+            return 'cambridge_main';
+        } elseif (in_array($normalized, ['IELTS', 'TOEIC', 'TOEFL', 'VSTEP', 'INTERNATIONAL'])) {
+            return 'international';
+        }
+        return 'specialized';
     }
 }

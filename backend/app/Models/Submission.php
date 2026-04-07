@@ -21,6 +21,7 @@ class Submission extends Model
         'sStart_time',
         'sSubmit_time',
         'sGraded_time',
+        'submit_idempotency_key',
         'sScore',
         'sStatus',
         'sTeacher_feedback',

@@ -19,6 +19,26 @@ import { Header } from "../../../components/shared/Header";
 import { formatTimeAgo } from "../../../../utils/formatters";
 
 type NotificationType = 'all' | 'assignment' | 'graded' | 'deadline' | 'message' | 'achievement';
+const STUDENT_BASE_PATH = "/hoc-vien";
+
+function resolveStudentActionUrl(actionUrl: string): string {
+  const normalized = actionUrl.startsWith("/") ? actionUrl : `/${actionUrl}`;
+
+  if (normalized.startsWith(`${STUDENT_BASE_PATH}/`)) return normalized;
+  if (normalized.startsWith("/bai-tap")) return `${STUDENT_BASE_PATH}/bai-tap`;
+  if (normalized.startsWith("/luyen-tap")) return `${STUDENT_BASE_PATH}/luyen-tap`;
+  if (normalized.startsWith("/thong-bao")) return `${STUDENT_BASE_PATH}/thong-bao`;
+  if (normalized.startsWith("/tien-do")) return `${STUDENT_BASE_PATH}/tien-do`;
+  if (normalized.startsWith("/lich-su")) return `${STUDENT_BASE_PATH}/lich-su`;
+  if (normalized.startsWith("/ho-so")) return `${STUDENT_BASE_PATH}/ho-so`;
+  if (normalized.startsWith("/cai-dat")) return `${STUDENT_BASE_PATH}/cai-dat`;
+  if (normalized.startsWith("/ket-qua/")) return `${STUDENT_BASE_PATH}${normalized}`;
+  if (normalized.startsWith("/dap-an/")) return `${STUDENT_BASE_PATH}${normalized}`;
+  if (normalized.startsWith("/phong-cho/")) return `${STUDENT_BASE_PATH}${normalized}`;
+  if (normalized.startsWith("/lam-bai/")) return `${STUDENT_BASE_PATH}${normalized}`;
+
+  return `${STUDENT_BASE_PATH}${normalized}`;
+}
 
 export function NotificationList() {
   const { t } = useTranslation();
@@ -230,7 +250,7 @@ export function NotificationList() {
 
                         {notif.action_url && (
                           <Link
-                            to={notif.action_url}
+                            to={resolveStudentActionUrl(notif.action_url)}
                             onClick={() => !isUnread || markAsReadMutation.mutate(notif.id)}
                             className="px-3 py-1.5 rounded-lg transition-all hover:opacity-90"
                             style={{

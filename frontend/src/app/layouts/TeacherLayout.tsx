@@ -1,5 +1,5 @@
 import { Outlet } from "react-router";
-import { Sidebar } from "../components/Sidebar";
+import { Sidebar } from "../components/shared/Sidebar";
 
 /**
  * TeacherLayout — Layout chính dành cho giáo viên.

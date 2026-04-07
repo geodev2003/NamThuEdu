@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             CategorySeeder::class,
             TestSystemSeeder::class, // Real VSTEP exam data
             CambridgeTemplateSeeder::class, // Cambridge exam templates
+            TeacherExamSeeder::class, // Teacher test data for exam & assignment features
         ]);
     }
 }

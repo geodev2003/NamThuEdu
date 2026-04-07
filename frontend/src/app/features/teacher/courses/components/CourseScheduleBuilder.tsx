@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { Plus, Clock, Users, MapPin, MoreVertical } from "lucide-react";
 
 const daysOfWeek = [

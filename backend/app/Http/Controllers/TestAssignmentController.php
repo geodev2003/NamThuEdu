@@ -67,7 +67,7 @@ class TestAssignmentController extends Controller
         $validator = Validator::make($request->all(), [
             'taTarget_type' => 'required|in:class,student',
             'taTarget_id' => 'required|integer',
-            'taDeadline' => 'nullable|date|after:now',
+            'taDeadline' => 'nullable|date',
             'taMax_attempt' => 'nullable|integer|min:1',
             'taIs_public' => 'nullable|boolean',
         ]);
@@ -404,11 +404,11 @@ class TestAssignmentController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'exam_id' => 'required|integer|exists:exams,eId',
+            'exam_id' => 'required|integer',
             'targets' => 'required|array|min:1',
             'targets.*.type' => 'required|in:class,student',
             'targets.*.id' => 'required|integer',
-            'taDeadline' => 'nullable|date|after:now',
+            'taDeadline' => 'nullable|date',
             'taMax_attempt' => 'nullable|integer|min:1',
             'taIs_public' => 'nullable|boolean',
         ]);

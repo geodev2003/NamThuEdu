@@ -7,6 +7,7 @@ use App\Events\TeacherMonitorEvent;
 use App\Models\Submission;
 use App\Models\SubmissionAnswer;
 use App\Models\TestAssignment;
+use App\Models\Question;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
@@ -92,11 +93,28 @@ class TestWebSocketService
     public static function handleAnswerUpdate($submissionId, $userId, $questionId, $answerText)
     {
         try {
+            $submission = Submission::where('sId', $submissionId)
+                ->where('user_id', $userId)
+                ->with('exam')
+                ->first();
+
+            if (!$submission || $submission->sStatus !== 'in_progress') {
+                return ['success' => false, 'message' => 'Submission is not available for updates'];
+            }
+
+            $question = Question::where('qId', $questionId)
+                ->where('exam_id', $submission->exam_id)
+                ->first();
+
+            if (!$question) {
+                return ['success' => false, 'message' => 'Question is invalid for this submission'];
+            }
+
             // Lưu câu trả lời
             $submissionAnswer = SubmissionAnswer::updateOrCreate(
                 [
                     'submission_id' => $submissionId,
-                    'question_id' => $questionId,
+                    'question_id' => $question->qId,
                 ],
                 [
                     'saAnswer_text' => $answerText,
@@ -113,7 +131,7 @@ class TestWebSocketService
 
             // Broadcast answer saved event với confirmation
             broadcast(new TestSessionEvent($submissionId, $userId, 'answer_saved', [
-                'question_id' => $questionId,
+                'question_id' => $question->qId,
                 'saved_at' => now()->toISOString(),
                 'message' => '✓ Câu trả lời đã được lưu',
                 'answer_number' => Redis::hget($connectionKey, 'answers_count')

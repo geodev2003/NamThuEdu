@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { Header } from "../../../components/shared/Header";
+import { useApiQuery } from "../../../../hooks/useTeacherApi";
+import { teacherApi } from "../../../../services/teacherApi";
+import { handleApiError } from "../../../../components/shared/ErrorHandler";
 import {
   BookOpen,
   School,
@@ -31,7 +34,8 @@ import {
   Legend,
 } from "recharts";
 
-const performanceData = [
+// Fallback data for when API is loading or fails
+const fallbackPerformanceData = [
   { week: "T1", average: 65, listening: 60, reading: 68, writing: 62 },
   { week: "T2", average: 70, listening: 68, reading: 72, writing: 66 },
   { week: "T3", average: 74, listening: 73, reading: 76, writing: 70 },
@@ -40,7 +44,7 @@ const performanceData = [
   { week: "T6", average: 82, listening: 80, reading: 84, writing: 78 },
 ];
 
-const recentActivities = [
+const fallbackActivities = [
   {
     id: 1,
     type: "created",
@@ -128,6 +132,42 @@ export function Dashboard() {
   const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
 
+  // Get user info from localStorage
+  const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : null;
+  const userName = user?.name || user?.uName || 'Teacher';
+
+  // Fetch dashboard statistics with 30-second polling
+  const { data: dashboardStats, loading: statsLoading } = useApiQuery(
+    () => teacherApi.dashboard.getTestStatistics(0), // 0 for dashboard overview
+    {
+      refetchInterval: 30000, // 30 seconds
+      onError: (error: any) => {
+        handleApiError(error, () => window.location.reload());
+      }
+    }
+  );
+
+  // Fetch performance data
+  const { data: performanceResponse, loading: performanceLoading } = useApiQuery(
+    () => teacherApi.dashboard.getPerformanceData(),
+    {
+      refetchInterval: 60000, // 60 seconds
+    }
+  );
+
+  // Fetch recent activities
+  const { data: activitiesResponse, loading: activitiesLoading } = useApiQuery(
+    () => teacherApi.dashboard.getRecentActivities(),
+    {
+      refetchInterval: 30000, // 30 seconds
+    }
+  );
+
+  // Use real data or fallback
+  const performanceData = performanceResponse || fallbackPerformanceData;
+  const recentActivities = activitiesResponse || fallbackActivities;
+
   const hour = new Date().getHours();
   const greeting =
     hour < 12 ? t('teacher.dashboard.time.morning') : hour < 18 ? t('teacher.dashboard.time.afternoon') : t('teacher.dashboard.time.evening');
@@ -142,8 +182,8 @@ export function Dashboard() {
     {
       icon: BookOpen,
       key: "courses",
-      value: "12",
-      change: "+2",
+      value: statsLoading ? "..." : (dashboardStats?.total_courses?.toString() || "0"),
+      change: statsLoading ? "" : `+${dashboardStats?.new_courses_this_month || 0}`,
       iconColor: "#2563EB",
       iconBg: "#EFF6FF",
       accent: "#2563EB",
@@ -152,8 +192,8 @@ export function Dashboard() {
     {
       icon: School,
       key: "classes",
-      value: "8",
-      change: "+1",
+      value: statsLoading ? "..." : (dashboardStats?.total_classes?.toString() || "0"),
+      change: statsLoading ? "" : `+${dashboardStats?.new_classes_this_month || 0}`,
       iconColor: "#10B981",
       iconBg: "#F0FDF4",
       accent: "#10B981",
@@ -162,8 +202,8 @@ export function Dashboard() {
     {
       icon: Users,
       key: "students",
-      value: "156",
-      change: "+12",
+      value: statsLoading ? "..." : (dashboardStats?.total_students?.toString() || "0"),
+      change: statsLoading ? "" : `+${dashboardStats?.new_students_this_month || 0}`,
       iconColor: "#F59E0B",
       iconBg: "#FFFBEB",
       accent: "#F59E0B",
@@ -172,8 +212,8 @@ export function Dashboard() {
     {
       icon: FileText,
       key: "exams",
-      value: "45",
-      change: "+5",
+      value: statsLoading ? "..." : (dashboardStats?.total_exams?.toString() || "0"),
+      change: statsLoading ? "" : `+${dashboardStats?.new_exams_this_month || 0}`,
       iconColor: "#8B5CF6",
       iconBg: "#F5F3FF",
       accent: "#8B5CF6",
@@ -266,20 +306,20 @@ export function Dashboard() {
                   className="text-white mb-5"
                   style={{ fontSize: "28px", fontWeight: 700, letterSpacing: "-0.5px" }}
                 >
-                  Nguyễn Thành! 👋
+                  {userName}! 👋
                 </h1>
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className="flex items-center gap-1.5 bg-white/10 text-white/80 text-xs px-3 py-1.5 rounded-full border border-white/10">
                     <Clock className="w-3.5 h-3.5" />
-                    3 {t('teacher.dashboard.todayClasses')}
+                    {statsLoading ? "..." : (dashboardStats?.classes_today || 0)} {t('teacher.dashboard.todayClasses')}
                   </span>
                   <span className="flex items-center gap-1.5 bg-amber-400/20 text-amber-300 text-xs px-3 py-1.5 rounded-full border border-amber-400/20">
                     <AlertCircle className="w-3.5 h-3.5" />
-                    12 {t('teacher.dashboard.pendingGrading')}
+                    {statsLoading ? "..." : (dashboardStats?.pending_grading || 0)} {t('teacher.dashboard.pendingGrading')}
                   </span>
                   <span className="flex items-center gap-1.5 bg-emerald-400/20 text-emerald-300 text-xs px-3 py-1.5 rounded-full border border-emerald-400/20">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    2 {t('teacher.dashboard.deadlinesThisWeek')}
+                    {statsLoading ? "..." : (dashboardStats?.deadlines_this_week || 0)} {t('teacher.dashboard.deadlinesThisWeek')}
                   </span>
                 </div>
               </div>
@@ -390,10 +430,10 @@ export function Dashboard() {
                       className="text-[#2563EB]"
                       style={{ fontSize: "28px", fontWeight: 800, lineHeight: "1" }}
                     >
-                      82%
+                      {statsLoading ? "..." : `${dashboardStats?.average_score || 0}%`}
                     </span>
                     <span className="text-[#10B981]" style={{ fontSize: "13px", fontWeight: 500 }}>
-                      ↑ 4%
+                      ↑ {statsLoading ? "..." : `${dashboardStats?.score_improvement || 0}%`}
                     </span>
                   </div>
                 </div>

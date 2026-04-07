@@ -93,7 +93,7 @@ class ExamController extends Controller
             'eTitle' => 'required|string|max:255',
             'eDescription' => 'nullable|string',
             'eType' => 'required|in:VSTEP,IELTS,GENERAL',
-            'eSkill' => 'required|in:listening,reading,writing,speaking',
+            'eSkill' => 'required|in:listening,reading,writing,speaking,mixed',
             'eDuration_minutes' => 'required|integer|min:1',
             'eIs_private' => 'nullable|boolean',
             'eSource_type' => 'nullable|in:manual,upload',
@@ -120,9 +120,7 @@ class ExamController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => [
-                'examId' => $exam->eId
-            ]
+            'data' => $exam
         ]);
     }
 
@@ -230,7 +228,7 @@ class ExamController extends Controller
             'eTitle' => 'sometimes|required|string|max:255',
             'eDescription' => 'nullable|string',
             'eType' => 'sometimes|required|in:VSTEP,IELTS,GENERAL',
-            'eSkill' => 'sometimes|required|in:listening,reading,writing,speaking',
+            'eSkill' => 'sometimes|required|in:listening,reading,writing,speaking,mixed',
             'eDuration_minutes' => 'sometimes|required|integer|min:1',
             'eIs_private' => 'nullable|boolean',
             'eSource_type' => 'nullable|in:manual,upload',
@@ -369,10 +367,17 @@ class ExamController extends Controller
             'questions' => 'required|array|min:1',
             'questions.*.qContent' => 'required|string',
             'questions.*.qPoints' => 'required|integer|min:0',
+            'questions.*.qSection' => 'nullable|string|in:listening,reading,writing,speaking',
+            'questions.*.qSkill' => 'nullable|string|in:listening,reading,writing,speaking',
+            'questions.*.qPart' => 'nullable|integer|min:1|max:5',
             'questions.*.qMedia_url' => 'nullable|string',
+            'questions.*.qAudio_duration' => 'nullable|integer|min:1|max:3600',
             'questions.*.qTranscript' => 'nullable|string',
             'questions.*.qExplanation' => 'nullable|string',
             'questions.*.qListen_limit' => 'nullable|integer|min:1',
+            'questions.*.qPassage_text' => 'nullable|string',
+            'questions.*.qWord_count' => 'nullable|integer|min:1',
+            'questions.*.qTime_limit' => 'nullable|integer|min:1',
             'questions.*.answers' => 'required|array|min:1',
             'questions.*.answers.*.aContent' => 'required|string',
             'questions.*.answers.*.aIs_correct' => 'required|boolean',
@@ -421,7 +426,7 @@ class ExamController extends Controller
                     'qMedia_url' => $questionData['qMedia_url'] ?? null,
                     'qTranscript' => $questionData['qTranscript'] ?? null,
                     'qExplanation' => $questionData['qExplanation'] ?? null,
-                    'qListen_limit' => $questionData['qListen_limit'] ?? 1, // Default to 1 if not provided
+                    'qListen_limit' => $questionData['qListen_limit'] ?? 1,
                 ]);
 
                 foreach ($questionData['answers'] as $answerData) {
@@ -437,10 +442,11 @@ class ExamController extends Controller
 
             return response()->json([
                 'status' => 'success',
+                'message' => 'Thêm câu hỏi thành công',
                 'data' => [
-                    'questionsAdded' => $questionsAdded
+                    'added_questions_count' => $questionsAdded
                 ]
-            ]);
+            ], 201);
 
         } catch (\Exception $e) {
             return response()->json([
@@ -1078,9 +1084,10 @@ class ExamController extends Controller
         $sortOrder = $request->get('sort_order', 'desc');
         $query->orderBy($sortBy, $sortOrder);
 
-        // Pagination
-        $perPage = $request->get('per_page', 20);
-        $exams = $query->paginate($perPage);
+        $paginate = $request->get('paginate') === 'true';
+        $exams = $paginate
+            ? $query->paginate((int) $request->get('per_page', 20))
+            : $query->get();
 
         return response()->json([
             'status' => 'success',
@@ -1145,7 +1152,7 @@ class ExamController extends Controller
             ], 404);
         }
 
-        if (!$exam->eIs_private) {
+        if ($exam->eStatus === 'published') {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Đề thi đã được duyệt rồi.'
@@ -1154,11 +1161,12 @@ class ExamController extends Controller
 
         $exam->update([
             'eIs_private' => false,
+            'eStatus' => 'published',
         ]);
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Duyệt đề thi thành công.',
+            'message' => 'Exam approved successfully',
             'data' => [
                 'exam_id' => $exam->eId,
                 'exam_title' => $exam->eTitle,
@@ -1207,12 +1215,13 @@ class ExamController extends Controller
         // For now, we'll keep it private and add a note in description
         $exam->update([
             'eIs_private' => true,
+            'eStatus' => 'archived',
             'eDescription' => ($exam->eDescription ?? '') . "\n\n[ADMIN REJECTED: " . $request->reason . "]"
         ]);
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Từ chối đề thi thành công.',
+            'message' => 'Exam rejected successfully',
             'data' => [
                 'exam_id' => $exam->eId,
                 'exam_title' => $exam->eTitle,
@@ -1263,7 +1272,7 @@ class ExamController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Xóa đề thi thành công.'
+            'message' => 'Exam deleted successfully'
         ]);
     }
 
@@ -1290,10 +1299,7 @@ class ExamController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => [
-                'pending_exams' => $pendingExams,
-                'total_pending' => $pendingExams->count()
-            ]
+            'data' => $pendingExams
         ]);
     }
 
@@ -1347,18 +1353,14 @@ class ExamController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => [
-                'exams' => [
-                    'total' => $totalExams,
-                    'public' => $publicExams,
-                    'private' => $privateExams,
-                    'approval_rate' => $totalExams > 0 ? round(($publicExams / $totalExams) * 100, 2) : 0
-                ],
+                'total_exams' => $totalExams,
+                'approved_exams' => $publicExams,
+                'pending_exams' => $privateExams,
+                'rejected_exams' => 0,
                 'by_type' => $examsByType,
                 'by_skill' => $examsBySkill,
                 'by_teacher' => $examsByTeacher,
-                'activity' => [
-                    'recent_exams' => $recentExams
-                ]
+                'recent_exams' => $recentExams,
             ]
         ]);
     }

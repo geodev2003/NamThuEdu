@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
+import { logout } from "../../../services/authApi";
 import {
   LayoutDashboard,
   BookOpen,
@@ -149,8 +150,35 @@ const navigationData: MenuItem[] = [
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
+
+  // Get user info from localStorage
+  const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : null;
+  const userName = user?.name || user?.uName || 'Teacher';
+  const userPhone = user?.phone || user?.uPhone || '';
+  const userEmail = `${userPhone}@namthuedu.com`; // Generate email from phone
+  
+  // Debug log (remove in production)
+  console.log('Sidebar Debug:', { userStr, user, userName, userPhone });
+  
+  // Generate initials from name
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+  const userInitials = getInitials(userName);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/giao-vien/dang-nhap", { replace: true });
+  };
 
   // Auto-expand menu if current route matches
   const getCurrentExpandedMenu = (): string | null => {
@@ -412,14 +440,14 @@ export function Sidebar() {
               boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
             }}
           >
-            NT
+            {userInitials}
           </div>
           <div className="flex-1 min-w-0">
             <p
               className="text-[#111827] truncate"
               style={{ fontSize: "14px", fontWeight: 700, marginBottom: "2px" }}
             >
-              Nguyễn Văn Thuận
+              {userName}
             </p>
             <p
               className="text-[#6B7280] flex items-center gap-1"
@@ -432,7 +460,7 @@ export function Sidebar() {
               className="text-[#9CA3AF] truncate mt-0.5"
               style={{ fontSize: "11px" }}
             >
-              thuan@namthuedu.com
+              {userEmail}
             </p>
           </div>
         </div>
@@ -505,6 +533,7 @@ export function Sidebar() {
 
         {/* Logout */}
         <button
+          onClick={handleLogout}
           className="flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all w-full hover:bg-[#FEE2E2]"
           style={{ fontSize: "14px", fontWeight: 500, color: "#EF4444" }}
         >

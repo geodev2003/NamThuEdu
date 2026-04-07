@@ -19,8 +19,11 @@ class Question extends Model
         'qContent',
         'qType',
         'qSection',
+        'qSkill',          // Alternative to qSection (for frontend compatibility)
         'qSection_order',
+        'qPart',           // Part number (1, 2, 3) for VSTEP structure
         'qMedia_url',
+        'qAudio_duration', // Duration in seconds for audio questions
         'qPoints',
         'qTranscript',
         'qExplanation',
@@ -28,9 +31,9 @@ class Question extends Model
         'qConfig',
         'qDifficulty',
         'qTags',
-        'qPassage_text', // For reading passages
-        'qWord_count',   // For writing tasks
-        'qTime_limit',   // For speaking tasks
+        'qPassage_text',   // For reading passages
+        'qWord_count',     // For writing tasks
+        'qTime_limit',     // For speaking tasks
     ];
 
     protected $casts = [

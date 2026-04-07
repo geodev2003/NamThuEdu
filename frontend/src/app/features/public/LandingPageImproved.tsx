@@ -173,7 +173,7 @@ export function LandingPageImproved() {
             
             <div className="flex items-center gap-3">
               <button
-                onClick={() => navigate('/dang-nhap')}
+                onClick={() => navigate('/admin/login')}
                 className="px-5 py-2.5 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all duration-200 text-sm font-medium cursor-pointer"
               >
                 Đăng nhập

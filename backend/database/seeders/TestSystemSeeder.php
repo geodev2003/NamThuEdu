@@ -109,11 +109,11 @@ class TestSystemSeeder extends Seeder
         $exam = Exam::firstOrCreate(
             ['eTitle' => 'VSTEP Sample Test'],
             [
-                'eDescription' => 'Bài thi mẫu VSTEP B1 - Listening Section',
+                'eDescription' => 'Bài thi mẫu VSTEP B1 - Full 4 kỹ năng',
                 'eType' => 'VSTEP',
-                'eSkill' => 'listening',
+                'eSkill' => 'mixed',
                 'eTeacher_id' => $teacher->uId,
-                'eDuration_minutes' => 40,
+                'eDuration_minutes' => 180,
                 'eIs_private' => false,
                 'eSource_type' => 'manual',
             ]

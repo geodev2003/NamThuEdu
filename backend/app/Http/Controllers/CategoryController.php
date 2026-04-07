@@ -66,7 +66,16 @@ class CategoryController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $categories
+            'data' => $categories->map(function ($category) {
+                return [
+                    'cId' => $category->caId,
+                    'cName' => $category->caName,
+                    'cDescription' => $category->caDescription,
+                    'cType' => $category->caType,
+                    'courses_count' => $category->courses_count ?? 0,
+                    'posts_count' => $category->posts_count ?? 0,
+                ];
+            })->values()
         ]);
     }
 
@@ -106,9 +115,9 @@ class CategoryController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'caName' => 'required|string|max:255|unique:category,caName',
-            'caDescription' => 'nullable|string',
-            'caType' => 'nullable|in:VSTEP,IELTS,GENERAL',
+            'cName' => 'required|string|max:255|unique:category,caName',
+            'cDescription' => 'nullable|string',
+            'cType' => 'nullable|in:VSTEP,IELTS,GENERAL',
         ]);
 
         if ($validator->fails()) {
@@ -120,15 +129,20 @@ class CategoryController extends Controller
         }
 
         $category = Category::create([
-            'caName' => $request->caName,
-            'caDescription' => $request->caDescription,
-            'caType' => $request->caType ?? 'GENERAL',
+            'caName' => $request->cName,
+            'caDescription' => $request->cDescription,
+            'caType' => $request->cType ?? 'GENERAL',
         ]);
 
         return response()->json([
             'status' => 'success',
             'message' => 'Tạo danh mục thành công.',
-            'data' => $category
+            'data' => [
+                'cId' => $category->caId,
+                'cName' => $category->caName,
+                'cDescription' => $category->caDescription,
+                'cType' => $category->caType,
+            ]
         ], 201);
     }
 
@@ -182,9 +196,9 @@ class CategoryController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'caName' => 'sometimes|required|string|max:255|unique:category,caName,' . $id . ',caId',
-            'caDescription' => 'nullable|string',
-            'caType' => 'nullable|in:VSTEP,IELTS,GENERAL',
+            'cName' => 'sometimes|required|string|max:255',
+            'cDescription' => 'nullable|string',
+            'cType' => 'sometimes|required|in:VSTEP,IELTS,TOEIC,GENERAL',
         ]);
 
         if ($validator->fails()) {
@@ -195,12 +209,22 @@ class CategoryController extends Controller
             ], 400);
         }
 
-        $category->update($request->only(['caName', 'caDescription', 'caType']));
+        $updateData = [];
+        if ($request->has('cName')) $updateData['caName'] = $request->cName;
+        if ($request->has('cDescription')) $updateData['caDescription'] = $request->cDescription;
+        if ($request->has('cType')) $updateData['caType'] = $request->cType;
+
+        $category->update($updateData);
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Cập nhật danh mục thành công.',
-            'data' => $category
+            'message' => 'Category updated successfully',
+            'data' => [
+                'cId' => $category->caId,
+                'cName' => $category->caName,
+                'cDescription' => $category->caDescription,
+                'cType' => $category->caType,
+            ]
         ]);
     }
 
@@ -262,7 +286,7 @@ class CategoryController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Xóa danh mục thành công.'
+            'message' => 'Category deleted successfully'
         ]);
     }
 }

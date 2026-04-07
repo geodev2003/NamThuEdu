@@ -10,7 +10,6 @@ use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\OtpLog;
 use Laravel\Sanctum\PersonalAccessToken;
-use Carbon\Carbon;
 
 class AuthController extends Controller
 {
@@ -23,12 +22,12 @@ class AuthController extends Controller
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"name","phone","password","password_confirmation","date_of_birth"},
+     *             required={"name","phone","password","password_confirmation"},
      *             @OA\Property(property="name", type="string", example="Nguyễn Văn A"),
      *             @OA\Property(property="phone", type="string", example="0336695863"),
+     *             @OA\Property(property="email", type="string", example="example@gmail.com"),
      *             @OA\Property(property="password", type="string", example="password123"),
-     *             @OA\Property(property="password_confirmation", type="string", example="password123"),
-     *             @OA\Property(property="date_of_birth", type="string", format="date", example="2010-05-15")
+     *             @OA\Property(property="password_confirmation", type="string", example="password123")
      *         )
      *     ),
      *     @OA\Response(
@@ -44,90 +43,31 @@ class AuthController extends Controller
      * POST /api/register
      * Đăng ký tài khoản học sinh mới
      */
+    /**
+     * @OA\Post(
+     *     path="/register",
+     *     tags={"Authentication"},
+     *     summary="User registration (DISABLED)",
+     *     description="Self-registration is disabled. Students must be created by Admin/Teacher.",
+     *     @OA\Response(
+     *         response=403,
+     *         description="Registration disabled"
+     *     )
+     * )
+     * 
+     * POST /api/register
+     * DISABLED: Học viên không thể tự đăng ký
+     * Chỉ Admin/Teacher mới có thể tạo tài khoản học viên
+     */
     public function register(Request $request)
     {
-        // Validation
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'phone' => 'required|string|unique:users,uPhone',
-            'password' => 'required|string|min:6|confirmed',
-            'date_of_birth' => 'required|date|before:today|after:' . now()->subYears(100)->toDateString(),
-        ], [
-            'name.required' => 'Vui lòng nhập họ tên',
-            'phone.required' => 'Vui lòng nhập số điện thoại',
-            'phone.unique' => 'Số điện thoại đã được sử dụng',
-            'password.required' => 'Vui lòng nhập mật khẩu',
-            'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
-            'password.confirmed' => 'Mật khẩu xác nhận không khớp',
-            'date_of_birth.required' => 'Vui lòng nhập ngày sinh',
-            'date_of_birth.before' => 'Ngày sinh phải là ngày trong quá khứ',
-            'date_of_birth.date' => 'Ngày sinh không hợp lệ',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Vui lòng nhập đầy đủ thông tin',
-                'errors' => $validator->errors()
-            ], 400);
-        }
-
-        // Calculate age
-        $dateOfBirth = Carbon::parse($request->date_of_birth);
-        $age = $dateOfBirth->age;
-
-        // Validate minimum age
-        if ($age < 6) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Người dùng phải từ 6 tuổi trở lên'
-            ], 400);
-        }
-
-        // Calculate age_group
-        $ageGroup = $this->calculateAgeGroup($age);
-
-        // Create user
-        $user = User::create([
-            'uName' => $request->name,
-            'uPhone' => $request->phone,
-            'uPassword' => Hash::make($request->password),
-            'uDoB' => $dateOfBirth,
-            'age_group' => $ageGroup,
-            'theme_preference' => 'auto',
-            'uRole' => 'student',
-            'uStatus' => 'active',
-        ]);
-
-        // Auto-login: Create token
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        // Create refresh token
-        $refreshToken = Str::random(64);
-        $user->update([
-            'refresh_token' => hash('sha256', $refreshToken),
-            'refresh_token_expires_at' => now()->addDays(30),
-        ]);
-
         return response()->json([
-            'status' => 'success',
-            'data' => [
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-                'expires_in' => 86400,
-                'refresh_token' => $refreshToken,
-                'user' => [
-                    'id' => $user->uId,
-                    'name' => $user->uName,
-                    'phone' => $user->uPhone,
-                    'age' => $age,
-                    'role' => $user->uRole,
-                    'age_group' => $user->age_group,
-                    'theme_preference' => $user->theme_preference,
-                ]
-            ]
-        ], 201);
+            'status' => 'error',
+            'message' => 'Chức năng đăng ký đã bị vô hiệu hóa. Vui lòng liên hệ Admin hoặc Giáo viên để được tạo tài khoản.',
+            'code' => 'REGISTRATION_DISABLED'
+        ], 403);
     }
+
 
     /**
      * @OA\Get(

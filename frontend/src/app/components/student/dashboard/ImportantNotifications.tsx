@@ -3,6 +3,7 @@ import { AlertCircle, Bell, X } from "lucide-react";
 import { formatTimeAgo } from "../../../../utils/formatters";
 
 const AMBER = "#F59E0B";
+const STUDENT_BASE_PATH = "/hoc-vien";
 
 interface Notification {
   id: number;
@@ -64,7 +65,7 @@ export function ImportantNotifications({
           Thông báo quan trọng
         </h3>
         <Link
-          to="/thong-bao"
+          to={`${STUDENT_BASE_PATH}/thong-bao`}
           className="ml-auto text-xs font-semibold"
           style={{ color: AMBER }}
         >

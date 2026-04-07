@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation, Outlet } from "react-router";
+import { Link, useLocation, Outlet, useNavigate } from "react-router";
 import {
   LayoutDashboard,
   Users,
@@ -17,6 +17,7 @@ import {
   Zap,
   ServerCrash,
 } from "lucide-react";
+import { logout } from "../../services/authApi";
 
 interface NavItem {
   label: string;
@@ -33,9 +34,9 @@ const adminNav: NavItem[] = [
     label: "Giáo viên",
     icon: GraduationCap,
     submenu: [
-      { label: "Danh sách giáo viên", href: "/admin/giao-vien" },
-      { label: "Thêm giáo viên", href: "/admin/giao-vien/them-moi" },
-      { label: "Phân công lớp", href: "/admin/giao-vien/phan-cong" },
+      { label: "Danh sách giáo viên", href: "/admin/teachers" },
+      { label: "Thêm giáo viên", href: "/admin/teachers/new" },
+      { label: "Phân công lớp", href: "/admin/teachers/assignments" },
     ],
   },
   {
@@ -44,34 +45,34 @@ const adminNav: NavItem[] = [
     badge: 12,
     submenu: [
       { label: "Tất cả học viên", href: "/admin/students" },
-      { label: "Đăng ký mới", href: "/admin/students/dang-ky" },
-      { label: "Khiếu nại", href: "/admin/students/khieu-nai" },
+      { label: "Đăng ký mới", href: "/admin/students/new-registrations" },
+      { label: "Khiếu nại", href: "/admin/students/complaints" },
     ],
   },
   {
     label: "Khóa học",
     icon: BookOpen,
     submenu: [
-      { label: "Tất cả khóa học", href: "/admin/khoa-hoc" },
-      { label: "Tạo khóa học", href: "/admin/khoa-hoc/tao-moi" },
-      { label: "Danh mục", href: "/admin/khoa-hoc/danh-muc" },
+      { label: "Tất cả khóa học", href: "/admin/courses" },
+      { label: "Tạo khóa học", href: "/admin/courses/new" },
+      { label: "Danh mục", href: "/admin/courses/categories" },
     ],
   },
   {
     label: "Nội dung",
     icon: FileText,
     submenu: [
-      { label: "Bài viết", href: "/admin/noi-dung/bai-viet" },
-      { label: "Ngân hàng đề", href: "/admin/noi-dung/de-thi" },
+      { label: "Bài viết", href: "/admin/content/posts" },
+      { label: "Ngân hàng đề", href: "/admin/content/exams" },
     ],
   },
   {
     label: "Báo cáo",
     icon: BarChart3,
     submenu: [
-      { label: "Doanh thu", href: "/admin/bao-cao/doanh-thu" },
-      { label: "Học viên", href: "/admin/bao-cao/students" },
-      { label: "Hiệu suất GV", href: "/admin/bao-cao/giao-vien" },
+      { label: "Doanh thu", href: "/admin/reports/revenue" },
+      { label: "Học viên", href: "/admin/reports/students" },
+      { label: "Hiệu suất GV", href: "/admin/reports/teachers" },
     ],
   },
   {
@@ -79,18 +80,18 @@ const adminNav: NavItem[] = [
     icon: Activity,
     indicator: "online",
     submenu: [
-      { label: "Nhật ký hoạt động", href: "/admin/he-thong/nhat-ky" },
-      { label: "Sức khỏe server", href: "/admin/he-thong/server" },
-      { label: "Backup dữ liệu", href: "/admin/he-thong/backup" },
+      { label: "Nhật ký hoạt động", href: "/admin/system/activity-logs" },
+      { label: "Sức khỏe server", href: "/admin/system/server-health" },
+      { label: "Backup dữ liệu", href: "/admin/system/backups" },
     ],
   },
   {
     label: "Thông báo",
-    href: "/admin/thong-bao",
+    href: "/admin/notifications",
     icon: Bell,
     badge: 4,
   },
-  { label: "Cài đặt", href: "/admin/cai-dat", icon: Settings },
+  { label: "Cài đặt", href: "/admin/settings", icon: Settings },
 ];
 
 const ADMIN = "#0F172A";
@@ -101,7 +102,13 @@ const ADMIN_ACTIVE_BG = "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)";
 
 export function AdminLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/admin/login", { replace: true });
+  };
 
   useEffect(() => {
     for (const item of adminNav) {
@@ -388,6 +395,7 @@ export function AdminLayout() {
             <Zap className="w-3.5 h-3.5 ml-auto" style={{ color: "#10B981" }} />
           </div>
           <button
+            onClick={handleLogout}
             className="flex items-center gap-3 px-4 py-2.5 rounded-xl w-full transition-all hover:bg-[#FEE2E2]"
             style={{ fontSize: 14, fontWeight: 500, color: "#EF4444" }}
           >
@@ -404,3 +412,5 @@ export function AdminLayout() {
     </div>
   );
 }
+
+export default AdminLayout;

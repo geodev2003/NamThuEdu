@@ -342,6 +342,8 @@ class SystemReportController extends Controller
 
         // Predictions (simple linear regression)
         $predictions = $this->generatePredictions($days);
+        $timeline = $this->getAdminTimeline($days);
+        $serverMetrics = $this->getServerHealthMetrics();
 
         return response()->json([
             'status' => 'success',
@@ -351,6 +353,8 @@ class SystemReportController extends Controller
                 'performance' => $performanceTrends,
                 'seasonal' => $seasonalPatterns,
                 'predictions' => $predictions,
+                'timeline' => $timeline,
+                'server_metrics' => $serverMetrics,
                 'period' => $period
             ]
         ]);
@@ -611,21 +615,48 @@ class SystemReportController extends Controller
 
     private function getUsagePatterns($days)
     {
+        $peakHours = $this->getPeakHoursAnalysis($days);
+        $peakHour = collect($peakHours)->sortByDesc('activity_level')->first();
+
+        $peakDay = Submission::where('sSubmitted_at', '>=', now()->subDays($days))
+            ->selectRaw('DAYNAME(sSubmitted_at) as day_name, COUNT(*) as total')
+            ->groupBy('day_name')
+            ->orderByDesc('total')
+            ->first();
+
+        $testsCount = Submission::where('sSubmitted_at', '>=', now()->subDays($days))->count();
+        $contentCount = Post::where('pCreated_at', '>=', now()->subDays($days))->count()
+            + Exam::where('eCreated_at', '>=', now()->subDays($days))->count();
+        $enrollCount = DB::table('course_enrollments')
+            ->where('enrolled_at', '>=', now()->subDays($days))
+            ->count();
+
+        $mostUsedFeature = 'Test Taking';
+        if ($contentCount > $testsCount && $contentCount >= $enrollCount) {
+            $mostUsedFeature = 'Content Creation';
+        } elseif ($enrollCount > $testsCount && $enrollCount > $contentCount) {
+            $mostUsedFeature = 'Course Enrollment';
+        }
+
         return [
-            'peak_usage_day' => 'Tuesday',
-            'peak_usage_hour' => '14:00',
-            'most_used_feature' => 'Test Taking',
+            'peak_usage_day' => $peakDay->day_name ?? 'N/A',
+            'peak_usage_hour' => ($peakHour['hour'] ?? '00:00'),
+            'most_used_feature' => $mostUsedFeature,
         ];
     }
 
     private function getPeakHoursAnalysis($days)
     {
-        // This would require detailed logging
+        $hourly = Submission::where('sSubmitted_at', '>=', now()->subDays($days))
+            ->selectRaw('HOUR(sSubmitted_at) as hour, COUNT(*) as total')
+            ->groupBy('hour')
+            ->pluck('total', 'hour');
+
         $hours = [];
         for ($i = 0; $i < 24; $i++) {
             $hours[] = [
                 'hour' => sprintf('%02d:00', $i),
-                'activity_level' => rand(10, 100) // Placeholder
+                'activity_level' => (int) ($hourly[$i] ?? 0)
             ];
         }
         return $hours;
@@ -633,10 +664,23 @@ class SystemReportController extends Controller
 
     private function getGrowthTrends($days)
     {
+        $recentWindow = max(1, intdiv($days, 2));
+        $previousStart = now()->subDays($days);
+        $recentStart = now()->subDays($recentWindow);
+
+        $usersRecent = User::where('uCreated_at', '>=', $recentStart)->whereNull('uDeleted_at')->count();
+        $usersPrevious = User::whereBetween('uCreated_at', [$previousStart, $recentStart])->whereNull('uDeleted_at')->count();
+
+        $coursesRecent = Course::where('cCreated_at', '>=', $recentStart)->count();
+        $coursesPrevious = Course::whereBetween('cCreated_at', [$previousStart, $recentStart])->count();
+
+        $engRecent = Submission::where('sSubmitted_at', '>=', $recentStart)->count();
+        $engPrevious = Submission::whereBetween('sSubmitted_at', [$previousStart, $recentStart])->count();
+
         return [
-            'user_growth_rate' => 15.5, // Percentage
-            'course_growth_rate' => 8.2,
-            'engagement_growth_rate' => 12.1,
+            'user_growth_rate' => $this->calculateGrowthRate($usersRecent, $usersPrevious),
+            'course_growth_rate' => $this->calculateGrowthRate($coursesRecent, $coursesPrevious),
+            'engagement_growth_rate' => $this->calculateGrowthRate($engRecent, $engPrevious),
         ];
     }
 
@@ -669,17 +713,115 @@ class SystemReportController extends Controller
 
     private function generatePredictions($days)
     {
+        $dailyUsers = User::where('uCreated_at', '>=', now()->subDays($days))
+            ->whereNull('uDeleted_at')
+            ->count() / max(1, $days);
+        $dailyCourses = Course::where('cCreated_at', '>=', now()->subDays($days))->count() / max(1, $days);
+        $dailyTests = Submission::where('sSubmitted_at', '>=', now()->subDays($days))->count() / max(1, $days);
+
         return [
-            'next_month_users' => User::count() * 1.15, // Simple prediction
-            'next_month_courses' => Course::count() * 1.08,
-            'next_month_tests' => Submission::count() * 1.12,
+            'next_month_users' => (int) round(User::whereNull('uDeleted_at')->count() + ($dailyUsers * 30)),
+            'next_month_courses' => (int) round(Course::count() + ($dailyCourses * 30)),
+            'next_month_tests' => (int) round(Submission::count() + ($dailyTests * 30)),
         ];
     }
 
     private function getLoginsCount($date)
     {
-        // This would require login tracking
-        return rand(50, 200); // Placeholder
+        return Submission::whereDate('sSubmitted_at', $date)->count()
+            + User::whereDate('uCreated_at', $date)->whereNull('uDeleted_at')->count();
+    }
+
+    private function getAdminTimeline($days)
+    {
+        $timeline = [];
+
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $date = now()->subDays($i)->toDateString();
+            $timeline[] = [
+                'date' => $date,
+                'new_users' => User::whereDate('uCreated_at', $date)->whereNull('uDeleted_at')->count(),
+                'submissions' => Submission::whereDate('sSubmitted_at', $date)->count(),
+                'new_enrollments' => DB::table('course_enrollments')->whereDate('enrolled_at', $date)->count(),
+                'posts_created' => Post::whereDate('pCreated_at', $date)->count(),
+            ];
+        }
+
+        return $timeline;
+    }
+
+    private function getServerHealthMetrics()
+    {
+        $dbStart = microtime(true);
+        DB::select('SELECT 1');
+        $dbLatencyMs = round((microtime(true) - $dbStart) * 1000, 2);
+
+        $load = function_exists('sys_getloadavg') ? sys_getloadavg() : null;
+        $cpuLoad = is_array($load) ? (float) ($load[0] ?? 0) : 0;
+        $cpuCores = $this->getCpuCores();
+        $cpuPercent = (int) max(0, min(100, round(($cpuLoad / max(1, $cpuCores)) * 100)));
+
+        $memoryLimitMb = $this->toMb((string) ini_get('memory_limit'));
+        $memoryUsageMb = memory_get_usage(true) / 1024 / 1024;
+        $ramPercent = $memoryLimitMb > 0
+            ? (int) max(0, min(100, round(($memoryUsageMb / $memoryLimitMb) * 100)))
+            : 0;
+
+        $diskTotal = @disk_total_space(base_path()) ?: 0;
+        $diskFree = @disk_free_space(base_path()) ?: 0;
+        $diskUsedPercent = $diskTotal > 0
+            ? (int) max(0, min(100, round((($diskTotal - $diskFree) / $diskTotal) * 100)))
+            : 0;
+
+        $activeUsers = User::where('uStatus', 'active')->whereNull('uDeleted_at')->count();
+        $todayTraffic = $this->getLoginsCount(today());
+        $networkPercent = (int) max(0, min(100, round(($todayTraffic / max(1, $activeUsers)) * 100)));
+
+        return [
+            'cpu' => $cpuPercent,
+            'ram' => $ramPercent,
+            'disk' => $diskUsedPercent,
+            'network' => $networkPercent,
+            'db_latency_ms' => $dbLatencyMs,
+            'uptime' => $this->getPerformanceMetrics()['system_uptime'] ?? 'N/A',
+        ];
+    }
+
+    private function calculateGrowthRate($current, $previous)
+    {
+        if ((int) $previous === 0) {
+            return (int) $current > 0 ? 100 : 0;
+        }
+
+        return round((($current - $previous) / $previous) * 100, 2);
+    }
+
+    private function getCpuCores()
+    {
+        $cores = (int) @shell_exec('nproc 2>/dev/null');
+        return $cores > 0 ? $cores : 4;
+    }
+
+    private function toMb(string $memoryLimit): int
+    {
+        $value = trim($memoryLimit);
+        if ($value === '' || $value === '-1') {
+            return 0;
+        }
+
+        $number = (int) $value;
+        $unit = strtolower(substr($value, -1));
+
+        switch ($unit) {
+            case 'g':
+                return $number * 1024;
+            case 'k':
+                return (int) round($number / 1024);
+            case 'm':
+                return $number;
+            default:
+                return (int) round($number / 1024 / 1024);
+        }
     }
 
     private function getReportData($type, $period)

@@ -42,6 +42,10 @@ class Post extends Model
 
     protected $dates = ['pDeleted_at'];
 
+    protected $appends = [
+        'pId',
+    ];
+
     /**
      * Relationships
      */
@@ -76,5 +80,10 @@ class Post extends Model
     public function scopeByAuthor($query, $authorId)
     {
         return $query->where('pAuthor_id', $authorId);
+    }
+
+    public function getPIdAttribute()
+    {
+        return $this->attributes['pId'] ?? $this->getKey();
     }
 }

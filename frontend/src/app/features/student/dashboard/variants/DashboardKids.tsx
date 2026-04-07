@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { AdaptiveCard, AdaptiveButton, AdaptiveHeading2, AdaptiveBody } from '../../../../../components/adaptive';
 import { useTheme } from '../../../../../hooks/useTheme';
+const STUDENT_BASE_PATH = '/hoc-vien';
 
 interface DashboardKidsProps {
   stats: {
@@ -174,7 +175,7 @@ export function DashboardKids({ stats, isLoading = false }: DashboardKidsProps) 
           hoverable
           className="cursor-pointer"
         >
-          <Link to="/bai-tap" className="block">
+          <Link to={`${STUDENT_BASE_PATH}/bai-tap`} className="block">
             <div className="flex flex-col items-center text-center py-4">
               <div
                 className="w-24 h-24 rounded-full flex items-center justify-center mb-4"
@@ -206,7 +207,7 @@ export function DashboardKids({ stats, isLoading = false }: DashboardKidsProps) 
           hoverable
           className="cursor-pointer"
         >
-          <Link to="/phan-thuong" className="block">
+          <Link to={`${STUDENT_BASE_PATH}/phan-thuong`} className="block">
             <div className="flex flex-col items-center text-center py-4">
               <div
                 className="w-24 h-24 rounded-full flex items-center justify-center mb-4"
@@ -238,7 +239,7 @@ export function DashboardKids({ stats, isLoading = false }: DashboardKidsProps) 
           hoverable
           className="cursor-pointer"
         >
-          <Link to="/bang-xep-hang" className="block">
+          <Link to={`${STUDENT_BASE_PATH}/bang-xep-hang`} className="block">
             <div className="flex flex-col items-center text-center py-4">
               <div
                 className="w-24 h-24 rounded-full flex items-center justify-center mb-4"
@@ -270,7 +271,7 @@ export function DashboardKids({ stats, isLoading = false }: DashboardKidsProps) 
           hoverable
           className="cursor-pointer"
         >
-          <Link to="/luyen-tap" className="block">
+          <Link to={`${STUDENT_BASE_PATH}/luyen-tap`} className="block">
             <div className="flex flex-col items-center text-center py-4">
               <div
                 className="w-24 h-24 rounded-full flex items-center justify-center mb-4"

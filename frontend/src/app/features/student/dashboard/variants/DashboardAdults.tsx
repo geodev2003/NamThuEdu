@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { AdaptiveCard, AdaptiveButton, AdaptiveHeading2, AdaptiveBody } from '../../../../../components/adaptive';
 import { useTheme } from '../../../../../hooks/useTheme';
+const STUDENT_BASE_PATH = '/hoc-vien';
 
 interface DashboardAdultsProps {
   stats: {
@@ -110,7 +111,7 @@ export function DashboardAdults({ stats, isLoading = false }: DashboardAdultsPro
               </div>
             </div>
 
-            <Link to="/bai-tap">
+            <Link to={`${STUDENT_BASE_PATH}/bai-tap`}>
               <AdaptiveButton variant="primary" size="sm">
                 Làm bài tập
               </AdaptiveButton>
@@ -220,28 +221,28 @@ export function DashboardAdults({ stats, isLoading = false }: DashboardAdultsPro
             icon: Target,
             label: 'Bài tập',
             count: stats.pendingTests,
-            path: '/bai-tap',
+            path: `${STUDENT_BASE_PATH}/bai-tap`,
             color: colors.primary,
           },
           {
             icon: BookOpen,
             label: 'Luyện tập',
             count: null,
-            path: '/luyen-tap',
+            path: `${STUDENT_BASE_PATH}/luyen-tap`,
             color: colors.success,
           },
           {
             icon: BarChart2,
             label: 'Phân tích',
             count: null,
-            path: '/tien-do',
+            path: `${STUDENT_BASE_PATH}/tien-do`,
             color: colors.secondary,
           },
           {
             icon: Calendar,
             label: 'Lịch học',
             count: null,
-            path: '/lich-hoc',
+            path: `${STUDENT_BASE_PATH}/lich-hoc`,
             color: colors.accent,
           },
         ].map((action) => (
@@ -287,7 +288,7 @@ export function DashboardAdults({ stats, isLoading = false }: DashboardAdultsPro
                 Hiệu suất
               </h3>
             </div>
-            <Link to="/tien-do" className="text-xs font-medium" style={{ color: colors.secondary }}>
+            <Link to={`${STUDENT_BASE_PATH}/tien-do`} className="text-xs font-medium" style={{ color: colors.secondary }}>
               Chi tiết →
             </Link>
           </div>
@@ -334,7 +335,7 @@ export function DashboardAdults({ stats, isLoading = false }: DashboardAdultsPro
                 Hoạt động gần đây
               </h3>
             </div>
-            <Link to="/lich-su" className="text-xs font-medium" style={{ color: colors.secondary }}>
+            <Link to={`${STUDENT_BASE_PATH}/lich-su`} className="text-xs font-medium" style={{ color: colors.secondary }}>
               Xem tất cả →
             </Link>
           </div>
@@ -390,7 +391,7 @@ export function DashboardAdults({ stats, isLoading = false }: DashboardAdultsPro
               Hoàn thành {stats.pendingTests} bài tập đang chờ để duy trì tiến độ học tập
             </p>
           </div>
-          <Link to="/bai-tap">
+          <Link to={`${STUDENT_BASE_PATH}/bai-tap`}>
             <AdaptiveButton variant="primary" size="sm">
               Xem bài tập
             </AdaptiveButton>

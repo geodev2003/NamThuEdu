@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import {
   FileText,
@@ -26,7 +26,20 @@ import {
   Headphones,
   Pen,
   MessageSquare,
+  FileEdit,
+  AlertCircle,
 } from "lucide-react";
+
+interface DraftExam {
+  examType: string;
+  examSkill: string;
+  examTitle: string;
+  examDescription: string;
+  duration: number;
+  questions: any[];
+  timestamp: number;
+  currentStep: number;
+}
 
 interface Exam {
   id: string;
@@ -46,107 +59,8 @@ interface Exam {
   progress?: number;
 }
 
-const mockExams: Exam[] = [
-  {
-    id: "1",
-    title: "VSTEP B2 Listening - Practice Test 1",
-    description: "Comprehensive listening test covering all parts of VSTEP B2 format",
-    type: "VSTEP",
-    skill: "Listening",
-    duration: 90,
-    questions: 40,
-    points: 100,
-    status: "Published",
-    source: "Template",
-    createdAt: "2026-03-15",
-    assignments: 5,
-    submissions: 120,
-    avgScore: 75,
-    progress: 100,
-  },
-  {
-    id: "2",
-    title: "IELTS Reading - Academic Module",
-    description: "Full-length IELTS reading test with 3 passages",
-    type: "IELTS",
-    skill: "Reading",
-    duration: 60,
-    questions: 40,
-    points: 100,
-    status: "Published",
-    source: "Manual",
-    createdAt: "2026-03-14",
-    assignments: 3,
-    submissions: 85,
-    avgScore: 68,
-  },
-  {
-    id: "3",
-    title: "Cambridge FCE Writing Task 1",
-    description: "Essay writing practice for B2 First exam",
-    type: "Cambridge",
-    skill: "Writing",
-    duration: 45,
-    questions: 2,
-    points: 50,
-    status: "Draft",
-    source: "Manual",
-    createdAt: "2026-03-16",
-    assignments: 0,
-    submissions: 0,
-    avgScore: 0,
-  },
-  {
-    id: "4",
-    title: "General Speaking Assessment",
-    description: "Interactive speaking test with multiple topics",
-    type: "General",
-    skill: "Speaking",
-    duration: 30,
-    questions: 5,
-    points: 100,
-    status: "Private",
-    source: "Upload",
-    createdAt: "2026-03-10",
-    assignments: 2,
-    submissions: 45,
-    avgScore: 82,
-  },
-  {
-    id: "5",
-    title: "VSTEP B1 Reading Comprehension",
-    description: "Reading test for B1 level with various text types",
-    type: "VSTEP",
-    skill: "Reading",
-    duration: 60,
-    questions: 35,
-    points: 100,
-    status: "Published",
-    source: "Template",
-    createdAt: "2026-03-12",
-    assignments: 8,
-    submissions: 200,
-    avgScore: 71,
-    progress: 100,
-  },
-  {
-    id: "6",
-    title: "IELTS Listening - General Training",
-    description: "Listening test for IELTS General Training module",
-    type: "IELTS",
-    skill: "Listening",
-    duration: 40,
-    questions: 40,
-    points: 100,
-    status: "Published",
-    source: "Template",
-    createdAt: "2026-03-11",
-    assignments: 4,
-    submissions: 95,
-    avgScore: 73,
-    progress: 100,
-  },
-];
+// Mock exams removed - will be loaded from API
+const mockExams: Exam[] = [];
 
 const typeColors = {
   VSTEP: "bg-blue-100 text-blue-700 border-blue-200",
@@ -187,6 +101,47 @@ export function AllExams() {
   const [filterType, setFilterType] = useState("all");
   const [filterSkill, setFilterSkill] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [localDrafts, setLocalDrafts] = useState<DraftExam[]>([]);
+
+  // Load drafts from localStorage
+  useEffect(() => {
+    const loadDrafts = () => {
+      try {
+        const draftKey = 'exam-draft-current';
+        const saved = localStorage.getItem(draftKey);
+        if (saved) {
+          const draft = JSON.parse(saved);
+          // Check if draft has any content (even just exam type/skill selection)
+          const hasMeaningfulContent = draft && (
+            draft.examType || 
+            draft.examSkill ||
+            draft.examTitle?.trim() || 
+            draft.examDescription?.trim() || 
+            (draft.questions && draft.questions.length > 0)
+          );
+          
+          if (hasMeaningfulContent) {
+            setLocalDrafts([draft]);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load drafts:', error);
+      }
+    };
+    
+    loadDrafts();
+  }, []);
+
+  const deleteDraft = () => {
+    if (window.confirm('Bạn có chắc muốn xóa bản nháp này?')) {
+      localStorage.removeItem('exam-draft-current');
+      setLocalDrafts([]);
+    }
+  };
+
+  const continueDraft = () => {
+    window.location.href = '/giao-vien/de-thi/tao-moi';
+  };
   const [filterSource, setFilterSource] = useState("all");
   const [selectedExams, setSelectedExams] = useState<string[]>([]);
   const [showActionMenu, setShowActionMenu] = useState<string | null>(null);
@@ -305,7 +260,7 @@ export function AllExams() {
               </div>
             </div>
             <h3 className="text-gray-600 text-sm font-medium mb-1">Bản nháp</h3>
-            <p className="text-3xl font-bold text-gray-900">{draftExams}</p>
+            <p className="text-3xl font-bold text-gray-900">{draftExams + localDrafts.length}</p>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-all">
@@ -318,6 +273,77 @@ export function AllExams() {
             <p className="text-3xl font-bold text-gray-900">{totalQuestions}</p>
           </div>
         </div>
+
+        {/* Local Drafts Section */}
+        {localDrafts.length > 0 && (
+          <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border-2 border-orange-200 p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                <FileEdit className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg font-bold text-gray-900">Bản nháp chưa lưu</h3>
+                  <span className="px-2 py-0.5 bg-orange-500 text-white text-xs font-medium rounded">
+                    Chưa hoàn thành
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Bạn có một bản nháp đang dở. Tiếp tục chỉnh sửa hoặc xóa để tạo đề mới.
+                </p>
+                
+                {localDrafts.map((draft, index) => (
+                  <div key={index} className="bg-white rounded-lg p-4 border border-orange-200 mb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900 mb-1">
+                          {draft.examTitle || "Đề thi chưa có tên"}
+                        </h4>
+                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                          <span className="flex items-center gap-1">
+                            <FileText className="w-4 h-4" />
+                            {draft.examType || "Chưa chọn loại"}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Target className="w-4 h-4" />
+                            {draft.examSkill || "Chưa chọn kỹ năng"}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            {draft.duration || 0} phút
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <HelpCircle className="w-4 h-4" />
+                            {draft.questions?.length || 0} câu hỏi
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          Lưu lúc: {new Date(draft.timestamp).toLocaleString('vi-VN')}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <button
+                          onClick={continueDraft}
+                          className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all flex items-center gap-2 font-medium"
+                        >
+                          <Edit className="w-4 h-4" />
+                          Tiếp tục
+                        </button>
+                        <button
+                          onClick={deleteDraft}
+                          className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all flex items-center gap-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Xóa
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Filter & Search Bar */}
         <div className="bg-white rounded-xl border border-gray-200 p-4">

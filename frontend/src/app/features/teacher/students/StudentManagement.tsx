@@ -24,6 +24,7 @@ import {
   Check,
 } from "lucide-react";
 import { AreaChart, Area, BarChart, Bar, PieChart as RePieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { CreateStudent } from "./CreateStudent";
 
 type TabType = "list" | "stats" | "export";
 
@@ -73,6 +74,7 @@ export function StudentManagement() {
   const [activeTab, setActiveTab] = useState<TabType>("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFormat, setSelectedFormat] = useState("excel");
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const tabs = [
     { id: "list" as TabType, label: "Danh sách", icon: Users },
@@ -110,13 +112,13 @@ export function StudentManagement() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              to="/giao-vien/students/them-moi"
+            <button
+              onClick={() => setShowCreateModal(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-[#2563EB] text-white rounded-lg hover:bg-[#1D4ED8] transition-colors font-medium"
             >
               <UserPlus className="w-5 h-5" />
               Thêm học sinh
-            </Link>
+            </button>
             <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#E5E7EB] text-[#374151] rounded-lg hover:bg-[#F9FAFB] transition-colors font-medium">
               <Download className="w-5 h-5" />
               Xuất Excel
@@ -677,6 +679,17 @@ export function StudentManagement() {
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Create Student Modal */}
+      {showCreateModal && (
+        <CreateStudent
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={() => {
+            // Refresh student list here
+            window.location.reload();
+          }}
+        />
       )}
     </div>
   );

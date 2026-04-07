@@ -1,14 +1,65 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { AlertTriangle, BookOpen, CheckCircle, Mic, Pause, Play, Square, RotateCcw } from "lucide-react";
+import { 
+  AlertTriangle, BookOpen, CheckCircle, Mic, Pause, Play, Square, 
+  RotateCcw, ChevronRight, Volume2, FileText, Bookmark, BookmarkCheck 
+} from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { studentApi } from "../../../../services/studentApi";
 import { IntroScreen } from "./components/IntroScreen";
 import { useTranslation } from "react-i18next";
 
-const PURPLE = "#7C3AED";
-const PURPLE_LIGHT = "#EDE9FE";
-const PAGE_BG = "#E5E7EB";
+// VSTEP Structure - 4 Skills, 7 Parts
+const VSTEP_STRUCTURE = {
+  listening: {
+    name: "Listening",
+    icon: "🎧",
+    color: "#3B82F6",
+    lightBg: "#DBEAFE",
+    parts: [
+      { part: 1, name: "Part 1", questions: 8 },
+      { part: 2, name: "Part 2", questions: 12 },
+      { part: 3, name: "Part 3", questions: 15 },
+    ],
+  },
+  reading: {
+    name: "Reading",
+    icon: "📖",
+    color: "#10B981",
+    lightBg: "#D1FAE5",
+    parts: [
+      { part: 1, name: "Part 1", questions: 10 },
+      { part: 2, name: "Part 2", questions: 10 },
+      { part: 3, name: "Part 3", questions: 10 },
+      { part: 4, name: "Part 4", questions: 10 },
+    ],
+  },
+  writing: {
+    name: "Writing",
+    icon: "✍️",
+    color: "#F59E0B",
+    lightBg: "#FEF3C7",
+    parts: [
+      { part: 1, name: "Task 1", questions: 1, minWords: 150 },
+      { part: 2, name: "Task 2", questions: 1, minWords: 250 },
+    ],
+  },
+  speaking: {
+    name: "Speaking",
+    icon: "🗣️",
+    color: "#8B5CF6",
+    lightBg: "#EDE9FE",
+    parts: [
+      { part: 1, name: "Part 1", questions: 1 },
+      { part: 2, name: "Part 2", questions: 1 },
+      { part: 3, name: "Part 3", questions: 1 },
+    ],
+  },
+};
+
+type SkillType = keyof typeof VSTEP_STRUCTURE;
+
+const STUDENT_BASE_PATH = "/hoc-vien";
 
 const SKILL_LABELS: Record<string, string> = {
   listening: "Nghe",
@@ -18,13 +69,6 @@ const SKILL_LABELS: Record<string, string> = {
 };
 
 const SKILL_ORDER = ["listening", "reading", "writing", "speaking"];
-
-const SKILL_DURATION: Record<string, number> = {
-  listening: 47,
-  reading: 60,
-  writing: 60,
-  speaking: 12,
-};
 
 type Section = {
   skill: string;
@@ -430,11 +474,11 @@ export function TestTaking() {
     mutationFn: () => studentApi.submitTest(submissionId!),
     onSuccess: (res: any) => {
       const sid = res.data?.data?.submissionId ?? submissionId;
-      navigate(`/ket-qua/${sid}`);
+      navigate(`${STUDENT_BASE_PATH}/ket-qua/${sid}`);
     },
     onError: () => {
       alert(t("student.examTaking.alertSubmitMock"));
-      navigate(`/ket-qua/${submissionId ?? 999}`);
+      navigate(`${STUDENT_BASE_PATH}/ket-qua/${submissionId ?? 999}`);
     },
   });
 

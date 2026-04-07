@@ -11,6 +11,45 @@ use App\Models\User;
 class CourseController extends Controller
 {
     /**
+     * GET /api/public/courses
+     * Danh sách khóa học public cho landing page (không cần auth)
+     */
+    public function publicCourses()
+    {
+        $courses = Course::with(['category'])
+            ->whereNull('cDeleteAt')
+            ->whereIn('cStatus', ['active', 'ongoing'])
+            ->orderBy('cCreateAt', 'desc')
+            ->limit(8)
+            ->get();
+
+        $data = $courses->map(function ($course) {
+            return [
+                'cId' => $course->cId,
+                'cName' => $course->cName,
+                'cType' => $course->cType ?? 'general',
+                'cStatus' => $course->cStatus,
+                'cTime' => $course->cTime,
+                'cSchedule' => $course->cSchedule,
+                'cStartDate' => optional($course->cStartDate)->format('Y-m-d'),
+                'cEndDate' => optional($course->cEndDate)->format('Y-m-d'),
+                'cNumberOfStudent' => $course->cNumberOfStudent,
+                'cDescription' => $course->cDescription,
+                'category' => $course->category ? [
+                    'caId' => $course->category->caId,
+                    'caName' => $course->category->caName,
+                    'caType' => $course->category->caType,
+                ] : null,
+            ];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $data,
+        ]);
+    }
+
+    /**
      * @OA\Get(
      *     path="/teacher/courses",
      *     tags={"Teachers"},
@@ -792,5 +831,81 @@ class CourseController extends Controller
                 'course_progress' => $courseProgress,
             ]
         ]);
+    }
+
+    /**
+     * POST /api/admin/courses
+     * Tạo khóa học mới bởi admin
+     */
+    public function adminCreateCourse(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ quản trị viên mới có quyền tạo khóa học.'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'course_name' => 'required|string|max:100',
+            'teacher_id' => 'required|integer|exists:users,uId',
+            'category_id' => 'required|integer|exists:category,caId',
+            'max_students' => 'required|integer|min:1|max:500',
+            'time' => 'required|string|max:50',
+            'schedule' => 'required|string|max:255',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+            'status' => 'required|in:draft,active,ongoing,complete',
+            'description' => 'nullable|string|max:2000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        $teacher = User::where('uId', $request->teacher_id)
+            ->where('uRole', 'teacher')
+            ->whereNull('uDeleted_at')
+            ->first();
+
+        if (!$teacher) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Giáo viên không hợp lệ.'
+            ], 400);
+        }
+
+        $course = Course::create([
+            'cName' => trim($request->course_name),
+            'cCategory' => $request->category_id,
+            'cNumberOfStudent' => $request->max_students,
+            'cTime' => trim($request->time),
+            'cSchedule' => trim($request->schedule),
+            'cStartDate' => $request->start_date,
+            'cEndDate' => $request->end_date,
+            'cStatus' => $request->status,
+            'cTeacher' => $teacher->uId,
+            'cDescription' => $request->description ?? '',
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Tạo khóa học thành công.',
+            'data' => [
+                'id' => $course->cId,
+                'name' => $course->cName,
+                'teacher' => [
+                    'id' => $teacher->uId,
+                    'name' => $teacher->uName,
+                ],
+                'status' => $course->cStatus,
+            ]
+        ], 201);
     }
 }

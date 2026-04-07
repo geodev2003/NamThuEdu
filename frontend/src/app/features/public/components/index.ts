@@ -1,6 +1,12 @@
 export { Header } from './Header';
 export { HeroSection } from './HeroSection';
+export { RoleAccessCard } from './RoleAccessCard';
+export { CourseFilterTabs } from './CourseFilterTabs';
+export { TeacherHighlights } from './TeacherHighlights';
+export { StickyContactBar } from './StickyContactBar';
 export { StatsSection } from './StatsSection';
 export { TestimonialsSection } from './TestimonialsSection';
 export { DemoFlashcard } from './DemoFlashcard';
 export { Footer } from './Footer';
+export { ParticlesBackground } from './ParticlesBackground';
+export { ParticlesBackgroundWhite } from './ParticlesBackgroundWhite';

@@ -17,6 +17,7 @@ import { getSkillColor, getSkillName } from "../../../../utils/skillHelpers";
 
 const PRIMARY = "#0EA5E9";
 const PRIMARY_LIGHT = "#E0F2FE";
+const STUDENT_BASE_PATH = "/hoc-vien";
 
 function getGrade(score: number) {
   if (score >= 80) return { label: "Đạt", color: "#10B981", bg: "#D1FAE5" };
@@ -131,7 +132,7 @@ export function TestHistory() {
             const grade = getGrade(s.sScore ?? 0);
             const skillColor = getSkillColor(s.exam?.eSkill);
             return (
-              <Link key={s.sId} to={`/ket-qua/${s.sId}`}
+              <Link key={s.sId} to={`${STUDENT_BASE_PATH}/ket-qua/${s.sId}`}
                 className="flex items-center gap-4 p-4 rounded-2xl bg-white transition-all group cursor-pointer"
                 style={{
                   border: "1.5px solid #F0EEFF",

@@ -144,9 +144,14 @@ class StudentTestController extends Controller
             ], 403);
         }
 
-        // Hide correct answers from students
+        // Hide correct answers from students and add frontend compatibility aliases
         $exam = $assignment->exam;
         $exam->questions->each(function($question) {
+            // Add alias for frontend compatibility
+            $question->qPassage = $question->qPassage_text;
+            $question->qSkill = $question->qSkill ?? $question->qSection;
+            
+            // Hide correct answers
             $question->answers->each(function($answer) {
                 unset($answer->aIs_correct);
             });
@@ -271,9 +276,14 @@ class StudentTestController extends Controller
             'sStatus' => 'in_progress',
         ]);
 
-        // Hide correct answers
+        // Hide correct answers and add frontend compatibility aliases
         $exam = $assignment->exam;
         $exam->questions->each(function($question) {
+            // Add alias for frontend compatibility
+            $question->qPassage = $question->qPassage_text;
+            $question->qSkill = $question->qSkill ?? $question->qSection;
+            
+            // Hide correct answers from students
             $question->answers->each(function($answer) {
                 unset($answer->aIs_correct);
             });
@@ -349,7 +359,7 @@ class StudentTestController extends Controller
 
         $validator = Validator::make($request->all(), [
             'question_id' => 'required|integer|exists:questions,qId',
-            'saAnswer_text' => 'required|string',
+            'saAnswer_text' => 'required|string|max:5000',
         ]);
 
         if ($validator->fails()) {
@@ -360,11 +370,22 @@ class StudentTestController extends Controller
             ], 400);
         }
 
+        $question = Question::where('qId', $request->question_id)
+            ->where('exam_id', $submission->exam_id)
+            ->first();
+
+        if (!$question) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Câu hỏi không thuộc bài thi này.'
+            ], 403);
+        }
+
         // Check if answer already exists, update or create
         $submissionAnswer = SubmissionAnswer::updateOrCreate(
             [
                 'submission_id' => $submissionId,
-                'question_id' => $request->question_id,
+                'question_id' => $question->qId,
             ],
             [
                 'saAnswer_text' => $request->saAnswer_text,
@@ -410,6 +431,38 @@ class StudentTestController extends Controller
             ], 401);
         }
 
+        $validator = Validator::make($request->all(), [
+            'submit_idempotency_key' => 'nullable|string|max:64',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        $idempotencyKey = $request->input('submit_idempotency_key');
+
+        if ($idempotencyKey) {
+            $existingByKey = Submission::where('submit_idempotency_key', $idempotencyKey)
+                ->where('user_id', $user->uId)
+                ->first();
+
+            if ($existingByKey) {
+                return response()->json([
+                    'status' => 'success',
+                    'data' => [
+                        'submissionId' => $existingByKey->sId,
+                        'sScore' => $existingByKey->sScore,
+                        'sStatus' => $existingByKey->sStatus,
+                        'message' => 'Yêu cầu nộp bài đã được xử lý trước đó.'
+                    ]
+                ]);
+            }
+        }
+
         $submission = Submission::with(['exam.questions.answers', 'answers'])
                                ->where('sId', $submissionId)
                                ->where('user_id', $user->uId)
@@ -420,6 +473,18 @@ class StudentTestController extends Controller
                 'status' => 'error',
                 'message' => 'Không tìm thấy bài làm.'
             ], 404);
+        }
+
+        if ($submission->sStatus === 'graded' || $submission->sStatus === 'auto_submitted') {
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'submissionId' => $submissionId,
+                    'sScore' => $submission->sScore,
+                    'sStatus' => $submission->sStatus,
+                    'message' => 'Bài làm đã được nộp trước đó.'
+                ]
+            ]);
         }
 
         if ($submission->sStatus !== 'in_progress') {
@@ -447,17 +512,59 @@ class StudentTestController extends Controller
 
         DB::beginTransaction();
         try {
+            $submission = Submission::with(['exam.questions.answers', 'answers'])
+                ->where('sId', $submissionId)
+                ->where('user_id', $user->uId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$submission) {
+                DB::rollBack();
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Không tìm thấy bài làm.'
+                ], 404);
+            }
+
+            if ($submission->sStatus === 'graded' || $submission->sStatus === 'auto_submitted') {
+                DB::rollBack();
+                return response()->json([
+                    'status' => 'success',
+                    'data' => [
+                        'submissionId' => $submissionId,
+                        'sScore' => $submission->sScore,
+                        'sStatus' => $submission->sStatus,
+                        'message' => 'Bài làm đã được nộp trước đó.'
+                    ]
+                ]);
+            }
+
+            if ($submission->sStatus !== 'in_progress') {
+                DB::rollBack();
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Bài làm không ở trạng thái cho phép nộp.'
+                ], 400);
+            }
+
             // Auto-grade objective questions
             $totalScore = 0;
             $maxScore = 0;
 
             foreach ($submission->answers as $submissionAnswer) {
                 $question = Question::with('answers')->find($submissionAnswer->question_id);
+                if (!$question || (int) $question->exam_id !== (int) $submission->exam_id) {
+                    DB::rollBack();
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Dữ liệu câu hỏi không hợp lệ cho bài thi này.'
+                    ], 400);
+                }
                 $correctAnswer = $question->answers->where('aIs_correct', true)->first();
 
                 $maxScore += $question->qPoints;
 
-                if ($correctAnswer && $submissionAnswer->saAnswer_text === $correctAnswer->aContent) {
+                if ($correctAnswer && $this->isCorrectAnswer($submissionAnswer->saAnswer_text, $correctAnswer->aContent)) {
                     $submissionAnswer->update([
                         'saIs_correct' => true,
                         'saPoints_awarded' => $question->qPoints,
@@ -477,6 +584,8 @@ class StudentTestController extends Controller
             // Update submission
             $submission->update([
                 'sSubmit_time' => now(),
+                'sGraded_time' => now(),
+                'submit_idempotency_key' => $idempotencyKey,
                 'sScore' => $scorePercentage,
                 'sStatus' => 'graded',
             ]);
@@ -498,7 +607,6 @@ class StudentTestController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Lỗi hệ thống khi nộp bài.',
-                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -528,10 +636,50 @@ class StudentTestController extends Controller
             ], 401);
         }
 
-        $submissions = Submission::with(['exam', 'assignment'])
-                                ->where('user_id', $user->uId)
-                                ->orderBy('sSubmit_time', 'desc')
-                                ->get();
+        $validator = Validator::make($request->all(), [
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'status' => 'nullable|string|in:in_progress,submitted,graded,auto_submitted',
+            'exam_id' => 'nullable|integer|exists:exams,eId',
+            'from_date' => 'nullable|date',
+            'to_date' => 'nullable|date|after_or_equal:from_date',
+            'sort_by' => 'nullable|string|in:sSubmit_time,sScore,sStart_time',
+            'sort_order' => 'nullable|string|in:asc,desc',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tham số không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        $perPage = (int) $request->input('per_page', 20);
+        $sortBy = $request->input('sort_by', 'sSubmit_time');
+        $sortOrder = $request->input('sort_order', 'desc');
+
+        $query = Submission::with(['exam', 'assignment'])
+            ->where('user_id', $user->uId);
+
+        if ($request->filled('status')) {
+            $query->where('sStatus', $request->input('status'));
+        }
+
+        if ($request->filled('exam_id')) {
+            $query->where('exam_id', $request->input('exam_id'));
+        }
+
+        if ($request->filled('from_date')) {
+            $query->whereDate('sSubmit_time', '>=', $request->input('from_date'));
+        }
+
+        if ($request->filled('to_date')) {
+            $query->whereDate('sSubmit_time', '<=', $request->input('to_date'));
+        }
+
+        $submissions = $query
+            ->orderBy($sortBy, $sortOrder)
+            ->paginate($perPage);
 
         return response()->json([
             'status' => 'success',
@@ -626,9 +774,14 @@ class StudentTestController extends Controller
             return $this->autoSubmit($submission);
         }
 
-        // Ẩn đáp án đúng
+        // Ẩn đáp án đúng và thêm alias cho frontend
         $exam = $submission->exam;
         $exam->questions->each(function($question) {
+            // Add alias for frontend compatibility
+            $question->qPassage = $question->qPassage_text;
+            $question->qSkill = $question->qSkill ?? $question->qSection;
+            
+            // Hide correct answers
             $question->answers->each(function($answer) {
                 unset($answer->aIs_correct);
             });
@@ -660,11 +813,18 @@ class StudentTestController extends Controller
 
             foreach ($submission->answers as $submissionAnswer) {
                 $question = Question::with('answers')->find($submissionAnswer->question_id);
+                if (!$question || (int) $question->exam_id !== (int) $submission->exam_id) {
+                    DB::rollBack();
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Dữ liệu câu hỏi không hợp lệ cho bài thi này.'
+                    ], 400);
+                }
                 $correctAnswer = $question->answers->where('aIs_correct', true)->first();
 
                 $maxScore += $question->qPoints;
 
-                if ($correctAnswer && $submissionAnswer->saAnswer_text === $correctAnswer->aContent) {
+                if ($correctAnswer && $this->isCorrectAnswer($submissionAnswer->saAnswer_text, $correctAnswer->aContent)) {
                     $submissionAnswer->update([
                         'saIs_correct' => true,
                         'saPoints_awarded' => $question->qPoints,
@@ -686,6 +846,7 @@ class StudentTestController extends Controller
             // Cập nhật submission
             $submission->update([
                 'sSubmit_time' => now(),
+                'sGraded_time' => now(),
                 'sScore' => $scorePercentage,
                 'sStatus' => 'auto_submitted', // Đánh dấu tự động nộp
                 'sTeacher_feedback' => "Bài thi được tự động nộp do hết thời gian. Đã trả lời {$answeredQuestions}/{$totalQuestions} câu hỏi.",
@@ -710,7 +871,6 @@ class StudentTestController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Lỗi khi tự động nộp bài.',
-                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -1107,28 +1267,29 @@ class StudentTestController extends Controller
      */
     public function inProgressTests(Request $request)
     {
-        $studentId = $request->user()->id;
+        $studentId = $request->user()->uId;
 
         // Get submissions that are in progress (not submitted yet)
-        $inProgressSubmissions = Submission::where('student_id', $studentId)
+        $inProgressSubmissions = Submission::where('user_id', $studentId)
             ->where('sStatus', 'in_progress')
             ->with(['exam'])
-            ->orderBy('sCreated_at', 'desc')
+            ->orderBy('sStart_time', 'desc')
             ->get();
 
         $tests = $inProgressSubmissions->map(function ($submission) {
             $exam = $submission->exam;
-            $timeElapsed = now()->diffInMinutes($submission->sCreated_at);
-            $timeRemaining = max(0, $exam->eDuration - $timeElapsed);
+            $duration = $exam->eDuration_minutes ?? $exam->eDuration ?? 0;
+            $timeElapsed = now()->diffInMinutes($submission->sStart_time);
+            $timeRemaining = max(0, $duration - $timeElapsed);
 
             return [
                 'id' => $exam->eId,
                 'submission_id' => $submission->sId,
                 'title' => $exam->eTitle,
                 'time_remaining' => $timeRemaining,
-                'total_duration' => $exam->eDuration,
+                'total_duration' => $duration,
                 'skill' => $exam->eSkill,
-                'started_at' => $submission->sCreated_at,
+                'started_at' => $submission->sStart_time,
             ];
         });
 
@@ -1143,7 +1304,7 @@ class StudentTestController extends Controller
      */
     public function upcomingTests(Request $request)
     {
-        $studentId = $request->user()->id;
+        $studentId = $request->user()->uId;
         $days = $request->input('days', 7);
 
         // Get assignments that are upcoming (within next X days)
@@ -1170,7 +1331,7 @@ class StudentTestController extends Controller
             $isUrgent = $daysUntil <= 1;
 
             // Check if already started
-            $hasStarted = Submission::where('student_id', $studentId)
+            $hasStarted = Submission::where('user_id', $studentId)
                 ->where('exam_id', $exam->eId)
                 ->exists();
 
@@ -1183,7 +1344,7 @@ class StudentTestController extends Controller
                 'assignment_id' => $assignment->taId,
                 'title' => $exam->eTitle,
                 'deadline' => $assignment->taEnd_time,
-                'duration' => $exam->eDuration,
+                'duration' => $exam->eDuration_minutes ?? $exam->eDuration,
                 'skill' => $exam->eSkill,
                 'is_urgent' => $isUrgent,
                 'days_until' => max(0, $daysUntil),
@@ -1201,10 +1362,10 @@ class StudentTestController extends Controller
      */
     public function practiceRecommendations(Request $request)
     {
-        $studentId = $request->user()->id;
+        $studentId = $request->user()->uId;
 
         // Get student's recent performance by skill
-        $recentSubmissions = Submission::where('student_id', $studentId)
+        $recentSubmissions = Submission::where('user_id', $studentId)
             ->where('sStatus', 'graded')
             ->with(['exam'])
             ->orderBy('sSubmit_time', 'desc')
@@ -1321,7 +1482,7 @@ class StudentTestController extends Controller
      */
     public function getNotifications(Request $request)
     {
-        $studentId = $request->user()->id;
+        $studentId = $request->user()->uId;
         $urgent = $request->input('urgent', false);
         $limit = $request->input('limit', 10);
 
@@ -1357,7 +1518,7 @@ class StudentTestController extends Controller
         }
 
         // Check for recently graded submissions
-        $recentGraded = Submission::where('student_id', $studentId)
+        $recentGraded = Submission::where('user_id', $studentId)
             ->where('sStatus', 'graded')
             ->where('sGraded_time', '>=', now()->subDay())
             ->with(['exam'])
@@ -1396,5 +1557,16 @@ class StudentTestController extends Controller
             'status' => 'success',
             'data' => array_values($notifications),
         ]);
+    }
+
+    private function normalizeAnswer($value)
+    {
+        $normalized = trim((string) $value);
+        return function_exists('mb_strtolower') ? mb_strtolower($normalized, 'UTF-8') : strtolower($normalized);
+    }
+
+    private function isCorrectAnswer($studentAnswer, $correctAnswer)
+    {
+        return $this->normalizeAnswer($studentAnswer) === $this->normalizeAnswer($correctAnswer);
     }
 }

@@ -18,7 +18,7 @@ class ExamFactory extends Factory
             'eTitle' => $this->faker->sentence(4),
             'eDescription' => $this->faker->paragraph(),
             'eType' => $this->faker->randomElement(['VSTEP', 'IELTS', 'GENERAL']),
-            'eSkill' => $this->faker->randomElement(['listening', 'reading', 'writing', 'speaking']),
+            'eSkill' => $this->faker->randomElement(['listening', 'reading', 'writing', 'speaking', 'mixed']),
             'eDuration_minutes' => $this->faker->randomElement([30, 45, 60, 90, 120]),
             'eIs_private' => $this->faker->boolean(),
             'eSource_type' => $this->faker->randomElement(['manual', 'upload']),

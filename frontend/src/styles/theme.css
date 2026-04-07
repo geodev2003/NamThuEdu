@@ -1,7 +1,8 @@
+@import './colors.css';
+
 @custom-variant dark (&:is(.dark *));
 
 /* THEME: Forest+Coral color system */
-@import './colors.css';
 
 :root {
   /* NamThu Education Design System */

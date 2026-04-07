@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
+import { logout } from "../../../services/authApi";
 import {
   Home,
   ClipboardList,
@@ -20,12 +21,21 @@ import {
 const PURPLE = "#7C3AED";
 const PURPLE_LIGHT = "#EDE9FE";
 const PURPLE_MID = "#8B5CF6";
+const STUDENT_BASE_PATH = "/hoc-vien";
+
+const studentPath = (suffix = "") => `${STUDENT_BASE_PATH}${suffix}`;
 
 export function StudentNavbar() {
   const { t, i18n } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/dang-nhap", { replace: true });
+  };
 
   // Scroll-aware glassmorphism
   useEffect(() => {
@@ -43,20 +53,20 @@ export function StudentNavbar() {
   }, [profileMenuOpen]);
 
   const navItems = [
-     { path: "/", label: t("student.nav.dashboard"), exact: true },
-    { path: "/bai-tap", label: t("student.nav.tests"), exact: false },
-    { path: "/luyen-tap", label: t("student.nav.practice"), exact: false },
-    { path: "/tien-do", label: "Tiến độ", exact: false },
-    { path: "/lich-su", label: "Lịch sử", exact: false },
+    { path: studentPath(), label: t("student.nav.dashboard"), exact: true },
+    { path: studentPath("/bai-tap"), label: t("student.nav.tests"), exact: false },
+    { path: studentPath("/luyen-tap"), label: t("student.nav.practice"), exact: false },
+    { path: studentPath("/tien-do"), label: t("student.nav.progress"), exact: false },
+    { path: studentPath("/lich-su"), label: t("student.nav.history"), exact: false },
   ];
 
   // Bottom nav items (mobile)
   const bottomNavItems = [
-     { path: "/", label: "Trang chủ", icon: Home, exact: true },
-    { path: "/bai-tap", label: "Bài tập", icon: ClipboardList, exact: false },
-    { path: "/luyen-tap", label: "Luyện tập", icon: Target, exact: false },
-    { path: "/tien-do", label: "Tiến độ", icon: BarChart2, exact: false },
-    { path: "/thong-bao", label: "Thông báo", icon: Bell, exact: false },
+    { path: studentPath(), label: t("student.nav.dashboard"), icon: Home, exact: true },
+    { path: studentPath("/bai-tap"), label: t("student.nav.tests"), icon: ClipboardList, exact: false },
+    { path: studentPath("/luyen-tap"), label: t("student.nav.practice"), icon: Target, exact: false },
+    { path: studentPath("/tien-do"), label: t("student.nav.progress"), icon: BarChart2, exact: false },
+    { path: studentPath("/thong-bao"), label: t("student.nav.notifications"), icon: Bell, exact: false },
   ];
 
   const isActive = (path: string, exact = false) => {
@@ -90,7 +100,7 @@ export function StudentNavbar() {
 
             {/* ── Logo ── */}
             <Link
-              to="/"
+              to={studentPath()}
               className="flex items-center gap-2.5 flex-shrink-0"
               style={{ textDecoration: "none" }}
             >
@@ -117,7 +127,7 @@ export function StudentNavbar() {
                 <span
                   style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 500 }}
                 >
-                  Học viên
+                  {t("student.nav.profile.student")}
                 </span>
               </div>
             </Link>
@@ -219,7 +229,7 @@ export function StudentNavbar() {
 
               {/* Notifications */}
               <Link
-                to="/thong-bao"
+                to={studentPath("/thong-bao")}
                 className="relative p-2 rounded-xl transition-colors duration-200 hover:bg-purple-50"
               >
                 <Bell className="w-5 h-5" style={{ color: "#6B7280" }} />
@@ -292,10 +302,10 @@ export function StudentNavbar() {
                               color: "#1F1344",
                             }}
                           >
-                            Học viên
+                            {t("student.nav.profile.student")}
                           </p>
                           <p style={{ fontSize: 11, color: "#7C3AED" }}>
-                            1,240 XP · 7 ngày streak
+                            1,240 XP · 7 {t("student.nav.streak.days")}
                           </p>
                         </div>
                       </div>
@@ -304,7 +314,7 @@ export function StudentNavbar() {
                     {/* Menu items */}
                     <div className="p-2">
                       <Link
-                        to="/ho-so"
+                        to={studentPath("/ho-so")}
                         className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors hover:bg-purple-50"
                         style={{ fontSize: 14, color: "#374151" }}
                       >
@@ -312,10 +322,10 @@ export function StudentNavbar() {
                           className="w-4 h-4"
                           style={{ color: PURPLE }}
                         />
-                        Hồ sơ của tôi
+                        {t("student.nav.profile.myProfile")}
                       </Link>
                       <Link
-                        to="/cai-dat"
+                        to={studentPath("/cai-dat")}
                         className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors hover:bg-purple-50"
                         style={{ fontSize: 14, color: "#374151" }}
                       >
@@ -323,7 +333,7 @@ export function StudentNavbar() {
                           className="w-4 h-4"
                           style={{ color: "#6B7280" }}
                         />
-                        Cài đặt
+                        {t("student.nav.profile.settings")}
                       </Link>
                       <div
                         className="my-1.5 mx-1"
@@ -333,11 +343,12 @@ export function StudentNavbar() {
                         }}
                       />
                       <button
+                        onClick={handleLogout}
                         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors hover:bg-red-50"
                         style={{ fontSize: 14, color: "#EF4444" }}
                       >
                         <LogOut className="w-4 h-4" />
-                        Đăng xuất
+                        {t("student.nav.profile.logout")}
                       </button>
                     </div>
                   </div>

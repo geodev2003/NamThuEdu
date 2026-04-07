@@ -41,6 +41,9 @@ class User extends Authenticatable
         'theme_updated_at',
         'refresh_token',
         'refresh_token_expires_at',
+        'avatar_url',
+        'bio',
+        'language_preference',
     ];
 
     /**

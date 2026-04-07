@@ -11,9 +11,9 @@ import { ThemePreference } from '../themes/types';
 export interface RegisterFormData {
   name: string;
   phone: string;
+  email?: string;
   password: string;
   password_confirmation: string;
-  date_of_birth: string;
 }
 
 export interface LoginFormData {
@@ -78,6 +78,11 @@ export async function getProfile(): Promise<ProfileResponse> {
  * Logout user
  */
 export async function logout(): Promise<void> {
-  await api.post('/logout');
+  try {
+    await api.post('/logout');
+  } catch {
+    // token invalid/expired: still clear local auth state on client
+  }
   localStorage.removeItem('auth_token');
+  localStorage.removeItem('auth_role');
 }

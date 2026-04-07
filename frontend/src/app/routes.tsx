@@ -3,7 +3,7 @@
  *
  * Cấu trúc 3 role:
  *  - Teacher  → base path "/giao-vien" → TeacherLayout (sidebar #2563EB)
- *  - Student  → base path "/"          → StudentLayout (sidebar #8B5CF6)
+ *  - Student  → base path "/hoc-vien"  → StudentLayout (sidebar #8B5CF6)
  *  - Admin    → base path "/admin"    → AdminLayout   (sidebar #0F172A)
  *
  * Auth routes không có layout chung (login, register, v.v.)
@@ -17,8 +17,9 @@
 import { createBrowserRouter } from "react-router";
 import { authRoutes } from "./routes/authRoutes";
 import { teacherRoutes } from "./routes/teacherRoutes";
-import { studentRoutes } from "./routes/studentRoutes";
+import { studentLegacyRoutes, studentRoutes } from "./routes/studentRoutes";
 import { adminRoutes } from "./routes/adminRoutes";
+import { MockTestPage } from "./features/test/MockTestPage";
 
 export const router = createBrowserRouter([
   // ─── Auth (no layout) ────────────────────────────────────────────────────
@@ -29,7 +30,14 @@ export const router = createBrowserRouter([
 
   // ─── Student Portal  ("/") ───────────────────────────────────────────────
   studentRoutes,
+  studentLegacyRoutes,
 
   // ─── Admin Console   ("/admin") ──────────────────────────────────────────
   adminRoutes,
+
+  // ─── Mock Test Demo (no auth required) ──────────────────────────────────
+  {
+    path: "/test-vstep-demo",
+    element: <MockTestPage />,
+  },
 ]);

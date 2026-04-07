@@ -48,6 +48,7 @@ const PRIMARY = "#0EA5E9"; // Sky Blue
 const PRIMARY_MID = "#38BDF8"; // Bright Sky
 const PRIMARY_LIGHT = "#E0F2FE"; // Light Sky
 const CYAN = "#06B6D4";
+const STUDENT_BASE_PATH = "/hoc-vien";
 
 // ─── Quick Action Card ────────────────────────────────────────────────────────
 interface QuickAction {
@@ -309,8 +310,8 @@ export function StudentDashboard() {
   ];
 
   return (
-    <div className="py-6 space-y-6 max-w-[1600px] mx-auto">
-
+    <>
+      <div className="py-6 space-y-6 max-w-[1600px] mx-auto">
       {/* ─── Hero Welcome Section ───────────────────────────────────────────── */}
       <div
         className="relative overflow-hidden rounded-3xl p-6 md:p-8"
@@ -522,7 +523,7 @@ export function StudentDashboard() {
               )}
             </div>
             <Link
-              to="/bai-tap"
+              to={`${STUDENT_BASE_PATH}/bai-tap`}
               className="flex items-center gap-1 text-sm font-semibold transition-colors"
               style={{ color: PRIMARY }}
             >
@@ -551,7 +552,7 @@ export function StudentDashboard() {
                 Giáo viên chưa giao bài. Thử luyện tập tự do nhé!
               </p>
               <Link
-                to="/luyen-tap"
+                to={`${STUDENT_BASE_PATH}/luyen-tap`}
                 className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ background: PRIMARY }}
               >
@@ -611,7 +612,7 @@ export function StudentDashboard() {
                         </span>
                       </div>
                       <Link
-                        to={`/lam-bai/${a.examId}`}
+                        to={`${STUDENT_BASE_PATH}/lam-bai/${a.examId}`}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-xs font-bold transition-opacity hover:opacity-90"
                         style={{ background: a.color }}
                       >
@@ -835,7 +836,7 @@ export function StudentDashboard() {
                 </h3>
               </div>
               <Link
-                to="/lich-su"
+                to={`${STUDENT_BASE_PATH}/lich-su`}
                 style={{ fontSize: 12, color: PRIMARY, fontWeight: 600 }}
               >
                 Xem tất cả
@@ -963,5 +964,6 @@ export function StudentDashboard() {
         isLoading={recommendationsLoading}
       />
     </div>
+    </>
   );
 }
