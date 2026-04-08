@@ -83,9 +83,9 @@ export function CreateClass() {
       <div className="mb-8">
         <Link
           to="/giao-vien/lop-hoc"
-          className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#2563EB] mb-6 transition-colors group"
+          className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#EA580C] mb-6 transition-colors group"
         >
-          <div className="p-1.5 rounded-lg bg-white border border-[#E5E7EB] group-hover:border-[#2563EB] transition-colors">
+          <div className="p-1.5 rounded-lg bg-white border border-[#E5E7EB] group-hover:border-[#EA580C] transition-colors">
             <ArrowLeft className="w-4 h-4" />
           </div>
           <span className="text-sm font-medium">Quay lại danh sách lớp</span>
@@ -114,7 +114,7 @@ export function CreateClass() {
             return (
               <div key={step.id} className="flex items-center flex-1">
                 <div className="flex flex-col items-center flex-1">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] text-white shadow-lg shadow-blue-500/20 mb-3">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#EA580C] to-[#C2410C] text-white shadow-lg shadow-orange-500/20 mb-3">
                     <Icon className="w-5 h-5" />
                   </div>
                   <span className="text-sm font-semibold text-[#111827]">
@@ -122,7 +122,7 @@ export function CreateClass() {
                   </span>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className="flex-1 h-0.5 bg-gradient-to-r from-[#2563EB] to-[#93C5FD] mx-4 mb-8" />
+                  <div className="flex-1 h-0.5 bg-gradient-to-r from-[#EA580C] to-[#FDBA74] mx-4 mb-8" />
                 )}
               </div>
             );
@@ -134,8 +134,8 @@ export function CreateClass() {
         {/* Section 1: Basic Info */}
         <div className="bg-white rounded-2xl p-8 border border-[#E5E7EB] shadow-sm hover:shadow-md transition-shadow mb-6">
           <div className="flex items-center gap-3 mb-8 pb-6 border-b border-[#F3F4F6]">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE]">
-              <School className="w-6 h-6 text-[#2563EB]" />
+            <div className="p-3 rounded-xl bg-gradient-to-br from-[#FFF7ED] to-[#FFEDD5]">
+              <School className="w-6 h-6 text-[#EA580C]" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-[#111827]">
@@ -161,7 +161,7 @@ export function CreateClass() {
                   setFormData({ ...formData, name: e.target.value })
                 }
                 placeholder="VD: IELTS 7.0 - Intensive Morning"
-                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all"
+                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all"
               />
             </div>
 
@@ -185,9 +185,9 @@ export function CreateClass() {
                       code: "CLS-2024-" + Math.floor(Math.random() * 1000).toString().padStart(3, "0"),
                     })
                   }
-                  className="p-3.5 border border-[#E5E7EB] rounded-xl hover:bg-[#EFF6FF] hover:border-[#2563EB] transition-all group"
+                  className="p-3.5 border border-[#E5E7EB] rounded-xl hover:bg-[#FFF7ED] hover:border-[#EA580C] transition-all group"
                 >
-                  <RefreshCw className="w-5 h-5 text-[#6B7280] group-hover:text-[#2563EB] group-hover:rotate-180 transition-all duration-500" />
+                  <RefreshCw className="w-5 h-5 text-[#6B7280] group-hover:text-[#EA580C] group-hover:rotate-180 transition-all duration-500" />
                 </button>
               </div>
             </div>
@@ -198,8 +198,8 @@ export function CreateClass() {
                 Banner lớp học
               </label>
               <div className="relative group cursor-pointer">
-                <div className="w-full h-32 rounded-xl bg-gradient-to-br from-[#F3F4F6] to-[#E5E7EB] border-2 border-dashed border-[#D1D5DB] flex flex-col items-center justify-center group-hover:border-[#2563EB] transition-all">
-                  <Upload className="w-8 h-8 text-[#9CA3AF] group-hover:text-[#2563EB] mb-2" />
+                <div className="w-full h-32 rounded-xl bg-gradient-to-br from-[#F3F4F6] to-[#E5E7EB] border-2 border-dashed border-[#D1D5DB] flex flex-col items-center justify-center group-hover:border-[#EA580C] transition-all">
+                  <Upload className="w-8 h-8 text-[#9CA3AF] group-hover:text-[#EA580C] mb-2" />
                   <p className="text-sm text-[#6B7280] font-medium">
                     Kéo thả hoặc click để tải ảnh
                   </p>
@@ -224,7 +224,7 @@ export function CreateClass() {
                 }
                 placeholder="Mô tả chi tiết về lớp học, mục tiêu, yêu cầu..."
                 rows={4}
-                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent resize-none transition-all"
+                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent resize-none transition-all"
               />
             </div>
           </div>
@@ -257,7 +257,7 @@ export function CreateClass() {
                 onChange={(e) =>
                   setFormData({ ...formData, course: e.target.value })
                 }
-                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] font-medium"
+                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] font-medium"
               >
                 <option value="">Chọn khóa học</option>
                 <option>IELTS Foundation</option>
@@ -279,7 +279,7 @@ export function CreateClass() {
                 onChange={(e) =>
                   setFormData({ ...formData, semester: e.target.value })
                 }
-                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] font-medium"
+                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] font-medium"
               >
                 <option value="">Chọn học kỳ</option>
                 <option>Spring 2026</option>
@@ -304,7 +304,7 @@ export function CreateClass() {
                     key={type.value}
                     className={`p-3 border-2 rounded-xl cursor-pointer transition-all ${
                       formData.type === type.value
-                        ? "border-[#2563EB] bg-[#EFF6FF]"
+                        ? "border-[#EA580C] bg-[#FFF7ED]"
                         : "border-[#E5E7EB] hover:border-[#D1D5DB]"
                     }`}
                   >
@@ -321,7 +321,7 @@ export function CreateClass() {
                     <span
                       className={`text-sm font-semibold ${
                         formData.type === type.value
-                          ? "text-[#2563EB]"
+                          ? "text-[#EA580C]"
                           : "text-[#6B7280]"
                       }`}
                     >
@@ -344,7 +344,7 @@ export function CreateClass() {
                 onChange={(e) =>
                   setFormData({ ...formData, maxStudents: parseInt(e.target.value) })
                 }
-                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] font-semibold"
+                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] font-semibold"
               />
             </div>
 
@@ -360,7 +360,7 @@ export function CreateClass() {
                 onChange={(e) =>
                   setFormData({ ...formData, startDate: e.target.value })
                 }
-                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C]"
               />
             </div>
 
@@ -375,7 +375,7 @@ export function CreateClass() {
                 onChange={(e) =>
                   setFormData({ ...formData, endDate: e.target.value })
                 }
-                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C]"
               />
             </div>
           </div>
@@ -408,7 +408,7 @@ export function CreateClass() {
                   <select
                     value={schedule.day}
                     onChange={(e) => updateSchedule(schedule.id, "day", e.target.value)}
-                    className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] text-sm"
+                    className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EA580C] text-sm"
                   >
                     <option value="monday">Thứ 2</option>
                     <option value="tuesday">Thứ 3</option>
@@ -427,7 +427,7 @@ export function CreateClass() {
                     type="time"
                     value={schedule.startTime}
                     onChange={(e) => updateSchedule(schedule.id, "startTime", e.target.value)}
-                    className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] text-sm"
+                    className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EA580C] text-sm"
                   />
                 </div>
                 <div>
@@ -438,7 +438,7 @@ export function CreateClass() {
                     type="time"
                     value={schedule.endTime}
                     onChange={(e) => updateSchedule(schedule.id, "endTime", e.target.value)}
-                    className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] text-sm"
+                    className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EA580C] text-sm"
                   />
                 </div>
                 <div>
@@ -450,7 +450,7 @@ export function CreateClass() {
                     value={schedule.room}
                     onChange={(e) => updateSchedule(schedule.id, "room", e.target.value)}
                     placeholder="VD: A101"
-                    className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] text-sm"
+                    className="w-full px-3 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EA580C] text-sm"
                   />
                 </div>
                 <div className="flex items-end">
@@ -468,7 +468,7 @@ export function CreateClass() {
             <button
               type="button"
               onClick={addSchedule}
-              className="w-full py-3 border-2 border-dashed border-[#D1D5DB] rounded-xl hover:border-[#2563EB] hover:bg-[#EFF6FF] transition-all flex items-center justify-center gap-2 text-[#6B7280] hover:text-[#2563EB] font-semibold"
+              className="w-full py-3 border-2 border-dashed border-[#D1D5DB] rounded-xl hover:border-[#EA580C] hover:bg-[#FFF7ED] transition-all flex items-center justify-center gap-2 text-[#6B7280] hover:text-[#EA580C] font-semibold"
             >
               <Plus className="w-5 h-5" />
               Thêm lịch học
@@ -503,12 +503,12 @@ export function CreateClass() {
 
           {showAdvanced && (
             <div className="space-y-6 pt-6 border-t border-[#F3F4F6]">
-              <label className="flex items-center gap-4 p-4 border-2 border-[#E5E7EB] rounded-xl cursor-pointer hover:border-[#2563EB] transition-all">
+              <label className="flex items-center gap-4 p-4 border-2 border-[#E5E7EB] rounded-xl cursor-pointer hover:border-[#EA580C] transition-all">
                 <input
                   type="checkbox"
                   checked={autoEnroll}
                   onChange={(e) => setAutoEnroll(e.target.checked)}
-                  className="w-5 h-5 rounded border-2 border-[#D1D5DB] text-[#2563EB] focus:ring-2 focus:ring-[#2563EB] cursor-pointer"
+                  className="w-5 h-5 rounded border-2 border-[#D1D5DB] text-[#EA580C] focus:ring-2 focus:ring-[#EA580C] cursor-pointer"
                 />
                 <div className="flex-1">
                   <p className="font-semibold text-[#111827]">
@@ -520,12 +520,12 @@ export function CreateClass() {
                 </div>
               </label>
 
-              <label className="flex items-center gap-4 p-4 border-2 border-[#E5E7EB] rounded-xl cursor-pointer hover:border-[#2563EB] transition-all">
+              <label className="flex items-center gap-4 p-4 border-2 border-[#E5E7EB] rounded-xl cursor-pointer hover:border-[#EA580C] transition-all">
                 <input
                   type="checkbox"
                   checked={allowSelfEnroll}
                   onChange={(e) => setAllowSelfEnroll(e.target.checked)}
-                  className="w-5 h-5 rounded border-2 border-[#D1D5DB] text-[#2563EB] focus:ring-2 focus:ring-[#2563EB] cursor-pointer"
+                  className="w-5 h-5 rounded border-2 border-[#D1D5DB] text-[#EA580C] focus:ring-2 focus:ring-[#EA580C] cursor-pointer"
                 />
                 <div className="flex-1">
                   <p className="font-semibold text-[#111827]">
@@ -551,7 +551,7 @@ export function CreateClass() {
                       key={vis.value}
                       className={`p-3 border-2 rounded-xl cursor-pointer transition-all ${
                         formData.visibility === vis.value
-                          ? "border-[#2563EB] bg-[#EFF6FF]"
+                          ? "border-[#EA580C] bg-[#FFF7ED]"
                           : "border-[#E5E7EB]"
                       }`}
                     >
@@ -568,7 +568,7 @@ export function CreateClass() {
                       <span
                         className={`text-sm font-semibold ${
                           formData.visibility === vis.value
-                            ? "text-[#2563EB]"
+                            ? "text-[#EA580C]"
                             : "text-[#6B7280]"
                         }`}
                       >
@@ -600,7 +600,7 @@ export function CreateClass() {
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white rounded-xl hover:shadow-xl hover:shadow-blue-500/30 hover:scale-105 transition-all font-bold"
+              className="flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#EA580C] to-[#C2410C] text-white rounded-xl hover:shadow-xl hover:shadow-orange-500/30 hover:scale-105 transition-all font-bold"
             >
               <Save className="w-5 h-5" />
               Tạo lớp học

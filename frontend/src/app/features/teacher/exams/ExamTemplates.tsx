@@ -233,7 +233,7 @@ const mockTemplates: ExamTemplate[] = [
 ];
 
 const levelColors: Record<string, string> = {
-  "Pre A1": "bg-blue-100 text-blue-700 border-blue-200",
+  "Pre A1": "bg-orange-100 text-orange-700 border-orange-200",
   A1: "bg-green-100 text-green-700 border-green-200",
   A2: "bg-yellow-100 text-yellow-700 border-yellow-200",
   B1: "bg-orange-100 text-orange-700 border-orange-200",
@@ -277,7 +277,7 @@ export function ExamTemplates() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50/30 via-amber-50/20 to-orange-50/10">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="px-8 py-6">
@@ -299,11 +299,11 @@ export function ExamTemplates() {
                 </div>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Link to="/giao-vien" className="hover:text-blue-600 transition-colors">
+                <Link to="/giao-vien" className="hover:text-orange-600 transition-colors">
                   Dashboard
                 </Link>
                 <span>/</span>
-                <Link to="/giao-vien/de-thi/tat-ca" className="hover:text-blue-600 transition-colors">
+                <Link to="/giao-vien/de-thi/tat-ca" className="hover:text-orange-600 transition-colors">
                   Ngân hàng đề
                 </Link>
                 <span>/</span>
@@ -326,7 +326,7 @@ export function ExamTemplates() {
                 placeholder="Tìm mẫu đề thi..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
               {searchTerm && (
                 <button
@@ -343,7 +343,7 @@ export function ExamTemplates() {
               <select
                 value={selectedLevel}
                 onChange={(e) => setSelectedLevel(e.target.value)}
-                className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer text-sm"
+                className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white cursor-pointer text-sm"
               >
                 <option value="all">Tất cả cấp độ</option>
                 <option value="Pre A1">Pre A1</option>
@@ -367,8 +367,8 @@ export function ExamTemplates() {
               onClick={() => setActiveTab(category)}
               className={`px-6 py-3 rounded-lg font-semibold whitespace-nowrap transition-all ${
                 activeTab === category
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
-                  : "bg-white text-gray-700 border border-gray-200 hover:border-blue-300 hover:bg-blue-50"
+                  ? "bg-orange-600 text-white shadow-lg shadow-orange-500/30"
+                  : "bg-white text-gray-700 border border-gray-200 hover:border-orange-300 hover:bg-orange-50"
               }`}
             >
               {category}
@@ -384,7 +384,7 @@ export function ExamTemplates() {
               className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 group"
             >
               {/* Card Header */}
-              <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6 border-b border-gray-100">
+              <div className="bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 p-6 border-b border-gray-100">
                 <div className="flex items-start justify-between mb-3">
                   <span
                     className={`inline-block px-3 py-1 rounded-lg text-xs font-semibold border ${levelColors[template.level]}`}
@@ -464,7 +464,7 @@ export function ExamTemplates() {
                 </button>
                 <button
                   onClick={() => openCreateModal(template)}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-center text-sm font-medium flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all text-center text-sm font-medium flex items-center justify-center gap-2"
                 >
                   <CheckCircle className="w-4 h-4" />
                   Sử dụng mẫu
@@ -494,10 +494,10 @@ export function ExamTemplates() {
       {showDetailModal && selectedTemplate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-4 flex items-center justify-between">
+            <div className="sticky top-0 bg-gradient-to-r from-orange-600 to-orange-700 text-white px-6 py-4 flex items-center justify-between">
               <div>
                 <h3 className="text-2xl font-bold">{selectedTemplate.name}</h3>
-                <p className="text-blue-100 text-sm mt-1">{selectedTemplate.category}</p>
+                <p className="text-orange-100 text-sm mt-1">{selectedTemplate.category}</p>
               </div>
               <button
                 onClick={() => setShowDetailModal(false)}
@@ -511,7 +511,7 @@ export function ExamTemplates() {
               {/* Overview */}
               <div>
                 <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Info className="w-5 h-5 text-blue-600" />
+                  <Info className="w-5 h-5 text-orange-600" />
                   Tổng quan
                 </h4>
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2">
@@ -563,7 +563,7 @@ export function ExamTemplates() {
                   {selectedTemplate.skills.map((skill) => (
                     <span
                       key={skill}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-700 rounded-lg text-sm font-medium"
                     >
                       {skill === "Listening" && <Headphones className="w-4 h-4" />}
                       {skill === "Reading" && <BookOpen className="w-4 h-4" />}
@@ -581,7 +581,7 @@ export function ExamTemplates() {
               {/* Structure */}
               <div>
                 <h4 className="font-semibold text-gray-900 mb-3">Cấu trúc đề thi</h4>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                   <p className="text-sm text-gray-700 leading-relaxed">{selectedTemplate.structure}</p>
                 </div>
               </div>
@@ -591,7 +591,7 @@ export function ExamTemplates() {
                 <h4 className="font-semibold text-gray-900 mb-3">Thống kê</h4>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-gray-50 rounded-lg p-4 text-center">
-                    <FileText className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+                    <FileText className="w-6 h-6 text-orange-600 mx-auto mb-2" />
                     <p className="text-2xl font-bold text-gray-900">{selectedTemplate.sections}</p>
                     <p className="text-xs text-gray-600 mt-1">Phần thi</p>
                   </div>
@@ -618,7 +618,7 @@ export function ExamTemplates() {
               </button>
               <button
                 onClick={() => openCreateModal(selectedTemplate)}
-                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center gap-2"
+                className="px-6 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all font-medium flex items-center gap-2"
               >
                 <CheckCircle className="w-4 h-4" />
                 Sử dụng mẫu này
@@ -632,9 +632,9 @@ export function ExamTemplates() {
       {showCreateModal && selectedTemplate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-4 rounded-t-2xl">
+            <div className="bg-gradient-to-r from-orange-600 to-orange-700 text-white px-6 py-4 rounded-t-2xl">
               <h3 className="text-xl font-bold">Tạo đề thi từ mẫu</h3>
-              <p className="text-blue-100 text-sm mt-1">{selectedTemplate.name}</p>
+              <p className="text-orange-100 text-sm mt-1">{selectedTemplate.name}</p>
             </div>
 
             <div className="p-6 space-y-6">
@@ -646,7 +646,7 @@ export function ExamTemplates() {
                 <input
                   type="text"
                   defaultValue={`${selectedTemplate.name} - Practice Test`}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                   placeholder="Nhập tên đề thi..."
                 />
               </div>
@@ -659,7 +659,7 @@ export function ExamTemplates() {
                 <textarea
                   rows={3}
                   defaultValue={selectedTemplate.description}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
                   placeholder="Mô tả đề thi..."
                 />
               </div>
@@ -673,7 +673,7 @@ export function ExamTemplates() {
                   <input
                     type="checkbox"
                     id="customDuration"
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                   />
                   <label htmlFor="customDuration" className="text-sm text-gray-700">
                     Tùy chỉnh thời gian (mặc định: {selectedTemplate.duration} phút)
@@ -692,7 +692,7 @@ export function ExamTemplates() {
                       type="radio"
                       name="visibility"
                       defaultChecked
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      className="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
                     />
                     <span className="text-sm text-gray-700">
                       🌐 Public - Hiển thị cho tất cả giáo viên
@@ -702,7 +702,7 @@ export function ExamTemplates() {
                     <input
                       type="radio"
                       name="visibility"
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      className="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
                     />
                     <span className="text-sm text-gray-700">🔒 Private - Chỉ mình tôi</span>
                   </label>
@@ -710,9 +710,9 @@ export function ExamTemplates() {
               </div>
 
               {/* Info Box */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <Info className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
                   <div className="text-sm text-gray-700">
                     <p className="font-semibold mb-1">Lưu ý:</p>
                     <p>
@@ -733,7 +733,7 @@ export function ExamTemplates() {
               </button>
               <Link
                 to="/giao-vien/de-thi/tao-moi"
-                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
+                className="px-6 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all font-medium"
               >
                 Tạo đề thi
               </Link>
@@ -744,3 +744,5 @@ export function ExamTemplates() {
     </div>
   );
 }
+
+

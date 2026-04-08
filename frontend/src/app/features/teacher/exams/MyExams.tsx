@@ -154,7 +154,7 @@ const mockExams: Exam[] = [
 ];
 
 const typeColors = {
-  VSTEP: "bg-blue-100 text-blue-700 border-blue-200",
+  VSTEP: "bg-orange-100 text-orange-700 border-orange-200",
   IELTS: "bg-green-100 text-green-700 border-green-200",
   Cambridge: "bg-purple-100 text-purple-700 border-purple-200",
   General: "bg-gray-100 text-gray-700 border-gray-200",
@@ -168,7 +168,7 @@ const skillIcons = {
 };
 
 const skillColors = {
-  Listening: "text-blue-600",
+  Listening: "text-orange-600",
   Reading: "text-green-600",
   Writing: "text-orange-600",
   Speaking: "text-purple-600",
@@ -230,7 +230,7 @@ export function MyExams() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50/30 via-amber-50/20 to-orange-50/10">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="px-8 py-6">
@@ -238,11 +238,11 @@ export function MyExams() {
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Đề thi của tôi</h1>
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Link to="/giao-vien" className="hover:text-blue-600 transition-colors">
+                <Link to="/giao-vien" className="hover:text-orange-600 transition-colors">
                   Dashboard
                 </Link>
                 <span>/</span>
-                <Link to="/giao-vien/de-thi/tat-ca" className="hover:text-blue-600 transition-colors">
+                <Link to="/giao-vien/de-thi/tat-ca" className="hover:text-orange-600 transition-colors">
                   Ngân hàng đề
                 </Link>
                 <span>/</span>
@@ -259,7 +259,7 @@ export function MyExams() {
               </Link>
               <Link
                 to="/giao-vien/de-thi/tao-moi"
-                className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all flex items-center gap-2 font-medium shadow-lg shadow-blue-500/30"
+                className="px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all flex items-center gap-2 font-medium shadow-lg shadow-orange-500/30"
               >
                 <Plus className="w-4 h-4" />
                 Tạo đề mới
@@ -269,7 +269,7 @@ export function MyExams() {
                   onClick={() => setViewMode("grid")}
                   className={`p-2 rounded transition-all ${
                     viewMode === "grid"
-                      ? "bg-white text-blue-600 shadow-sm"
+                      ? "bg-white text-orange-600 shadow-sm"
                       : "text-gray-600 hover:text-gray-900"
                   }`}
                 >
@@ -279,7 +279,7 @@ export function MyExams() {
                   onClick={() => setViewMode("list")}
                   className={`p-2 rounded transition-all ${
                     viewMode === "list"
-                      ? "bg-white text-blue-600 shadow-sm"
+                      ? "bg-white text-orange-600 shadow-sm"
                       : "text-gray-600 hover:text-gray-900"
                   }`}
                 >
@@ -298,8 +298,8 @@ export function MyExams() {
             onClick={() => setActiveTab("all")}
             className={`px-6 py-3 rounded-lg font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${
               activeTab === "all"
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
-                : "bg-white text-gray-700 border border-gray-200 hover:border-blue-300 hover:bg-blue-50"
+                ? "bg-orange-600 text-white shadow-lg shadow-orange-500/30"
+                : "bg-white text-gray-700 border border-gray-200 hover:border-orange-300 hover:bg-orange-50"
             }`}
           >
             Tất cả
@@ -375,7 +375,7 @@ export function MyExams() {
                 placeholder="Tìm theo tên đề thi..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
               {searchTerm && (
                 <button
@@ -393,7 +393,7 @@ export function MyExams() {
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
-                  className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer text-sm"
+                  className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white cursor-pointer text-sm"
                 >
                   <option value="all">Tất cả loại</option>
                   <option value="VSTEP">VSTEP</option>
@@ -408,7 +408,7 @@ export function MyExams() {
                 <select
                   value={filterSkill}
                   onChange={(e) => setFilterSkill(e.target.value)}
-                  className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer text-sm"
+                  className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white cursor-pointer text-sm"
                 >
                   <option value="all">Tất cả kỹ năng</option>
                   <option value="Listening">Listening</option>
@@ -423,7 +423,7 @@ export function MyExams() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer text-sm"
+                  className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white cursor-pointer text-sm"
                 >
                   <option value="recent">Mới nhất</option>
                   <option value="name">Tên A-Z</option>
@@ -436,7 +436,7 @@ export function MyExams() {
               {(filterType !== "all" || filterSkill !== "all" || searchTerm || sortBy !== "recent") && (
                 <button
                   onClick={clearFilters}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  className="text-sm text-orange-600 hover:text-orange-700 font-medium"
                 >
                   Xóa bộ lọc
                 </button>
@@ -447,7 +447,7 @@ export function MyExams() {
 
         {/* Bulk Actions */}
         {selectedExams.length > 0 && (
-          <div className="bg-blue-600 text-white rounded-xl p-4 shadow-lg">
+          <div className="bg-orange-600 text-white rounded-xl p-4 shadow-lg">
             <div className="flex items-center justify-between">
               <span className="font-semibold">{selectedExams.length} đề thi đã chọn</span>
               <div className="flex items-center gap-2">
@@ -498,7 +498,7 @@ export function MyExams() {
                                 : [...prev, exam.id]
                             );
                           }}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                         />
                         <span
                           className={`inline-block px-3 py-1 rounded-lg text-xs font-semibold border ${typeColors[exam.type]}`}
@@ -627,17 +627,17 @@ export function MyExams() {
                         </div>
 
                         {/* Mini Chart */}
-                        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3">
+                        <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-3">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-semibold text-gray-700">Hiệu suất</span>
-                            <Activity className="w-4 h-4 text-blue-600" />
+                            <Activity className="w-4 h-4 text-orange-600" />
                           </div>
                           <div className="grid grid-cols-3 gap-2 text-center">
                             <div>
                               <p className="text-xs text-gray-600 mb-1">Điểm</p>
-                              <div className="h-12 bg-blue-200 rounded relative">
+                              <div className="h-12 bg-orange-200 rounded relative">
                                 <div
-                                  className="absolute bottom-0 w-full bg-blue-600 rounded"
+                                  className="absolute bottom-0 w-full bg-orange-600 rounded"
                                   style={{ height: `${exam.avgScore}%` }}
                                 />
                               </div>
@@ -672,7 +672,7 @@ export function MyExams() {
                   <div className="px-6 pb-6 flex items-center gap-2">
                     <Link
                       to={`/de-thi/${exam.id}`}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-center text-sm font-medium"
+                      className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all text-center text-sm font-medium"
                     >
                       Xem chi tiết
                     </Link>
@@ -697,7 +697,7 @@ export function MyExams() {
                     <th className="px-6 py-4 text-left">
                       <input
                         type="checkbox"
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                       />
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -742,13 +742,13 @@ export function MyExams() {
                                   : [...prev, exam.id]
                               );
                             }}
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                           />
                         </td>
                         <td className="px-6 py-4">
                           <Link
                             to={`/de-thi/${exam.id}`}
-                            className="font-semibold text-gray-900 hover:text-blue-600 transition-colors flex items-center gap-2"
+                            className="font-semibold text-gray-900 hover:text-orange-600 transition-colors flex items-center gap-2"
                           >
                             <SkillIcon className={`w-4 h-4 ${skillColors[exam.skill]}`} />
                             <span>{exam.title}</span>
@@ -796,7 +796,7 @@ export function MyExams() {
                           <div className="flex items-center justify-end gap-2">
                             <Link
                               to={`/de-thi/${exam.id}`}
-                              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                              className="p-2 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
                               title="Xem chi tiết"
                             >
                               <Eye className="w-4 h-4" />
@@ -849,7 +849,7 @@ export function MyExams() {
               <div className="flex items-center justify-center gap-3">
                 <Link
                   to="/giao-vien/de-thi/tao-moi"
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium inline-flex items-center gap-2"
+                  className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all font-medium inline-flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
                   Tạo đề mới
@@ -869,3 +869,5 @@ export function MyExams() {
     </div>
   );
 }
+
+

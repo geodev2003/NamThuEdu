@@ -1,0 +1,100 @@
+{
+  "exam_info": {
+    "title": "VSTEP B2 - Listening Practice Test",
+    "description": "Template mẫu cho đề thi VSTEP Listening",
+    "type": "VSTEP",
+    "skill": "listening",
+    "duration_minutes": 40,
+    "instructions": "Hướng dẫn sử dụng template:\n1. Copy nội dung file này\n2. Chỉnh sửa câu hỏi, đáp án theo nhu cầu\n3. Import vào hệ thống"
+  },
+  "questions": [
+    {
+      "content": "What time will the library close today?",
+      "type": "multiple_choice",
+      "skill": "listening",
+      "part": 1,
+      "points": 1,
+      "audio_url": "audio/question1.mp3",
+      "play_limit": 2,
+      "transcript": "The library will close at 6 PM today due to maintenance.",
+      "answers": [
+        {
+          "content": "5:00 PM",
+          "is_correct": false
+        },
+        {
+          "content": "6:00 PM",
+          "is_correct": true
+        },
+        {
+          "content": "7:00 PM",
+          "is_correct": false
+        },
+        {
+          "content": "8:00 PM",
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "content": "Which platform does the train to Brighton depart from?",
+      "type": "multiple_choice",
+      "skill": "listening",
+      "part": 1,
+      "points": 1,
+      "audio_url": "audio/question2.mp3",
+      "play_limit": 2,
+      "transcript": "The train to Brighton will depart from platform 6.",
+      "answers": [
+        {
+          "content": "Platform 2",
+          "is_correct": false
+        },
+        {
+          "content": "Platform 4",
+          "is_correct": false
+        },
+        {
+          "content": "Platform 6",
+          "is_correct": true
+        },
+        {
+          "content": "Platform 8",
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "content": "The speaker's name is ___________.",
+      "type": "fill_blank",
+      "skill": "listening",
+      "part": 2,
+      "points": 1,
+      "audio_url": "audio/question3.mp3",
+      "play_limit": 2,
+      "transcript": "My name is Sarah Johnson.",
+      "answers": [
+        {
+          "content": "Sarah Johnson",
+          "is_correct": true
+        }
+      ]
+    },
+    {
+      "content": "The meeting will be held on ___________.",
+      "type": "fill_blank",
+      "skill": "listening",
+      "part": 2,
+      "points": 1,
+      "audio_url": "audio/question4.mp3",
+      "play_limit": 2,
+      "transcript": "The meeting will be held on Monday morning.",
+      "answers": [
+        {
+          "content": "Monday morning",
+          "is_correct": true
+        }
+      ]
+    }
+  ]
+}

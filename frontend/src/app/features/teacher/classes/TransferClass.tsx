@@ -121,7 +121,7 @@ export function TransferClass() {
           <div className="flex flex-col gap-3">
             <Link
               to={`/giao-vien/lop-hoc/${destClass}`}
-              className="px-6 py-4 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white rounded-xl hover:shadow-xl hover:shadow-blue-500/30 font-bold transition-all"
+              className="px-6 py-4 bg-gradient-to-r from-[#EA580C] to-[#C2410C] text-white rounded-xl hover:shadow-xl hover:shadow-orange-500/30 font-bold transition-all"
             >
               Xem lớp đích
             </Link>
@@ -140,9 +140,9 @@ export function TransferClass() {
               </button>
               <Link
                 to="/giao-vien/lop-hoc"
-                className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#2563EB] mb-6 transition-colors group"
+                className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#EA580C] mb-6 transition-colors group"
               >
-                <div className="p-1.5 rounded-lg bg-white border border-[#E5E7EB] group-hover:border-[#2563EB] transition-colors">
+                <div className="p-1.5 rounded-lg bg-white border border-[#E5E7EB] group-hover:border-[#EA580C] transition-colors">
                   <ArrowLeft className="w-4 h-4" />
                 </div>
                 <span className="text-sm font-medium">Quay lại danh sách lớp</span>
@@ -160,9 +160,9 @@ export function TransferClass() {
       <div className="mb-8">
         <Link
           to="/giao-vien/lop-hoc"
-          className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#2563EB] mb-6 transition-colors group"
+          className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#EA580C] mb-6 transition-colors group"
         >
-          <div className="p-1.5 rounded-lg bg-white border border-[#E5E7EB] group-hover:border-[#2563EB] transition-colors">
+          <div className="p-1.5 rounded-lg bg-white border border-[#E5E7EB] group-hover:border-[#EA580C] transition-colors">
             <ArrowLeft className="w-4 h-4" />
           </div>
           <span className="text-sm font-medium">Quay lại danh sách lớp</span>
@@ -194,7 +194,7 @@ export function TransferClass() {
                       isCompleted
                         ? "bg-[#10B981] shadow-lg shadow-green-500/20"
                         : isActive
-                        ? "bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] shadow-lg shadow-blue-500/20"
+                        ? "bg-gradient-to-br from-[#EA580C] to-[#C2410C] shadow-lg shadow-orange-500/20"
                         : "bg-[#E5E7EB]"
                     }`}
                   >
@@ -247,7 +247,7 @@ export function TransferClass() {
                   onClick={() => setSourceClass(classItem.id)}
                   className={`p-6 border-2 rounded-xl text-left transition-all ${
                     sourceClass === classItem.id
-                      ? "border-[#2563EB] bg-[#EFF6FF] shadow-lg"
+                      ? "border-[#EA580C] bg-[#FFF7ED] shadow-lg"
                       : "border-[#E5E7EB] hover:border-[#D1D5DB]"
                   }`}
                 >
@@ -261,7 +261,7 @@ export function TransferClass() {
                       </p>
                     </div>
                     {sourceClass === classItem.id && (
-                      <div className="w-6 h-6 rounded-full bg-[#2563EB] flex items-center justify-center">
+                      <div className="w-6 h-6 rounded-full bg-[#EA580C] flex items-center justify-center">
                         <Check className="w-4 h-4 text-white" />
                       </div>
                     )}
@@ -281,7 +281,7 @@ export function TransferClass() {
                 disabled={!sourceClass}
                 className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${
                   sourceClass
-                    ? "bg-[#2563EB] text-white hover:bg-[#1D4ED8]"
+                    ? "bg-[#EA580C] text-white hover:bg-[#C2410C]"
                     : "bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed"
                 }`}
               >
@@ -301,7 +301,7 @@ export function TransferClass() {
               </h2>
               <p className="text-[#6B7280]">
                 Đã chọn:{" "}
-                <span className="font-bold text-[#2563EB]">
+                <span className="font-bold text-[#EA580C]">
                   {selectedStudents.length}
                 </span>{" "}
                 học sinh
@@ -320,7 +320,7 @@ export function TransferClass() {
                             e.target.checked ? mockStudents.map((s) => s.id) : []
                           )
                         }
-                        className="w-4 h-4 rounded border-2 border-[#D1D5DB] text-[#2563EB] focus:ring-2 focus:ring-[#2563EB] cursor-pointer"
+                        className="w-4 h-4 rounded border-2 border-[#D1D5DB] text-[#EA580C] focus:ring-2 focus:ring-[#EA580C] cursor-pointer"
                       />
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-[#6B7280] uppercase">
@@ -346,7 +346,7 @@ export function TransferClass() {
                       key={student.id}
                       className={`transition-colors ${
                         selectedStudents.includes(student.id)
-                          ? "bg-[#EFF6FF]"
+                          ? "bg-[#FFF7ED]"
                           : "hover:bg-[#F9FAFB]"
                       }`}
                     >
@@ -355,7 +355,7 @@ export function TransferClass() {
                           type="checkbox"
                           checked={selectedStudents.includes(student.id)}
                           onChange={() => toggleStudent(student.id)}
-                          className="w-4 h-4 rounded border-2 border-[#D1D5DB] text-[#2563EB] focus:ring-2 focus:ring-[#2563EB] cursor-pointer"
+                          className="w-4 h-4 rounded border-2 border-[#D1D5DB] text-[#EA580C] focus:ring-2 focus:ring-[#EA580C] cursor-pointer"
                         />
                       </td>
                       <td className="px-6 py-4 font-semibold text-[#111827]">
@@ -370,7 +370,7 @@ export function TransferClass() {
                       <td className="px-6 py-4 font-bold text-[#10B981]">
                         {student.avgScore}
                       </td>
-                      <td className="px-6 py-4 font-bold text-[#2563EB]">
+                      <td className="px-6 py-4 font-bold text-[#EA580C]">
                         {student.attendance}%
                       </td>
                     </tr>
@@ -391,7 +391,7 @@ export function TransferClass() {
                 disabled={selectedStudents.length === 0}
                 className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${
                   selectedStudents.length > 0
-                    ? "bg-[#2563EB] text-white hover:bg-[#1D4ED8]"
+                    ? "bg-[#EA580C] text-white hover:bg-[#C2410C]"
                     : "bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed"
                 }`}
               >
@@ -426,7 +426,7 @@ export function TransferClass() {
                           disabled={willExceed}
                           className={`p-6 border-2 rounded-xl text-left transition-all ${
                             destClass === classItem.id
-                              ? "border-[#2563EB] bg-[#EFF6FF] shadow-lg"
+                              ? "border-[#EA580C] bg-[#FFF7ED] shadow-lg"
                               : willExceed
                               ? "border-[#FEE2E2] bg-[#FEF2F2] cursor-not-allowed opacity-60"
                               : "border-[#E5E7EB] hover:border-[#D1D5DB]"
@@ -442,7 +442,7 @@ export function TransferClass() {
                               </p>
                             </div>
                             {destClass === classItem.id && (
-                              <div className="w-6 h-6 rounded-full bg-[#2563EB] flex items-center justify-center">
+                              <div className="w-6 h-6 rounded-full bg-[#EA580C] flex items-center justify-center">
                                 <Check className="w-4 h-4 text-white" />
                               </div>
                             )}
@@ -475,7 +475,7 @@ export function TransferClass() {
                       type="checkbox"
                       checked={keepEnrollDate}
                       onChange={(e) => setKeepEnrollDate(e.target.checked)}
-                      className="w-5 h-5 rounded border-2 border-[#D1D5DB] text-[#2563EB] focus:ring-2 focus:ring-[#2563EB] cursor-pointer"
+                      className="w-5 h-5 rounded border-2 border-[#D1D5DB] text-[#EA580C] focus:ring-2 focus:ring-[#EA580C] cursor-pointer"
                     />
                     <span className="text-sm font-medium text-[#374151]">
                       Giữ nguyên ngày nhập học
@@ -486,7 +486,7 @@ export function TransferClass() {
                       type="checkbox"
                       checked={transferGrades}
                       onChange={(e) => setTransferGrades(e.target.checked)}
-                      className="w-5 h-5 rounded border-2 border-[#D1D5DB] text-[#2563EB] focus:ring-2 focus:ring-[#2563EB] cursor-pointer"
+                      className="w-5 h-5 rounded border-2 border-[#D1D5DB] text-[#EA580C] focus:ring-2 focus:ring-[#EA580C] cursor-pointer"
                     />
                     <span className="text-sm font-medium text-[#374151]">
                       Chuyển điểm số và kết quả thi
@@ -497,7 +497,7 @@ export function TransferClass() {
                       type="checkbox"
                       checked={sendNotification}
                       onChange={(e) => setSendNotification(e.target.checked)}
-                      className="w-5 h-5 rounded border-2 border-[#D1D5DB] text-[#2563EB] focus:ring-2 focus:ring-[#2563EB] cursor-pointer"
+                      className="w-5 h-5 rounded border-2 border-[#D1D5DB] text-[#EA580C] focus:ring-2 focus:ring-[#EA580C] cursor-pointer"
                     />
                     <span className="text-sm font-medium text-[#374151]">
                       Gửi thông báo cho học sinh
@@ -512,7 +512,7 @@ export function TransferClass() {
                       onChange={(e) => setReason(e.target.value)}
                       placeholder="Nhập lý do chuyển lớp..."
                       rows={3}
-                      className="w-full px-4 py-3 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] resize-none"
+                      className="w-full px-4 py-3 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] resize-none"
                     />
                   </div>
                 </div>
@@ -533,11 +533,11 @@ export function TransferClass() {
                     </p>
                   </div>
                   <div className="flex justify-center">
-                    <ArrowLeftRight className="w-6 h-6 text-[#2563EB]" />
+                    <ArrowLeftRight className="w-6 h-6 text-[#EA580C]" />
                   </div>
-                  <div className="p-4 bg-[#EFF6FF] rounded-xl border border-[#2563EB]">
+                  <div className="p-4 bg-[#FFF7ED] rounded-xl border border-[#EA580C]">
                     <p className="text-xs text-[#6B7280] mb-1">Sang lớp</p>
-                    <p className="font-semibold text-[#2563EB]">
+                    <p className="font-semibold text-[#EA580C]">
                       {selectedDestClass?.name || "Chưa chọn"}
                     </p>
                   </div>
@@ -571,7 +571,7 @@ export function TransferClass() {
                 disabled={!destClass}
                 className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold transition-all ${
                   destClass
-                    ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white hover:shadow-xl hover:shadow-blue-500/30"
+                    ? "bg-gradient-to-r from-[#EA580C] to-[#C2410C] text-white hover:shadow-xl hover:shadow-orange-500/30"
                     : "bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed"
                 }`}
               >
@@ -618,7 +618,7 @@ export function TransferClass() {
                 type="checkbox"
                 checked={confirmChecked}
                 onChange={(e) => setConfirmChecked(e.target.checked)}
-                className="w-5 h-5 mt-0.5 rounded border-2 border-[#D1D5DB] text-[#2563EB] focus:ring-2 focus:ring-[#2563EB] cursor-pointer"
+                className="w-5 h-5 mt-0.5 rounded border-2 border-[#D1D5DB] text-[#EA580C] focus:ring-2 focus:ring-[#EA580C] cursor-pointer"
               />
               <span className="text-sm text-[#374151]">
                 Tôi hiểu và muốn tiếp tục chuyển lớp
@@ -639,7 +639,7 @@ export function TransferClass() {
                 disabled={!confirmChecked}
                 className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all ${
                   confirmChecked
-                    ? "bg-[#2563EB] text-white hover:bg-[#1D4ED8]"
+                    ? "bg-[#EA580C] text-white hover:bg-[#C2410C]"
                     : "bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed"
                 }`}
               >

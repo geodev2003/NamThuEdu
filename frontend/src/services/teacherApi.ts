@@ -1275,6 +1275,65 @@ export const teacherApi = {
   blogs: {},
   categories: {},
   reports: {},
+  
+  /**
+   * User Profile Module
+   */
+  user: {
+    /**
+     * Get current user profile
+     * @returns User profile data
+     */
+    async getProfile(): Promise<ApiResponse<any>> {
+      const response = await apiClient.get<ApiResponse<any>>('/user/profile');
+      return response.data;
+    },
+
+    /**
+     * Update user profile
+     * @param data - Profile data to update
+     * @returns Updated profile
+     */
+    async updateProfile(data: any): Promise<ApiResponse<any>> {
+      const response = await apiClient.put<ApiResponse<any>>('/user/profile', data);
+      return response.data;
+    },
+
+    /**
+     * Change password
+     * @param currentPassword - Current password
+     * @param newPassword - New password
+     * @param confirmPassword - Confirm new password
+     * @returns Success response
+     */
+    async changePassword(currentPassword: string, newPassword: string, confirmPassword: string): Promise<ApiResponse<any>> {
+      const response = await apiClient.post<ApiResponse<any>>('/user/change-password', {
+        current_password: currentPassword,
+        new_password: newPassword,
+        new_password_confirmation: confirmPassword,
+      });
+      return response.data;
+    },
+
+    /**
+     * Get active sessions
+     * @returns List of active sessions
+     */
+    async getSessions(): Promise<ApiResponse<any>> {
+      const response = await apiClient.get<ApiResponse<any>>('/user/sessions');
+      return response.data;
+    },
+
+    /**
+     * Logout from a specific session
+     * @param sessionId - Session ID to logout
+     * @returns Success response
+     */
+    async logoutSession(sessionId: string): Promise<ApiResponse<any>> {
+      const response = await apiClient.delete<ApiResponse<any>>(`/user/sessions/${sessionId}`);
+      return response.data;
+    },
+  },
 };
 
 export default teacherApi;

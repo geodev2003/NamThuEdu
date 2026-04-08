@@ -2,7 +2,20 @@ import { lazy, Suspense } from 'react';
 import { Navigate, RouteObject, useLocation } from 'react-router';
 import { ProtectedRoute } from '../../components/auth';
 import { StudentLayout } from '../layouts/StudentLayout';
+import { KidsLayout } from '../layouts/KidsLayout';
+import { TeensLayout } from '../layouts/TeensLayout';
+import { AdultsLayout } from '../layouts/AdultsLayout';
 import { UnderConstruction } from '../components/shared';
+import { StudentProtectedRoute } from './StudentProtectedRoute';
+import { WaitingForClass } from '../features/student/WaitingForClass';
+
+// ─── Age Group Dashboards ─────────────────────────────────────────────────────
+const KidsDashboard = lazy(() =>
+  import('../features/student/kids/KidsDashboard').then(m => ({ default: m.KidsDashboard })));
+const TeensDashboard = lazy(() =>
+  import('../features/student/teens/TeensDashboard').then(m => ({ default: m.TeensDashboard })));
+const AdultsDashboard = lazy(() =>
+  import('../features/student/adults/AdultsDashboard').then(m => ({ default: m.AdultsDashboard })));
 
 // ─── Existing pages ───────────────────────────────────────────────────────────
 const StudentDashboard = lazy(() =>
@@ -67,6 +80,39 @@ function ProtectedStudentLayout() {
   );
 }
 
+// Protected Kids Layout
+function ProtectedKidsLayout() {
+  return (
+    <ProtectedRoute requiredRole="student">
+      <StudentProtectedRoute ageGroup="kids">
+        <KidsLayout />
+      </StudentProtectedRoute>
+    </ProtectedRoute>
+  );
+}
+
+// Protected Teens Layout
+function ProtectedTeensLayout() {
+  return (
+    <ProtectedRoute requiredRole="student">
+      <StudentProtectedRoute ageGroup="teens">
+        <TeensLayout />
+      </StudentProtectedRoute>
+    </ProtectedRoute>
+  );
+}
+
+// Protected Adults Layout
+function ProtectedAdultsLayout() {
+  return (
+    <ProtectedRoute requiredRole="student">
+      <StudentProtectedRoute ageGroup="adults">
+        <AdultsLayout />
+      </StudentProtectedRoute>
+    </ProtectedRoute>
+  );
+}
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 export const studentRoutes: RouteObject = {
   path: '/hoc-vien',
@@ -76,6 +122,11 @@ export const studentRoutes: RouteObject = {
       index: true,
       element: <Suspense fallback={<LoadingFallback />}><StudentDashboard /></Suspense>,
     },
+    {
+      path: 'cho-xep-lop',
+      element: <WaitingForClass />,
+    },
+    // Legacy routes (shared functionality)
     {
       path: 'bai-tap',
       element: <Suspense fallback={<LoadingFallback />}><TestList /></Suspense>,
@@ -159,6 +210,118 @@ export const studentRoutes: RouteObject = {
     {
       path: '*',
       Component: UnderConstruction,
+    },
+  ],
+};
+
+// ─── KIDS ROUTES (6-12 tuổi) ─────────────────────────────────────────────────
+export const kidsRoutes: RouteObject = {
+  path: '/hoc-vien/kids',
+  element: <ProtectedKidsLayout />,
+  children: [
+    {
+      index: true,
+      element: <Suspense fallback={<LoadingFallback />}><KidsDashboard /></Suspense>,
+    },
+    {
+      path: 'hoc-bai',
+      element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
+    },
+    {
+      path: 'huy-hieu',
+      element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
+    },
+    {
+      path: 'thanh-tich',
+      element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
+    },
+    {
+      path: 'cai-dat',
+      element: <Suspense fallback={<LoadingFallback />}><Settings /></Suspense>,
+    },
+    {
+      path: '*',
+      element: <Navigate to="/hoc-vien/kids" replace />,
+    },
+  ],
+};
+
+// ─── TEENS ROUTES (13-17 tuổi) ───────────────────────────────────────────────
+export const teensRoutes: RouteObject = {
+  path: '/hoc-vien/teens',
+  element: <ProtectedTeensLayout />,
+  children: [
+    {
+      index: true,
+      element: <Suspense fallback={<LoadingFallback />}><TeensDashboard /></Suspense>,
+    },
+    {
+      path: 'lessons',
+      element: <Suspense fallback={<LoadingFallback />}><TestList /></Suspense>,
+    },
+    {
+      path: 'progress',
+      element: <Suspense fallback={<LoadingFallback />}><Progress /></Suspense>,
+    },
+    {
+      path: 'achievements',
+      element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
+    },
+    {
+      path: 'leaderboard',
+      element: <Suspense fallback={<LoadingFallback />}><StudentLeaderboard /></Suspense>,
+    },
+    {
+      path: 'notifications',
+      element: <Suspense fallback={<LoadingFallback />}><NotificationList /></Suspense>,
+    },
+    {
+      path: 'settings',
+      element: <Suspense fallback={<LoadingFallback />}><Settings /></Suspense>,
+    },
+    {
+      path: '*',
+      element: <Navigate to="/hoc-vien/teens" replace />,
+    },
+  ],
+};
+
+// ─── ADULTS ROUTES (18+ tuổi) ─────────────────────────────────────────────────
+export const adultsRoutes: RouteObject = {
+  path: '/hoc-vien/adults',
+  element: <ProtectedAdultsLayout />,
+  children: [
+    {
+      index: true,
+      element: <Suspense fallback={<LoadingFallback />}><AdultsDashboard /></Suspense>,
+    },
+    {
+      path: 'courses',
+      element: <Suspense fallback={<LoadingFallback />}><TestList /></Suspense>,
+    },
+    {
+      path: 'analytics',
+      element: <Suspense fallback={<LoadingFallback />}><Progress /></Suspense>,
+    },
+    {
+      path: 'goals',
+      element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
+    },
+    {
+      path: 'certifications',
+      element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
+    },
+    {
+      path: 'schedule',
+      element: <Suspense fallback={<LoadingFallback />}><StudentSchedule /></Suspense>,
+    },
+    {
+      path: 'settings',
+      element: <Suspense fallback={<LoadingFallback />}><Settings /></Suspense>,
+    },
+    {
+      path: '*',
+      element: <Navigate to="/hoc-vien/adults" replace />,
     },
   ],
 };

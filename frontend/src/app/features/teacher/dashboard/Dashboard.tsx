@@ -51,8 +51,8 @@ const fallbackActivities = [
     detail: "IELTS Reading Test",
     time: "2",
     timeUnit: "hoursAgo",
-    color: "#2563EB",
-    bg: "#EFF6FF",
+    color: "#EA580C",
+    bg: "#FFF7ED",
   },
   {
     id: 2,
@@ -60,8 +60,8 @@ const fallbackActivities = [
     detail: "Morning Class",
     time: "5",
     timeUnit: "hoursAgo",
-    color: "#10B981",
-    bg: "#F0FDF4",
+    color: "#F97316",
+    bg: "#FFEDD5",
   },
   {
     id: 3,
@@ -70,8 +70,8 @@ const fallbackActivities = [
     detailType: "submissions",
     time: "",
     timeUnit: "yesterday",
-    color: "#F59E0B",
-    bg: "#FFFBEB",
+    color: "#FB923C",
+    bg: "#FED7AA",
   },
   {
     id: 4,
@@ -79,8 +79,8 @@ const fallbackActivities = [
     detail: "Cambridge B2 Mock",
     time: "2",
     timeUnit: "daysAgo",
-    color: "#8B5CF6",
-    bg: "#F5F3FF",
+    color: "#C2410C",
+    bg: "#FFEDD5",
   },
 ];
 
@@ -184,9 +184,9 @@ export function Dashboard() {
       key: "courses",
       value: statsLoading ? "..." : (dashboardStats?.total_courses?.toString() || "0"),
       change: statsLoading ? "" : `+${dashboardStats?.new_courses_this_month || 0}`,
-      iconColor: "#2563EB",
-      iconBg: "#EFF6FF",
-      accent: "#2563EB",
+      iconColor: "#EA580C",
+      iconBg: "#FFF7ED",
+      accent: "#EA580C",
       delay: "0ms",
     },
     {
@@ -194,9 +194,9 @@ export function Dashboard() {
       key: "classes",
       value: statsLoading ? "..." : (dashboardStats?.total_classes?.toString() || "0"),
       change: statsLoading ? "" : `+${dashboardStats?.new_classes_this_month || 0}`,
-      iconColor: "#10B981",
-      iconBg: "#F0FDF4",
-      accent: "#10B981",
+      iconColor: "#F97316",
+      iconBg: "#FFEDD5",
+      accent: "#F97316",
       delay: "80ms",
     },
     {
@@ -204,9 +204,9 @@ export function Dashboard() {
       key: "students",
       value: statsLoading ? "..." : (dashboardStats?.total_students?.toString() || "0"),
       change: statsLoading ? "" : `+${dashboardStats?.new_students_this_month || 0}`,
-      iconColor: "#F59E0B",
-      iconBg: "#FFFBEB",
-      accent: "#F59E0B",
+      iconColor: "#FB923C",
+      iconBg: "#FED7AA",
+      accent: "#FB923C",
       delay: "160ms",
     },
     {
@@ -214,9 +214,9 @@ export function Dashboard() {
       key: "exams",
       value: statsLoading ? "..." : (dashboardStats?.total_exams?.toString() || "0"),
       change: statsLoading ? "" : `+${dashboardStats?.new_exams_this_month || 0}`,
-      iconColor: "#8B5CF6",
-      iconBg: "#F5F3FF",
-      accent: "#8B5CF6",
+      iconColor: "#C2410C",
+      iconBg: "#FFEDD5",
+      accent: "#C2410C",
       delay: "240ms",
     },
   ];
@@ -227,32 +227,32 @@ export function Dashboard() {
       titleKey: "dashboard.quickActions.createExam",
       descKey: "dashboard.quickActions.createExamDesc",
       href: "/giao-vien/de-thi/tao-moi",
-      color: "#2563EB",
-      bg: "from-[#EFF6FF] to-[#DBEAFE]",
+      color: "#EA580C",
+      bg: "from-[#FFF7ED] to-[#FFEDD5]",
     },
     {
       icon: GraduationCap,
       titleKey: "dashboard.quickActions.cambridgeTemplate",
       descKey: "dashboard.quickActions.cambridgeTemplateDesc",
       href: "/mau-de-cambridge",
-      color: "#10B981",
-      bg: "from-[#F0FDF4] to-[#D1FAE5]",
+      color: "#F97316",
+      bg: "from-[#FFEDD5] to-[#FED7AA]",
     },
     {
       icon: Send,
       titleKey: "dashboard.quickActions.assignTest",
       descKey: "dashboard.quickActions.assignTestDesc",
       href: "/bai-tap",
-      color: "#F59E0B",
-      bg: "from-[#FFFBEB] to-[#FEF3C7]",
+      color: "#FB923C",
+      bg: "from-[#FFF7ED] via-[#FFEDD5] to-[#FED7AA]",
     },
     {
       icon: BarChart2,
       titleKey: "dashboard.quickActions.viewReports",
       descKey: "dashboard.quickActions.viewReportsDesc",
       href: "/cham-diem",
-      color: "#8B5CF6",
-      bg: "from-[#F5F3FF] to-[#EDE9FE]",
+      color: "#C2410C",
+      bg: "from-white to-[#FFF7ED]",
     },
   ];
 
@@ -263,31 +263,58 @@ export function Dashboard() {
         action={{ label: t("header.new"), onClick: () => navigate("/giao-vien/de-thi/tao-moi") }}
       />
 
-      <div className="flex-1 overflow-y-auto" style={{ background: "#EEEEF3" }}>
+      <div className="flex-1 overflow-y-auto" style={{ background: "#F9FAFB" }}>
         {/* ── Hero Banner ── */}
         <div
           className="relative overflow-hidden"
           style={{
-            background: "linear-gradient(135deg, #1e3a8a 0%, #312e81 45%, #4c1d95 100%)",
+            background: "linear-gradient(135deg, #FB923C 0%, #FED7AA 50%, #FFEDD5 100%)",
           }}
         >
-          {/* Decorative geometry */}
-          <div
-            className="absolute inset-0 opacity-[0.04]"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-              backgroundSize: "28px 28px",
-            }}
-          />
-          <div
-            className="absolute -top-20 -right-20 w-80 h-80 rounded-full opacity-10"
-            style={{ background: "radial-gradient(circle, #a78bfa, transparent)" }}
-          />
-          <div
-            className="absolute -bottom-16 left-1/4 w-64 h-64 rounded-full opacity-10"
-            style={{ background: "radial-gradient(circle, #60a5fa, transparent)" }}
-          />
+          {/* SVG Topography Pattern */}
+          <div className="absolute inset-0 opacity-[0.06]">
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="topography" x="0" y="0" width="400" height="400" patternUnits="userSpaceOnUse">
+                  <path d="M0 200 Q 50 150, 100 200 T 200 200 T 300 200 T 400 200" stroke="white" strokeWidth="1.5" fill="none" opacity="0.3"/>
+                  <path d="M0 220 Q 50 170, 100 220 T 200 220 T 300 220 T 400 220" stroke="white" strokeWidth="1.5" fill="none" opacity="0.25"/>
+                  <path d="M0 240 Q 50 190, 100 240 T 200 240 T 300 240 T 400 240" stroke="white" strokeWidth="1.5" fill="none" opacity="0.2"/>
+                  <path d="M0 180 Q 50 130, 100 180 T 200 180 T 300 180 T 400 180" stroke="white" strokeWidth="1.5" fill="none" opacity="0.25"/>
+                  <path d="M0 160 Q 50 110, 100 160 T 200 160 T 300 160 T 400 160" stroke="white" strokeWidth="1.5" fill="none" opacity="0.2"/>
+                  
+                  <circle cx="100" cy="200" r="3" fill="white" opacity="0.4"/>
+                  <circle cx="200" cy="200" r="3" fill="white" opacity="0.4"/>
+                  <circle cx="300" cy="200" r="3" fill="white" opacity="0.4"/>
+                  <circle cx="150" cy="180" r="2" fill="white" opacity="0.3"/>
+                  <circle cx="250" cy="220" r="2" fill="white" opacity="0.3"/>
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#topography)"/>
+            </svg>
+          </div>
+          
+          {/* Floating geometric shapes */}
+          <div className="absolute top-10 right-20 w-32 h-32 opacity-[0.08]">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <polygon points="50,10 90,30 90,70 50,90 10,70 10,30" fill="white" opacity="0.6"/>
+              <polygon points="50,25 75,37.5 75,62.5 50,75 25,62.5 25,37.5" fill="none" stroke="white" strokeWidth="2"/>
+            </svg>
+          </div>
+          
+          <div className="absolute bottom-16 left-32 w-24 h-24 opacity-[0.08]">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="white" strokeWidth="2"/>
+              <circle cx="50" cy="50" r="30" fill="none" stroke="white" strokeWidth="2"/>
+              <circle cx="50" cy="50" r="20" fill="none" stroke="white" strokeWidth="2"/>
+            </svg>
+          </div>
+          
+          <div className="absolute top-1/2 right-1/3 w-20 h-20 opacity-[0.08]">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <rect x="10" y="10" width="80" height="80" fill="none" stroke="white" strokeWidth="2" transform="rotate(45 50 50)"/>
+              <rect x="25" y="25" width="50" height="50" fill="white" opacity="0.4" transform="rotate(45 50 50)"/>
+            </svg>
+          </div>
 
           <div className="relative px-8 pt-8 pb-20">
             <div className="flex items-start justify-between relative z-10">
@@ -299,25 +326,25 @@ export function Dashboard() {
                   transition: "opacity 500ms ease, transform 500ms ease",
                 }}
               >
-                <p className="text-white/50 text-sm mb-1">
+                <p className="text-orange-800/70 text-sm mb-1">
                   {greetingEmoji} {greeting}, thứ Tư, 18/03/2026
                 </p>
                 <h1
-                  className="text-white mb-5"
+                  className="text-orange-900 mb-5"
                   style={{ fontSize: "28px", fontWeight: 700, letterSpacing: "-0.5px" }}
                 >
                   {userName}! 👋
                 </h1>
                 <div className="flex items-center gap-3 flex-wrap">
-                  <span className="flex items-center gap-1.5 bg-white/10 text-white/80 text-xs px-3 py-1.5 rounded-full border border-white/10">
+                  <span className="flex items-center gap-1.5 bg-orange-600/10 text-orange-800 text-xs px-3 py-1.5 rounded-full border border-orange-300/30">
                     <Clock className="w-3.5 h-3.5" />
                     {statsLoading ? "..." : (dashboardStats?.classes_today || 0)} {t('teacher.dashboard.todayClasses')}
                   </span>
-                  <span className="flex items-center gap-1.5 bg-amber-400/20 text-amber-300 text-xs px-3 py-1.5 rounded-full border border-amber-400/20">
+                  <span className="flex items-center gap-1.5 bg-amber-400/15 text-amber-800 text-xs px-3 py-1.5 rounded-full border border-amber-400/30">
                     <AlertCircle className="w-3.5 h-3.5" />
                     {statsLoading ? "..." : (dashboardStats?.pending_grading || 0)} {t('teacher.dashboard.pendingGrading')}
                   </span>
-                  <span className="flex items-center gap-1.5 bg-emerald-400/20 text-emerald-300 text-xs px-3 py-1.5 rounded-full border border-emerald-400/20">
+                  <span className="flex items-center gap-1.5 bg-emerald-400/15 text-emerald-800 text-xs px-3 py-1.5 rounded-full border border-emerald-400/30">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     {statsLoading ? "..." : (dashboardStats?.deadlines_this_week || 0)} {t('teacher.dashboard.deadlinesThisWeek')}
                   </span>
@@ -327,7 +354,7 @@ export function Dashboard() {
               {/* Right: CTA */}
               <button
                 onClick={() => navigate("/giao-vien/de-thi/tao-moi")}
-                className="flex items-center gap-2 bg-white text-[#312e81] rounded-xl px-5 py-2.5 shadow-lg hover:bg-white/90 transition-all hover:scale-105 active:scale-95 mr-8"
+                className="flex items-center gap-2 bg-orange-600 text-white rounded-xl px-5 py-2.5 shadow-lg hover:bg-orange-700 hover:shadow-xl transition-all hover:scale-105 active:scale-95 mr-8"
                 style={{ fontSize: "14px", fontWeight: 600 }}
               >
                 <Zap className="w-4 h-4" />
@@ -427,12 +454,12 @@ export function Dashboard() {
                 <div className="flex items-center gap-2">
                   <div className="flex items-baseline gap-1.5">
                     <span
-                      className="text-[#2563EB]"
+                      className="text-orange-600"
                       style={{ fontSize: "28px", fontWeight: 800, lineHeight: "1" }}
                     >
                       {statsLoading ? "..." : `${dashboardStats?.average_score || 0}%`}
                     </span>
-                    <span className="text-[#10B981]" style={{ fontSize: "13px", fontWeight: 500 }}>
+                    <span className="text-emerald-500" style={{ fontSize: "13px", fontWeight: 500 }}>
                       ↑ {statsLoading ? "..." : `${dashboardStats?.score_improvement || 0}%`}
                     </span>
                   </div>
@@ -447,20 +474,20 @@ export function Dashboard() {
                   >
                     <defs>
                       <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#2563EB" stopOpacity={0.15} />
-                        <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#EA580C" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#EA580C" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="colorListening" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.12} />
-                        <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#F97316" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#F97316" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="colorReading" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.12} />
-                        <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#FB923C" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#FB923C" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="colorWriting" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.12} />
-                        <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#FDBA74" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#FDBA74" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid
@@ -497,10 +524,10 @@ export function Dashboard() {
                       type="monotone"
                       dataKey="average"
                       name={t("dashboard.charts.average")}
-                      stroke="#2563EB"
+                      stroke="#EA580C"
                       strokeWidth={2.5}
                       fill="url(#colorAvg)"
-                      dot={{ fill: "#2563EB", r: 4, strokeWidth: 0 }}
+                      dot={{ fill: "#EA580C", r: 4, strokeWidth: 0 }}
                       activeDot={{ r: 6, strokeWidth: 0 }}
                     />
                     <Area
@@ -508,10 +535,10 @@ export function Dashboard() {
                       type="monotone"
                       dataKey="listening"
                       name={t("dashboard.charts.listening")}
-                      stroke="#10B981"
+                      stroke="#F97316"
                       strokeWidth={2}
                       fill="url(#colorListening)"
-                      dot={{ fill: "#10B981", r: 3, strokeWidth: 0 }}
+                      dot={{ fill: "#F97316", r: 3, strokeWidth: 0 }}
                       activeDot={{ r: 5, strokeWidth: 0 }}
                     />
                     <Area
@@ -519,10 +546,10 @@ export function Dashboard() {
                       type="monotone"
                       dataKey="reading"
                       name={t("dashboard.charts.reading")}
-                      stroke="#F59E0B"
+                      stroke="#FB923C"
                       strokeWidth={2}
                       fill="url(#colorReading)"
-                      dot={{ fill: "#F59E0B", r: 3, strokeWidth: 0 }}
+                      dot={{ fill: "#FB923C", r: 3, strokeWidth: 0 }}
                       activeDot={{ r: 5, strokeWidth: 0 }}
                     />
                     <Area
@@ -530,10 +557,10 @@ export function Dashboard() {
                       type="monotone"
                       dataKey="writing"
                       name={t("dashboard.charts.writing")}
-                      stroke="#8B5CF6"
+                      stroke="#FDBA74"
                       strokeWidth={2}
                       fill="url(#colorWriting)"
-                      dot={{ fill: "#8B5CF6", r: 3, strokeWidth: 0 }}
+                      dot={{ fill: "#FDBA74", r: 3, strokeWidth: 0 }}
                       activeDot={{ r: 5, strokeWidth: 0 }}
                     />
                   </AreaChart>
@@ -558,8 +585,8 @@ export function Dashboard() {
                   {t("dashboard.recentActivity.title")}
                 </h3>
                 <button
-                  className="text-xs flex items-center gap-0.5 hover:opacity-70 transition-opacity"
-                  style={{ color: "#2563EB", fontWeight: 500 }}
+                  className="text-xs flex items-center gap-0.5 text-orange-600 hover:text-orange-700 transition-colors"
+                  style={{ fontWeight: 500 }}
                 >
                   {t("dashboard.recentActivity.viewAll")}
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -609,8 +636,8 @@ export function Dashboard() {
                   {t('teacher.dashboard.thisWeek')}
                 </span>
                 <span
-                  className="flex items-center gap-1"
-                  style={{ fontSize: "12px", color: "#10B981", fontWeight: 600 }}
+                  className="flex items-center gap-1 text-orange-600"
+                  style={{ fontSize: "12px", fontWeight: 600 }}
                 >
                   <TrendingUp className="w-3 h-3" />
                   {t('teacher.dashboard.goodActivity')}

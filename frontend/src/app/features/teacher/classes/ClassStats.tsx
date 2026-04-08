@@ -40,7 +40,7 @@ const keyMetrics = [
     change: 12.5,
     trend: "up",
     icon: School,
-    color: "#2563EB",
+    color: "#EA580C",
   },
   {
     label: "Tổng học sinh",
@@ -80,8 +80,8 @@ const enrollmentTrends = [
 const classPerformance = [
   { name: "IELTS 7.0 Morning", score: 8.2, color: "#10B981" },
   { name: "Cambridge FCE", score: 7.8, color: "#10B981" },
-  { name: "IELTS 6.5 Foundation", score: 7.2, color: "#2563EB" },
-  { name: "TOEIC 750+", score: 6.9, color: "#2563EB" },
+  { name: "IELTS 6.5 Foundation", score: 7.2, color: "#EA580C" },
+  { name: "TOEIC 750+", score: 6.9, color: "#EA580C" },
   { name: "VSTEP B2", score: 6.5, color: "#F59E0B" },
   { name: "TOEIC Basic", score: 5.8, color: "#EF4444" },
 ];
@@ -139,7 +139,7 @@ const insights = [
   {
     type: "info",
     icon: Users,
-    color: "#2563EB",
+    color: "#EA580C",
     text: "3 lớp cần bổ sung học sinh để đạt sĩ số tối ưu",
   },
 ];
@@ -155,9 +155,9 @@ export function ClassStats() {
       <div className="mb-8">
         <Link
           to="/giao-vien/lop-hoc"
-          className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#2563EB] mb-6 transition-colors group"
+          className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#EA580C] mb-6 transition-colors group"
         >
-          <div className="p-1.5 rounded-lg bg-white border border-[#E5E7EB] group-hover:border-[#2563EB] transition-colors">
+          <div className="p-1.5 rounded-lg bg-white border border-[#E5E7EB] group-hover:border-[#EA580C] transition-colors">
             <ArrowLeft className="w-4 h-4" />
           </div>
           <span className="text-sm font-medium">Quay lại danh sách lớp</span>
@@ -175,14 +175,14 @@ export function ClassStats() {
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
-              className="px-4 py-3 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] font-medium"
+              className="px-4 py-3 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] font-medium"
             >
               <option value="current-semester">Học kỳ hiện tại</option>
               <option value="last-month">30 ngày qua</option>
               <option value="last-quarter">3 tháng qua</option>
               <option value="last-year">Năm nay</option>
             </select>
-            <button className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white rounded-xl hover:shadow-xl hover:shadow-blue-500/30 font-semibold transition-all">
+            <button className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#EA580C] to-[#C2410C] text-white rounded-xl hover:shadow-xl hover:shadow-orange-500/30 font-semibold transition-all">
               <Download className="w-5 h-5" />
               Xuất báo cáo
             </button>
@@ -239,7 +239,7 @@ export function ClassStats() {
           </h2>
           <div className="flex items-center gap-2">
             <span className="text-sm text-[#6B7280]">Xếp theo:</span>
-            <select className="px-3 py-1.5 border border-[#E5E7EB] rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2563EB]">
+            <select className="px-3 py-1.5 border border-[#E5E7EB] rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#EA580C]">
               <option>Điểm TB</option>
               <option>Điểm danh</option>
               <option>Hoàn thành</option>
@@ -276,7 +276,7 @@ export function ClassStats() {
             <span className="text-sm text-[#6B7280]">Xuất sắc (&ge; 7.5)</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-[#2563EB]" />
+            <div className="w-4 h-4 rounded bg-[#EA580C]" />
             <span className="text-sm text-[#6B7280]">Tốt (6.5-7.4)</span>
           </div>
           <div className="flex items-center gap-2">
@@ -304,13 +304,13 @@ export function ClassStats() {
                   <stop
                     key="stop-enrollment-start"
                     offset="5%"
-                    stopColor="#2563EB"
+                    stopColor="#EA580C"
                     stopOpacity={0.3}
                   />
                   <stop
                     key="stop-enrollment-end"
                     offset="95%"
-                    stopColor="#2563EB"
+                    stopColor="#EA580C"
                     stopOpacity={0}
                   />
                 </linearGradient>
@@ -328,7 +328,7 @@ export function ClassStats() {
               <Area
                 type="monotone"
                 dataKey="students"
-                stroke="#2563EB"
+                stroke="#EA580C"
                 strokeWidth={3}
                 fillOpacity={1}
                 fill="url(#colorStudents2)"
@@ -354,12 +354,12 @@ export function ClassStats() {
                   borderRadius: "12px",
                 }}
               />
-              <Bar dataKey="count" fill="#2563EB" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="count" fill="#EA580C" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-          <div className="mt-4 p-4 bg-[#EFF6FF] rounded-xl">
+          <div className="mt-4 p-4 bg-[#FFF7ED] rounded-xl">
             <p className="text-sm text-[#6B7280]">
-              <span className="font-semibold text-[#2563EB]">
+              <span className="font-semibold text-[#EA580C]">
                 Sĩ số lý tưởng:
               </span>{" "}
               21-30 học sinh/lớp
@@ -442,7 +442,7 @@ export function ClassStats() {
                             expandedClass === classItem.id ? null : classItem.id
                           )
                         }
-                        className="flex items-center gap-2 font-semibold text-[#111827] hover:text-[#2563EB]"
+                        className="flex items-center gap-2 font-semibold text-[#111827] hover:text-[#EA580C]"
                       >
                         {expandedClass === classItem.id ? (
                           <ChevronUp className="w-5 h-5" />
@@ -464,7 +464,7 @@ export function ClassStats() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-lg font-bold text-[#2563EB]">
+                      <span className="text-lg font-bold text-[#EA580C]">
                         {classItem.attendance}%
                       </span>
                     </td>
@@ -477,11 +477,11 @@ export function ClassStats() {
                       <div className="flex items-center gap-2">
                         <Link
                           to={`/lop-hoc/${classItem.id}`}
-                          className="p-2 hover:bg-[#EFF6FF] rounded-lg transition-colors"
+                          className="p-2 hover:bg-[#FFF7ED] rounded-lg transition-colors"
                         >
-                          <Eye className="w-5 h-5 text-[#2563EB]" />
+                          <Eye className="w-5 h-5 text-[#EA580C]" />
                         </Link>
-                        <button className="p-2 hover:bg-[#EFF6FF] rounded-lg transition-colors">
+                        <button className="p-2 hover:bg-[#FFF7ED] rounded-lg transition-colors">
                           <FileText className="w-5 h-5 text-[#6B7280]" />
                         </button>
                       </div>

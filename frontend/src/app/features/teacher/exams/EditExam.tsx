@@ -5,7 +5,7 @@ export function EditExam() {
   const { examId } = useParams();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50/30 via-amber-50/20 to-orange-50/10">
       <div className="bg-white border-b border-gray-200">
         <div className="px-8 py-6">
           <div className="flex items-center gap-4 mb-6">
@@ -15,9 +15,9 @@ export function EditExam() {
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Chỉnh sửa đề thi</h1>
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Link to="/giao-vien" className="hover:text-blue-600">Dashboard</Link>
+                <Link to="/giao-vien" className="hover:text-orange-600">Dashboard</Link>
                 <span>/</span>
-                <Link to="/giao-vien/de-thi/cua-toi" className="hover:text-blue-600 transition-colors">
+                <Link to="/giao-vien/de-thi/cua-toi" className="hover:text-orange-600 transition-colors">
                   Đề thi của tôi
                 </Link>
                 <span>/</span>
@@ -29,7 +29,7 @@ export function EditExam() {
                 <Eye className="w-4 h-4" />
                 Xem trước
               </button>
-              <button className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all flex items-center gap-2 font-medium shadow-lg shadow-blue-500/30">
+              <button className="px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all flex items-center gap-2 font-medium shadow-lg shadow-orange-500/30">
                 <Save className="w-4 h-4" />
                 Lưu thay đổi
               </button>
@@ -53,3 +53,5 @@ export function EditExam() {
     </div>
   );
 }
+
+

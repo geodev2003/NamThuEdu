@@ -30,10 +30,10 @@ type TabType = "list" | "stats" | "export";
 
 // Mock Data
 const studentStats = [
-  { label: "Tổng học sinh", value: 1248, change: 12.5, trend: "up", icon: Users, color: "#2563EB" },
-  { label: "Đang học", value: 1156, change: 8.2, trend: "up", icon: UserCheck, color: "#10B981" },
-  { label: "Tạm nghỉ", value: 92, change: -3.1, trend: "down", icon: UserX, color: "#6B7280" },
-  { label: "Mới tháng này", value: 45, change: 15.3, trend: "up", icon: Calendar, color: "#2563EB" },
+  { label: "Tổng học sinh", value: 1248, change: 12.5, trend: "up", icon: Users, color: "#EA580C" },
+  { label: "Đang học", value: 1156, change: 8.2, trend: "up", icon: UserCheck, color: "#F97316" },
+  { label: "Tạm nghỉ", value: 92, change: -3.1, trend: "down", icon: UserX, color: "#FB923C" },
+  { label: "Mới tháng này", value: 45, change: 15.3, trend: "up", icon: Calendar, color: "#FDBA74" },
 ];
 
 const mockStudents = [
@@ -54,11 +54,11 @@ const enrollmentData = [
 ];
 
 const classDistribution = [
-  { name: "IELTS", value: 485, color: "#2563EB" },
-  { name: "TOEIC", value: 312, color: "#10B981" },
-  { name: "Cambridge", value: 218, color: "#F59E0B" },
-  { name: "VSTEP", value: 156, color: "#8B5CF6" },
-  { name: "Khác", value: 77, color: "#6B7280" },
+  { name: "IELTS", value: 485, color: "#EA580C" },
+  { name: "TOEIC", value: 312, color: "#F97316" },
+  { name: "Cambridge", value: 218, color: "#FB923C" },
+  { name: "VSTEP", value: 156, color: "#FDBA74" },
+  { name: "Khác", value: 77, color: "#FED7AA" },
 ];
 
 const topStudents = [
@@ -114,7 +114,7 @@ export function StudentManagement() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#2563EB] text-white rounded-lg hover:bg-[#1D4ED8] transition-colors font-medium"
+              className="flex items-center gap-2 px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium"
             >
               <UserPlus className="w-5 h-5" />
               Thêm học sinh
@@ -139,8 +139,8 @@ export function StudentManagement() {
                 onClick={() => setActiveTab(tab.id)}
                 className="flex items-center gap-2 px-6 py-3 font-medium text-sm transition-all relative"
                 style={{
-                  color: isActive ? "#2563EB" : "#6B7280",
-                  borderBottom: isActive ? "2px solid #2563EB" : "2px solid transparent",
+                  color: isActive ? "#EA580C" : "#6B7280",
+                  borderBottom: isActive ? "2px solid #EA580C" : "2px solid transparent",
                 }}
               >
                 <Icon className="w-4 h-4" />
@@ -195,20 +195,20 @@ export function StudentManagement() {
                   placeholder="Tìm theo tên, SĐT, email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 />
               </div>
-              <select className="px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]">
+              <select className="px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                 <option>Tất cả lớp</option>
                 <option>IELTS 6.5</option>
                 <option>TOEIC 750</option>
               </select>
-              <select className="px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]">
+              <select className="px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                 <option>Tất cả trạng thái</option>
                 <option>Đang học</option>
                 <option>Tạm nghỉ</option>
               </select>
-              <button className="px-4 py-2.5 bg-[#2563EB] text-white rounded-lg hover:bg-[#1D4ED8] transition-colors font-medium flex items-center gap-2">
+              <button className="px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium flex items-center gap-2">
                 <Filter className="w-4 h-4" />
                 Lọc
               </button>
@@ -311,7 +311,7 @@ export function StudentManagement() {
                 <button className="px-3 py-1.5 border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] text-sm font-medium text-[#6B7280]">
                   Trước
                 </button>
-                <button className="px-3 py-1.5 bg-[#2563EB] text-white rounded-lg text-sm font-medium">
+                <button className="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium">
                   1
                 </button>
                 <button className="px-3 py-1.5 border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] text-sm font-medium text-[#6B7280]">
@@ -363,8 +363,8 @@ export function StudentManagement() {
               <AreaChart data={enrollmentData}>
                 <defs>
                   <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
-                    <stop key="stop-1" offset="5%" stopColor="#2563EB" stopOpacity={0.3} />
-                    <stop key="stop-2" offset="95%" stopColor="#2563EB" stopOpacity={0} />
+                    <stop key="stop-1" offset="5%" stopColor="#EA580C" stopOpacity={0.3} />
+                    <stop key="stop-2" offset="95%" stopColor="#EA580C" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -374,7 +374,7 @@ export function StudentManagement() {
                 <Area
                   type="monotone"
                   dataKey="students"
-                  stroke="#2563EB"
+                  stroke="#EA580C"
                   strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#colorStudents)"
@@ -437,7 +437,7 @@ export function StudentManagement() {
               <h3 className="text-lg font-bold text-[#111827]">
                 Học sinh xuất sắc
               </h3>
-              <button className="text-sm text-[#2563EB] font-medium hover:underline">
+              <button className="text-sm text-orange-600 font-medium hover:underline">
                 Xem tất cả
               </button>
             </div>
@@ -526,10 +526,10 @@ export function StudentManagement() {
                     <button
                       key={format.id}
                       onClick={() => setSelectedFormat(format.id)}
-                      className="relative p-4 border-2 rounded-xl hover:border-[#2563EB] transition-all"
+                      className="relative p-4 border-2 rounded-xl hover:border-orange-600 transition-all"
                       style={{
-                        borderColor: isSelected ? "#2563EB" : "#E5E7EB",
-                        backgroundColor: isSelected ? "#EFF6FF" : "#FFF",
+                        borderColor: isSelected ? "#EA580C" : "#E5E7EB",
+                        backgroundColor: isSelected ? "#FFF7ED" : "#FFF",
                       }}
                     >
                       {format.recommended && (
@@ -537,8 +537,8 @@ export function StudentManagement() {
                           Đề xuất
                         </span>
                       )}
-                      <Icon className="w-8 h-8 mx-auto mb-2" style={{ color: isSelected ? "#2563EB" : "#6B7280" }} />
-                      <p className="text-sm font-medium" style={{ color: isSelected ? "#2563EB" : "#374151" }}>
+                      <Icon className="w-8 h-8 mx-auto mb-2" style={{ color: isSelected ? "#EA580C" : "#6B7280" }} />
+                      <p className="text-sm font-medium" style={{ color: isSelected ? "#EA580C" : "#374151" }}>
                         {format.label}
                       </p>
                     </button>
@@ -553,7 +553,7 @@ export function StudentManagement() {
                 <h3 className="text-lg font-bold text-[#111827]">
                   Chọn dữ liệu
                 </h3>
-                <button className="text-sm text-[#2563EB] font-medium hover:underline">
+                <button className="text-sm text-orange-600 font-medium hover:underline">
                   Chọn tất cả
                 </button>
               </div>
@@ -572,7 +572,7 @@ export function StudentManagement() {
                     <input
                       type="checkbox"
                       defaultChecked={item.checked}
-                      className="w-4 h-4 rounded border-2 border-[#D1D5DB] text-[#2563EB] focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-1 cursor-pointer transition-all hover:border-[#2563EB]"
+                      className="w-4 h-4 rounded border-2 border-[#D1D5DB] text-orange-600 focus:ring-2 focus:ring-orange-500 focus:ring-offset-1 cursor-pointer transition-all hover:border-orange-600"
                     />
                     <span className="text-sm text-[#374151]">{item.label}</span>
                   </label>
@@ -588,7 +588,7 @@ export function StudentManagement() {
                   <label className="block text-sm font-medium text-[#374151] mb-2">
                     Lớp học
                   </label>
-                  <select className="w-full px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]">
+                  <select className="w-full px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                     <option>Tất cả lớp</option>
                     <option>IELTS 6.5</option>
                     <option>TOEIC 750</option>
@@ -598,7 +598,7 @@ export function StudentManagement() {
                   <label className="block text-sm font-medium text-[#374151] mb-2">
                     Trạng thái
                   </label>
-                  <select className="w-full px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]">
+                  <select className="w-full px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                     <option>Tất cả trạng thái</option>
                     <option>Đang học</option>
                     <option>Tạm nghỉ</option>
@@ -614,13 +614,13 @@ export function StudentManagement() {
                   <p className="text-sm font-medium text-[#374151] mb-1">
                     Số lượng học sinh sẽ được xuất
                   </p>
-                  <p className="text-2xl font-bold text-[#2563EB]">1,248</p>
+                  <p className="text-2xl font-bold text-orange-600">1,248</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-[#374151] mb-1">
                     Dung lượng file dự kiến
                   </p>
-                  <p className="text-2xl font-bold text-[#10B981]">2.4 MB</p>
+                  <p className="text-2xl font-bold text-emerald-600">2.4 MB</p>
                 </div>
               </div>
             </div>
@@ -634,7 +634,7 @@ export function StudentManagement() {
                 <button className="px-6 py-2.5 border border-[#E5E7EB] text-[#374151] rounded-lg hover:bg-[#F9FAFB] transition-colors font-medium">
                   Xem trước
                 </button>
-                <button className="flex items-center gap-2 px-6 py-2.5 bg-[#2563EB] text-white rounded-lg hover:bg-[#1D4ED8] transition-colors font-medium">
+                <button className="flex items-center gap-2 px-6 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium">
                   <Download className="w-5 h-5" />
                   Xuất dữ liệu
                 </button>

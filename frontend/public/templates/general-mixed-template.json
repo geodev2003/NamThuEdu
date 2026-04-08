@@ -1,0 +1,129 @@
+{
+  "exam_info": {
+    "title": "General English Test - Mixed Skills",
+    "description": "Template mẫu cho đề thi tổng hợp các kỹ năng",
+    "type": "GENERAL",
+    "skill": "mixed",
+    "duration_minutes": 90,
+    "instructions": "Hướng dẫn sử dụng template:\n1. Copy nội dung file này\n2. Chỉnh sửa câu hỏi theo nhu cầu\n3. Có thể thêm/bớt câu hỏi\n4. Import vào hệ thống"
+  },
+  "questions": [
+    {
+      "content": "Choose the correct answer: She _____ to the store yesterday.",
+      "type": "multiple_choice",
+      "skill": "grammar",
+      "part": 1,
+      "points": 1,
+      "answers": [
+        {
+          "content": "go",
+          "is_correct": false
+        },
+        {
+          "content": "goes",
+          "is_correct": false
+        },
+        {
+          "content": "went",
+          "is_correct": true
+        },
+        {
+          "content": "going",
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "content": "Fill in the blank: I have been living here _____ 2020.",
+      "type": "fill_blank",
+      "skill": "grammar",
+      "part": 1,
+      "points": 1,
+      "answers": [
+        {
+          "content": "since",
+          "is_correct": true
+        }
+      ]
+    },
+    {
+      "content": "What does the word 'benevolent' mean?",
+      "type": "multiple_choice",
+      "skill": "vocabulary",
+      "part": 2,
+      "points": 1,
+      "answers": [
+        {
+          "content": "Kind and generous",
+          "is_correct": true
+        },
+        {
+          "content": "Cruel and harsh",
+          "is_correct": false
+        },
+        {
+          "content": "Lazy and unmotivated",
+          "is_correct": false
+        },
+        {
+          "content": "Smart and clever",
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "content": "Read the passage and answer: What is the author's main argument?\n\nPassage: Technology has revolutionized education. Online learning platforms provide access to quality education for millions of students worldwide. However, we must ensure that technology enhances rather than replaces traditional teaching methods.",
+      "type": "multiple_choice",
+      "skill": "reading",
+      "part": 3,
+      "points": 2,
+      "passage_text": "Technology has revolutionized education. Online learning platforms provide access to quality education for millions of students worldwide. However, we must ensure that technology enhances rather than replaces traditional teaching methods.",
+      "answers": [
+        {
+          "content": "Technology should replace traditional teaching",
+          "is_correct": false
+        },
+        {
+          "content": "Technology should enhance, not replace, traditional teaching",
+          "is_correct": true
+        },
+        {
+          "content": "Online learning is better than classroom learning",
+          "is_correct": false
+        },
+        {
+          "content": "Traditional teaching is outdated",
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "content": "Listen to the audio and answer: What is the speaker's opinion about climate change?",
+      "type": "multiple_choice",
+      "skill": "listening",
+      "part": 4,
+      "points": 2,
+      "audio_url": "audio/climate-opinion.mp3",
+      "play_limit": 2,
+      "transcript": "Climate change is the most critical issue of our time. We must take immediate action to reduce carbon emissions and protect our planet for future generations.",
+      "answers": [
+        {
+          "content": "It's not a serious issue",
+          "is_correct": false
+        },
+        {
+          "content": "It requires immediate action",
+          "is_correct": true
+        },
+        {
+          "content": "It's too late to do anything",
+          "is_correct": false
+        },
+        {
+          "content": "It's a natural phenomenon",
+          "is_correct": false
+        }
+      ]
+    }
+  ]
+}

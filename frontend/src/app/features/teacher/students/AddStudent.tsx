@@ -65,9 +65,9 @@ export function AddStudent() {
       <div className="mb-8">
         <Link
           to="/giao-vien/students"
-          className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#2563EB] mb-6 transition-colors group"
+          className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#EA580C] mb-6 transition-colors group"
         >
-          <div className="p-1.5 rounded-lg bg-white border border-[#E5E7EB] group-hover:border-[#2563EB] transition-colors">
+          <div className="p-1.5 rounded-lg bg-white border border-[#E5E7EB] group-hover:border-[#EA580C] transition-colors">
             <ArrowLeft className="w-4 h-4" />
           </div>
           <span className="text-sm font-medium">Quay lại danh sách</span>
@@ -92,7 +92,7 @@ export function AddStudent() {
             return (
               <div key={step.id} className="flex items-center flex-1">
                 <div className="flex flex-col items-center flex-1">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] text-white shadow-lg shadow-blue-500/20 mb-3">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#EA580C] to-[#C2410C] text-white shadow-lg shadow-orange-500/20 mb-3">
                     <Icon className="w-5 h-5" />
                   </div>
                   <span className="text-sm font-medium text-[#111827]">
@@ -100,7 +100,7 @@ export function AddStudent() {
                   </span>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className="flex-1 h-0.5 bg-gradient-to-r from-[#2563EB] to-[#93C5FD] mx-4 mb-8" />
+                  <div className="flex-1 h-0.5 bg-gradient-to-r from-[#EA580C] to-[#FDBA74] mx-4 mb-8" />
                 )}
               </div>
             );
@@ -112,8 +112,8 @@ export function AddStudent() {
         {/* Section 1: Personal Information */}
         <div className="bg-white rounded-2xl p-8 border border-[#E5E7EB] shadow-sm hover:shadow-md transition-shadow mb-6">
           <div className="flex items-center gap-3 mb-8 pb-6 border-b border-[#F3F4F6]">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE]">
-              <User className="w-6 h-6 text-[#2563EB]" />
+            <div className="p-3 rounded-xl bg-gradient-to-br from-[#FFF7ED] to-[#FFEDD5]">
+              <User className="w-6 h-6 text-[#EA580C]" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-[#111827]">
@@ -129,15 +129,15 @@ export function AddStudent() {
           <div className="flex items-start gap-8 mb-8 pb-8 border-b border-[#F3F4F6]">
             <div className="flex flex-col items-center">
               <div className="relative group">
-                <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-[#F3F4F6] to-[#E5E7EB] border-2 border-dashed border-[#D1D5DB] flex items-center justify-center group-hover:border-[#2563EB] transition-all cursor-pointer overflow-hidden">
-                  <Camera className="w-10 h-10 text-[#9CA3AF] group-hover:text-[#2563EB] transition-colors" />
+                <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-[#F3F4F6] to-[#E5E7EB] border-2 border-dashed border-[#D1D5DB] flex items-center justify-center group-hover:border-[#EA580C] transition-all cursor-pointer overflow-hidden">
+                  <Camera className="w-10 h-10 text-[#9CA3AF] group-hover:text-[#EA580C] transition-colors" />
                   <input
                     type="file"
                     accept="image/*"
                     className="absolute inset-0 opacity-0 cursor-pointer"
                   />
                 </div>
-                <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-[#2563EB] flex items-center justify-center shadow-lg">
+                <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-[#EA580C] flex items-center justify-center shadow-lg">
                   <Upload className="w-5 h-5 text-white" />
                 </div>
               </div>
@@ -160,7 +160,7 @@ export function AddStudent() {
                   value={formData.fullName}
                   onChange={(e) => handleInputChange("fullName", e.target.value)}
                   placeholder="Nhập họ và tên đầy đủ"
-                  className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
+                  className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
                 />
               </div>
 
@@ -175,7 +175,7 @@ export function AddStudent() {
                   value={formData.phone}
                   onChange={(e) => handleInputChange("phone", e.target.value)}
                   placeholder="0901 234 567"
-                  className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
+                  className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
                 />
               </div>
 
@@ -189,7 +189,7 @@ export function AddStudent() {
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   placeholder="hocsinh@email.com"
-                  className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
+                  className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
                 />
               </div>
             </div>
@@ -205,7 +205,7 @@ export function AddStudent() {
                 type="date"
                 value={formData.dob}
                 onChange={(e) => handleInputChange("dob", e.target.value)}
-                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all text-[#111827] hover:border-[#D1D5DB]"
+                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] hover:border-[#D1D5DB]"
               />
             </div>
 
@@ -230,10 +230,10 @@ export function AddStudent() {
                         value={option.value}
                         checked={formData.gender === option.value}
                         onChange={(e) => handleInputChange("gender", e.target.value)}
-                        className="w-5 h-5 text-[#2563EB] border-2 border-[#D1D5DB] focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 cursor-pointer"
+                        className="w-5 h-5 text-[#EA580C] border-2 border-[#D1D5DB] focus:ring-2 focus:ring-[#EA580C] focus:ring-offset-2 cursor-pointer"
                       />
                     </div>
-                    <span className="text-sm font-medium text-[#374151] group-hover:text-[#2563EB] transition-colors">
+                    <span className="text-sm font-medium text-[#374151] group-hover:text-[#EA580C] transition-colors">
                       {option.label}
                     </span>
                   </label>
@@ -251,7 +251,7 @@ export function AddStudent() {
                 onChange={(e) => handleInputChange("address", e.target.value)}
                 placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
                 rows={3}
-                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent resize-none transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
+                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent resize-none transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
               />
             </div>
           </div>
@@ -280,16 +280,16 @@ export function AddStudent() {
               </label>
               <select
                 multiple
-                className="w-full px-4 py-3 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all text-[#111827] hover:border-[#D1D5DB]"
+                className="w-full px-4 py-3 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] hover:border-[#D1D5DB]"
                 style={{ minHeight: "140px" }}
               >
-                <option className="py-2 hover:bg-[#EFF6FF]">IELTS 6.5 - Sáng (T2, T4, T6)</option>
-                <option className="py-2 hover:bg-[#EFF6FF]">TOEIC 750 - Chiều (T3, T5, T7)</option>
-                <option className="py-2 hover:bg-[#EFF6FF]">Cambridge FCE - Tối (T2, T4)</option>
-                <option className="py-2 hover:bg-[#EFF6FF]">VSTEP B2 - Cuối tuần (T7, CN)</option>
+                <option className="py-2 hover:bg-[#FFF7ED]">IELTS 6.5 - Sáng (T2, T4, T6)</option>
+                <option className="py-2 hover:bg-[#FFF7ED]">TOEIC 750 - Chiều (T3, T5, T7)</option>
+                <option className="py-2 hover:bg-[#FFF7ED]">Cambridge FCE - Tối (T2, T4)</option>
+                <option className="py-2 hover:bg-[#FFF7ED]">VSTEP B2 - Cuối tuần (T7, CN)</option>
               </select>
               <div className="flex items-center gap-2 mt-2 text-xs text-[#6B7280] bg-[#F9FAFB] px-3 py-2 rounded-lg">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#2563EB]" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[#EA580C]" />
                 Giữ Ctrl/Cmd để chọn nhiều lớp
               </div>
             </div>
@@ -300,18 +300,18 @@ export function AddStudent() {
               </label>
               <select
                 multiple
-                className="w-full px-4 py-3 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all text-[#111827] hover:border-[#D1D5DB]"
+                className="w-full px-4 py-3 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] hover:border-[#D1D5DB]"
                 style={{ minHeight: "140px" }}
               >
-                <option className="py-2 hover:bg-[#F0FDF4]">IELTS Foundation</option>
-                <option className="py-2 hover:bg-[#F0FDF4]">IELTS Intermediate</option>
-                <option className="py-2 hover:bg-[#F0FDF4]">TOEIC Basic</option>
-                <option className="py-2 hover:bg-[#F0FDF4]">TOEIC Advanced</option>
-                <option className="py-2 hover:bg-[#F0FDF4]">Cambridge FCE</option>
-                <option className="py-2 hover:bg-[#F0FDF4]">VSTEP B2</option>
+                <option className="py-2 hover:bg-[#FFF7ED]">IELTS Foundation</option>
+                <option className="py-2 hover:bg-[#FFF7ED]">IELTS Intermediate</option>
+                <option className="py-2 hover:bg-[#FFF7ED]">TOEIC Basic</option>
+                <option className="py-2 hover:bg-[#FFF7ED]">TOEIC Advanced</option>
+                <option className="py-2 hover:bg-[#FFF7ED]">Cambridge FCE</option>
+                <option className="py-2 hover:bg-[#FFF7ED]">VSTEP B2</option>
               </select>
               <div className="flex items-center gap-2 mt-2 text-xs text-[#6B7280] bg-[#F9FAFB] px-3 py-2 rounded-lg">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[#EA580C]" />
                 Giữ Ctrl/Cmd để chọn nhiều khóa
               </div>
             </div>
@@ -329,15 +329,15 @@ export function AddStudent() {
                     readOnly
                     className="w-full px-4 py-3.5 bg-gradient-to-r from-[#F9FAFB] to-[#F3F4F6] border border-[#E5E7EB] rounded-xl text-[#6B7280] font-mono font-semibold"
                   />
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-0.5 bg-[#DBEAFE] text-[#2563EB] text-xs font-bold rounded">
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-0.5 bg-[#FFEDD5] text-[#EA580C] text-xs font-bold rounded">
                     AUTO
                   </div>
                 </div>
                 <button
                   type="button"
-                  className="p-3.5 border border-[#E5E7EB] rounded-xl hover:bg-[#EFF6FF] hover:border-[#2563EB] transition-all group"
+                  className="p-3.5 border border-[#E5E7EB] rounded-xl hover:bg-[#FFF7ED] hover:border-[#EA580C] transition-all group"
                 >
-                  <RefreshCw className="w-5 h-5 text-[#6B7280] group-hover:text-[#2563EB] group-hover:rotate-180 transition-all duration-500" />
+                  <RefreshCw className="w-5 h-5 text-[#6B7280] group-hover:text-[#EA580C] group-hover:rotate-180 transition-all duration-500" />
                 </button>
               </div>
               <p className="text-xs text-[#6B7280] mt-2 flex items-center gap-1.5">
@@ -356,7 +356,7 @@ export function AddStudent() {
                 onChange={(e) => handleInputChange("notes", e.target.value)}
                 placeholder="Thêm ghi chú về học sinh: năng lực, mục tiêu học tập, lưu ý đặc biệt..."
                 rows={4}
-                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent resize-none transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
+                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent resize-none transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
               />
             </div>
           </div>
@@ -379,19 +379,19 @@ export function AddStudent() {
           </div>
 
           <div className="space-y-6">
-            <label className="flex items-start gap-4 p-5 bg-gradient-to-r from-[#EFF6FF] to-[#DBEAFE] border-2 border-[#93C5FD] rounded-xl cursor-pointer hover:shadow-md transition-all group">
+            <label className="flex items-start gap-4 p-5 bg-gradient-to-r from-[#FFF7ED] to-[#FFEDD5] border-2 border-[#FDBA74] rounded-xl cursor-pointer hover:shadow-md transition-all group">
               <input
                 type="checkbox"
                 checked={autoPassword}
                 onChange={(e) => setAutoPassword(e.target.checked)}
-                className="w-5 h-5 mt-0.5 rounded border-2 border-[#2563EB] text-[#2563EB] focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 cursor-pointer"
+                className="w-5 h-5 mt-0.5 rounded border-2 border-[#EA580C] text-[#EA580C] focus:ring-2 focus:ring-[#EA580C] focus:ring-offset-2 cursor-pointer"
               />
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <p className="font-bold text-[#1E40AF]">
+                  <p className="font-bold text-[#C2410C]">
                     Tự động tạo mật khẩu
                   </p>
-                  <span className="px-2 py-0.5 bg-[#2563EB] text-white text-xs font-bold rounded-full">
+                  <span className="px-2 py-0.5 bg-[#EA580C] text-white text-xs font-bold rounded-full">
                     Khuyến nghị
                   </span>
                 </div>
@@ -414,12 +414,12 @@ export function AddStudent() {
                       value={formData.password}
                       onChange={(e) => handleInputChange("password", e.target.value)}
                       placeholder="Nhập mật khẩu mạnh"
-                      className="w-full px-4 py-3.5 pr-12 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all bg-white"
+                      className="w-full px-4 py-3.5 pr-12 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all bg-white"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#2563EB] transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#EA580C] transition-colors"
                     >
                       {showPassword ? (
                         <EyeOff className="w-5 h-5" />
@@ -453,21 +453,21 @@ export function AddStudent() {
                       handleInputChange("confirmPassword", e.target.value)
                     }
                     placeholder="Nhập lại mật khẩu"
-                    className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all bg-white"
+                    className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all bg-white"
                   />
                 </div>
               </div>
             )}
 
-            <label className="flex items-center gap-3 p-4 border-2 border-[#E5E7EB] rounded-xl cursor-pointer hover:border-[#2563EB] hover:bg-[#F9FAFB] transition-all group">
+            <label className="flex items-center gap-3 p-4 border-2 border-[#E5E7EB] rounded-xl cursor-pointer hover:border-[#EA580C] hover:bg-[#F9FAFB] transition-all group">
               <input
                 type="checkbox"
                 checked={formData.sendSMS}
                 onChange={(e) => handleInputChange("sendSMS", e.target.checked)}
-                className="w-5 h-5 rounded border-2 border-[#D1D5DB] text-[#2563EB] focus:ring-2 focus:ring-[#2563EB] cursor-pointer"
+                className="w-5 h-5 rounded border-2 border-[#D1D5DB] text-[#EA580C] focus:ring-2 focus:ring-[#EA580C] cursor-pointer"
               />
-              <Phone className="w-5 h-5 text-[#6B7280] group-hover:text-[#2563EB] transition-colors" />
-              <span className="text-sm font-medium text-[#374151] group-hover:text-[#2563EB] transition-colors">
+              <Phone className="w-5 h-5 text-[#6B7280] group-hover:text-[#EA580C] transition-colors" />
+              <span className="text-sm font-medium text-[#374151] group-hover:text-[#EA580C] transition-colors">
                 Gửi thông tin tài khoản qua SMS
               </span>
             </label>
@@ -532,7 +532,7 @@ export function AddStudent() {
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white rounded-xl hover:shadow-xl hover:shadow-blue-500/30 hover:scale-105 transition-all font-bold"
+              className="flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#EA580C] to-[#C2410C] text-white rounded-xl hover:shadow-xl hover:shadow-orange-500/30 hover:scale-105 transition-all font-bold"
             >
               <Save className="w-5 h-5" />
               Thêm học sinh

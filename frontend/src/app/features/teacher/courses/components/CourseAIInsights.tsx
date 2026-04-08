@@ -188,3 +188,4 @@ export function CourseAIInsights() {
     </div>
   );
 }
+

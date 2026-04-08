@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Login - NamThu Education</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #f97316;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        button {
+            background: linear-gradient(to right, #f97316, #fb923c);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 5px;
+            border: 1px solid #e5e7eb;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: monospace;
+        }
+        .log-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .log-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .log-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .log-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        pre {
+            margin: 5px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug Login - NamThu Education</h1>
+        
+        <div class="form-group">
+            <label>API Base URL:</label>
+            <input type="text" id="apiUrl" value="http://localhost:8000/api" />
+        </div>
+
+        <div class="form-group">
+            <label>Phone:</label>
+            <input type="tel" id="phone" value="0336695863" />
+        </div>
+
+        <div class="form-group">
+            <label>Password:</label>
+            <input type="password" id="password" value="password123" />
+        </div>
+
+        <button id="loginBtn" onclick="testLogin()">🚀 Test Login</button>
+        <button onclick="clearLogs()" style="margin-top: 10px; background: #6b7280;">Clear Logs</button>
+
+        <div class="log" id="logContainer"></div>
+    </div>
+
+    <script>
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            entry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '';
+        }
+
+        async function testLogin() {
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Testing...';
+            
+            clearLogs();
+            
+            const apiUrl = document.getElementById('apiUrl').value;
+            const phone = document.getElementById('phone').value;
+            const password = document.getElementById('password').value;
+
+            addLog('🔧 Starting login test...', 'info');
+            addLog(`API URL: ${apiUrl}`, 'info');
+            addLog(`Phone: ${phone}`, 'info');
+
+            try {
+                // Step 1: Check API health
+                addLog('📡 Step 1: Checking API health...', 'info');
+                const healthResponse = await fetch(`${apiUrl.replace('/api', '')}/api/health`);
+                const healthData = await healthResponse.json();
+                addLog(`✅ API Health: ${JSON.stringify(healthData)}`, 'success');
+
+                // Step 2: Test login endpoint
+                addLog('🔐 Step 2: Testing login endpoint...', 'info');
+                
+                const loginUrl = `${apiUrl}/login`;
+                addLog(`Login URL: ${loginUrl}`, 'info');
+                
+                const requestBody = { phone, password };
+                addLog(`Request Body: ${JSON.stringify(requestBody)}`, 'info');
+
+                const loginResponse = await fetch(loginUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    credentials: 'include', // Important for CORS
+                    body: JSON.stringify(requestBody)
+                });
+
+                addLog(`Response Status: ${loginResponse.status} ${loginResponse.statusText}`, 
+                    loginResponse.ok ? 'success' : 'error');
+
+                const loginData = await loginResponse.json();
+                
+                if (loginResponse.ok) {
+                    addLog('✅ LOGIN SUCCESS!', 'success');
+                    addLog(`<pre>${JSON.stringify(loginData, null, 2)}</pre>`, 'success');
+                    
+                    // Step 3: Test authenticated request
+                    if (loginData.data?.access_token) {
+                        addLog('🔑 Step 3: Testing authenticated request...', 'info');
+                        
+                        const profileResponse = await fetch(`${apiUrl}/user/profile`, {
+                            headers: {
+                                'Authorization': `Bearer ${loginData.data.access_token}`,
+                                'Accept': 'application/json',
+                            },
+                            credentials: 'include'
+                        });
+
+                        const profileData = await profileResponse.json();
+                        
+                        if (profileResponse.ok) {
+                            addLog('✅ Profile fetch SUCCESS!', 'success');
+                            addLog(`<pre>${JSON.stringify(profileData, null, 2)}</pre>`, 'success');
+                        } else {
+                            addLog('❌ Profile fetch FAILED!', 'error');
+                            addLog(`<pre>${JSON.stringify(profileData, null, 2)}</pre>`, 'error');
+                        }
+                    }
+                } else {
+                    addLog('❌ LOGIN FAILED!', 'error');
+                    addLog(`<pre>${JSON.stringify(loginData, null, 2)}</pre>`, 'error');
+                }
+
+            } catch (error) {
+                addLog('💥 EXCEPTION OCCURRED!', 'error');
+                addLog(`Error: ${error.message}`, 'error');
+                addLog(`<pre>${error.stack}</pre>`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 Test Login';
+            }
+        }
+
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            addLog('🎯 Debug tool loaded. Click "Test Login" to start.', 'info');
+            addLog('⚠️ Make sure backend is running on port 8000', 'warning');
+        });
+    </script>
+</body>
+</html>

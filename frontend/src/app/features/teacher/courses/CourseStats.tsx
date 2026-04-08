@@ -158,11 +158,11 @@ export function CourseStats() {
                   Thống kê - {courseData.name}
                 </h1>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <Link to="/" className="hover:text-blue-600 transition-colors">
+                  <Link to="/" className="hover:text-orange-600 transition-colors">
                     Dashboard
                   </Link>
                   <span>/</span>
-                  <Link to="/giao-vien/khoa-hoc" className="hover:text-blue-600 transition-colors">
+                  <Link to="/giao-vien/khoa-hoc" className="hover:text-orange-600 transition-colors">
                     Khóa học
                   </Link>
                   <span>/</span>
@@ -174,14 +174,14 @@ export function CourseStats() {
               <select
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value)}
-                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white text-sm"
               >
                 <option value="course">Toàn bộ khóa học</option>
                 <option value="month">Tháng này</option>
                 <option value="week">Tuần này</option>
                 <option value="custom">Tùy chỉnh</option>
               </select>
-              <button className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all flex items-center gap-2 font-medium">
+              <button className="px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all flex items-center gap-2 font-medium">
                 <Download className="w-4 h-4" />
                 Xuất báo cáo
               </button>
@@ -192,7 +192,7 @@ export function CourseStats() {
 
       <div className="px-8 py-6 space-y-6">
         {/* Course Overview Card */}
-        <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-xl p-8 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-orange-600 via-purple-600 to-pink-600 rounded-xl p-8 text-white shadow-lg">
           <div className="flex items-start justify-between mb-6">
             <div>
               <h2 className="text-2xl font-bold mb-2">{courseData.name}</h2>
@@ -209,7 +209,7 @@ export function CourseStats() {
               onClick={() => setComparisonMode(!comparisonMode)}
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
                 comparisonMode
-                  ? "bg-white text-blue-600"
+                  ? "bg-white text-orange-600"
                   : "bg-white/20 hover:bg-white/30 backdrop-blur"
               }`}
             >
@@ -336,8 +336,8 @@ export function CourseStats() {
                 <h3 className="text-lg font-bold text-gray-900">Tỷ lệ lấp đầy</h3>
                 <p className="text-sm text-gray-600 mt-1">Sĩ số so với tối đa</p>
               </div>
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Target className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <Target className="w-5 h-5 text-orange-600" />
               </div>
             </div>
             <div className="flex items-center justify-center h-64">
@@ -373,9 +373,9 @@ export function CourseStats() {
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4 mt-4">
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <div className="text-center p-3 bg-orange-50 rounded-lg">
                 <p className="text-sm text-gray-600 mb-1">Hiện tại</p>
-                <p className="text-xl font-bold text-blue-600">{courseData.enrolled}</p>
+                <p className="text-xl font-bold text-orange-600">{courseData.enrolled}</p>
               </div>
               <div className="text-center p-3 bg-gray-50 rounded-lg">
                 <p className="text-sm text-gray-600 mb-1">Tối đa</p>
@@ -469,7 +469,7 @@ export function CourseStats() {
             <p className="text-sm text-white/70">VNĐ</p>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white">
+          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white">
             <div className="flex items-center justify-between mb-4">
               <Users className="w-8 h-8 text-white/80" />
               <div className="flex items-center gap-1 text-sm">
@@ -540,7 +540,7 @@ export function CourseStats() {
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
               <div
-                className="bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full transition-all"
+                className="bg-gradient-to-r from-orange-500 to-purple-500 h-full rounded-full transition-all"
                 style={{ width: `${Math.min(progressPercent, 100)}%` }}
               />
             </div>
@@ -548,8 +548,8 @@ export function CourseStats() {
 
           {/* Timeline Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-blue-50 rounded-lg p-4">
-              <Calendar className="w-5 h-5 text-blue-600 mb-2" />
+            <div className="bg-orange-50 rounded-lg p-4">
+              <Calendar className="w-5 h-5 text-orange-600 mb-2" />
               <p className="text-sm text-gray-600 mb-1">Ngày bắt đầu</p>
               <p className="font-bold text-gray-900">
                 {new Date(courseData.startDate).toLocaleDateString("vi-VN")}
@@ -616,8 +616,8 @@ export function CourseStats() {
                 <h3 className="text-lg font-bold text-gray-900">Ghi danh theo tháng</h3>
                 <p className="text-sm text-gray-600 mt-1">Phân bố thời gian</p>
               </div>
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <BarChart3 className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <BarChart3 className="w-5 h-5 text-orange-600" />
               </div>
             </div>
             <div className="h-64" style={{ minWidth: 0, minHeight: 256 }}>
@@ -659,7 +659,7 @@ export function CourseStats() {
                         ? "bg-gradient-to-br from-gray-300 to-gray-400"
                         : index === 2
                           ? "bg-gradient-to-br from-orange-400 to-orange-500"
-                          : "bg-gradient-to-br from-blue-400 to-blue-500"
+                          : "bg-gradient-to-br from-orange-400 to-orange-500"
                   }`}
                 >
                   {index + 1}
@@ -737,3 +737,4 @@ export function CourseStats() {
     </div>
   );
 }
+

@@ -112,31 +112,31 @@ export const ImportExam: React.FC = () => {
         
         {/* Progress Steps */}
         <div className="flex items-center justify-between mb-8">
-          <div className={`flex items-center ${step === 'upload' ? 'text-blue-600' : 'text-gray-400'}`}>
+          <div className={`flex items-center ${step === 'upload' ? 'text-orange-600' : 'text-gray-400'}`}>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              step === 'upload' ? 'bg-blue-600 text-white' : 'bg-gray-200'
+              step === 'upload' ? 'bg-orange-600 text-white' : 'bg-gray-200'
             }`}>1</div>
             <span className="ml-2">Upload File</span>
           </div>
           
           <div className="flex-1 h-1 mx-4 bg-gray-200">
-            <div className={`h-full ${step !== 'upload' ? 'bg-blue-600' : ''}`} />
+            <div className={`h-full ${step !== 'upload' ? 'bg-orange-600' : ''}`} />
           </div>
           
-          <div className={`flex items-center ${step === 'validate' || step === 'preview' ? 'text-blue-600' : 'text-gray-400'}`}>
+          <div className={`flex items-center ${step === 'validate' || step === 'preview' ? 'text-orange-600' : 'text-gray-400'}`}>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              step === 'validate' || step === 'preview' ? 'bg-blue-600 text-white' : 'bg-gray-200'
+              step === 'validate' || step === 'preview' ? 'bg-orange-600 text-white' : 'bg-gray-200'
             }`}>2</div>
             <span className="ml-2">Validate</span>
           </div>
           
           <div className="flex-1 h-1 mx-4 bg-gray-200">
-            <div className={`h-full ${step === 'preview' || step === 'success' ? 'bg-blue-600' : ''}`} />
+            <div className={`h-full ${step === 'preview' || step === 'success' ? 'bg-orange-600' : ''}`} />
           </div>
           
-          <div className={`flex items-center ${step === 'preview' || step === 'success' ? 'text-blue-600' : 'text-gray-400'}`}>
+          <div className={`flex items-center ${step === 'preview' || step === 'success' ? 'text-orange-600' : 'text-gray-400'}`}>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              step === 'preview' || step === 'success' ? 'bg-blue-600 text-white' : 'bg-gray-200'
+              step === 'preview' || step === 'success' ? 'bg-orange-600 text-white' : 'bg-gray-200'
             }`}>3</div>
             <span className="ml-2">Import</span>
           </div>
@@ -181,13 +181,13 @@ export const ImportExam: React.FC = () => {
               )}
             </div>
             
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h3 className="font-medium text-blue-900 mb-2">Hướng dẫn:</h3>
-              <ol className="list-decimal list-inside text-sm text-blue-800 space-y-1">
+            <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+              <h3 className="font-medium text-gray-900 mb-2">Hướng dẫn:</h3>
+              <ol className="list-decimal list-inside text-sm text-orange-800 space-y-1">
                 <li>Upload file PDF/DOCX đề thi lên Gemini AI</li>
                 <li>Sử dụng prompt từ hệ thống để parse đề thi</li>
                 <li>Copy JSON output từ Gemini</li>
-                <li>Chạy script convert: <code className="bg-blue-100 px-1 rounded">node convert-gemini-to-system-format.js input.json output.json</code></li>
+                <li>Chạy script convert: <code className="bg-orange-100 px-1 rounded">node convert-gemini-to-system-format.js input.json output.json</code></li>
                 <li>Upload file output.json vào đây</li>
               </ol>
             </div>
@@ -233,7 +233,7 @@ export const ImportExam: React.FC = () => {
               <button
                 onClick={handleValidate}
                 disabled={loading}
-                className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="flex-1 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 disabled:opacity-50"
               >
                 {loading ? 'Đang kiểm tra...' : 'Kiểm tra dữ liệu'}
               </button>
@@ -335,3 +335,6 @@ export const ImportExam: React.FC = () => {
     </div>
   );
 };
+
+
+

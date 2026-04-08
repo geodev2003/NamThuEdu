@@ -114,7 +114,7 @@ const mockStudents: Student[] = [
 
 const statusColors = {
   enrolled: "bg-green-500",
-  completed: "bg-blue-500",
+  completed: "bg-orange-500",
   dropped: "bg-gray-500",
 };
 
@@ -214,11 +214,11 @@ export function ManageStudents() {
                 Quản lý học viên - {courseData.name}
               </h1>
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Link to="/giao-vien" className="hover:text-blue-600 transition-colors">
+                <Link to="/giao-vien" className="hover:text-orange-600 transition-colors">
                   Dashboard
                 </Link>
                 <span>/</span>
-                <Link to="/giao-vien/khoa-hoc" className="hover:text-blue-600 transition-colors">
+                <Link to="/giao-vien/khoa-hoc" className="hover:text-orange-600 transition-colors">
                   Khóa học
                 </Link>
                 <span>/</span>
@@ -229,8 +229,8 @@ export function ManageStudents() {
 
           {/* Course Info Chip */}
           <div className="flex flex-wrap items-center gap-3 text-sm">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg font-medium">
-              <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg font-medium">
+              <span className="w-2 h-2 bg-orange-600 rounded-full"></span>
               {courseData.category}
             </div>
             <div className="flex items-center gap-1.5 text-gray-600">
@@ -251,7 +251,7 @@ export function ManageStudents() {
 
       <div className="px-8 py-6 space-y-6">
         {/* Course Summary Card */}
-        <div className="bg-gradient-to-br from-blue-600 via-blue-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-orange-600 via-blue-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left: Course Info */}
             <div className="space-y-4">
@@ -325,7 +325,7 @@ export function ManageStudents() {
                 placeholder="Tìm học sinh theo tên, SĐT, email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
               {searchTerm && (
                 <button
@@ -343,7 +343,7 @@ export function ManageStudents() {
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
+                  className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white cursor-pointer"
                 >
                   <option value="all">Tất cả trạng thái</option>
                   <option value="enrolled">Đang học</option>
@@ -357,7 +357,7 @@ export function ManageStudents() {
                 <select
                   value={filterPayment}
                   onChange={(e) => setFilterPayment(e.target.value)}
-                  className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
+                  className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white cursor-pointer"
                 >
                   <option value="all">Tất cả học phí</option>
                   <option value="paid">Đã thanh toán</option>
@@ -369,7 +369,7 @@ export function ManageStudents() {
 
               <button
                 onClick={() => setShowAddModal(true)}
-                className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all flex items-center gap-2 font-medium whitespace-nowrap"
+                className="px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all flex items-center gap-2 font-medium whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" />
                 Thêm học sinh
@@ -385,7 +385,7 @@ export function ManageStudents() {
 
         {/* Bulk Actions */}
         {selectedStudents.length > 0 && (
-          <div className="bg-blue-600 text-white rounded-xl p-4 shadow-lg">
+          <div className="bg-orange-600 text-white rounded-xl p-4 shadow-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="font-semibold">{selectedStudents.length} học sinh đã chọn</span>
@@ -428,7 +428,7 @@ export function ManageStudents() {
                         selectedStudents.length === filteredStudents.length
                       }
                       onChange={toggleAll}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                     />
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -462,7 +462,7 @@ export function ManageStudents() {
                         type="checkbox"
                         checked={selectedStudents.includes(student.id)}
                         onChange={() => toggleStudent(student.id)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                       />
                     </td>
                     <td className="px-6 py-4">
@@ -470,7 +470,7 @@ export function ManageStudents() {
                         onClick={() => openDetailDrawer(student)}
                         className="flex items-center gap-3 hover:opacity-80 transition-opacity"
                       >
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-purple-400 rounded-full flex items-center justify-center flex-shrink-0">
                           <span className="text-white font-semibold text-sm">
                             {student.name.charAt(0)}
                           </span>
@@ -529,7 +529,7 @@ export function ManageStudents() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => openDetailDrawer(student)}
-                          className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                          className="p-2 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
                           title="Xem chi tiết"
                         >
                           <Eye className="w-4 h-4" />
@@ -580,7 +580,7 @@ export function ManageStudents() {
               </p>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium inline-flex items-center gap-2"
+                className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all font-medium inline-flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Thêm học sinh đầu tiên
@@ -615,12 +615,12 @@ export function ManageStudents() {
                   <input
                     type="text"
                     placeholder="Tìm và chọn học sinh..."
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                 </div>
                 <p className="text-sm text-gray-500 mt-1">
                   Hoặc{" "}
-                  <Link to="/giao-vien/students/them-moi" className="text-blue-600 hover:underline">
+                  <Link to="/giao-vien/students/them-moi" className="text-orange-600 hover:underline">
                     tạo học sinh mới
                   </Link>
                 </p>
@@ -636,7 +636,7 @@ export function ManageStudents() {
                   <input
                     type="text"
                     placeholder="VD: 1,500,000"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                 </div>
               </div>
@@ -646,7 +646,7 @@ export function ManageStudents() {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Trạng thái thanh toán
                 </label>
-                <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white">
                   <option value="paid">Đã thanh toán</option>
                   <option value="partial">Thanh toán 1 phần</option>
                   <option value="unpaid">Chưa thanh toán</option>
@@ -659,7 +659,7 @@ export function ManageStudents() {
                 <textarea
                   rows={3}
                   placeholder="Ghi chú về học sinh..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
                 />
               </div>
 
@@ -671,7 +671,7 @@ export function ManageStudents() {
                 <input
                   type="date"
                   defaultValue={new Date().toISOString().split("T")[0]}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
             </div>
@@ -688,7 +688,7 @@ export function ManageStudents() {
                   setShowAddModal(false);
                   alert("Đã thêm học sinh!");
                 }}
-                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
+                className="px-6 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all font-medium"
               >
                 Thêm học sinh
               </button>
@@ -722,7 +722,7 @@ export function ManageStudents() {
 
             <div className="space-y-4 mb-6">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 text-blue-600 border-gray-300 rounded" />
+                <input type="checkbox" className="w-4 h-4 text-orange-600 border-gray-300 rounded" />
                 <span className="text-sm text-gray-700">Hoàn học phí</span>
               </label>
 
@@ -731,7 +731,7 @@ export function ManageStudents() {
                 <textarea
                   rows={3}
                   placeholder="Ghi chú lý do nghỉ học..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none text-sm"
                 />
               </div>
             </div>
@@ -772,7 +772,7 @@ export function ManageStudents() {
             }}
           />
           <div className="bg-white w-full max-w-md h-full overflow-y-auto shadow-2xl relative animate-slide-in-right">
-            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
+            <div className="sticky top-0 bg-gradient-to-r from-orange-600 to-purple-600 text-white p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
@@ -900,7 +900,7 @@ export function ManageStudents() {
 
               {/* Quick Actions */}
               <div className="space-y-2 pt-4 border-t border-gray-200">
-                <button className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2 font-medium">
+                <button className="w-full px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all flex items-center justify-center gap-2 font-medium">
                   <Edit className="w-4 h-4" />
                   Chỉnh sửa thông tin
                 </button>
@@ -933,3 +933,4 @@ export function ManageStudents() {
     </div>
   );
 }
+

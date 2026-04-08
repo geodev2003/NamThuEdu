@@ -101,7 +101,7 @@ export function CourseDetailedStats() {
                 <PolarGrid stroke="#e5e7eb" />
                 <PolarAngleAxis dataKey="subject" tick={{ fill: '#4b5563', fontSize: 12 }} />
                 <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                <Radar name="Lớp hiện tại" dataKey="A" stroke="#2563EB" fill="#3B82F6" fillOpacity={0.5} />
+                <Radar name="Lớp hiện tại" dataKey="A" stroke="#EA580C" fill="#3B82F6" fillOpacity={0.5} />
                 <Radar name="Chuẩn trung tâm" dataKey="B" stroke="#10B981" fill="#10B981" fillOpacity={0.2} />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                 <Tooltip />
@@ -141,3 +141,4 @@ export function CourseDetailedStats() {
     </div>
   );
 }
+

@@ -1,0 +1,96 @@
+{
+  "exam_info": {
+    "title": "VSTEP B2 - Reading Practice Test",
+    "description": "Template mẫu cho đề thi VSTEP Reading",
+    "type": "VSTEP",
+    "skill": "reading",
+    "duration_minutes": 60,
+    "instructions": "Hướng dẫn sử dụng template:\n1. Copy nội dung file này\n2. Chỉnh sửa câu hỏi, đáp án, đoạn văn theo nhu cầu\n3. Import vào hệ thống"
+  },
+  "questions": [
+    {
+      "content": "What is the main idea of the passage?",
+      "type": "multiple_choice",
+      "skill": "reading",
+      "part": 1,
+      "points": 1,
+      "passage_text": "Climate change is one of the most pressing issues facing our planet today. Rising temperatures, melting ice caps, and extreme weather events are just some of the consequences we are experiencing. Scientists agree that human activities, particularly the burning of fossil fuels, are the primary cause of these changes.",
+      "answers": [
+        {
+          "content": "The history of climate change",
+          "is_correct": false
+        },
+        {
+          "content": "The causes and effects of climate change",
+          "is_correct": true
+        },
+        {
+          "content": "Solutions to climate change",
+          "is_correct": false
+        },
+        {
+          "content": "The future of our planet",
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "content": "According to the passage, what is the primary cause of climate change?",
+      "type": "multiple_choice",
+      "skill": "reading",
+      "part": 1,
+      "points": 1,
+      "passage_text": "Climate change is one of the most pressing issues facing our planet today. Rising temperatures, melting ice caps, and extreme weather events are just some of the consequences we are experiencing. Scientists agree that human activities, particularly the burning of fossil fuels, are the primary cause of these changes.",
+      "answers": [
+        {
+          "content": "Natural disasters",
+          "is_correct": false
+        },
+        {
+          "content": "Burning of fossil fuels",
+          "is_correct": true
+        },
+        {
+          "content": "Deforestation",
+          "is_correct": false
+        },
+        {
+          "content": "Industrial waste",
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "content": "The word 'pressing' in line 1 is closest in meaning to ___________.",
+      "type": "fill_blank",
+      "skill": "reading",
+      "part": 2,
+      "points": 1,
+      "passage_text": "Climate change is one of the most pressing issues facing our planet today.",
+      "answers": [
+        {
+          "content": "urgent",
+          "is_correct": true
+        },
+        {
+          "content": "important",
+          "is_correct": true
+        }
+      ]
+    },
+    {
+      "content": "The passage states that climate change is caused by ___________ activities.",
+      "type": "fill_blank",
+      "skill": "reading",
+      "part": 2,
+      "points": 1,
+      "passage_text": "Scientists agree that human activities, particularly the burning of fossil fuels, are the primary cause of these changes.",
+      "answers": [
+        {
+          "content": "human",
+          "is_correct": true
+        }
+      ]
+    }
+  ]
+}
