@@ -884,7 +884,7 @@ export function CreateExam() {
     
     // Skill-based colors
     const questionColors = {
-      listening: { bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-500', text: 'text-blue-700' },
+      listening: { bg: 'bg-orange-50', border: 'border-orange-200', badge: 'bg-orange-500', text: 'text-orange-700' },
       reading: { bg: 'bg-green-50', border: 'border-green-200', badge: 'bg-green-500', text: 'text-green-700' },
       writing: { bg: 'bg-orange-50', border: 'border-orange-200', badge: 'bg-orange-500', text: 'text-orange-700' },
       speaking: { bg: 'bg-purple-50', border: 'border-purple-200', badge: 'bg-purple-500', text: 'text-purple-700' },
@@ -896,7 +896,7 @@ export function CreateExam() {
         key={question.id} 
         id={`vstep-question-${question.skill}-${question.part}-q${question.questionNumber}`}
         className={`bg-white rounded-2xl border-2 hover:border-gray-200 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden ${
-          vstepActiveQuestionNumber === question.questionNumber ? 'border-blue-400 shadow-blue-100' : 'border-gray-100'
+          vstepActiveQuestionNumber === question.questionNumber ? 'border-orange-400 shadow-orange-100' : 'border-gray-100'
         }`}
       >
         {/* Question Header */}
@@ -934,14 +934,14 @@ export function CreateExam() {
               value={question.content}
               onChange={(e) => updateVSTEPQuestion(question.id, { content: e.target.value })}
               placeholder={`Nhập nội dung câu hỏi ${question.questionNumber}...`}
-              className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[80px] transition-all"
+              className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 min-h-[80px] transition-all"
               rows={3}
             />
           </div>
 
           {/* Listening: Audio + Transcript */}
           {question.skill === "listening" && (
-            <div className="space-y-3 bg-blue-50/50 rounded-lg p-4 border border-blue-100">
+            <div className="space-y-3 bg-orange-50/50 rounded-lg p-4 border border-orange-100">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                   <Volume2 className="w-4 h-4 inline mr-1" />
@@ -953,7 +953,7 @@ export function CreateExam() {
                   {/* Upload File Option */}
                   <div className="flex items-center gap-3">
                     <label className="flex-1 cursor-pointer">
-                      <div className="flex items-center justify-center w-full h-12 border-2 border-dashed border-blue-300 rounded-xl bg-white hover:bg-blue-50 transition-all">
+                      <div className="flex items-center justify-center w-full h-12 border-2 border-dashed border-orange-300 rounded-xl bg-white hover:bg-orange-50 transition-all">
                         <input
                           type="file"
                           accept="audio/mp3,audio/wav,audio/m4a,audio/aac,audio/ogg"
@@ -963,10 +963,10 @@ export function CreateExam() {
                           }}
                           className="hidden"
                         />
-                        <div className="flex items-center gap-2 text-blue-600">
+                        <div className="flex items-center gap-2 text-orange-600">
                           {audioUploading[question.id] ? (
                             <>
-                              <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                              <div className="animate-spin w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full"></div>
                               <span className="text-sm font-medium">Đang upload...</span>
                             </>
                           ) : (
@@ -998,21 +998,21 @@ export function CreateExam() {
                       value={question.audioUrl || ""}
                       onChange={(e) => updateVSTEPQuestion(question.id, { audioUrl: e.target.value })}
                       placeholder="https://example.com/audio.mp3"
-                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
+                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all text-sm"
                     />
                   </div>
                 </div>
 
                 {/* Audio Preview */}
                 {question.audioUrl && (
-                  <div className="mt-4 p-4 bg-white rounded-xl border border-blue-200">
+                  <div className="mt-4 p-4 bg-white rounded-xl border border-orange-200">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
-                        <Volume2 className="w-5 h-5 text-blue-600" />
+                        <Volume2 className="w-5 h-5 text-orange-600" />
                         <span className="text-sm font-semibold text-gray-700">Preview Audio</span>
                       </div>
                       {question.audioFileName && (
-                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">
                           📂 {question.audioFileName}
                         </span>
                       )}
@@ -1057,7 +1057,7 @@ export function CreateExam() {
                   value={question.transcript || ""}
                   onChange={(e) => updateVSTEPQuestion(question.id, { transcript: e.target.value })}
                   placeholder="Nhập nội dung transcript để GV tham khảo khi chấm bài..."
-                  className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[60px] transition-all font-mono"
+                  className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 min-h-[60px] transition-all font-mono"
                   rows={3}
                 />
                 <p className="text-xs text-gray-500 mt-1">
@@ -1169,7 +1169,7 @@ export function CreateExam() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50/30 via-amber-50/20 to-orange-50/10">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="px-8 py-6">
@@ -1186,8 +1186,8 @@ export function CreateExam() {
                 {/* Auto-save Status */}
                 <div className="flex items-center gap-2">
                   {autoSaveStatus === 'saving' && (
-                    <div className="flex items-center gap-2 text-sm text-blue-600">
-                      <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                    <div className="flex items-center gap-2 text-sm text-orange-600">
+                      <div className="animate-spin w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full"></div>
                       <span>Đang lưu...</span>
                     </div>
                   )}
@@ -1214,11 +1214,11 @@ export function CreateExam() {
                 </div>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Link to="/giao-vien" className="hover:text-blue-600 transition-colors">
+                <Link to="/giao-vien" className="hover:text-orange-600 transition-colors">
                   Dashboard
                 </Link>
                 <span>/</span>
-                <Link to="/giao-vien/de-thi/tat-ca" className="hover:text-blue-600 transition-colors">
+                <Link to="/giao-vien/de-thi/tat-ca" className="hover:text-orange-600 transition-colors">
                   Ngân hàng đề
                 </Link>
                 <span>/</span>
@@ -1230,7 +1230,7 @@ export function CreateExam() {
               <button
                 onClick={() => saveToServer(true)}
                 disabled={autoSaveStatus === 'saving'}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
               >
                 <Save className="w-4 h-4" />
                 {autoSaveStatus === 'saving' ? 'Đang lưu...' : 'Lưu nháp'}
@@ -1254,7 +1254,7 @@ export function CreateExam() {
                     <div
                       className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
                         currentStep === step
-                          ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+                          ? "bg-orange-600 text-white shadow-lg shadow-orange-500/30"
                           : currentStep > step
                             ? "bg-green-600 text-white"
                             : "bg-gray-200 text-gray-600"
@@ -1264,7 +1264,7 @@ export function CreateExam() {
                     </div>
                     <div className="text-left">
                       <p
-                        className={`text-sm font-semibold ${currentStep === step ? "text-blue-600" : "text-gray-600"}`}
+                        className={`text-sm font-semibold ${currentStep === step ? "text-orange-600" : "text-gray-600"}`}
                       >
                         Bước {step}
                       </p>
@@ -1302,8 +1302,8 @@ export function CreateExam() {
                     onClick={() => setExamType(type.value as ExamType)}
                     className={`p-6 border-2 rounded-xl text-left transition-all ${
                       examType === type.value
-                        ? "border-blue-600 bg-blue-50 shadow-lg"
-                        : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/50"
+                        ? "border-orange-600 bg-orange-50 shadow-lg"
+                        : "border-gray-200 hover:border-orange-300 hover:bg-orange-50/50"
                     }`}
                   >
                     <div className="text-4xl mb-3">{type.icon}</div>
@@ -1368,7 +1368,7 @@ export function CreateExam() {
                   value={examTitle}
                   onChange={(e) => setExamTitle(e.target.value)}
                   placeholder="VD: VSTEP B2 Listening - Practice Test 1"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                   maxLength={255}
                 />
                 <p className="text-xs text-gray-500 mt-1">{examTitle.length}/255 ký tự</p>
@@ -1384,7 +1384,7 @@ export function CreateExam() {
                   onChange={(e) => setExamDescription(e.target.value)}
                   rows={4}
                   placeholder="Mô tả chi tiết về đề thi..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
                 />
               </div>
 
@@ -1399,12 +1399,12 @@ export function CreateExam() {
                     value={duration}
                     onChange={(e) => setDuration(parseInt(e.target.value) || 0)}
                     min={1}
-                    className="w-32 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-32 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                   <select
                     value={durationUnit}
                     onChange={(e) => setDurationUnit(e.target.value as "minutes" | "hours")}
-                    className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
                   >
                     <option value="minutes">Phút</option>
                     <option value="hours">Giờ</option>
@@ -1418,7 +1418,7 @@ export function CreateExam() {
                 <select
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
                 >
                   <option value="easy">Dễ</option>
                   <option value="medium">Trung bình</option>
@@ -1444,11 +1444,11 @@ export function CreateExam() {
                       name="visibility"
                       checked={visibility === "public"}
                       onChange={() => setVisibility("public")}
-                      className="mt-1 w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      className="mt-1 w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
                     />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 font-semibold text-gray-900">
-                        <Globe className="w-5 h-5 text-blue-600" />
+                        <Globe className="w-5 h-5 text-orange-600" />
                         Public
                       </div>
                       <p className="text-sm text-gray-600 mt-1">
@@ -1462,7 +1462,7 @@ export function CreateExam() {
                       name="visibility"
                       checked={visibility === "private"}
                       onChange={() => setVisibility("private")}
-                      className="mt-1 w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      className="mt-1 w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
                     />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 font-semibold text-gray-900">
@@ -1482,7 +1482,7 @@ export function CreateExam() {
                   id="allowPreview"
                   checked={allowPreview}
                   onChange={(e) => setAllowPreview(e.target.checked)}
-                  className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="mt-1 w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                 />
                 <label htmlFor="allowPreview" className="flex-1 cursor-pointer">
                   <p className="font-semibold text-gray-900">Cho phép xem trước</p>
@@ -1513,7 +1513,7 @@ export function CreateExam() {
                   disabled={!canProceedStep1}
                   className={`px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-all ${
                     canProceedStep1
-                      ? "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30"
+                      ? "bg-orange-600 text-white hover:bg-orange-700 shadow-lg shadow-orange-500/30"
                       : "bg-gray-300 text-gray-500 cursor-not-allowed"
                   }`}
                 >
@@ -1541,7 +1541,7 @@ export function CreateExam() {
                 <h3 className="font-bold text-gray-900">Danh sách câu hỏi</h3>
                 <button
                   onClick={() => setIsAddingQuestion(true)}
-                  className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+                  className="p-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -1554,8 +1554,8 @@ export function CreateExam() {
                     onClick={() => setSelectedQuestion(question)}
                     className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
                       selectedQuestion?.id === question.id
-                        ? "border-blue-600 bg-blue-50"
-                        : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/50"
+                        ? "border-orange-600 bg-orange-50"
+                        : "border-gray-200 hover:border-orange-300 hover:bg-orange-50/50"
                     }`}
                   >
                     <div className="flex items-start gap-2">
@@ -1605,8 +1605,8 @@ export function CreateExam() {
               {!selectedQuestion && !isAddingQuestion && (
                 <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
                   <div className="max-w-md mx-auto space-y-4">
-                    <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                      <HelpCircle className="w-10 h-10 text-blue-600" />
+                    <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
+                      <HelpCircle className="w-10 h-10 text-orange-600" />
                     </div>
                     <h3 className="text-xl font-semibold text-gray-900">Thêm câu hỏi đầu tiên</h3>
                     <p className="text-gray-600">
@@ -1615,7 +1615,7 @@ export function CreateExam() {
                     </p>
                     <button
                       onClick={() => setIsAddingQuestion(true)}
-                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium inline-flex items-center gap-2"
+                      className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all font-medium inline-flex items-center gap-2"
                     >
                       <Plus className="w-4 h-4" />
                       Thêm câu hỏi
@@ -1642,9 +1642,9 @@ export function CreateExam() {
                         <button
                           key={type.value}
                           onClick={() => handleAddQuestion(type.value as QuestionType)}
-                          className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-600 hover:bg-blue-50 transition-all text-left"
+                          className="p-4 border-2 border-gray-200 rounded-lg hover:border-orange-600 hover:bg-orange-50 transition-all text-left"
                         >
-                          <Icon className="w-6 h-6 text-blue-600 mb-2" />
+                          <Icon className="w-6 h-6 text-orange-600 mb-2" />
                           <p className="font-semibold text-gray-900">{type.label}</p>
                         </button>
                       );
@@ -1659,7 +1659,7 @@ export function CreateExam() {
                     <h3 className="text-lg font-bold text-gray-900">
                       Câu hỏi {questions.findIndex((q) => q.id === selectedQuestion.id) + 1}
                     </h3>
-                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-semibold">
+                    <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-lg text-sm font-semibold">
                       {questionTypes.find((t) => t.value === selectedQuestion.type)?.label}
                     </span>
                   </div>
@@ -1679,7 +1679,7 @@ export function CreateExam() {
                           content: e.target.value,
                         }))
                       }
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
                     />
                     <div className="flex items-center gap-2 mt-2">
                       <button className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all text-sm flex items-center gap-1">
@@ -1709,7 +1709,7 @@ export function CreateExam() {
                         }))
                       }
                       min={1}
-                      className="w-32 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-32 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                     />
                   </div>
 
@@ -1730,7 +1730,7 @@ export function CreateExam() {
                                 ],
                               }))
                             }
-                            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            className="text-sm text-orange-600 hover:text-orange-700 font-medium"
                           >
                             + Thêm đáp án
                           </button>
@@ -1739,7 +1739,7 @@ export function CreateExam() {
                       <div className="space-y-3">
                         {selectedQuestion.type === "true-false" ? (
                           <>
-                            <label className="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-300">
+                            <label className="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-orange-300">
                               <input
                                 type="radio"
                                 name="answer"
@@ -1755,11 +1755,11 @@ export function CreateExam() {
                                     ],
                                   }))
                                 }
-                                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                className="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
                               />
                               <span className="font-medium text-gray-900">Đúng</span>
                             </label>
-                            <label className="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-300">
+                            <label className="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-orange-300">
                               <input
                                 type="radio"
                                 name="answer"
@@ -1775,7 +1775,7 @@ export function CreateExam() {
                                     ],
                                   }))
                                 }
-                                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                className="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
                               />
                               <span className="font-medium text-gray-900">Sai</span>
                             </label>
@@ -1799,7 +1799,7 @@ export function CreateExam() {
                                     })),
                                   }))
                                 }
-                                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                className="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
                               />
                               <input
                                 type="text"
@@ -1845,7 +1845,7 @@ export function CreateExam() {
                     >
                       Hủy
                     </button>
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all">
+                    <button className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all">
                       Lưu câu hỏi
                     </button>
                     <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all">
@@ -1876,7 +1876,7 @@ export function CreateExam() {
                       disabled={!canProceedStep2}
                       className={`px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-all ${
                         canProceedStep2
-                          ? "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30"
+                          ? "bg-orange-600 text-white hover:bg-orange-700 shadow-lg shadow-orange-500/30"
                           : "bg-gray-300 text-gray-500 cursor-not-allowed"
                       }`}
                     >
@@ -1907,7 +1907,7 @@ export function CreateExam() {
                     
                     // Skill colors
                     const skillColors = {
-                      listening: { from: 'from-blue-500', to: 'to-blue-700', badge: 'bg-blue-100 text-blue-700' },
+                      listening: { from: 'from-orange-500', to: 'to-orange-700', badge: 'bg-orange-100 text-orange-700' },
                       reading: { from: 'from-green-500', to: 'to-green-700', badge: 'bg-green-100 text-green-700' },
                       writing: { from: 'from-orange-500', to: 'to-orange-700', badge: 'bg-orange-100 text-orange-700' },
                       speaking: { from: 'from-purple-500', to: 'to-purple-700', badge: 'bg-purple-100 text-purple-700' },
@@ -1992,7 +1992,7 @@ export function CreateExam() {
                               allQuestions: questions.map(q => ({ id: q.id, skill: q.skill, part: q.part }))
                             });
                           }}
-                          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                          className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
                         >
                           🐛 Debug (xem Console)
                         </button>
@@ -2024,7 +2024,7 @@ export function CreateExam() {
                       
                       // Skill colors for grid buttons
                       const gridColors = {
-                        listening: isActive ? 'bg-blue-500 text-white' : isCompleted ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-gray-100 text-gray-600 border-gray-300',
+                        listening: isActive ? 'bg-orange-500 text-white' : isCompleted ? 'bg-orange-100 text-orange-700 border-orange-300' : 'bg-gray-100 text-gray-600 border-gray-300',
                         reading: isActive ? 'bg-green-500 text-white' : isCompleted ? 'bg-green-100 text-green-700 border-green-300' : 'bg-gray-100 text-gray-600 border-gray-300',
                         writing: isActive ? 'bg-orange-500 text-white' : isCompleted ? 'bg-orange-100 text-orange-700 border-orange-300' : 'bg-gray-100 text-gray-600 border-gray-300',
                         speaking: isActive ? 'bg-purple-500 text-white' : isCompleted ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-gray-100 text-gray-600 border-gray-300',
@@ -2051,11 +2051,11 @@ export function CreateExam() {
                   {/* Legend */}
                   <div className="space-y-2 text-xs">
                     <div className="flex items-center gap-2">
-                      <div className={`w-6 h-6 rounded ${vstepCurrentSkill === 'listening' ? 'bg-blue-500' : vstepCurrentSkill === 'reading' ? 'bg-green-500' : vstepCurrentSkill === 'writing' ? 'bg-orange-500' : 'bg-purple-500'}`}></div>
+                      <div className={`w-6 h-6 rounded ${vstepCurrentSkill === 'listening' ? 'bg-orange-500' : vstepCurrentSkill === 'reading' ? 'bg-green-500' : vstepCurrentSkill === 'writing' ? 'bg-orange-500' : 'bg-purple-500'}`}></div>
                       <span className="text-gray-600">Đang chọn</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className={`w-6 h-6 rounded border-2 ${vstepCurrentSkill === 'listening' ? 'bg-blue-100 border-blue-300' : vstepCurrentSkill === 'reading' ? 'bg-green-100 border-green-300' : vstepCurrentSkill === 'writing' ? 'bg-orange-100 border-orange-300' : 'bg-purple-100 border-purple-300'}`}></div>
+                      <div className={`w-6 h-6 rounded border-2 ${vstepCurrentSkill === 'listening' ? 'bg-orange-100 border-orange-300' : vstepCurrentSkill === 'reading' ? 'bg-green-100 border-green-300' : vstepCurrentSkill === 'writing' ? 'bg-orange-100 border-orange-300' : 'bg-purple-100 border-purple-300'}`}></div>
                       <span className="text-gray-600">Đã hoàn thành</span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -2075,9 +2075,9 @@ export function CreateExam() {
                   // Skill-based colors
                   const skillTabColors = {
                     listening: { 
-                      active: 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-200',
-                      completed: 'bg-blue-50 text-blue-700 border-2 border-blue-200',
-                      default: 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
+                      active: 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200',
+                      completed: 'bg-orange-50 text-orange-700 border-2 border-orange-200',
+                      default: 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
                     },
                     reading: { 
                       active: 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-200',
@@ -2166,7 +2166,7 @@ export function CreateExam() {
                   <button
                     onClick={goToNextVSTEPPart}
                     disabled={vstepCurrentPartIndex >= allVSTEPParts.length - 1}
-                    className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl text-sm font-semibold hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all shadow-lg hover:shadow-xl"
+                    className="px-6 py-2.5 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-xl text-sm font-semibold hover:from-orange-700 hover:to-orange-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all shadow-lg hover:shadow-xl"
                   >
                     <span>Tiếp tục</span>
                     <ChevronRight className="w-5 h-5" />
@@ -2194,7 +2194,7 @@ export function CreateExam() {
                   </div>
 
                   {/* Overall Progress */}
-                  <div className="mb-6 p-5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl text-white shadow-lg">
+                  <div className="mb-6 p-5 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl text-white shadow-lg">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-semibold text-sm opacity-90">Tiến độ hoàn thành</h4>
                       <span className="text-2xl">📊</span>
@@ -2217,7 +2217,7 @@ export function CreateExam() {
                   <div className="space-y-4">
                     {Object.entries(VSTEP_STRUCTURE).map(([skill, skillData]) => {
                       const skillColors = {
-                        listening: { gradient: 'from-blue-500 to-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' },
+                        listening: { gradient: 'from-orange-500 to-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700' },
                         reading: { gradient: 'from-green-500 to-green-600', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700' },
                         writing: { gradient: 'from-orange-500 to-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700' },
                         speaking: { gradient: 'from-purple-500 to-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700' },
@@ -2303,11 +2303,11 @@ export function CreateExam() {
         {currentStep === 3 && (
           <div className="max-w-5xl mx-auto space-y-6">
             {/* Exam Summary */}
-            <div className="bg-gradient-to-br from-blue-600 via-blue-500 to-purple-600 rounded-xl p-8 text-white shadow-2xl">
+            <div className="bg-gradient-to-br from-orange-600 via-orange-500 to-amber-600 rounded-xl p-8 text-white shadow-2xl">
               <div className="flex items-start justify-between mb-6">
                 <div className="flex-1">
                   <h2 className="text-3xl font-bold mb-3">{examTitle || "Đề thi chưa đặt tên"}</h2>
-                  <p className="text-blue-100 mb-4">{examDescription}</p>
+                  <p className="text-orange-100 mb-4">{examDescription}</p>
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="px-4 py-2 bg-white/20 backdrop-blur rounded-lg font-semibold">
                       {examType}
@@ -2330,19 +2330,19 @@ export function CreateExam() {
 
               <div className="grid grid-cols-4 gap-4">
                 <div className="bg-white/10 backdrop-blur rounded-lg p-4">
-                  <p className="text-blue-100 text-sm mb-1">Câu hỏi</p>
+                  <p className="text-orange-100 text-sm mb-1">Câu hỏi</p>
                   <p className="text-3xl font-bold">{totalQuestions}</p>
                 </div>
                 <div className="bg-white/10 backdrop-blur rounded-lg p-4">
-                  <p className="text-blue-100 text-sm mb-1">Tổng điểm</p>
+                  <p className="text-orange-100 text-sm mb-1">Tổng điểm</p>
                   <p className="text-3xl font-bold">{totalPoints}</p>
                 </div>
                 <div className="bg-white/10 backdrop-blur rounded-lg p-4">
-                  <p className="text-blue-100 text-sm mb-1">Độ khó</p>
+                  <p className="text-orange-100 text-sm mb-1">Độ khó</p>
                   <p className="text-xl font-bold capitalize">{difficulty}</p>
                 </div>
                 <div className="bg-white/10 backdrop-blur rounded-lg p-4">
-                  <p className="text-blue-100 text-sm mb-1">Trạng thái</p>
+                  <p className="text-orange-100 text-sm mb-1">Trạng thái</p>
                   <p className="text-xl font-bold">
                     {publishOption === "now" ? "Xuất bản" : "Nháp"}
                   </p>
@@ -2358,7 +2358,7 @@ export function CreateExam() {
                   <div key={question.id} className="p-4 border border-gray-200 rounded-lg">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-3">
-                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-semibold">
+                        <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-lg text-sm font-semibold">
                           Câu {index + 1}
                         </span>
                         <span className="text-sm text-gray-600">
@@ -2386,7 +2386,7 @@ export function CreateExam() {
                     name="publish"
                     checked={publishOption === "now"}
                     onChange={() => setPublishOption("now")}
-                    className="mt-1 w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    className="mt-1 w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
                   />
                   <div>
                     <p className="font-semibold text-gray-900">Xuất bản ngay</p>
@@ -2399,7 +2399,7 @@ export function CreateExam() {
                     name="publish"
                     checked={publishOption === "draft"}
                     onChange={() => setPublishOption("draft")}
-                    className="mt-1 w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    className="mt-1 w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
                   />
                   <div>
                     <p className="font-semibold text-gray-900">Lưu nháp</p>
@@ -2412,7 +2412,7 @@ export function CreateExam() {
                     name="publish"
                     checked={publishOption === "schedule"}
                     onChange={() => setPublishOption("schedule")}
-                    className="mt-1 w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    className="mt-1 w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
                   />
                   <div className="flex-1">
                     <p className="font-semibold text-gray-900">Lên lịch xuất bản</p>
@@ -2423,7 +2423,7 @@ export function CreateExam() {
                           type="datetime-local"
                           value={scheduledAt}
                           onChange={(e) => setScheduledAt(e.target.value)}
-                          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                     )}
@@ -2440,7 +2440,7 @@ export function CreateExam() {
                       type="checkbox"
                       checked={notifyStudents}
                       onChange={(e) => setNotifyStudents(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                     />
                     <span className="text-sm text-gray-700">Thông báo cho học sinh</span>
                   </label>
@@ -2449,7 +2449,7 @@ export function CreateExam() {
                       type="checkbox"
                       checked={notifyTeachers}
                       onChange={(e) => setNotifyTeachers(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                     />
                     <span className="text-sm text-gray-700">Thông báo cho giáo viên khác</span>
                   </label>
@@ -2458,7 +2458,7 @@ export function CreateExam() {
                       type="checkbox"
                       checked={sendEmail}
                       onChange={(e) => setSendEmail(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                     />
                     <span className="text-sm text-gray-700">Gửi email thông báo</span>
                   </label>
@@ -2485,7 +2485,7 @@ export function CreateExam() {
                 <button
                   onClick={() => persistExam("publish")}
                   disabled={isSaving || !canSubmitExam}
-                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-bold shadow-lg shadow-blue-500/50 flex items-center gap-2"
+                  className="px-8 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all font-bold shadow-lg shadow-orange-500/50 flex items-center gap-2"
                 >
                   <Sparkles className="w-5 h-5" />
                   Xuất bản đề thi
@@ -2500,3 +2500,7 @@ export function CreateExam() {
 }
 
 export default CreateExam;
+
+
+
+

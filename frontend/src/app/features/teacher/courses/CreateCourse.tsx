@@ -203,11 +203,11 @@ export function CreateCourse() {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Tạo khóa học mới</h1>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <Link to="/giao-vien" className="hover:text-blue-600 transition-colors">
+                  <Link to="/giao-vien" className="hover:text-orange-600 transition-colors">
                     Dashboard
                   </Link>
                   <span>/</span>
-                  <Link to="/giao-vien/khoa-hoc" className="hover:text-blue-600 transition-colors">
+                  <Link to="/giao-vien/khoa-hoc" className="hover:text-orange-600 transition-colors">
                     Khóa học
                   </Link>
                   <span>/</span>
@@ -238,7 +238,7 @@ export function CreateCourse() {
         <div className="max-w-5xl mx-auto space-y-8">
           {/* Section 1: Basic Info */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-lg">
                   <BookOpen className="w-5 h-5 text-white" />
@@ -252,10 +252,10 @@ export function CreateCourse() {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Ảnh bìa khóa học
                 </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 hover:border-blue-400 transition-colors cursor-pointer bg-gray-50 hover:bg-blue-50/50">
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 hover:border-orange-400 transition-colors cursor-pointer bg-gray-50 hover:bg-orange-50/50">
                   <div className="text-center space-y-3">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                      <Upload className="w-6 h-6 text-blue-600" />
+                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
+                      <Upload className="w-6 h-6 text-orange-600" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">
@@ -309,7 +309,7 @@ export function CreateCourse() {
                         }}
                         className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                           category === cat
-                            ? "border-blue-500 bg-blue-50"
+                            ? "border-orange-500 bg-orange-50"
                             : "border-gray-200 hover:border-gray-300 bg-white"
                         }`}
                       >
@@ -317,13 +317,13 @@ export function CreateCourse() {
                           <div
                             className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                               cat === "VSTEP"
-                                ? "bg-blue-100"
+                                ? "bg-orange-100"
                                 : cat === "IELTS"
                                   ? "bg-purple-100"
                                   : "bg-green-100"
                             }`}
                           >
-                            {cat === "VSTEP" && <Target className="w-5 h-5 text-blue-600" />}
+                            {cat === "VSTEP" && <Target className="w-5 h-5 text-orange-600" />}
                             {cat === "IELTS" && <Globe className="w-5 h-5 text-purple-600" />}
                             {cat === "Cambridge" && (
                               <GraduationCap className="w-5 h-5 text-green-600" />
@@ -333,7 +333,7 @@ export function CreateCourse() {
                             <p className="font-semibold text-gray-900">{cat}</p>
                           </div>
                           {category === cat && (
-                            <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                            <CheckCircle2 className="w-5 h-5 text-orange-600" />
                           )}
                         </div>
                       </div>
@@ -357,14 +357,14 @@ export function CreateCourse() {
                           }}
                           className={`p-3 border rounded-lg cursor-pointer transition-all ${
                             subCategory === sub
-                              ? "border-blue-500 bg-blue-50"
+                              ? "border-orange-500 bg-orange-50"
                               : "border-gray-200 hover:border-gray-300"
                           }`}
                         >
                           <div className="flex items-center justify-between">
                             <span className="font-medium text-gray-900">{sub}</span>
                             {subCategory === sub && (
-                              <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                              <CheckCircle2 className="w-4 h-4 text-orange-600" />
                             )}
                           </div>
                         </div>
@@ -380,7 +380,7 @@ export function CreateCourse() {
                   <label className="block text-sm font-semibold text-gray-700">Mô tả</label>
                   <button
                     type="button"
-                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    className="flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 font-medium"
                   >
                     <Sparkles className="w-3 h-3" />
                     AI gợi ý
@@ -486,7 +486,7 @@ export function CreateCourse() {
                     onClick={() => setScheduleMode("visual")}
                     className={`flex-1 px-4 py-2.5 rounded-lg font-medium transition-all ${
                       scheduleMode === "visual"
-                        ? "bg-blue-600 text-white"
+                        ? "bg-orange-600 text-white"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                   >
@@ -497,7 +497,7 @@ export function CreateCourse() {
                     onClick={() => setScheduleMode("text")}
                     className={`flex-1 px-4 py-2.5 rounded-lg font-medium transition-all ${
                       scheduleMode === "text"
-                        ? "bg-blue-600 text-white"
+                        ? "bg-orange-600 text-white"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                   >
@@ -519,7 +519,7 @@ export function CreateCourse() {
                             onClick={() => toggleDay(day.key)}
                             className={`py-3 rounded-lg font-semibold transition-all ${
                               dayData?.enabled
-                                ? "bg-blue-600 text-white"
+                                ? "bg-orange-600 text-white"
                                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                             }`}
                           >
@@ -531,7 +531,7 @@ export function CreateCourse() {
 
                     {/* Time Picker */}
                     {scheduleDays.some((d) => d.enabled) && (
-                      <div className="bg-blue-50 rounded-lg p-4 space-y-3">
+                      <div className="bg-orange-50 rounded-lg p-4 space-y-3">
                         <p className="text-sm font-semibold text-gray-700">Giờ học:</p>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
@@ -636,8 +636,8 @@ export function CreateCourse() {
 
               {/* Duration Preview */}
               {startDate && endDate && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-blue-800">
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-orange-800">
                     <Info className="w-4 h-4" />
                     <p className="text-sm font-medium">
                       Khóa học kéo dài: <span className="font-bold">{calculateDuration()}</span>
@@ -725,7 +725,7 @@ export function CreateCourse() {
                     }}
                     className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                       courseStatus === "draft"
-                        ? "border-blue-500 bg-blue-50"
+                        ? "border-orange-500 bg-orange-50"
                         : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
@@ -739,7 +739,7 @@ export function CreateCourse() {
                     }}
                     className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                       courseStatus === "active"
-                        ? "border-blue-500 bg-blue-50"
+                        ? "border-orange-500 bg-orange-50"
                         : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
@@ -762,7 +762,7 @@ export function CreateCourse() {
                     }}
                     className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                       visibility === "public"
-                        ? "border-blue-500 bg-blue-50"
+                        ? "border-orange-500 bg-orange-50"
                         : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
@@ -776,7 +776,7 @@ export function CreateCourse() {
                     }}
                     className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                       visibility === "private"
-                        ? "border-blue-500 bg-blue-50"
+                        ? "border-orange-500 bg-orange-50"
                         : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
@@ -806,7 +806,7 @@ export function CreateCourse() {
                       }}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
                   </label>
                 </div>
                 {enableEnrollment && (
@@ -825,7 +825,7 @@ export function CreateCourse() {
                       <button
                         type="button"
                         onClick={generateEnrollmentCode}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
                       >
                         Tạo mã
                       </button>
@@ -841,13 +841,13 @@ export function CreateCourse() {
                   {tags.map((tag) => (
                     <span
                       key={tag}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium"
                     >
                       {tag}
                       <button
                         type="button"
                         onClick={() => removeTag(tag)}
-                        className="hover:bg-blue-200 rounded-full p-0.5 transition-colors"
+                        className="hover:bg-orange-200 rounded-full p-0.5 transition-colors"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -913,7 +913,7 @@ export function CreateCourse() {
                 </button>
                 <button
                   type="submit"
-                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all font-semibold shadow-lg shadow-blue-500/30 flex items-center gap-2"
+                  className="px-8 py-3 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-lg hover:from-orange-700 hover:to-orange-600 transition-all font-semibold shadow-lg shadow-orange-500/30 flex items-center gap-2"
                 >
                   <CheckCircle2 className="w-5 h-5" />
                   Tạo khóa học
@@ -957,7 +957,7 @@ export function CreateCourse() {
               <div className="flex flex-col gap-3 pt-4">
                 <button
                   onClick={() => navigate("/giao-vien/khoa-hoc")}
-                  className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
+                  className="w-full px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all font-medium"
                 >
                   Về danh sách
                 </button>
@@ -978,3 +978,4 @@ export function CreateCourse() {
     </div>
   );
 }
+

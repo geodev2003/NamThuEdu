@@ -152,7 +152,7 @@ export function ImportStudents() {
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all"
                     style={{
-                      backgroundColor: isCompleted || isActive ? "#2563EB" : "#E5E7EB",
+                      backgroundColor: isCompleted || isActive ? "#EA580C" : "#E5E7EB",
                       color: isCompleted || isActive ? "#FFFFFF" : "#9CA3AF",
                     }}
                   >
@@ -160,7 +160,7 @@ export function ImportStudents() {
                   </div>
                   <p
                     className="mt-2 text-sm font-medium"
-                    style={{ color: isActive ? "#2563EB" : "#6B7280" }}
+                    style={{ color: isActive ? "#EA580C" : "#6B7280" }}
                   >
                     {step.label}
                   </p>
@@ -168,7 +168,7 @@ export function ImportStudents() {
                 {!isLast && (
                   <div
                     className="flex-1 h-0.5 mx-4 transition-all"
-                    style={{ backgroundColor: isCompleted ? "#2563EB" : "#E5E7EB" }}
+                    style={{ backgroundColor: isCompleted ? "#EA580C" : "#E5E7EB" }}
                   />
                 )}
               </div>
@@ -185,7 +185,7 @@ export function ImportStudents() {
       <div className="mb-6">
         <Link
           to="/giao-vien/students"
-          className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#2563EB] mb-4 transition-colors"
+          className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#EA580C] mb-4 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span className="text-sm font-medium">Quay lại</span>
@@ -207,14 +207,14 @@ export function ImportStudents() {
         {currentStep === "upload" && (
           <div>
             {/* Instructions Card */}
-            <div className="bg-[#EFF6FF] border border-[#BFDBFE] rounded-xl p-6 mb-6">
+            <div className="bg-[#FFF7ED] border border-[#FDBA74] rounded-xl p-6 mb-6">
               <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-[#2563EB] flex-shrink-0 mt-0.5" />
+                <Info className="w-5 h-5 text-[#EA580C] flex-shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="font-bold text-[#1E40AF] mb-2">
+                  <h3 className="font-bold text-[#C2410C] mb-2">
                     Hướng dẫn import dữ liệu
                   </h3>
-                  <ul className="space-y-1.5 text-sm text-[#1E40AF]">
+                  <ul className="space-y-1.5 text-sm text-[#C2410C]">
                     <li>• File phải có định dạng .xlsx hoặc .csv</li>
                     <li>• Dòng đầu tiên phải chứa tên các cột</li>
                     <li>• Các cột bắt buộc: Họ tên, Số điện thoại, Email</li>
@@ -253,8 +253,8 @@ export function ImportStudents() {
               <div
                 className="border-2 border-dashed rounded-xl p-12 text-center transition-all"
                 style={{
-                  borderColor: isDragging ? "#2563EB" : "#E5E7EB",
-                  backgroundColor: isDragging ? "#EFF6FF" : "#F9FAFB",
+                  borderColor: isDragging ? "#EA580C" : "#E5E7EB",
+                  backgroundColor: isDragging ? "#FFF7ED" : "#F9FAFB",
                 }}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -276,7 +276,7 @@ export function ImportStudents() {
                 />
                 <label
                   htmlFor="file-upload"
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#2563EB] text-white rounded-lg hover:bg-[#1D4ED8] transition-colors font-medium cursor-pointer"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#EA580C] text-white rounded-lg hover:bg-[#C2410C] transition-colors font-medium cursor-pointer"
                 >
                   <FileText className="w-4 h-4" />
                   Chọn file từ máy tính
@@ -309,7 +309,7 @@ export function ImportStudents() {
                 <div className="mt-6 flex justify-end">
                   <button
                     onClick={() => setCurrentStep("mapping")}
-                    className="px-6 py-2.5 bg-[#2563EB] text-white rounded-lg hover:bg-[#1D4ED8] transition-colors font-medium"
+                    className="px-6 py-2.5 bg-[#EA580C] text-white rounded-lg hover:bg-[#C2410C] transition-colors font-medium"
                   >
                     Tiếp tục
                   </button>
@@ -346,7 +346,7 @@ export function ImportStudents() {
                     <label className="block text-sm font-medium text-[#374151] mb-2">
                       Trường trong hệ thống
                     </label>
-                    <select className="w-full px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]">
+                    <select className="w-full px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EA580C]">
                       <option value={mapping.target}>{mapping.source}</option>
                       <option value="skip">Bỏ qua cột này</option>
                     </select>
@@ -364,7 +364,7 @@ export function ImportStudents() {
               </button>
               <button
                 onClick={() => setCurrentStep("preview")}
-                className="px-6 py-2.5 bg-[#2563EB] text-white rounded-lg hover:bg-[#1D4ED8] transition-colors font-medium"
+                className="px-6 py-2.5 bg-[#EA580C] text-white rounded-lg hover:bg-[#C2410C] transition-colors font-medium"
               >
                 Tiếp tục
               </button>
@@ -378,7 +378,7 @@ export function ImportStudents() {
             <div className="grid grid-cols-3 gap-6 mb-6">
               <div className="bg-white rounded-xl p-6 border border-[#E5E7EB]">
                 <div className="flex items-center gap-3 mb-2">
-                  <Users className="w-5 h-5 text-[#2563EB]" />
+                  <Users className="w-5 h-5 text-[#EA580C]" />
                   <span className="text-sm text-[#6B7280]">Tổng số dòng</span>
                 </div>
                 <p className="text-3xl font-bold text-[#111827]">5</p>
@@ -487,7 +487,7 @@ export function ImportStudents() {
               </button>
               <button
                 onClick={() => setCurrentStep("result")}
-                className="px-6 py-2.5 bg-[#2563EB] text-white rounded-lg hover:bg-[#1D4ED8] transition-colors font-medium"
+                className="px-6 py-2.5 bg-[#EA580C] text-white rounded-lg hover:bg-[#C2410C] transition-colors font-medium"
               >
                 Xác nhận import
               </button>
@@ -571,7 +571,7 @@ export function ImportStudents() {
                   setSelectedFile(null);
                   setCurrentStep("upload");
                 }}
-                className="px-6 py-2.5 bg-[#2563EB] text-white rounded-lg hover:bg-[#1D4ED8] transition-colors font-medium"
+                className="px-6 py-2.5 bg-[#EA580C] text-white rounded-lg hover:bg-[#C2410C] transition-colors font-medium"
               >
                 Import file khác
               </button>

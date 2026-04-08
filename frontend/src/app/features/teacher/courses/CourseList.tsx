@@ -192,7 +192,7 @@ export function CourseList() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Danh sách khóa học</h1>
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Link to="/giao-vien" className="hover:text-blue-600 transition-colors">
+                <Link to="/giao-vien" className="hover:text-orange-600 transition-colors">
                   Dashboard
                 </Link>
                 <span>/</span>
@@ -211,7 +211,7 @@ export function CourseList() {
               </Link>
               <Link
                 to="/giao-vien/khoa-hoc/tao-moi"
-                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all flex items-center gap-2 font-medium shadow-lg shadow-blue-500/30"
+                className="px-4 py-2.5 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-lg hover:from-orange-700 hover:to-orange-600 transition-all flex items-center gap-2 font-medium shadow-lg shadow-orange-500/30"
               >
                 <Plus className="w-4 h-4" />
                 Tạo khóa học
@@ -221,7 +221,7 @@ export function CourseList() {
                   onClick={() => setViewMode("grid")}
                   className={`p-2 rounded transition-all ${
                     viewMode === "grid"
-                      ? "bg-white text-blue-600 shadow-sm"
+                      ? "bg-white text-orange-600 shadow-sm"
                       : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
@@ -231,7 +231,7 @@ export function CourseList() {
                   onClick={() => setViewMode("list")}
                   className={`p-2 rounded transition-all ${
                     viewMode === "list"
-                      ? "bg-white text-blue-600 shadow-sm"
+                      ? "bg-white text-orange-600 shadow-sm"
                       : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
@@ -249,7 +249,7 @@ export function CourseList() {
           {/* Total Courses */}
           <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-all group">
             <div className="flex items-start justify-between mb-4">
-              <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
+              <div className="p-3 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-lg shadow-orange-500/30 group-hover:scale-110 transition-transform">
                 <BookOpen className="w-6 h-6 text-white" />
               </div>
               <div className="flex items-center gap-1 text-green-600 text-sm font-medium">
@@ -326,7 +326,7 @@ export function CourseList() {
                 placeholder="Tìm theo tên khóa học..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
               {searchTerm && (
                 <button
@@ -343,7 +343,7 @@ export function CourseList() {
               <select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
-                className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
+                className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white cursor-pointer"
               >
                 <option value="all">{t('teacher.courses.allCategories')}</option>
                 <option value="VSTEP">VSTEP</option>
@@ -358,7 +358,7 @@ export function CourseList() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
+                className="appearance-none px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white cursor-pointer"
               >
                 <option value="all">{t('teacher.courses.allStatuses')}</option>
                 <option value="draft">{t('teacher.courses.status.draft')}</option>
@@ -396,7 +396,7 @@ export function CourseList() {
                   className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl transition-all group"
                 >
                   {/* Course Image */}
-                  <div className="relative h-48 bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400 overflow-hidden">
+                  <div className="relative h-48 bg-gradient-to-br from-orange-400 via-orange-300 to-amber-300 overflow-hidden">
                     <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-all" />
                     <div className="absolute top-4 right-4">
                       <span
@@ -413,7 +413,7 @@ export function CourseList() {
                   {/* Course Content */}
                   <div className="p-6 space-y-4">
                     <div>
-                      <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                      <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-1 group-hover:text-orange-600 transition-colors">
                         {course.cName}
                       </h3>
                       <p className="text-sm text-gray-600 line-clamp-2">{course.cDescription}</p>
@@ -474,7 +474,7 @@ export function CourseList() {
                     <div className="flex items-center gap-2 pt-2">
                       <Link
                         to={`/khoa-hoc/${course.id}`}
-                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-center text-sm font-medium"
+                        className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all text-center text-sm font-medium"
                       >
                         {t('teacher.common.viewDetail')}
                       </Link>
@@ -536,7 +536,7 @@ export function CourseList() {
                       <tr key={course.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center flex-shrink-0">
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-400 to-amber-400 flex items-center justify-center flex-shrink-0">
                               <BookOpen className="w-5 h-5 text-white" />
                             </div>
                             <div>
@@ -590,7 +590,7 @@ export function CourseList() {
                           <div className="flex items-center justify-end gap-2">
                             <Link
                               to={`/khoa-hoc/${course.id}`}
-                              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                              className="p-2 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
                               title={t('teacher.common.viewDetail')}
                             >
                               <Eye className="w-4 h-4" />
@@ -642,7 +642,7 @@ export function CourseList() {
                   setFilterCategory("all");
                   setFilterStatus("all");
                 }}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium inline-flex items-center gap-2"
+                className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all font-medium inline-flex items-center gap-2"
               >
                 Xóa bộ lọc
               </button>
@@ -653,3 +653,4 @@ export function CourseList() {
     </div>
   );
 }
+

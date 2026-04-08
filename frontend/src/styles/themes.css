@@ -1,0 +1,278 @@
+/* Theme CSS Variables */
+
+/* ========================================
+   PLAYFUL THEME (Kids 6-12)
+   ======================================== */
+[data-theme="playful"] {
+  /* Colors */
+  --theme-primary: #FF6B35;
+  --theme-primary-light: #FFE5D9;
+  --theme-primary-dark: #E85A2A;
+  --theme-accent: #4ECDC4;
+  --theme-accent-light: #C7F9F5;
+  --theme-background: #FFFEF9;
+  --theme-surface: #FFFFFF;
+  --theme-surface-hover: #FFF8E7;
+  --theme-text: #2D3748;
+  --theme-text-secondary: #718096;
+  --theme-success: #48BB78;
+  --theme-success-light: #C6F6D5;
+  --theme-warning: #F6AD55;
+  --theme-warning-light: #FEEBC8;
+  --theme-error: #F56565;
+  --theme-error-light: #FED7D7;
+  --theme-border: #E2E8F0;
+  
+  /* Typography */
+  --theme-font-family: 'Nunito', 'Comic Neue', 'Quicksand', sans-serif;
+  --theme-font-size-base: 18px;
+  --theme-font-size-sm: 16px;
+  --theme-font-size-lg: 22px;
+  --theme-font-size-xl: 28px;
+  --theme-font-size-2xl: 36px;
+  --theme-line-height: 1.7;
+  --theme-font-weight-normal: 600;
+  --theme-font-weight-bold: 800;
+  --theme-letter-spacing: 0.02em;
+  
+  /* Spacing */
+  --theme-spacing-unit: 8px;
+  --theme-spacing-xs: 8px;
+  --theme-spacing-sm: 16px;
+  --theme-spacing-md: 24px;
+  --theme-spacing-lg: 32px;
+  --theme-spacing-xl: 48px;
+  --theme-card-gap: 32px;
+  --theme-section-gap: 48px;
+  --theme-container-padding: 24px;
+  
+  /* Components */
+  --theme-border-radius: 24px;
+  --theme-border-radius-sm: 16px;
+  --theme-button-height: 56px;
+  --theme-button-padding: 16px 32px;
+  --theme-input-height: 56px;
+  --theme-icon-size: 32px;
+  --theme-icon-size-lg: 48px;
+  --theme-shadow-card: 0 8px 24px rgba(255, 107, 53, 0.15);
+  --theme-shadow-button: 0 4px 12px rgba(78, 205, 196, 0.25);
+  --theme-shadow-hover: 0 12px 32px rgba(255, 107, 53, 0.2);
+  
+  /* Interaction */
+  --theme-transition-duration: 300ms;
+  --theme-hover-scale: 1.05;
+  --theme-active-scale: 0.98;
+}
+
+/* ========================================
+   DYNAMIC THEME (Teens 13-17)
+   ======================================== */
+[data-theme="dynamic"] {
+  /* Colors */
+  --theme-primary: #6366F1;
+  --theme-primary-light: #E0E7FF;
+  --theme-primary-dark: #4F46E5;
+  --theme-accent: #EC4899;
+  --theme-accent-light: #FCE7F3;
+  --theme-background: #F9FAFB;
+  --theme-surface: #FFFFFF;
+  --theme-surface-hover: #F3F4F6;
+  --theme-text: #111827;
+  --theme-text-secondary: #6B7280;
+  --theme-success: #10B981;
+  --theme-success-light: #D1FAE5;
+  --theme-warning: #F59E0B;
+  --theme-warning-light: #FEF3C7;
+  --theme-error: #EF4444;
+  --theme-error-light: #FEE2E2;
+  --theme-border: #E5E7EB;
+  
+  /* Typography */
+  --theme-font-family: 'Inter', 'SF Pro Display', -apple-system, sans-serif;
+  --theme-font-size-base: 16px;
+  --theme-font-size-sm: 14px;
+  --theme-font-size-lg: 20px;
+  --theme-font-size-xl: 25px;
+  --theme-font-size-2xl: 32px;
+  --theme-line-height: 1.6;
+  --theme-font-weight-normal: 500;
+  --theme-font-weight-bold: 700;
+  --theme-letter-spacing: -0.01em;
+  
+  /* Spacing */
+  --theme-spacing-unit: 8px;
+  --theme-spacing-xs: 8px;
+  --theme-spacing-sm: 16px;
+  --theme-spacing-md: 24px;
+  --theme-spacing-lg: 32px;
+  --theme-spacing-xl: 40px;
+  --theme-card-gap: 24px;
+  --theme-section-gap: 40px;
+  --theme-container-padding: 20px;
+  
+  /* Components */
+  --theme-border-radius: 16px;
+  --theme-border-radius-sm: 12px;
+  --theme-button-height: 48px;
+  --theme-button-padding: 12px 24px;
+  --theme-input-height: 48px;
+  --theme-icon-size: 24px;
+  --theme-icon-size-lg: 40px;
+  --theme-shadow-card: 0 4px 16px rgba(99, 102, 241, 0.1);
+  --theme-shadow-button: 0 2px 8px rgba(236, 72, 153, 0.2);
+  --theme-shadow-hover: 0 8px 24px rgba(99, 102, 241, 0.15);
+  
+  /* Interaction */
+  --theme-transition-duration: 200ms;
+  --theme-hover-scale: 1.02;
+  --theme-active-scale: 0.99;
+}
+
+/* ========================================
+   PROFESSIONAL THEME (Adults 18+)
+   ======================================== */
+[data-theme="professional"] {
+  /* Colors */
+  --theme-primary: #0EA5E9;
+  --theme-primary-light: #E0F2FE;
+  --theme-primary-dark: #0284C7;
+  --theme-accent: #06B6D4;
+  --theme-accent-light: #CFFAFE;
+  --theme-background: #FFFFFF;
+  --theme-surface: #F8FAFC;
+  --theme-surface-hover: #F1F5F9;
+  --theme-text: #0F172A;
+  --theme-text-secondary: #64748B;
+  --theme-success: #22C55E;
+  --theme-success-light: #DCFCE7;
+  --theme-warning: #EAB308;
+  --theme-warning-light: #FEF9C3;
+  --theme-error: #DC2626;
+  --theme-error-light: #FEE2E2;
+  --theme-border: #E2E8F0;
+  
+  /* Typography */
+  --theme-font-family: 'Inter', 'Roboto', 'Helvetica Neue', sans-serif;
+  --theme-font-size-base: 14px;
+  --theme-font-size-sm: 13px;
+  --theme-font-size-lg: 17px;
+  --theme-font-size-xl: 20px;
+  --theme-font-size-2xl: 28px;
+  --theme-line-height: 1.5;
+  --theme-font-weight-normal: 400;
+  --theme-font-weight-bold: 600;
+  --theme-letter-spacing: -0.005em;
+  
+  /* Spacing */
+  --theme-spacing-unit: 8px;
+  --theme-spacing-xs: 4px;
+  --theme-spacing-sm: 8px;
+  --theme-spacing-md: 16px;
+  --theme-spacing-lg: 24px;
+  --theme-spacing-xl: 32px;
+  --theme-card-gap: 16px;
+  --theme-section-gap: 32px;
+  --theme-container-padding: 16px;
+  
+  /* Components */
+  --theme-border-radius: 8px;
+  --theme-border-radius-sm: 6px;
+  --theme-button-height: 40px;
+  --theme-button-padding: 10px 20px;
+  --theme-input-height: 40px;
+  --theme-icon-size: 20px;
+  --theme-icon-size-lg: 32px;
+  --theme-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --theme-shadow-button: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --theme-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+  
+  /* Interaction */
+  --theme-transition-duration: 150ms;
+  --theme-hover-scale: 1.0;
+  --theme-active-scale: 1.0;
+}
+
+/* ========================================
+   GLOBAL THEME UTILITIES
+   ======================================== */
+
+/* Smooth theme transitions */
+* {
+  transition: background-color var(--theme-transition-duration) ease,
+              color var(--theme-transition-duration) ease,
+              border-color var(--theme-transition-duration) ease;
+}
+
+/* Theme-aware components */
+.theme-button {
+  height: var(--theme-button-height);
+  padding: var(--theme-button-padding);
+  background: var(--theme-primary);
+  color: white;
+  border-radius: var(--theme-border-radius-sm);
+  font-weight: var(--theme-font-weight-bold);
+  transition: transform var(--theme-transition-duration) ease,
+              box-shadow var(--theme-transition-duration) ease;
+}
+
+.theme-button:hover {
+  transform: scale(var(--theme-hover-scale));
+  box-shadow: var(--theme-shadow-hover);
+}
+
+.theme-button:active {
+  transform: scale(var(--theme-active-scale));
+}
+
+.theme-card {
+  background: var(--theme-surface);
+  border-radius: var(--theme-border-radius);
+  padding: var(--theme-container-padding);
+  box-shadow: var(--theme-shadow-card);
+  border: 1px solid var(--theme-border);
+}
+
+.theme-card:hover {
+  background: var(--theme-surface-hover);
+  box-shadow: var(--theme-shadow-hover);
+}
+
+.theme-input {
+  height: var(--theme-input-height);
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
+  border-radius: var(--theme-border-radius-sm);
+  padding: 0 var(--theme-spacing-md);
+  font-size: var(--theme-font-size-base);
+  color: var(--theme-text);
+}
+
+.theme-input:focus {
+  outline: none;
+  border-color: var(--theme-primary);
+  box-shadow: 0 0 0 3px var(--theme-primary-light);
+}
+
+/* Typography utilities */
+.theme-text-base {
+  font-family: var(--theme-font-family);
+  font-size: var(--theme-font-size-base);
+  line-height: var(--theme-line-height);
+  color: var(--theme-text);
+}
+
+.theme-heading {
+  font-family: var(--theme-font-family);
+  font-weight: var(--theme-font-weight-bold);
+  color: var(--theme-text);
+  letter-spacing: var(--theme-letter-spacing);
+}
+
+/* Spacing utilities */
+.theme-gap {
+  gap: var(--theme-card-gap);
+}
+
+.theme-section-gap {
+  margin-bottom: var(--theme-section-gap);
+}

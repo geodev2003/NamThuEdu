@@ -1,10 +1,8 @@
-/**
- * Hooks Index
- * 
- * Central export point for all custom hooks
- */
-
-export * from './useTheme';
-export * from './useAgeGroup';
-export * from './useAgeGroupSync';
-export * from './usePageTitle';
+export { useToast } from "./useToast";
+export { useAgeGroup } from "./useAgeGroup";
+export { useAgeGroupSync } from "./useAgeGroupSync";
+export { useDebounce } from "./useDebounce";
+export { useLocalStorage } from "./useLocalStorage";
+export { usePageTitle } from "./usePageTitle";
+export { useTeacherApi } from "./useTeacherApi";
+export { useTheme } from "./useTheme";

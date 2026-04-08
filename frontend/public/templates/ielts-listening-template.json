@@ -1,0 +1,104 @@
+{
+  "exam_info": {
+    "title": "IELTS Listening Practice Test",
+    "description": "Template mẫu cho đề thi IELTS Listening",
+    "type": "IELTS",
+    "skill": "listening",
+    "duration_minutes": 30,
+    "instructions": "Hướng dẫn sử dụng template:\n1. Copy nội dung file này\n2. Chỉnh sửa câu hỏi, đáp án theo format IELTS\n3. Import vào hệ thống"
+  },
+  "questions": [
+    {
+      "content": "What is the man's occupation?",
+      "type": "multiple_choice",
+      "skill": "listening",
+      "part": 1,
+      "points": 1,
+      "audio_url": "audio/section1.mp3",
+      "play_limit": 1,
+      "transcript": "I work as a software engineer at a tech company.",
+      "answers": [
+        {
+          "content": "Teacher",
+          "is_correct": false
+        },
+        {
+          "content": "Software Engineer",
+          "is_correct": true
+        },
+        {
+          "content": "Doctor",
+          "is_correct": false
+        },
+        {
+          "content": "Lawyer",
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "content": "The woman's phone number is ___________.",
+      "type": "fill_blank",
+      "skill": "listening",
+      "part": 1,
+      "points": 1,
+      "audio_url": "audio/section1.mp3",
+      "play_limit": 1,
+      "transcript": "You can reach me at 555-1234.",
+      "answers": [
+        {
+          "content": "555-1234",
+          "is_correct": true
+        }
+      ]
+    },
+    {
+      "content": "Complete the sentence: The course starts on ___________.",
+      "type": "fill_blank",
+      "skill": "listening",
+      "part": 2,
+      "points": 1,
+      "audio_url": "audio/section2.mp3",
+      "play_limit": 1,
+      "transcript": "The course starts on September 15th.",
+      "answers": [
+        {
+          "content": "September 15th",
+          "is_correct": true
+        },
+        {
+          "content": "15th September",
+          "is_correct": true
+        }
+      ]
+    },
+    {
+      "content": "What is the main topic of the lecture?",
+      "type": "multiple_choice",
+      "skill": "listening",
+      "part": 3,
+      "points": 1,
+      "audio_url": "audio/section3.mp3",
+      "play_limit": 1,
+      "transcript": "Today we'll discuss the impact of social media on modern communication.",
+      "answers": [
+        {
+          "content": "History of communication",
+          "is_correct": false
+        },
+        {
+          "content": "Social media's impact on communication",
+          "is_correct": true
+        },
+        {
+          "content": "Technology trends",
+          "is_correct": false
+        },
+        {
+          "content": "Digital marketing",
+          "is_correct": false
+        }
+      ]
+    }
+  ]
+}

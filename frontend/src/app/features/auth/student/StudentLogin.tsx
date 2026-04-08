@@ -67,8 +67,26 @@ export function StudentLogin() {
       // Sync theme with user data
       syncWithAuth(user);
 
-      // Redirect to student portal
-      navigate('/hoc-vien');
+      // Check if student has class
+      if (!user.class_id) {
+        navigate('/hoc-vien/cho-xep-lop');
+        return;
+      }
+
+      // Redirect based on age_group
+      switch (user.age_group) {
+        case 'kids':
+          navigate('/hoc-vien/kids');
+          break;
+        case 'teens':
+          navigate('/hoc-vien/teens');
+          break;
+        case 'adults':
+          navigate('/hoc-vien/adults');
+          break;
+        default:
+          navigate('/hoc-vien/teens');
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || text.errorDefault);
       setFormData(prev => ({ ...prev, password: '' }));

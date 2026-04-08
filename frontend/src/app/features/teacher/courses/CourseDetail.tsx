@@ -297,8 +297,8 @@ export function CourseDetail() {
                   <div
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md"
                     style={{
-                      background: "linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)",
-                      color: "#1E40AF",
+                      background: "linear-gradient(135deg, #FFEDD5 0%, #FDBA74 100%)",
+                      color: "#C2410C",
                       fontSize: "13px",
                       fontWeight: 600,
                     }}
@@ -338,8 +338,8 @@ export function CourseDetail() {
             <div className="grid grid-cols-4 gap-4">
               <div className="bg-[#F9FAFB] rounded-lg p-4 border border-[#E5E7EB]">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 bg-[#DBEAFE] rounded-lg flex items-center justify-center">
-                    <Users className="w-5 h-5 text-[#2563EB]" />
+                  <div className="w-10 h-10 bg-[#FFEDD5] rounded-lg flex items-center justify-center">
+                    <Users className="w-5 h-5 text-[#EA580C]" />
                   </div>
                   <div>
                     <div
@@ -432,7 +432,7 @@ export function CourseDetail() {
                     onClick={() => handleTabChange(tab.id)}
                     className="flex-1 flex items-center justify-center gap-2 h-14 transition-all duration-200 relative"
                     style={{
-                      color: activeTab === tab.id ? "#2563EB" : "#6B7280",
+                      color: activeTab === tab.id ? "#EA580C" : "#6B7280",
                       fontSize: "14px",
                       fontWeight: 500,
                       background: activeTab === tab.id ? "#F0F9FF" : "transparent",
@@ -442,7 +442,7 @@ export function CourseDetail() {
                     {tab.label}
                     {activeTab === tab.id && (
                       <div
-                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2563EB]"
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#EA580C]"
                         style={{
                           transition: "all 300ms ease",
                         }}
@@ -486,7 +486,7 @@ function OverviewTab({ course }: { course: typeof mockCourseDetail }) {
           className="text-[#111827] mb-4 flex items-center gap-2"
           style={{ fontSize: "18px", fontWeight: 700 }}
         >
-          <TrendingUp className="w-5 h-5 text-[#2563EB]" />
+          <TrendingUp className="w-5 h-5 text-[#EA580C]" />
           Mục tiêu khóa học
         </h3>
         <ul className="space-y-3">
@@ -507,12 +507,12 @@ function OverviewTab({ course }: { course: typeof mockCourseDetail }) {
           className="text-[#111827] mb-4 flex items-center gap-2"
           style={{ fontSize: "18px", fontWeight: 700 }}
         >
-          <BookMarked className="w-5 h-5 text-[#2563EB]" />
+          <BookMarked className="w-5 h-5 text-[#EA580C]" />
           Giáo trình
         </h3>
         <div className="space-y-4">
           {course.curriculum.map((module, index) => (
-            <div key={index} className="border-l-2 border-[#2563EB] pl-4">
+            <div key={index} className="border-l-2 border-[#EA580C] pl-4">
               <div
                 className="text-[#111827] mb-2"
                 style={{ fontSize: "15px", fontWeight: 600 }}
@@ -529,7 +529,7 @@ function OverviewTab({ course }: { course: typeof mockCourseDetail }) {
                     className="text-[#6B7280] flex items-start gap-2"
                     style={{ fontSize: "13px" }}
                   >
-                    <span className="text-[#2563EB]">•</span>
+                    <span className="text-[#EA580C]">•</span>
                     {topic}
                   </li>
                 ))}
@@ -550,7 +550,7 @@ function ClassesTab({ classes }: { classes: typeof mockClasses }) {
       {classes.map((classItem) => (
         <div
           key={classItem.id}
-          className="bg-white rounded-xl p-6 border border-[#E5E7EB] hover:border-[#2563EB] transition-all duration-300 cursor-pointer"
+          className="bg-white rounded-xl p-6 border border-[#E5E7EB] hover:border-[#EA580C] transition-all duration-300 cursor-pointer"
           onClick={() => navigate(`/lop-hoc/${classItem.id}`)}
         >
           <h3
@@ -602,11 +602,11 @@ function ClassesTab({ classes }: { classes: typeof mockClasses }) {
       ))}
 
       {/* Add New Class Card */}
-      <button className="bg-white rounded-xl p-6 border-2 border-dashed border-[#D1D5DB] hover:border-[#2563EB] transition-all duration-300 flex flex-col items-center justify-center gap-3 min-h-[280px]">
+      <button className="bg-white rounded-xl p-6 border-2 border-dashed border-[#D1D5DB] hover:border-[#EA580C] transition-all duration-300 flex flex-col items-center justify-center gap-3 min-h-[280px]">
         <div className="w-16 h-16 bg-[#F0F9FF] rounded-full flex items-center justify-center">
-          <Plus className="w-8 h-8 text-[#2563EB]" />
+          <Plus className="w-8 h-8 text-[#EA580C]" />
         </div>
-        <span className="text-[#2563EB]" style={{ fontSize: "15px", fontWeight: 600 }}>
+        <span className="text-[#EA580C]" style={{ fontSize: "15px", fontWeight: 600 }}>
           Thêm lớp học mới
         </span>
       </button>
@@ -621,7 +621,7 @@ function StudentsTab({ students }: { students: typeof mockStudents }) {
         <h3 className="text-[#111827]" style={{ fontSize: "18px", fontWeight: 700 }}>
           Danh sách học viên ({students.length})
         </h3>
-        <button className="flex items-center gap-2 h-10 px-4 bg-[#2563EB] text-white rounded-lg hover:bg-[#1D4ED8] transition-colors">
+        <button className="flex items-center gap-2 h-10 px-4 bg-[#EA580C] text-white rounded-lg hover:bg-[#C2410C] transition-colors">
           <Plus className="w-4 h-4" />
           <span style={{ fontSize: "14px", fontWeight: 500 }}>Thêm học viên</span>
         </button>
@@ -657,7 +657,7 @@ function StudentsTab({ students }: { students: typeof mockStudents }) {
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-10 h-10 bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] rounded-full flex items-center justify-center text-white"
+                      className="w-10 h-10 bg-gradient-to-br from-[#EA580C] to-[#C2410C] rounded-full flex items-center justify-center text-white"
                       style={{ fontSize: "14px", fontWeight: 600 }}
                     >
                       {student.name.charAt(0)}
@@ -722,7 +722,7 @@ function ExamsTab({ exams }: { exams: typeof mockExams }) {
         <h3 className="text-[#111827]" style={{ fontSize: "18px", fontWeight: 700 }}>
           Bài kiểm tra & Bài tập ({exams.length})
         </h3>
-        <button className="flex items-center gap-2 h-10 px-4 bg-[#2563EB] text-white rounded-lg hover:bg-[#1D4ED8] transition-colors">
+        <button className="flex items-center gap-2 h-10 px-4 bg-[#EA580C] text-white rounded-lg hover:bg-[#C2410C] transition-colors">
           <Plus className="w-4 h-4" />
           <span style={{ fontSize: "14px", fontWeight: 500 }}>Tạo bài kiểm tra</span>
         </button>
@@ -732,7 +732,7 @@ function ExamsTab({ exams }: { exams: typeof mockExams }) {
         {exams.map((exam) => (
           <div
             key={exam.id}
-            className="border border-[#E5E7EB] rounded-lg p-5 hover:border-[#2563EB] transition-all duration-300"
+            className="border border-[#E5E7EB] rounded-lg p-5 hover:border-[#EA580C] transition-all duration-300"
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
@@ -743,8 +743,8 @@ function ExamsTab({ exams }: { exams: typeof mockExams }) {
                   <div
                     className="px-2.5 py-1 rounded-md"
                     style={{
-                      background: exam.type === "Mock Test" ? "#DBEAFE" : "#FEF3C7",
-                      color: exam.type === "Mock Test" ? "#1E40AF" : "#92400E",
+                      background: exam.type === "Mock Test" ? "#FFEDD5" : "#FEF3C7",
+                      color: exam.type === "Mock Test" ? "#C2410C" : "#92400E",
                       fontSize: "12px",
                       fontWeight: 600,
                     }}
@@ -817,7 +817,7 @@ function MaterialsTab({ materials }: { materials: typeof mockMaterials }) {
         <h3 className="text-[#111827]" style={{ fontSize: "18px", fontWeight: 700 }}>
           Tài liệu học tập ({materials.length})
         </h3>
-        <button className="flex items-center gap-2 h-10 px-4 bg-[#2563EB] text-white rounded-lg hover:bg-[#1D4ED8] transition-colors">
+        <button className="flex items-center gap-2 h-10 px-4 bg-[#EA580C] text-white rounded-lg hover:bg-[#C2410C] transition-colors">
           <Upload className="w-4 h-4" />
           <span style={{ fontSize: "14px", fontWeight: 500 }}>Tải lên tài liệu</span>
         </button>
@@ -828,7 +828,7 @@ function MaterialsTab({ materials }: { materials: typeof mockMaterials }) {
           {materials.map((material) => (
             <div
               key={material.id}
-              className="border border-[#E5E7EB] rounded-lg p-4 hover:border-[#2563EB] hover:bg-[#F9FAFB] transition-all duration-300"
+              className="border border-[#E5E7EB] rounded-lg p-4 hover:border-[#EA580C] hover:bg-[#F9FAFB] transition-all duration-300"
             >
               <div className="flex items-start gap-4">
                 <div className="text-4xl">{getFileIcon(material.type)}</div>
@@ -850,7 +850,7 @@ function MaterialsTab({ materials }: { materials: typeof mockMaterials }) {
                     </span>
                   </div>
                 </div>
-                <button className="w-9 h-9 bg-[#F3F4F6] rounded-lg flex items-center justify-center hover:bg-[#2563EB] hover:text-white transition-all duration-200">
+                <button className="w-9 h-9 bg-[#F3F4F6] rounded-lg flex items-center justify-center hover:bg-[#EA580C] hover:text-white transition-all duration-200">
                   <Download className="w-4 h-4" />
                 </button>
               </div>

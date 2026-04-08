@@ -34,7 +34,7 @@ const statsData = [
     change: 12.5,
     trend: "up",
     icon: School,
-    color: "#2563EB",
+    color: "#EA580C",
   },
   {
     label: "Lớp đang hoạt động",
@@ -206,14 +206,14 @@ export function ClassList() {
           <div className="flex items-center gap-3">
             <Link
               to="/giao-vien/lop-hoc/thong-ke"
-              className="flex items-center gap-2 px-5 py-3 bg-white border-2 border-[#E5E7EB] text-[#374151] rounded-xl hover:border-[#2563EB] hover:bg-[#EFF6FF] transition-all font-semibold"
+              className="flex items-center gap-2 px-5 py-3 bg-white border-2 border-[#E5E7EB] text-[#374151] rounded-xl hover:border-[#EA580C] hover:bg-[#FFF7ED] transition-all font-semibold"
             >
               <BarChart3 className="w-5 h-5" />
               Thống kê
             </Link>
             <Link
               to="/giao-vien/lop-hoc/tao-moi"
-              className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white rounded-xl hover:shadow-xl hover:shadow-blue-500/30 hover:scale-105 transition-all font-bold"
+              className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#EA580C] to-[#C2410C] text-white rounded-xl hover:shadow-xl hover:shadow-orange-500/30 hover:scale-105 transition-all font-bold"
             >
               <Plus className="w-5 h-5" />
               Tạo lớp mới
@@ -271,7 +271,7 @@ export function ClassList() {
               placeholder="Tìm theo tên lớp, mã lớp, giáo viên..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all"
+              className="w-full pl-12 pr-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all"
             />
           </div>
 
@@ -279,21 +279,21 @@ export function ClassList() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] font-medium"
+            className="px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] font-medium"
           >
             <option value="all">{t('teacher.classes.allStatuses')}</option>
             <option value="active">{t('teacher.classes.status.active')}</option>
             <option value="inactive">{t('teacher.classes.status.inactive')}</option>
           </select>
 
-          <select className="px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB] font-medium">
+          <select className="px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] font-medium">
             <option>{t('teacher.classes.allCourses')}</option>
             <option>IELTS</option>
             <option>TOEIC</option>
             <option>Cambridge</option>
           </select>
 
-          <button className="px-5 py-3.5 bg-[#2563EB] text-white rounded-xl hover:bg-[#1D4ED8] transition-all font-semibold flex items-center gap-2">
+          <button className="px-5 py-3.5 bg-[#EA580C] text-white rounded-xl hover:bg-[#C2410C] transition-all font-semibold flex items-center gap-2">
             <Filter className="w-5 h-5" />
             Lọc
           </button>
@@ -304,7 +304,7 @@ export function ClassList() {
               onClick={() => setViewMode("grid")}
               className={`p-2.5 rounded-lg transition-all ${
                 viewMode === "grid"
-                  ? "bg-[#2563EB] text-white"
+                  ? "bg-[#EA580C] text-white"
                   : "text-[#6B7280] hover:bg-[#F3F4F6]"
               }`}
             >
@@ -314,7 +314,7 @@ export function ClassList() {
               onClick={() => setViewMode("list")}
               className={`p-2.5 rounded-lg transition-all ${
                 viewMode === "list"
-                  ? "bg-[#2563EB] text-white"
+                  ? "bg-[#EA580C] text-white"
                   : "text-[#6B7280] hover:bg-[#F3F4F6]"
               }`}
             >
@@ -335,7 +335,7 @@ export function ClassList() {
               {/* Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-[#111827] mb-1 group-hover:text-[#2563EB] transition-colors">
+                  <h3 className="text-xl font-bold text-[#111827] mb-1 group-hover:text-[#EA580C] transition-colors">
                     {classItem.name}
                   </h3>
                   <p className="text-sm text-[#6B7280] font-mono">
@@ -349,7 +349,7 @@ export function ClassList() {
 
               {/* Course Tag */}
               <div className="mb-4">
-                <span className="px-3 py-1.5 bg-gradient-to-r from-[#EFF6FF] to-[#DBEAFE] text-[#2563EB] rounded-lg text-sm font-semibold inline-flex items-center gap-2">
+                <span className="px-3 py-1.5 bg-gradient-to-r from-[#FFF7ED] to-[#FFEDD5] text-[#EA580C] rounded-lg text-sm font-semibold inline-flex items-center gap-2">
                   <BookOpen className="w-4 h-4" />
                   {classItem.course}
                 </span>
@@ -368,7 +368,7 @@ export function ClassList() {
                   </div>
                   <div className="h-2 bg-[#E5E7EB] rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] rounded-full transition-all"
+                      className="h-full bg-gradient-to-r from-[#EA580C] to-[#C2410C] rounded-full transition-all"
                       style={{
                         width: `${
                           (classItem.studentCount / classItem.maxStudents) * 100
@@ -412,7 +412,7 @@ export function ClassList() {
                 <div className="w-px h-8 bg-[#E5E7EB]" />
                 <div className="flex-1 text-center">
                   <p className="text-xs text-[#6B7280] mb-1">Bài tập</p>
-                  <p className="text-lg font-bold text-[#2563EB]">
+                  <p className="text-lg font-bold text-[#EA580C]">
                     {classItem.assignments}
                   </p>
                 </div>
@@ -424,11 +424,11 @@ export function ClassList() {
                 <div className="flex items-center gap-2">
                   <Link
                     to={`/lop-hoc/${classItem.id}`}
-                    className="p-2 hover:bg-[#EFF6FF] rounded-lg transition-colors"
+                    className="p-2 hover:bg-[#FFF7ED] rounded-lg transition-colors"
                   >
-                    <Eye className="w-5 h-5 text-[#2563EB]" />
+                    <Eye className="w-5 h-5 text-[#EA580C]" />
                   </Link>
-                  <button className="p-2 hover:bg-[#EFF6FF] rounded-lg transition-colors">
+                  <button className="p-2 hover:bg-[#FFF7ED] rounded-lg transition-colors">
                     <Edit className="w-5 h-5 text-[#6B7280]" />
                   </button>
                 </div>
@@ -448,7 +448,7 @@ export function ClassList() {
                   <th className="px-6 py-4 text-left">
                     <input
                       type="checkbox"
-                      className="w-4 h-4 rounded border-2 border-[#D1D5DB] text-[#2563EB] focus:ring-2 focus:ring-[#2563EB] cursor-pointer"
+                      className="w-4 h-4 rounded border-2 border-[#D1D5DB] text-[#EA580C] focus:ring-2 focus:ring-[#EA580C] cursor-pointer"
                     />
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-[#6B7280] uppercase tracking-wider">
@@ -483,7 +483,7 @@ export function ClassList() {
                     <td className="px-6 py-4">
                       <input
                         type="checkbox"
-                        className="w-4 h-4 rounded border-2 border-[#D1D5DB] text-[#2563EB] focus:ring-2 focus:ring-[#2563EB] cursor-pointer"
+                        className="w-4 h-4 rounded border-2 border-[#D1D5DB] text-[#EA580C] focus:ring-2 focus:ring-[#EA580C] cursor-pointer"
                       />
                     </td>
                     <td className="px-6 py-4">
@@ -497,7 +497,7 @@ export function ClassList() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-3 py-1 bg-[#EFF6FF] text-[#2563EB] rounded-lg text-sm font-semibold">
+                      <span className="px-3 py-1 bg-[#FFF7ED] text-[#EA580C] rounded-lg text-sm font-semibold">
                         {classItem.course}
                       </span>
                     </td>
@@ -524,11 +524,11 @@ export function ClassList() {
                       <div className="flex items-center gap-2">
                         <Link
                           to={`/lop-hoc/${classItem.id}`}
-                          className="p-2 hover:bg-[#EFF6FF] rounded-lg transition-colors"
+                          className="p-2 hover:bg-[#FFF7ED] rounded-lg transition-colors"
                         >
-                          <Eye className="w-5 h-5 text-[#2563EB]" />
+                          <Eye className="w-5 h-5 text-[#EA580C]" />
                         </Link>
-                        <button className="p-2 hover:bg-[#EFF6FF] rounded-lg transition-colors">
+                        <button className="p-2 hover:bg-[#FFF7ED] rounded-lg transition-colors">
                           <Edit className="w-5 h-5 text-[#6B7280]" />
                         </button>
                       </div>
@@ -550,7 +550,7 @@ export function ClassList() {
               <button className="px-4 py-2 border border-[#E5E7EB] rounded-lg hover:bg-white transition-all text-sm font-medium text-[#6B7280]">
                 Trước
               </button>
-              <button className="px-4 py-2 bg-[#2563EB] text-white rounded-lg font-medium text-sm">
+              <button className="px-4 py-2 bg-[#EA580C] text-white rounded-lg font-medium text-sm">
                 1
               </button>
               <button className="px-4 py-2 border border-[#E5E7EB] rounded-lg hover:bg-white transition-all text-sm font-medium text-[#6B7280]">

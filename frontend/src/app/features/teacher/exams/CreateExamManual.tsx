@@ -231,7 +231,7 @@ export const CreateExamManual: React.FC = () => {
         </div>
 
         {/* Add Question Form */}
-        <div className="mb-8 p-4 border-2 border-blue-200 rounded-lg">
+        <div className="mb-8 p-4 border-2 border-orange-200 rounded-lg">
           <h2 className="text-lg font-semibold mb-4">Thêm Câu Hỏi Mới</h2>
           
           <div className="mb-4">
@@ -317,7 +317,7 @@ export const CreateExamManual: React.FC = () => {
           
           <button
             onClick={handleAddQuestion}
-            className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            className="w-full bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700"
           >
             ➕ Thêm Câu Hỏi
           </button>
@@ -382,3 +382,6 @@ export const CreateExamManual: React.FC = () => {
     </div>
   );
 };
+
+
+
