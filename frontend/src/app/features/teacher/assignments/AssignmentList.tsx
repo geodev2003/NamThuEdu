@@ -39,58 +39,74 @@ export function AssignmentList() {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  
+  // API state
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data
-  const assignments: Assignment[] = [
-    {
-      id: "1",
-      examTitle: "Cambridge KET - Reading & Writing Test 1",
-      targetType: "class",
-      targetName: "Lớp KET Morning A1",
-      deadline: new Date(2024, 11, 30),
-      maxAttempts: 2,
-      completionRate: 75,
-      isOverdue: false,
-      totalStudents: 20,
-      completedStudents: 15,
-    },
-    {
-      id: "2",
-      examTitle: "IELTS Reading Practice Test - Academic",
-      targetType: "class",
-      targetName: "Lớp IELTS 6.5 Evening",
-      deadline: new Date(2024, 11, 25),
-      maxAttempts: 1,
-      completionRate: 45,
-      isOverdue: true,
-      totalStudents: 25,
-      completedStudents: 11,
-    },
-    {
-      id: "3",
-      examTitle: "TOEFL Speaking Section - Test 3",
-      targetType: "student",
-      targetName: "Nguyễn Văn An",
-      deadline: new Date(2025, 0, 5),
-      maxAttempts: 3,
-      completionRate: 100,
-      isOverdue: false,
-      totalStudents: 1,
-      completedStudents: 1,
-    },
-    {
-      id: "4",
-      examTitle: "PET Listening Test - Module 2",
-      targetType: "class",
-      targetName: "Lớp PET Intermediate B1",
-      deadline: new Date(2024, 11, 28),
-      maxAttempts: 2,
-      completionRate: 60,
-      isOverdue: false,
-      totalStudents: 18,
-      completedStudents: 11,
-    },
-  ];
+  // Fetch assignments from API
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          setError('Vui lòng đăng nhập');
+          setLoading(false);
+          return;
+        }
+
+        // Build query params
+        const params = new URLSearchParams();
+        if (targetFilter !== 'all') params.append('target_type', targetFilter);
+
+        const response = await fetch(
+          `http://localhost:8000/api/teacher/assignments?${params}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === 'success') {
+            // Transform backend data to frontend format
+            const transformedAssignments = result.data.map((assign: any) => {
+              const deadline = assign.taDeadline ? new Date(assign.taDeadline) : null;
+              const isOverdue = deadline ? new Date() > deadline : false;
+              
+              return {
+                id: assign.taId.toString(),
+                examTitle: assign.exam?.eTitle || 'Unknown Exam',
+                targetType: assign.taTarget_type as "class" | "student",
+                targetName: assign.target_name || `ID: ${assign.taTarget_id}`,
+                deadline: deadline,
+                maxAttempts: assign.taMax_attempt || 1,
+                completionRate: assign.completion_rate || 0,
+                isOverdue: isOverdue,
+                totalStudents: assign.total_students || 0,
+                completedStudents: assign.completed_students || 0,
+              };
+            });
+            setAssignments(transformedAssignments);
+          }
+        } else {
+          setError('Không thể tải danh sách bài tập');
+        }
+      } catch (err) {
+        console.error('Error fetching assignments:', err);
+        setError('Đã xảy ra lỗi khi tải dữ liệu');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAssignments();
+  }, [targetFilter]); // Re-fetch when filter changes
 
   const stats = [
     {
@@ -160,16 +176,33 @@ export function AssignmentList() {
 
       <div className="flex-1 overflow-y-auto" style={{ background: "#EEEEF3" }}>
         <div className="px-8 py-6 space-y-6">
+          {/* Loading State */}
+          {loading && (
+            <div className="flex items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <p className="text-red-700">{error}</p>
+            </div>
+          )}
+
           {/* Quick Actions */}
-          <div className="flex items-center justify-end gap-3">
-            <button
-              onClick={() => setShowBulkModal(true)}
-              className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center gap-2"
-            >
-              <Send className="w-4 h-4" />
-              Giao hàng loạt
-            </button>
-          </div>
+          {!loading && !error && (
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowBulkModal(true)}
+                className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                Giao hàng loạt
+              </button>
+            </div>
+          )}
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -234,7 +267,7 @@ export function AssignmentList() {
           </div>
 
           {/* Assignments Table */}
-          {filteredAssignments.length > 0 ? (
+          {!loading && !error && filteredAssignments.length > 0 ? (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -367,7 +400,7 @@ export function AssignmentList() {
               </table>
             </div>
           </div>
-          ) : (
+          ) : !loading && !error ? (
             /* Empty State */
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <div className="max-w-md mx-auto space-y-4">
@@ -387,7 +420,7 @@ export function AssignmentList() {
               </button>
             </div>
           </div>
-          )}
+          ) : null}
         </div>
       </div>
 

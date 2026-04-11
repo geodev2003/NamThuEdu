@@ -20,6 +20,7 @@ class Classes extends Model
         'cDescription',
         'cStatus',
         'course',
+        'age_group',
     ];
 
     protected $casts = [

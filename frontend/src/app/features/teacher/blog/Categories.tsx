@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import {
   ChevronRight,
@@ -16,6 +16,8 @@ import {
   Hash,
   Type,
   Palette,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 
 interface Category {
@@ -32,87 +34,46 @@ interface Category {
 }
 
 export function Categories() {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
-  // Mock data
-  const [categories, setCategories] = useState<Category[]>([
-    {
-      id: "1",
-      name: "IELTS",
-      slug: "ielts",
-      description: "Tài liệu và kinh nghiệm luyện thi IELTS",
-      color: "#2563EB",
-      icon: "📘",
-      postsCount: 45,
-      totalViews: 12500,
-      status: "active",
-      createdAt: "2024-01-15",
-    },
-    {
-      id: "2",
-      name: "TOEFL",
-      slug: "toefl",
-      description: "Hướng dẫn chinh phục TOEFL",
-      color: "#10B981",
-      icon: "📗",
-      postsCount: 32,
-      totalViews: 8900,
-      status: "active",
-      createdAt: "2024-01-20",
-    },
-    {
-      id: "3",
-      name: "Grammar",
-      slug: "grammar",
-      description: "Ngữ pháp tiếng Anh từ cơ bản đến nâng cao",
-      color: "#8B5CF6",
-      icon: "📝",
-      postsCount: 68,
-      totalViews: 18700,
-      status: "active",
-      createdAt: "2024-01-10",
-    },
-    {
-      id: "4",
-      name: "Vocabulary",
-      slug: "vocabulary",
-      description: "Từ vựng theo chủ đề và cấp độ",
-      color: "#F59E0B",
-      icon: "📚",
-      postsCount: 54,
-      totalViews: 15200,
-      status: "active",
-      createdAt: "2024-01-25",
-    },
-    {
-      id: "5",
-      name: "Cambridge",
-      slug: "cambridge",
-      description: "Luyện thi Cambridge (KET, PET, FCE...)",
-      color: "#EF4444",
-      icon: "🎓",
-      postsCount: 28,
-      totalViews: 6800,
-      status: "active",
-      createdAt: "2024-02-01",
-    },
-    {
-      id: "6",
-      name: "Tips & Tricks",
-      slug: "tips-tricks",
-      description: "Mẹo học tiếng Anh hiệu quả",
-      color: "#06B6D4",
-      icon: "💡",
-      postsCount: 41,
-      totalViews: 11300,
-      status: "active",
-      createdAt: "2024-02-05",
-    },
-  ]);
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/blog/categories`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === 'success') {
+            setCategories(result.data || []);
+          } else {
+            setError('Không thể tải danh mục');
+          }
+        } else {
+          setError('Lỗi khi tải dữ liệu');
+        }
+      } catch (err) {
+        setError('Lỗi kết nối đến server');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const filteredCategories = categories.filter((cat) =>
     cat.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -126,6 +87,36 @@ export function Categories() {
     setCategories(categories.filter((cat) => cat.id !== id));
     setShowDeleteConfirm(null);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-semibold">Đang tải danh mục...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
+        <div className="text-center bg-white rounded-2xl p-8 border border-red-200">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <p className="text-red-600 font-semibold mb-2">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">

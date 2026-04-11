@@ -30,6 +30,12 @@ class Kernel extends ConsoleKernel
         $schedule->command('websockets:clean')
                  ->daily()
                  ->at('02:00');
+        
+        // Xóa vĩnh viễn học viên đã xóa quá 24 giờ - chạy mỗi giờ
+        $schedule->command('students:cleanup-deleted')
+                 ->hourly()
+                 ->withoutOverlapping()
+                 ->runInBackground();
     }
 
     /**

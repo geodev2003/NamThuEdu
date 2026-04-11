@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import {
   Plus,
@@ -14,6 +14,8 @@ import {
   Grid3x3,
   List,
   Calendar,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 
 interface BlogPost {
@@ -33,68 +35,61 @@ interface BlogPost {
 }
 
 export function BlogList() {
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterType, setFilterType] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Mock data
-  const stats = {
-    totalPosts: 48,
-    activePosts: 35,
-    draftPosts: 10,
-    rejectedPosts: 3,
-    totalViews: 12580,
-    totalLikes: 1847,
-  };
+  useEffect(() => {
+    const fetchBlogs = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/blogs`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
 
-  const posts: BlogPost[] = [
-    {
-      id: "1",
-      title: "10 Common Grammar Mistakes and How to Fix Them",
-      thumbnail: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=400",
-      type: "grammar",
-      category: "English Grammar",
-      status: "active",
-      author: {
-        name: "Nguyễn Văn An",
-        avatar: "NA",
-      },
-      createdDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      views: 1245,
-      likes: 89,
-    },
-    {
-      id: "2",
-      title: "Essential IELTS Vocabulary for Academic Writing",
-      thumbnail: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400",
-      type: "vocabulary",
-      category: "IELTS",
-      status: "active",
-      author: {
-        name: "Trần Thị Bình",
-        avatar: "TB",
-      },
-      createdDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-      views: 892,
-      likes: 67,
-    },
-    {
-      id: "3",
-      title: "Study Tips for Cambridge KET Exam Success",
-      thumbnail: "https://images.unsplash.com/photo-1488190211105-8b0e65b80b4e?w=400",
-      type: "tips",
-      category: "Cambridge",
-      status: "draft",
-      author: {
-        name: "Lê Hoàng Cường",
-        avatar: "LC",
-      },
-      createdDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      views: 0,
-      likes: 0,
-    },
-  ];
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === 'success') {
+            setPosts(result.data || []);
+            // Calculate stats from data
+            const activePosts = result.data.filter((p: any) => p.status === 'active').length;
+            const draftPosts = result.data.filter((p: any) => p.status === 'draft').length;
+            const rejectedPosts = result.data.filter((p: any) => p.status === 'rejected').length;
+            const totalViews = result.data.reduce((sum: number, p: any) => sum + (p.views || 0), 0);
+            const totalLikes = result.data.reduce((sum: number, p: any) => sum + (p.likes || 0), 0);
+            
+            setStats({
+              totalPosts: result.data.length,
+              activePosts,
+              draftPosts,
+              rejectedPosts,
+              totalViews,
+              totalLikes,
+            });
+          } else {
+            setError('Không thể tải danh sách bài viết');
+          }
+        } else {
+          setError('Lỗi khi tải dữ liệu');
+        }
+      } catch (err) {
+        setError('Lỗi kết nối đến server');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBlogs();
+  }, []);
 
   const getTypeBadge = (type: BlogPost["type"]) => {
     const badges = {
@@ -132,6 +127,36 @@ export function BlogList() {
     return matchSearch && matchStatus && matchType;
   });
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-semibold">Đang tải danh sách bài viết...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
+        <div className="text-center bg-white rounded-2xl p-8 border border-red-200">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <p className="text-red-600 font-semibold mb-2">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">
       {/* Header */}
@@ -158,7 +183,7 @@ export function BlogList() {
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-1">Tổng bài viết</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.totalPosts}</p>
+          <p className="text-3xl font-bold text-gray-900">{stats?.totalPosts || 0}</p>
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
@@ -168,7 +193,7 @@ export function BlogList() {
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-1">Đang hoạt động</p>
-          <p className="text-3xl font-bold text-green-600">{stats.activePosts}</p>
+          <p className="text-3xl font-bold text-green-600">{stats?.activePosts || 0}</p>
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
@@ -178,7 +203,7 @@ export function BlogList() {
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-1">Bản nháp</p>
-          <p className="text-3xl font-bold text-gray-600">{stats.draftPosts}</p>
+          <p className="text-3xl font-bold text-gray-600">{stats?.draftPosts || 0}</p>
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
@@ -188,7 +213,7 @@ export function BlogList() {
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-1">Bị từ chối</p>
-          <p className="text-3xl font-bold text-red-600">{stats.rejectedPosts}</p>
+          <p className="text-3xl font-bold text-red-600">{stats?.rejectedPosts || 0}</p>
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
@@ -198,7 +223,7 @@ export function BlogList() {
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-1">Tổng lượt xem</p>
-          <p className="text-2xl font-bold text-gray-900">{stats.totalViews.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-gray-900">{(stats?.totalViews || 0).toLocaleString()}</p>
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
@@ -208,7 +233,7 @@ export function BlogList() {
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-1">Tổng lượt thích</p>
-          <p className="text-2xl font-bold text-gray-900">{stats.totalLikes.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-gray-900">{(stats?.totalLikes || 0).toLocaleString()}</p>
         </div>
       </div>
 

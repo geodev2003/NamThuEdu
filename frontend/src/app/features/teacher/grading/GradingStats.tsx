@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import {
   FileText,
@@ -10,6 +11,8 @@ import {
   Eye,
   Zap,
   FileSearch,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import {
   PieChart,
@@ -28,22 +31,84 @@ import {
 } from "recharts";
 
 export function GradingStats() {
-  // Mock data
-  const stats = {
-    totalSubmissions: 145,
-    graded: 98,
-    pending: 47,
-    completionRate: 68,
-    recentActivity: 23,
-    averageGradingTime: 8.5,
-  };
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const submissionsByStatus = [
+  useEffect(() => {
+    const fetchGradingStats = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/grading/stats`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === 'success') {
+            setStats(result.data);
+          } else {
+            setError('Không thể tải thống kê chấm bài');
+          }
+        } else {
+          setError('Lỗi khi tải dữ liệu');
+        }
+      } catch (err) {
+        setError('Lỗi kết nối đến server');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGradingStats();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-semibold">Đang tải thống kê chấm bài...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
+        <div className="text-center bg-white rounded-2xl p-8 border border-red-200">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <p className="text-red-600 font-semibold mb-2">{error || 'Không tìm thấy dữ liệu'}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const scoresByExamType = stats.scoresByExamType || [];
+  const avgScoresByType = scoresByExamType.map((item: any) => ({
+    name: item.type,
+    score: item.average,
+  }));
+
+  const submissionsByStatus = stats.submissionsByStatus || [
     { name: "Đã chấm", value: 98, color: "#10B981" },
     { name: "Chờ chấm", value: 47, color: "#F59E0B" },
   ];
-
-  const gradingActivity = [
+  
+  const gradingActivity = stats.gradingActivity || [
     { date: "17/03", graded: 12 },
     { date: "18/03", graded: 15 },
     { date: "19/03", graded: 18 },
@@ -52,18 +117,6 @@ export function GradingStats() {
     { date: "22/03", graded: 16 },
     { date: "23/03", graded: 23 },
   ];
-
-  const scoresByExamType = [
-    { type: "IELTS", count: 45, average: 78.5, highest: 98, lowest: 45 },
-    { type: "Cambridge KET", count: 38, average: 82.3, highest: 95, lowest: 52 },
-    { type: "TOEFL", count: 32, average: 75.8, highest: 92, lowest: 48 },
-    { type: "PET", count: 30, average: 80.2, highest: 96, lowest: 55 },
-  ];
-
-  const avgScoresByType = scoresByExamType.map((item) => ({
-    name: item.type,
-    score: item.average,
-  }));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">

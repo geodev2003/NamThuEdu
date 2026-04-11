@@ -135,6 +135,14 @@ const examTypeData = [
     duration: "110-235 phút",
   },
   {
+    value: "Kids",
+    icon: "🎈",
+    name: "Kids Exam",
+    description: "Cambridge YLE (Starters, Movers, Flyers)",
+    duration: "60 phút",
+    isKids: true,
+  },
+  {
     value: "General",
     icon: "📄",
     name: "General",
@@ -1296,10 +1304,17 @@ export function CreateExam() {
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Loại đề thi</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {examTypeData.map((type) => (
+                {examTypeData.map((type: any) => (
                   <button
                     key={type.value}
-                    onClick={() => setExamType(type.value as ExamType)}
+                    onClick={() => {
+                      if (type.isKids) {
+                        // Redirect to Kids Exam page
+                        navigate('/giao-vien/de-thi/kids/tao-moi');
+                      } else {
+                        setExamType(type.value as ExamType);
+                      }
+                    }}
                     className={`p-6 border-2 rounded-xl text-left transition-all ${
                       examType === type.value
                         ? "border-orange-600 bg-orange-50 shadow-lg"

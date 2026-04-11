@@ -1,0 +1,1 @@
+export { TakeExam } from './TakeExam';

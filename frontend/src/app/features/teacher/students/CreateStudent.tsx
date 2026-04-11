@@ -31,30 +31,33 @@ export function CreateStudent({ onClose, onSuccess }: CreateStudentProps) {
   const ageGroups = [
     {
       value: 'kids' as AgeGroup,
-      label: 'Trẻ em (6-12 tuổi)',
+      label: 'Trẻ em',
+      ageRange: '6-12 tuổi',
       icon: Baby,
       color: 'from-pink-400 to-purple-400',
       bgColor: 'bg-pink-50',
       borderColor: 'border-pink-300',
-      description: 'Giao diện vui nhộn, màu sắc tươi sáng'
+      description: 'Lớp 1 - 5 (Tiểu học)'
     },
     {
       value: 'teens' as AgeGroup,
-      label: 'Thiếu niên (13-17 tuổi)',
+      label: 'Thiếu niên',
+      ageRange: '13-17 tuổi',
       icon: Users,
       color: 'from-orange-400 to-amber-400',
       bgColor: 'bg-orange-50',
       borderColor: 'border-orange-300',
-      description: 'Giao diện hiện đại, năng động'
+      description: 'Cấp 2 - 3 (THCS + THPT)'
     },
     {
       value: 'adults' as AgeGroup,
-      label: 'Người lớn (18+ tuổi)',
+      label: 'Người lớn',
+      ageRange: '18+ tuổi',
       icon: GraduationCap,
       color: 'from-slate-400 to-gray-400',
       bgColor: 'bg-slate-50',
       borderColor: 'border-slate-300',
-      description: 'Giao diện chuyên nghiệp, tối giản'
+      description: 'Sinh viên & người đi làm'
     },
   ];
 
@@ -115,8 +118,11 @@ export function CreateStudent({ onClose, onSuccess }: CreateStudentProps) {
           {/* Age Group Selection */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-3">
-              Chọn loại học viên <span className="text-red-500">*</span>
+              Chọn độ tuổi học viên <span className="text-red-500">*</span>
             </label>
+            <p className="text-xs text-slate-500 mb-3">
+              Học viên sẽ được tự động gán vào lớp phù hợp với độ tuổi
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {ageGroups.map((group) => {
                 const Icon = group.icon;
@@ -146,6 +152,7 @@ export function CreateStudent({ onClose, onSuccess }: CreateStudentProps) {
                       </div>
                       <div>
                         <div className="font-bold text-slate-800">{group.label}</div>
+                        <div className="text-sm text-slate-600 font-medium">{group.ageRange}</div>
                         <div className="text-xs text-slate-500 mt-1">{group.description}</div>
                       </div>
                     </div>
@@ -231,7 +238,6 @@ export function CreateStudent({ onClose, onSuccess }: CreateStudentProps) {
               onChange={handleChange}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
-            <p className="mt-1 text-xs text-slate-500">Nếu nhập ngày sinh, hệ thống sẽ tự động tính loại học viên</p>
           </div>
 
           {/* Error Message */}

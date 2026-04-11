@@ -12,7 +12,124 @@
     "liveMonitoring": "Giám sát trực tiếp",
     "blog": "Bài viết",
     "reports": "Báo cáo",
-    "settings": "Cài đặt"
+    "settings": "Cài đặt",
+    "cambridgeTemplates": "Mẫu đề Cambridge"
+  },
+  "cambridgeTemplates": {
+    "title": "Mẫu đề Cambridge",
+    "subtitle": "Sử dụng mẫu đề chuẩn quốc tế để tạo bài thi nhanh chóng",
+    "search": "Tìm kiếm mẫu đề...",
+    "minutes": "phút",
+    "questions": "câu hỏi",
+    "sections": "Các phần thi",
+    "viewDetails": "Xem chi tiết",
+    "useTemplate": "Sử dụng mẫu",
+    "categories": {
+      "all": "Tất cả",
+      "youngLearners": "Young Learners",
+      "mainSuite": "Main Suite",
+      "international": "Quốc tế"
+    },
+    "templates": {
+      "starters": {
+        "name": "Starters",
+        "fullName": "Cambridge English: Starters (YLE Starters)",
+        "level": "Pre A1",
+        "age": "6-8 tuổi",
+        "description": "Bài thi đầu tiên trong bộ Cambridge Young Learners, giúp trẻ làm quen với tiếng Anh qua các hoạt động vui nhộn và hình ảnh sinh động.",
+        "sections": {
+          "listening": "Nghe",
+          "readingWriting": "Đọc và Viết",
+          "speaking": "Nói"
+        }
+      },
+      "movers": {
+        "name": "Movers",
+        "fullName": "Cambridge English: Movers (YLE Movers)",
+        "level": "A1",
+        "age": "8-11 tuổi",
+        "description": "Bài thi cấp độ trung bình trong bộ Young Learners, phát triển kỹ năng tiếng Anh cơ bản cho trẻ em.",
+        "sections": {
+          "listening": "Nghe",
+          "readingWriting": "Đọc và Viết",
+          "speaking": "Nói"
+        }
+      },
+      "flyers": {
+        "name": "Flyers",
+        "fullName": "Cambridge English: Flyers (YLE Flyers)",
+        "level": "A2",
+        "age": "9-12 tuổi",
+        "description": "Bài thi cao nhất trong bộ Young Learners, chứng nhận trẻ đã đạt trình độ tiếng Anh cơ bản vững chắc.",
+        "sections": {
+          "listening": "Nghe",
+          "readingWriting": "Đọc và Viết",
+          "speaking": "Nói"
+        }
+      },
+      "ket": {
+        "name": "KET",
+        "fullName": "Cambridge English: Key (KET)",
+        "level": "A2",
+        "age": "13+ tuổi",
+        "description": "Chứng chỉ tiếng Anh cơ bản, chứng minh khả năng giao tiếp trong các tình huống hàng ngày đơn giản."
+      },
+      "pet": {
+        "name": "PET",
+        "fullName": "Cambridge English: Preliminary (PET)",
+        "level": "B1",
+        "age": "15+ tuổi",
+        "description": "Chứng chỉ trung cấp, chứng minh khả năng sử dụng tiếng Anh trong công việc, học tập và du lịch."
+      },
+      "fce": {
+        "name": "FCE",
+        "fullName": "Cambridge English: First (FCE)",
+        "level": "B2",
+        "age": "16+ tuổi",
+        "description": "Chứng chỉ trung cấp cao, chứng minh khả năng sử dụng tiếng Anh viết và nói trong môi trường làm việc hoặc học tập."
+      },
+      "ielts": {
+        "name": "IELTS",
+        "fullName": "International English Language Testing System",
+        "level": "A1-C2",
+        "age": "16+ tuổi",
+        "description": "Bài thi tiếng Anh quốc tế được công nhận rộng rãi cho mục đích học tập, làm việc và định cư."
+      },
+      "vstep": {
+        "name": "VSTEP",
+        "fullName": "Vietnamese Standardized Test of English Proficiency",
+        "level": "B1-C1",
+        "age": "18+ tuổi",
+        "description": "Bài thi chuẩn hóa năng lực tiếng Anh của Việt Nam, được sử dụng trong giáo dục đại học và sau đại học."
+      }
+    },
+    "modal": {
+      "description": "Mô tả",
+      "createExam": "Tạo đề thi",
+      "cancel": "Hủy"
+    },
+    "createForm": {
+      "title": "Tạo đề thi từ mẫu",
+      "template": "Mẫu đề",
+      "examTitleRequired": "Tên đề thi (bắt buộc)",
+      "description": "Mô tả",
+      "durationType": {
+        "label": "Thời gian làm bài",
+        "useTemplate": "Sử dụng thời gian mẫu",
+        "custom": "Tùy chỉnh"
+      },
+      "privacy": {
+        "label": "Quyền riêng tư",
+        "private": "Riêng tư (chỉ tôi có thể xem)",
+        "public": "Công khai (chia sẻ với giáo viên khác)"
+      },
+      "autoGenerate": {
+        "label": "Tạo câu hỏi",
+        "generate": "Tự động tạo câu hỏi mẫu",
+        "empty": "Tạo cấu trúc trống (tự thêm câu hỏi sau)"
+      },
+      "submit": "Tạo đề thi"
+    }
   },
   "header": {
     "new": "Tạo mới",
@@ -228,6 +345,137 @@
       "autoSave": "Tự động lưu",
       "saveChanges": "Lưu thay đổi",
       "cancelAction": "Hủy bỏ"
+    },
+    "students": {
+      "management": {
+        "title": "Quản lý học sinh",
+        "breadcrumb": "Dashboard > Học viên > Quản lý",
+        "tabs": {
+          "list": "Danh sách",
+          "deleted": "Đã xóa gần đây",
+          "stats": "Thống kê",
+          "export": "Xuất dữ liệu"
+        },
+        "stats": {
+          "totalStudents": "Tổng học sinh",
+          "activeStudents": "Đang học",
+          "inactiveStudents": "Tạm nghỉ",
+          "newThisMonth": "Mới tháng này"
+        },
+        "search": {
+          "placeholder": "Tìm theo tên, SĐT, email...",
+          "allCourses": "Tất cả khóa",
+          "allStatuses": "Tất cả trạng thái",
+          "clearFilters": "Xóa lọc"
+        },
+        "status": {
+          "active": "Đang học",
+          "inactive": "Tạm nghỉ"
+        },
+        "ageGroup": {
+          "kids": "Trẻ em",
+          "teens": "Thiếu niên",
+          "adults": "Người lớn"
+        },
+        "table": {
+          "student": "Học sinh",
+          "phone": "SĐT",
+          "email": "Email",
+          "ageGroup": "Nhóm tuổi",
+          "course": "Khóa học",
+          "status": "Trạng thái",
+          "createdAt": "Ngày tạo",
+          "actions": "Thao tác",
+          "noEmail": "Chưa có",
+          "noClass": "Chưa có lớp"
+        },
+        "actions": {
+          "addStudent": "Thêm học sinh",
+          "exportExcel": "Xuất Excel",
+          "exporting": "Đang xuất...",
+          "waitSeconds": "Đợi {{seconds}}s",
+          "deleteSelected": "Xóa",
+          "students": "học viên",
+          "view": "Xem chi tiết",
+          "edit": "Chỉnh sửa",
+          "delete": "Xóa học viên"
+        },
+        "pagination": {
+          "showing": "Hiển thị",
+          "of": "trong",
+          "results": "kết quả",
+          "previous": "Trước",
+          "next": "Sau"
+        },
+        "loading": "Đang tải danh sách học viên...",
+        "noResults": {
+          "title": "Không tìm thấy học viên nào",
+          "subtitle": "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm"
+        },
+        "deleted": {
+          "warning": "Học viên đã xóa sẽ tự động bị xóa vĩnh viễn sau 24 giờ",
+          "empty": {
+            "title": "Không có học viên nào đã xóa",
+            "subtitle": "Học viên đã xóa sẽ được lưu trong 24 giờ trước khi xóa vĩnh viễn"
+          },
+          "table": {
+            "deletedTime": "Thời gian xóa",
+            "remaining": "Còn lại",
+            "justNow": "Vừa xong",
+            "hoursAgo": "{{hours}} giờ trước",
+            "expired": "Hết hạn"
+          },
+          "actions": {
+            "restore": "Khôi phục",
+            "permanentDelete": "Xóa vĩnh viễn"
+          },
+          "loading": "Đang tải danh sách đã xóa..."
+        },
+        "statsTab": {
+          "title": "Tính năng thống kê",
+          "subtitle": "Tính năng thống kê chi tiết đang được phát triển"
+        },
+        "confirmDelete": {
+          "title": "Xác nhận xóa học viên",
+          "willBeDeleted": "Học viên sẽ bị xóa",
+          "deleteNow": "Xóa ngay",
+          "cancel": "Hủy bỏ"
+        },
+        "confirmBulkDelete": {
+          "title": "Xác nhận xóa nhiều học viên",
+          "willDelete": "Sẽ xóa {{count}} học viên",
+          "and": "và {{count}} học viên khác",
+          "deleteAll": "Xóa tất cả"
+        },
+        "confirmRestore": {
+          "title": "Khôi phục học viên?",
+          "willBeRestored": "Học viên sẽ được khôi phục",
+          "restore": "Khôi phục"
+        },
+        "confirmPermanentDelete": {
+          "title": "Xóa vĩnh viễn?",
+          "cannotRestore": "⚠️ Không thể khôi phục",
+          "cannotUndo": "Hành động này không thể hoàn tác!",
+          "permanentDelete": "Xóa vĩnh viễn"
+        },
+        "toast": {
+          "loginRequired": "Vui lòng đăng nhập lại",
+          "sessionExpired": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại",
+          "loadError": "Có lỗi xảy ra khi tải danh sách học viên",
+          "deleteSuccess": "Đã xóa học viên \"{{name}}\". Có thể khôi phục trong 24h tại tab \"Đã xóa gần đây\"",
+          "deleteError": "Có lỗi xảy ra khi xóa học viên. Vui lòng thử lại!",
+          "bulkDeleteSuccess": "Đã xóa thành công {{count}} học viên!",
+          "bulkDeletePartial": "Đã xóa {{success}} học viên. {{fail}} học viên không thể xóa.",
+          "restoreSuccess": "Đã khôi phục học viên \"{{name}}\" thành công!",
+          "restoreError": "Không thể khôi phục học viên",
+          "permanentDeleteSuccess": "Đã xóa vĩnh viễn học viên \"{{name}}\"",
+          "permanentDeleteError": "Không thể xóa vĩnh viễn",
+          "exportSuccess": "Đã xuất {{count}} học viên ra file Excel!",
+          "exportError": "Có lỗi xảy ra khi xuất Excel. Vui lòng thử lại!",
+          "exportWait": "Vui lòng đợi {{seconds}} giây trước khi xuất lại",
+          "filtersCleared": "Đã xóa bộ lọc"
+        }
+      }
     }
   },
   "assignments": {

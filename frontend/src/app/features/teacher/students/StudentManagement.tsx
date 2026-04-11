@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
+import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
 import {
   Users,
   UserPlus,
   Download,
+  Upload,
   Search,
   Filter,
-  MoreVertical,
   Edit,
   Trash2,
   Eye,
@@ -16,70 +17,756 @@ import {
   UserCheck,
   UserX,
   Calendar,
-  BarChart3,
-  PieChart,
-  FileSpreadsheet,
-  FileText,
-  File,
   Check,
+  AlertTriangle,
+  X,
 } from "lucide-react";
-import { AreaChart, Area, BarChart, Bar, PieChart as RePieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { CreateStudent } from "./CreateStudent";
+import { useToast } from "../../../../hooks/useToast";
+import { useDebounce } from "../../../../hooks/useDebounce";
+import { ToastContainer } from "../../../../components/ui";
+import { useNavigate } from "react-router";
+import { EditStudentModal } from "./EditStudentModal";
+import { getApiUrl, getAssetUrl } from "../../../../utils/apiConfig";
 
-type TabType = "list" | "stats" | "export";
+type TabType = "list" | "deleted";
 
-// Mock Data
-const studentStats = [
-  { label: "Tổng học sinh", value: 1248, change: 12.5, trend: "up", icon: Users, color: "#EA580C" },
-  { label: "Đang học", value: 1156, change: 8.2, trend: "up", icon: UserCheck, color: "#F97316" },
-  { label: "Tạm nghỉ", value: 92, change: -3.1, trend: "down", icon: UserX, color: "#FB923C" },
-  { label: "Mới tháng này", value: 45, change: 15.3, trend: "up", icon: Calendar, color: "#FDBA74" },
-];
-
-const mockStudents = [
-  { id: 1, name: "Nguyễn Văn An", phone: "0901234567", email: "an.nguyen@email.com", class: "IELTS 6.5 - Sáng", course: "IELTS", status: "active", avatar: "NA", createdAt: "15/03/2024" },
-  { id: 2, name: "Trần Thị Bình", phone: "0912345678", email: "binh.tran@email.com", class: "TOEIC 750 - Chiều", course: "TOEIC", status: "active", avatar: "TB", createdAt: "12/03/2024" },
-  { id: 3, name: "Lê Minh Châu", phone: "0923456789", email: "chau.le@email.com", class: "Cambridge FCE", course: "Cambridge", status: "inactive", avatar: "LC", createdAt: "10/03/2024" },
-  { id: 4, name: "Phạm Đức Duy", phone: "0934567890", email: "duy.pham@email.com", class: "IELTS 7.0 - Tối", course: "IELTS", status: "active", avatar: "PD", createdAt: "08/03/2024" },
-  { id: 5, name: "Hoàng Thu Hà", phone: "0945678901", email: "ha.hoang@email.com", class: "VSTEP B2", course: "VSTEP", status: "active", avatar: "HH", createdAt: "05/03/2024" },
-];
-
-const enrollmentData = [
-  { month: "T1", students: 145 },
-  { month: "T2", students: 168 },
-  { month: "T3", students: 192 },
-  { month: "T4", students: 210 },
-  { month: "T5", students: 235 },
-  { month: "T6", students: 248 },
-];
-
-const classDistribution = [
-  { name: "IELTS", value: 485, color: "#EA580C" },
-  { name: "TOEIC", value: 312, color: "#F97316" },
-  { name: "Cambridge", value: 218, color: "#FB923C" },
-  { name: "VSTEP", value: 156, color: "#FDBA74" },
-  { name: "Khác", value: 77, color: "#FED7AA" },
-];
-
-const topStudents = [
-  { rank: 1, name: "Nguyễn Thị Mai", class: "IELTS 7.5", avgScore: 8.5, tests: 12, avatar: "NM" },
-  { rank: 2, name: "Trần Văn Phúc", class: "TOEIC 900", avgScore: 8.2, tests: 15, avatar: "TP" },
-  { rank: 3, name: "Lê Thu Hương", class: "Cambridge CAE", avgScore: 8.0, tests: 10, avatar: "LH" },
-  { rank: 4, name: "Phạm Minh Tú", class: "IELTS 7.0", avgScore: 7.8, tests: 14, avatar: "PT" },
-  { rank: 5, name: "Đỗ Hải Yến", class: "VSTEP B2", avgScore: 7.5, tests: 11, avatar: "DY" },
-];
+// Student Stats Interface
+interface StudentStats {
+  label: string;
+  value: number;
+  change: number;
+  trend: "up" | "down";
+  icon: any;
+  color: string;
+}
 
 export function StudentManagement() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { toasts, removeToast, success, error, warning } = useToast();
+  const toast = { success, error, warning };
   const [activeTab, setActiveTab] = useState<TabType>("list");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFormat, setSelectedFormat] = useState("excel");
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const debouncedSearchQuery = useDebounce(searchQuery, 500); // Debounce 500ms
+  const [courseFilter, setCourseFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
+  const [isButtonClosing, setIsButtonClosing] = useState(false);
+  const [deletedStudents, setDeletedStudents] = useState<any[]>([]);
+  const [loadingDeleted, setLoadingDeleted] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportCooldown, setExportCooldown] = useState(0);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [perPage] = useState(10);
+  const [studentStats, setStudentStats] = useState<StudentStats[]>([
+    { label: "Tổng học sinh", value: 0, change: 0, trend: "up", icon: Users, color: "#EA580C" },
+    { label: "Đang học", value: 0, change: 0, trend: "up", icon: UserCheck, color: "#F97316" },
+    { label: "Tạm nghỉ", value: 0, change: 0, trend: "down", icon: UserX, color: "#FB923C" },
+    { label: "Mới tháng này", value: 0, change: 0, trend: "up", icon: Calendar, color: "#FDBA74" },
+  ]);
+  const [editingStudent, setEditingStudent] = useState<any>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  // Filter students by course (frontend only, since backend doesn't have course field)
+  const filteredStudents = useMemo(() => {
+    if (courseFilter === "all") {
+      return students;
+    }
+    return students.filter((student) => student.course === courseFilter);
+  }, [students, courseFilter]);
+
+  // Get unique courses (Khóa tháng) for filter dropdown
+  const uniqueCourses = useMemo(() => {
+    const courses = students.map(s => s.course);
+    return Array.from(new Set(courses)).sort((a, b) => {
+      // Extract month number from "Khóa tháng X" format
+      const monthA = parseInt(a.replace('Khóa tháng ', ''));
+      const monthB = parseInt(b.replace('Khóa tháng ', ''));
+      return monthB - monthA; // Sort descending (newest first)
+    });
+  }, [students]);
+
+  // Fetch students from API
+  useEffect(() => {
+    fetchStudents();
+    fetchStudentStats();
+    if (activeTab === 'deleted') {
+      fetchDeletedStudents();
+    }
+  }, [activeTab, currentPage, debouncedSearchQuery, courseFilter, statusFilter]);
+
+  const fetchStudentStats = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      if (!token) {
+        return;
+      }
+
+      const response = await fetch(getApiUrl('teacher/dashboard/student-stats'), {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'success' && result.data) {
+          const data = result.data;
+          
+          setStudentStats([
+            { 
+              label: "Tổng học sinh", 
+              value: data.total_students, 
+              change: data.total_change, 
+              trend: data.total_change >= 0 ? "up" : "down", 
+              icon: Users, 
+              color: "#EA580C" 
+            },
+            { 
+              label: "Đang học", 
+              value: data.active_students, 
+              change: data.active_change, 
+              trend: data.active_change >= 0 ? "up" : "down", 
+              icon: UserCheck, 
+              color: "#F97316" 
+            },
+            { 
+              label: "Tạm nghỉ", 
+              value: data.inactive_students, 
+              change: data.inactive_change, 
+              trend: data.inactive_change >= 0 ? "up" : "down", 
+              icon: UserX, 
+              color: "#FB923C" 
+            },
+            { 
+              label: "Mới tháng này", 
+              value: data.new_students_this_month, 
+              change: data.new_students_change, 
+              trend: data.new_students_change >= 0 ? "up" : "down", 
+              icon: Calendar, 
+              color: "#FDBA74" 
+            },
+          ]);
+        }
+      } else {
+        console.error('Failed to fetch student stats');
+      }
+    } catch (error) {
+      console.error('Error fetching student stats:', error);
+    }
+  };
+
+  const fetchStudents = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      if (!token) {
+        toast.error('Vui lòng đăng nhập lại');
+        setLoading(false);
+        return;
+      }
+
+      // Build query params for backend filtering and pagination
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        per_page: perPage.toString(),
+      });
+
+      // Add search query (use debounced value)
+      if (debouncedSearchQuery) {
+        params.append('search', debouncedSearchQuery);
+      }
+
+      // Add status filter
+      if (statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+
+      // Note: courseFilter is frontend-only since backend doesn't have course field
+      // We'll filter courses after getting data
+
+      const response = await fetch(getApiUrl(`teacher/students?${params.toString()}`), {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'success' && result.data) {
+          // Handle paginated response
+          const paginationData = result.data;
+          const studentsData = paginationData.data || [];
+          
+          // Transform API data to match our format
+          const transformedStudents = studentsData.map((student: any) => {
+            // Calculate course month from creation date
+            const createdDate = new Date(student.uCreated_at);
+            const courseMonth = `Khóa tháng ${createdDate.getMonth() + 1}`;
+            
+            return {
+              id: student.uId,
+              name: student.uName || 'N/A',
+              phone: student.uPhone || 'N/A',
+              email: student.uEmail || 'Chưa có',
+              class: student.class_name || 'Chưa có lớp',
+              ageGroup: student.age_group || 'teens',
+              course: courseMonth,
+              status: student.uStatus || 'active',
+              avatar: student.uName?.split(' ').slice(-2).map((n: string) => n[0]).join('').toUpperCase() || 'NA',
+              avatarUrl: student.avatar_url || null,
+              createdAt: new Date(student.uCreated_at).toLocaleDateString('vi-VN'),
+              uDoB: student.uDoB || null,
+              dateOfBirth: student.uDoB ? student.uDoB.split(' ')[0] : null,
+            };
+          });
+          
+          setStudents(transformedStudents);
+          setTotalPages(paginationData.last_page || 1);
+          setTotalStudents(paginationData.total || 0);
+        }
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to fetch students:', errorData);
+        
+        if (response.status === 401) {
+          toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại');
+        } else {
+          toast.error(errorData.message || 'Không thể tải danh sách học viên');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      toast.error('Có lỗi xảy ra khi tải danh sách học viên');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchDeletedStudents = async () => {
+    setLoadingDeleted(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      if (!token) {
+        toast.error('Vui lòng đăng nhập lại');
+        setLoadingDeleted(false);
+        return;
+      }
+
+      const response = await fetch(getApiUrl('teacher/students/deleted'), {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'success') {
+          setDeletedStudents(result.data);
+        }
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Không thể tải danh sách đã xóa');
+      }
+    } catch (error) {
+      console.error('Error fetching deleted students:', error);
+      toast.error('Có lỗi xảy ra khi tải danh sách đã xóa');
+    } finally {
+      setLoadingDeleted(false);
+    }
+  };
+
+  // Pagination handlers
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      handlePageChange(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      handlePageChange(currentPage + 1);
+    }
+  };
+
+  // Generate page numbers to display
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxPagesToShow = 5;
+    
+    if (totalPages <= maxPagesToShow) {
+      // Show all pages if total is small
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first page
+      pages.push(1);
+      
+      if (currentPage > 3) {
+        pages.push('...');
+      }
+      
+      // Show pages around current page
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      
+      if (currentPage < totalPages - 2) {
+        pages.push('...');
+      }
+      
+      // Always show last page
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  };
+
+  const handleRestoreStudent = async (studentId: number, studentName: string) => {
+    const result = await Swal.fire({
+      title: 'Khôi phục học viên?',
+      html: `
+        <div style="text-align: left; font-size: 14px;">
+          <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); padding: 12px 14px; border-radius: 10px; border-left: 3px solid #10b981;">
+            <p style="margin: 0 0 4px 0; font-size: 11px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Học viên sẽ được khôi phục</p>
+            <p style="margin: 0; font-size: 15px; color: #111827; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+              <span style="width: 6px; height: 6px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
+              ${studentName}
+            </p>
+          </div>
+        </div>
+      `,
+      icon: 'question',
+      iconColor: '#10b981',
+      showCancelButton: true,
+      confirmButtonText: 'Khôi phục',
+      cancelButtonText: 'Hủy',
+      width: '420px',
+      customClass: {
+        popup: 'swal-custom-popup',
+        confirmButton: 'swal-custom-success',
+        cancelButton: 'swal-custom-cancel',
+      },
+      buttonsStyling: false,
+      reverseButtons: true,
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const token = localStorage.getItem('auth_token');
+        
+        if (!token) {
+          toast.error('Vui lòng đăng nhập lại');
+          return;
+        }
+
+        const response = await fetch(getApiUrl(`teacher/student/${studentId}/restore`), {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          toast.success(`Đã khôi phục học viên "${studentName}" thành công!`);
+          fetchDeletedStudents();
+          fetchStudents();
+        } else {
+          const errorData = await response.json();
+          toast.error(errorData.message || "Không thể khôi phục học viên");
+        }
+      } catch (error) {
+        console.error('Error restoring student:', error);
+        toast.error("Có lỗi xảy ra khi khôi phục học viên");
+      }
+    }
+  };
+
+  const handlePermanentDelete = async (studentId: number, studentName: string) => {
+    const result = await Swal.fire({
+      title: 'Xóa vĩnh viễn?',
+      html: `
+        <div style="text-align: left; font-size: 14px;">
+          <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); padding: 12px 14px; border-radius: 10px; border-left: 3px solid #ef4444;">
+            <p style="margin: 0 0 4px 0; font-size: 11px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">⚠️ Không thể khôi phục</p>
+            <p style="margin: 0; font-size: 15px; color: #111827; font-weight: 700;">
+              ${studentName}
+            </p>
+          </div>
+          <p style="margin-top: 12px; color: #6b7280; font-size: 13px;">Hành động này không thể hoàn tác!</p>
+        </div>
+      `,
+      icon: 'warning',
+      iconColor: '#ef4444',
+      showCancelButton: true,
+      confirmButtonText: 'Xóa vĩnh viễn',
+      cancelButtonText: 'Hủy',
+      width: '420px',
+      customClass: {
+        popup: 'swal-custom-popup',
+        confirmButton: 'swal-custom-confirm',
+        cancelButton: 'swal-custom-cancel',
+      },
+      buttonsStyling: false,
+      reverseButtons: true,
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const token = localStorage.getItem('auth_token');
+        
+        if (!token) {
+          toast.error('Vui lòng đăng nhập lại');
+          return;
+        }
+
+        const response = await fetch(getApiUrl(`teacher/student/${studentId}/permanent`), {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          toast.success(`Đã xóa vĩnh viễn học viên "${studentName}"`);
+          fetchDeletedStudents();
+        } else {
+          const errorData = await response.json();
+          toast.error(errorData.message || "Không thể xóa vĩnh viễn");
+        }
+      } catch (error) {
+        console.error('Error permanent deleting student:', error);
+        toast.error("Có lỗi xảy ra khi xóa vĩnh viễn");
+      }
+    }
+  };
+
+  const handleSelectStudent = (studentId: number) => {
+    const isCurrentlySelected = selectedStudents.includes(studentId);
+    
+    // If deselecting and this is the last one, trigger closing animation
+    if (isCurrentlySelected && selectedStudents.length === 1) {
+      setIsButtonClosing(true);
+      setTimeout(() => {
+        setSelectedStudents([]);
+        setIsButtonClosing(false);
+      }, 400); // Match animation duration
+    } else {
+      setSelectedStudents(prev => 
+        isCurrentlySelected 
+          ? prev.filter(id => id !== studentId)
+          : [...prev, studentId]
+      );
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedStudents.length === filteredStudents.length) {
+      // Deselect all with animation
+      setIsButtonClosing(true);
+      setTimeout(() => {
+        setSelectedStudents([]);
+        setIsButtonClosing(false);
+      }, 400);
+    } else {
+      setSelectedStudents(filteredStudents.map(s => s.id));
+    }
+  };
+
+  const handleEditClick = (student: typeof students[0]) => {
+    setEditingStudent(student);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (updatedStudent: any) => {
+    // Refresh the student list
+    await fetchStudents();
+    toast.success(`Đã cập nhật thông tin học viên "${updatedStudent.name}" thành công!`);
+  };
+
+  const handleDeleteClick = async (student: typeof students[0]) => {
+    const result = await Swal.fire({
+      title: 'Xác nhận xóa học viên',
+      html: `
+        <div style="text-align: left; font-size: 14px;">
+          <div style="background: linear-gradient(135deg, #fee2e2 0%, #fed7aa 100%); padding: 12px 14px; border-radius: 10px; border-left: 3px solid #ef4444;">
+            <p style="margin: 0 0 4px 0; font-size: 11px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Học viên sẽ bị xóa</p>
+            <p style="margin: 0; font-size: 15px; color: #111827; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+              <span style="width: 6px; height: 6px; background: #ef4444; border-radius: 50%; display: inline-block;"></span>
+              ${student.name}
+            </p>
+          </div>
+        </div>
+      `,
+      icon: 'warning',
+      iconColor: '#ef4444',
+      showCancelButton: true,
+      confirmButtonText: '<span style="display: flex; align-items: center; gap: 6px; font-size: 14px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Xóa ngay</span>',
+      cancelButtonText: 'Hủy bỏ',
+      width: '420px',
+      customClass: {
+        popup: 'swal-custom-popup',
+        title: 'swal-custom-title',
+        htmlContainer: 'swal-custom-html',
+        confirmButton: 'swal-custom-confirm',
+        cancelButton: 'swal-custom-cancel',
+        actions: 'swal-custom-actions',
+      },
+      buttonsStyling: false,
+      reverseButtons: true,
+      focusCancel: true,
+      showClass: {
+        popup: 'swal2-show',
+        backdrop: 'swal2-backdrop-show',
+        icon: 'swal2-icon-show'
+      },
+      hideClass: {
+        popup: 'swal2-hide',
+        backdrop: 'swal2-backdrop-hide',
+        icon: 'swal2-icon-hide'
+      }
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const token = localStorage.getItem('auth_token');
+        
+        if (!token) {
+          toast.error('Vui lòng đăng nhập lại');
+          return;
+        }
+
+        const response = await fetch(getApiUrl(`teacher/student/${student.id}`), {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          setStudents(students.filter(s => s.id !== student.id));
+          toast.success(`Đã xóa học viên "${student.name}". Có thể khôi phục trong 24h tại tab "Đã xóa gần đây"`);
+        } else {
+          const errorData = await response.json();
+          toast.error(errorData.message || "Có lỗi xảy ra khi xóa học viên");
+        }
+      } catch (error) {
+        console.error('Error deleting student:', error);
+        toast.error("Có lỗi xảy ra khi xóa học viên. Vui lòng thử lại!");
+      }
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const selectedCount = selectedStudents.length;
+    const selectedNames = students
+      .filter(s => selectedStudents.includes(s.id))
+      .map(s => s.name)
+      .slice(0, 3);
+    
+    const namesDisplay = selectedCount <= 3 
+      ? selectedNames.join(', ')
+      : `${selectedNames.join(', ')} và ${selectedCount - 3} học viên khác`;
+
+    const result = await Swal.fire({
+      title: 'Xác nhận xóa nhiều học viên',
+      html: `
+        <div style="text-align: left; font-size: 14px;">
+          <div style="background: linear-gradient(135deg, #fee2e2 0%, #fed7aa 100%); padding: 12px 14px; border-radius: 10px; border-left: 3px solid #ef4444;">
+            <p style="margin: 0 0 4px 0; font-size: 11px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Sẽ xóa ${selectedCount} học viên</p>
+            <p style="margin: 0; font-size: 15px; color: #111827; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+              <span style="width: 6px; height: 6px; background: #ef4444; border-radius: 50%; display: inline-block;"></span>
+              ${namesDisplay}
+            </p>
+          </div>
+        </div>
+      `,
+      icon: 'warning',
+      iconColor: '#ef4444',
+      showCancelButton: true,
+      confirmButtonText: '<span style="display: flex; align-items: center; gap: 6px; font-size: 14px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Xóa tất cả</span>',
+      cancelButtonText: 'Hủy bỏ',
+      width: '420px',
+      customClass: {
+        popup: 'swal-custom-popup',
+        title: 'swal-custom-title',
+        htmlContainer: 'swal-custom-html',
+        confirmButton: 'swal-custom-confirm',
+        cancelButton: 'swal-custom-cancel',
+        actions: 'swal-custom-actions',
+      },
+      buttonsStyling: false,
+      reverseButtons: true,
+      focusCancel: true,
+      showClass: {
+        popup: 'swal2-show',
+        backdrop: 'swal2-backdrop-show',
+        icon: 'swal2-icon-show'
+      },
+      hideClass: {
+        popup: 'swal2-hide',
+        backdrop: 'swal2-backdrop-hide',
+        icon: 'swal2-icon-hide'
+      }
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const token = localStorage.getItem('auth_token');
+        
+        if (!token) {
+          toast.error('Vui lòng đăng nhập lại');
+          return;
+        }
+
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const studentId of selectedStudents) {
+          try {
+            const response = await fetch(getApiUrl(`teacher/student/${studentId}`), {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            });
+
+            if (response.ok) {
+              successCount++;
+            } else {
+              failCount++;
+            }
+          } catch (error) {
+            failCount++;
+          }
+        }
+
+        setStudents(students.filter(s => !selectedStudents.includes(s.id)));
+        setSelectedStudents([]);
+
+        if (failCount === 0) {
+          toast.success(`Đã xóa thành công ${successCount} học viên!`);
+        } else {
+          toast.warning(`Đã xóa ${successCount} học viên. ${failCount} học viên không thể xóa.`);
+        }
+      } catch (error) {
+        console.error('Error bulk deleting students:', error);
+        toast.error("Có lỗi xảy ra khi xóa học viên. Vui lòng thử lại!");
+      }
+    }
+  };
+
+  const handleExportExcel = (e?: React.MouseEvent) => {
+    // Prevent double execution and event bubbling
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    // Check if already exporting or in cooldown
+    if (isExporting || exportCooldown > 0) {
+      toast.warning(`Vui lòng đợi ${exportCooldown} giây trước khi xuất lại`);
+      return;
+    }
+    
+    if (loading) return;
+
+    setIsExporting(true);
+    
+    try {
+      // Prepare data for Excel
+      const excelData = students.map((student, index) => ({
+        'STT': index + 1,
+        'Họ và tên': student.name,
+        'Số điện thoại': student.phone,
+        'Email': student.email === 'Chưa có' ? '' : student.email,
+        'Nhóm tuổi': student.ageGroup === 'kids' ? 'Trẻ em' : student.ageGroup === 'teens' ? 'Thiếu niên' : 'Người lớn',
+        'Lớp': student.class,
+        'Khóa': student.course,
+        'Trạng thái': student.status === 'active' ? 'Đang học' : 'Tạm nghỉ',
+        'Ngày tạo': student.createdAt,
+      }));
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 5 },  // STT
+        { wch: 25 }, // Họ và tên
+        { wch: 15 }, // SĐT
+        { wch: 30 }, // Email
+        { wch: 15 }, // Nhóm tuổi
+        { wch: 20 }, // Lớp
+        { wch: 15 }, // Khóa
+        { wch: 12 }, // Trạng thái
+        { wch: 12 }, // Ngày tạo
+      ];
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Danh sách học viên');
+
+      // Generate filename with current date
+      const date = new Date();
+      const filename = `Danh_sach_hoc_vien_${date.getFullYear()}_${String(date.getMonth() + 1).padStart(2, '0')}_${String(date.getDate()).padStart(2, '0')}.xlsx`;
+
+      // Save file
+      XLSX.writeFile(wb, filename);
+
+      toast.success(`Đã xuất ${students.length} học viên ra file Excel!`);
+      
+      // Set cooldown for 10 seconds
+      setExportCooldown(10);
+      const interval = setInterval(() => {
+        setExportCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      toast.error('Có lỗi xảy ra khi xuất Excel. Vui lòng thử lại!');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const tabs = [
-    { id: "list" as TabType, label: "Danh sách", icon: Users },
-    { id: "stats" as TabType, label: "Thống kê", icon: BarChart3 },
-    { id: "export" as TabType, label: "Xuất dữ liệu", icon: Download },
+    { id: "list" as TabType, icon: Users },
+    { id: "deleted" as TabType, icon: Trash2 },
   ];
 
   const getStatusBadge = (status: string) => {
@@ -98,6 +785,24 @@ export function StudentManagement() {
     );
   };
 
+  const getAgeGroupBadge = (ageGroup: string) => {
+    const config = {
+      kids: { label: "Trẻ em", icon: "👶", color: "#EC4899", bg: "#FCE7F3" },
+      teens: { label: "Thiếu niên", icon: "🎓", color: "#F97316", bg: "#FFEDD5" },
+      adults: { label: "Người lớn", icon: "👔", color: "#6366F1", bg: "#E0E7FF" },
+    };
+    const { label, icon, color, bg } = config[ageGroup as keyof typeof config] || config.teens;
+    return (
+      <span
+        className="px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1"
+        style={{ color, backgroundColor: bg }}
+      >
+        <span>{icon}</span>
+        <span>{label}</span>
+      </span>
+    );
+  };
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -105,24 +810,11 @@ export function StudentManagement() {
         <div className="flex items-center justify-between mb-2">
           <div>
             <h1 className="text-3xl font-bold text-[#111827] mb-1">
-              Quản lý học sinh
+              {t('teacher.students.management.title')}
             </h1>
             <p className="text-[#6B7280] text-sm">
-              Dashboard &gt; Học viên &gt; Quản lý
+              {t('teacher.students.management.breadcrumb')}
             </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium"
-            >
-              <UserPlus className="w-5 h-5" />
-              Thêm học sinh
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#E5E7EB] text-[#374151] rounded-lg hover:bg-[#F9FAFB] transition-colors font-medium">
-              <Download className="w-5 h-5" />
-              Xuất Excel
-            </button>
           </div>
         </div>
       </div>
@@ -133,18 +825,19 @@ export function StudentManagement() {
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
+            
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className="flex items-center gap-2 px-6 py-3 font-medium text-sm transition-all relative"
+                className="flex items-center gap-2 px-6 py-3 font-medium text-sm transition-all relative group"
                 style={{
                   color: isActive ? "#EA580C" : "#6B7280",
                   borderBottom: isActive ? "2px solid #EA580C" : "2px solid transparent",
                 }}
               >
                 <Icon className="w-4 h-4" />
-                {tab.label}
+                {t(`teacher.students.management.tabs.${tab.id}`)}
               </button>
             );
           })}
@@ -185,44 +878,140 @@ export function StudentManagement() {
             })}
           </div>
 
-          {/* Search & Filter Bar */}
-          <div className="bg-white rounded-xl p-4 border border-[#E5E7EB] mb-6">
+          {/* Search & Filter Bar with Action Buttons */}
+          <div className="bg-white rounded-xl p-4 border border-[#E5E7EB] mb-4">
             <div className="flex items-center gap-3">
-              <div className="flex-1 relative">
+              <div className="relative w-80">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9CA3AF]" />
                 <input
                   type="text"
                   placeholder="Tìm theo tên, SĐT, email..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1); // Reset to page 1 when searching
+                  }}
                   className="w-full pl-10 pr-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 />
               </div>
-              <select className="px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
-                <option>Tất cả lớp</option>
-                <option>IELTS 6.5</option>
-                <option>TOEIC 750</option>
+              <select 
+                value={courseFilter}
+                onChange={(e) => {
+                  setCourseFilter(e.target.value);
+                  setCurrentPage(1); // Reset to page 1 when filtering
+                }}
+                className="px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="all">Tất cả khóa</option>
+                {uniqueCourses.map((course) => (
+                  <option key={course} value={course}>{course}</option>
+                ))}
               </select>
-              <select className="px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
-                <option>Tất cả trạng thái</option>
-                <option>Đang học</option>
-                <option>Tạm nghỉ</option>
+              <select 
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1); // Reset to page 1 when filtering
+                }}
+                className="px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="all">Tất cả trạng thái</option>
+                <option value="active">Đang học</option>
+                <option value="inactive">Tạm nghỉ</option>
               </select>
-              <button className="px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium flex items-center gap-2">
+              <button 
+                onClick={() => {
+                  // Reset filters
+                  setSearchQuery("");
+                  setCourseFilter("all");
+                  setStatusFilter("all");
+                  setCurrentPage(1); // Reset to page 1
+                  toast.success("Đã xóa bộ lọc");
+                }}
+                className="px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium flex items-center gap-2"
+              >
                 <Filter className="w-4 h-4" />
-                Lọc
+                Xóa lọc
               </button>
+              
+              {/* Action Buttons - moved here */}
+              <div className="flex items-center gap-3 ml-auto">
+                {(selectedStudents.length > 0 || isButtonClosing) && (
+                  <button
+                    key={`bulk-delete-${selectedStudents.length}`}
+                    onClick={handleBulkDelete}
+                    className={`flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-medium shadow-lg hover:shadow-xl ${
+                      isButtonClosing ? 'animate-mosaic-disappear' : 'animate-mosaic-appear'
+                    }`}
+                  >
+                    <Trash2 className="w-5 h-5" />
+                    <span>Xóa</span>
+                    <span 
+                      key={`count-${selectedStudents.length}`}
+                      className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 bg-red-700 rounded-full text-sm font-bold animate-count-pulse"
+                    >
+                      {selectedStudents.length}
+                    </span>
+                    <span>học viên</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => navigate('/giao-vien/students/them-moi')}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium"
+                >
+                  <UserPlus className="w-5 h-5" />
+                  Thêm học sinh
+                </button>
+                <button 
+                  onClick={handleExportExcel}
+                  disabled={isExporting || exportCooldown > 0}
+                  className={`flex items-center gap-2 px-4 py-2.5 bg-white border border-[#E5E7EB] text-[#374151] rounded-lg hover:bg-[#F9FAFB] transition-colors font-medium ${
+                    (isExporting || exportCooldown > 0) ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                >
+                  {isExporting ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      <span>Đang xuất...</span>
+                    </>
+                  ) : exportCooldown > 0 ? (
+                    <>
+                      <Upload className="w-5 h-5" />
+                      <span>Đợi {exportCooldown}s</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-5 h-5" />
+                      <span>Xuất Excel</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Student Table */}
+          {loading ? (
+            <div className="bg-white rounded-xl border border-[#E5E7EB] p-12 text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+              <p className="mt-4 text-[#6B7280]">Đang tải danh sách học viên...</p>
+            </div>
+          ) : (
           <div className="bg-white rounded-xl border border-[#E5E7EB] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
                   <tr>
                     <th className="px-6 py-3 text-left">
-                      <input type="checkbox" className="rounded" />
+                      <input 
+                        type="checkbox" 
+                        className="rounded cursor-pointer" 
+                        checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0}
+                        onChange={handleSelectAll}
+                      />
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
                       Học sinh
@@ -234,7 +1023,7 @@ export function StudentManagement() {
                       Email
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                      Lớp
+                      Nhóm tuổi
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
                       Khóa học
@@ -251,16 +1040,38 @@ export function StudentManagement() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5E7EB]">
-                  {mockStudents.map((student) => (
+                  {filteredStudents.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="px-6 py-12 text-center">
+                        <Search className="w-12 h-12 text-[#9CA3AF] mx-auto mb-3" />
+                        <p className="text-[#6B7280] font-medium">Không tìm thấy học viên nào</p>
+                        <p className="text-sm text-[#9CA3AF] mt-1">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredStudents.map((student) => (
                     <tr key={student.id} className="hover:bg-[#F9FAFB] transition-colors">
                       <td className="px-6 py-4">
-                        <input type="checkbox" className="rounded" />
+                        <input 
+                          type="checkbox" 
+                          className="rounded cursor-pointer" 
+                          checked={selectedStudents.includes(student.id)}
+                          onChange={() => handleSelectStudent(student.id)}
+                        />
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-[#2563EB] text-white flex items-center justify-center font-semibold text-sm">
-                            {student.avatar}
-                          </div>
+                          {student.avatarUrl ? (
+                            <img 
+                              src={getAssetUrl(student.avatarUrl)}
+                              alt={student.name}
+                              className="w-10 h-10 rounded-full object-cover border-2 border-[#E5E7EB]"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-[#2563EB] text-white flex items-center justify-center font-semibold text-sm">
+                              {student.avatar}
+                            </div>
+                          )}
                           <span className="font-medium text-[#111827]">
                             {student.name}
                           </span>
@@ -273,7 +1084,7 @@ export function StudentManagement() {
                         {student.email}
                       </td>
                       <td className="px-6 py-4 text-sm text-[#6B7280]">
-                        {student.class}
+                        {getAgeGroupBadge(student.ageGroup)}
                       </td>
                       <td className="px-6 py-4 text-sm text-[#6B7280]">
                         {student.course}
@@ -284,19 +1095,31 @@ export function StudentManagement() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <button className="p-2 hover:bg-[#EFF6FF] rounded-lg transition-colors">
+                          <button 
+                            className="p-2 hover:bg-[#EFF6FF] rounded-lg transition-colors"
+                            title="Xem chi tiết"
+                          >
                             <Eye className="w-4 h-4 text-[#6B7280]" />
                           </button>
-                          <button className="p-2 hover:bg-[#EFF6FF] rounded-lg transition-colors">
+                          <button 
+                            onClick={() => handleEditClick(student)}
+                            className="p-2 hover:bg-[#EFF6FF] rounded-lg transition-colors"
+                            title="Chỉnh sửa"
+                          >
                             <Edit className="w-4 h-4 text-[#6B7280]" />
                           </button>
-                          <button className="p-2 hover:bg-[#FEE2E2] rounded-lg transition-colors">
+                          <button 
+                            onClick={() => handleDeleteClick(student)}
+                            className="p-2 hover:bg-[#FEE2E2] rounded-lg transition-colors"
+                            title="Xóa học viên"
+                          >
                             <Trash2 className="w-4 h-4 text-[#EF4444]" />
                           </button>
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -304,393 +1127,193 @@ export function StudentManagement() {
             {/* Pagination */}
             <div className="px-6 py-4 border-t border-[#E5E7EB] flex items-center justify-between">
               <p className="text-sm text-[#6B7280]">
-                Hiển thị <span className="font-medium text-[#111827]">1-5</span> trong{" "}
-                <span className="font-medium text-[#111827]">1,248</span> kết quả
+                Hiển thị <span className="font-medium text-[#111827]">{((currentPage - 1) * perPage) + 1}-{Math.min(currentPage * perPage, totalStudents)}</span> trong{" "}
+                <span className="font-medium text-[#111827]">{totalStudents}</span> kết quả
               </p>
-              <div className="flex gap-2">
-                <button className="px-3 py-1.5 border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] text-sm font-medium text-[#6B7280]">
-                  Trước
-                </button>
-                <button className="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium">
-                  1
-                </button>
-                <button className="px-3 py-1.5 border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] text-sm font-medium text-[#6B7280]">
-                  2
-                </button>
-                <button className="px-3 py-1.5 border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] text-sm font-medium text-[#6B7280]">
-                  3
-                </button>
-                <button className="px-3 py-1.5 border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] text-sm font-medium text-[#6B7280]">
-                  Sau
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === "stats" && (
-        <div>
-          {/* Overview Cards */}
-          <div className="grid grid-cols-4 gap-6 mb-6">
-            {studentStats.map((stat, index) => {
-              const Icon = stat.icon;
-              return (
-                <div key={index} className="bg-white rounded-xl p-6 border border-[#E5E7EB]">
-                  <div className="flex items-start justify-between mb-4">
-                    <div
-                      className="w-12 h-12 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: `${stat.color}15` }}
-                    >
-                      <Icon className="w-6 h-6" style={{ color: stat.color }} />
-                    </div>
-                  </div>
-                  <p className="text-2xl font-bold text-[#111827] mb-1">
-                    {stat.value.toLocaleString()}
-                  </p>
-                  <p className="text-sm text-[#6B7280]">{stat.label}</p>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Enrollment Growth Chart */}
-          <div className="bg-white rounded-xl p-6 border border-[#E5E7EB] mb-6">
-            <h3 className="text-lg font-bold text-[#111827] mb-4">
-              Tăng trưởng học sinh
-            </h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={enrollmentData}>
-                <defs>
-                  <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
-                    <stop key="stop-1" offset="5%" stopColor="#EA580C" stopOpacity={0.3} />
-                    <stop key="stop-2" offset="95%" stopColor="#EA580C" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="month" stroke="#6B7280" />
-                <YAxis stroke="#6B7280" />
-                <Tooltip />
-                <Area
-                  type="monotone"
-                  dataKey="students"
-                  stroke="#EA580C"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorStudents)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Class Distribution & Course Enrollment */}
-          <div className="grid grid-cols-2 gap-6 mb-6">
-            <div className="bg-white rounded-xl p-6 border border-[#E5E7EB]">
-              <h3 className="text-lg font-bold text-[#111827] mb-4">
-                Phân bố theo lớp
-              </h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <RePieChart>
-                  <Pie
-                    data={classDistribution}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    paddingAngle={5}
-                    dataKey="value"
+              {/* Only show pagination if there are more than 10 students */}
+              {totalPages > 1 && (
+                <div className="flex gap-2">
+                  <button 
+                    onClick={handlePreviousPage}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-1.5 border border-[#E5E7EB] rounded-lg text-sm font-medium ${
+                      currentPage === 1 
+                        ? 'text-[#D1D5DB] cursor-not-allowed' 
+                        : 'text-[#6B7280] hover:bg-[#F9FAFB]'
+                    }`}
                   >
-                    {classDistribution.map((entry, index) => (
-                      <Cell key={`pie-cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </RePieChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 border border-[#E5E7EB]">
-              <h3 className="text-lg font-bold text-[#111827] mb-4">
-                Phân bố theo khóa học
-              </h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={classDistribution}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="name" stroke="#6B7280" />
-                  <YAxis stroke="#6B7280" />
-                  <Tooltip />
-                  <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                    {classDistribution.map((entry, index) => (
-                      <Cell key={`bar-cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Top Performers */}
-          <div className="bg-white rounded-xl p-6 border border-[#E5E7EB]">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-[#111827]">
-                Học sinh xuất sắc
-              </h3>
-              <button className="text-sm text-orange-600 font-medium hover:underline">
-                Xem tất cả
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                      Xếp hạng
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                      Học sinh
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                      Lớp
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                      Điểm TB
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                      Số bài kiểm tra
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E5E7EB]">
-                  {topStudents.map((student) => (
-                    <tr key={student.rank} className="hover:bg-[#F9FAFB]">
-                      <td className="px-4 py-3">
-                        <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm"
-                          style={{
-                            backgroundColor: student.rank === 1 ? "#F59E0B" : student.rank === 2 ? "#9CA3AF" : student.rank === 3 ? "#D97706" : "#E5E7EB",
-                            color: student.rank <= 3 ? "#FFF" : "#6B7280",
-                          }}
-                        >
-                          {student.rank}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-[#2563EB] text-white flex items-center justify-center font-semibold text-sm">
-                            {student.avatar}
-                          </div>
-                          <span className="font-medium text-[#111827]">
-                            {student.name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-[#6B7280]">
-                        {student.class}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-lg font-bold text-[#10B981]">
-                          {student.avgScore}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-[#6B7280]">
-                        {student.tests}
-                      </td>
-                    </tr>
+                    Trước
+                  </button>
+                  
+                  {getPageNumbers().map((page, index) => (
+                    page === '...' ? (
+                      <span key={`ellipsis-${index}`} className="px-3 py-1.5 text-[#6B7280]">...</span>
+                    ) : (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page as number)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                          currentPage === page
+                            ? 'bg-orange-600 text-white'
+                            : 'border border-[#E5E7EB] text-[#6B7280] hover:bg-[#F9FAFB]'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === "export" && (
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-white rounded-xl p-8 border border-[#E5E7EB]">
-            {/* Format Selection */}
-            <div className="mb-8">
-              <h3 className="text-lg font-bold text-[#111827] mb-4">
-                Chọn định dạng
-              </h3>
-              <div className="grid grid-cols-3 gap-4">
-                {[
-                  { id: "excel", label: "Excel (.xlsx)", icon: FileSpreadsheet, recommended: true },
-                  { id: "csv", label: "CSV (.csv)", icon: FileText, recommended: false },
-                  { id: "pdf", label: "PDF", icon: File, recommended: false },
-                ].map((format) => {
-                  const Icon = format.icon;
-                  const isSelected = selectedFormat === format.id;
-                  return (
-                    <button
-                      key={format.id}
-                      onClick={() => setSelectedFormat(format.id)}
-                      className="relative p-4 border-2 rounded-xl hover:border-orange-600 transition-all"
-                      style={{
-                        borderColor: isSelected ? "#EA580C" : "#E5E7EB",
-                        backgroundColor: isSelected ? "#FFF7ED" : "#FFF",
-                      }}
-                    >
-                      {format.recommended && (
-                        <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-[#10B981] text-white text-xs font-bold rounded-full">
-                          Đề xuất
-                        </span>
-                      )}
-                      <Icon className="w-8 h-8 mx-auto mb-2" style={{ color: isSelected ? "#EA580C" : "#6B7280" }} />
-                      <p className="text-sm font-medium" style={{ color: isSelected ? "#EA580C" : "#374151" }}>
-                        {format.label}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Data Selection */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-[#111827]">
-                  Chọn dữ liệu
-                </h3>
-                <button className="text-sm text-orange-600 font-medium hover:underline">
-                  Chọn tất cả
-                </button>
-              </div>
-              <div className="space-y-3">
-                {[
-                  { id: "personal", label: "Thông tin cá nhân (Tên, SĐT, Email, Ngày sinh)", checked: true },
-                  { id: "academic", label: "Thông tin học tập (Lớp, Khóa học, Mã học sinh)", checked: true },
-                  { id: "scores", label: "Điểm số và kết quả thi", checked: false },
-                  { id: "history", label: "Lịch sử tham gia", checked: false },
-                  { id: "notes", label: "Ghi chú và nhận xét", checked: false },
-                ].map((item) => (
-                  <label
-                    key={item.id}
-                    className="flex items-center gap-3 p-3 border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] cursor-pointer"
+                  
+                  <button 
+                    onClick={handleNextPage}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-1.5 border border-[#E5E7EB] rounded-lg text-sm font-medium ${
+                      currentPage === totalPages 
+                        ? 'text-[#D1D5DB] cursor-not-allowed' 
+                        : 'text-[#6B7280] hover:bg-[#F9FAFB]'
+                    }`}
                   >
-                    <input
-                      type="checkbox"
-                      defaultChecked={item.checked}
-                      className="w-4 h-4 rounded border-2 border-[#D1D5DB] text-orange-600 focus:ring-2 focus:ring-orange-500 focus:ring-offset-1 cursor-pointer transition-all hover:border-orange-600"
-                    />
-                    <span className="text-sm text-[#374151]">{item.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Filters */}
-            <div className="mb-8">
-              <h3 className="text-lg font-bold text-[#111827] mb-4">Bộ lọc</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#374151] mb-2">
-                    Lớp học
-                  </label>
-                  <select className="w-full px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
-                    <option>Tất cả lớp</option>
-                    <option>IELTS 6.5</option>
-                    <option>TOEIC 750</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#374151] mb-2">
-                    Trạng thái
-                  </label>
-                  <select className="w-full px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
-                    <option>Tất cả trạng thái</option>
-                    <option>Đang học</option>
-                    <option>Tạm nghỉ</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Preview */}
-            <div className="bg-[#F9FAFB] rounded-lg p-4 mb-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-[#374151] mb-1">
-                    Số lượng học sinh sẽ được xuất
-                  </p>
-                  <p className="text-2xl font-bold text-orange-600">1,248</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-[#374151] mb-1">
-                    Dung lượng file dự kiến
-                  </p>
-                  <p className="text-2xl font-bold text-emerald-600">2.4 MB</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center justify-between">
-              <button className="px-6 py-2.5 border border-[#E5E7EB] text-[#374151] rounded-lg hover:bg-[#F9FAFB] transition-colors font-medium">
-                Hủy
-              </button>
-              <div className="flex items-center gap-3">
-                <button className="px-6 py-2.5 border border-[#E5E7EB] text-[#374151] rounded-lg hover:bg-[#F9FAFB] transition-colors font-medium">
-                  Xem trước
-                </button>
-                <button className="flex items-center gap-2 px-6 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium">
-                  <Download className="w-5 h-5" />
-                  Xuất dữ liệu
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Export History */}
-          <div className="bg-white rounded-xl p-6 border border-[#E5E7EB] mt-6">
-            <h3 className="text-lg font-bold text-[#111827] mb-4">
-              Lịch sử xuất dữ liệu
-            </h3>
-            <div className="space-y-3">
-              {[
-                { date: "22/03/2024 14:30", format: "Excel", records: 1248, size: "2.4 MB", status: "success" },
-                { date: "20/03/2024 09:15", format: "CSV", records: 1156, size: "1.8 MB", status: "success" },
-                { date: "18/03/2024 16:45", format: "PDF", records: 892, size: "5.2 MB", status: "success" },
-              ].map((item, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-4 border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB]"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-[#10B98115] flex items-center justify-center">
-                      <Check className="w-5 h-5 text-[#10B981]" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-[#111827]">
-                        {item.format} - {item.records} học sinh
-                      </p>
-                      <p className="text-sm text-[#6B7280]">
-                        {item.date} • {item.size}
-                      </p>
-                    </div>
-                  </div>
-                  <button className="flex items-center gap-2 px-4 py-2 border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] transition-colors text-sm font-medium">
-                    <Download className="w-4 h-4" />
-                    Tải xuống
+                    Sau
                   </button>
                 </div>
-              ))}
+              )}
             </div>
           </div>
+          )}
         </div>
       )}
-      
-      {/* Create Student Modal */}
-      {showCreateModal && (
-        <CreateStudent
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={() => {
-            // Refresh student list here
-            window.location.reload();
-          }}
-        />
+
+      {activeTab === "deleted" && (
+        <div>
+          {loadingDeleted ? (
+            <div className="bg-white rounded-xl border border-[#E5E7EB] p-12 text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+              <p className="mt-4 text-[#6B7280]">Đang tải danh sách đã xóa...</p>
+            </div>
+          ) : deletedStudents.length === 0 ? (
+            <div className="bg-white rounded-xl border border-[#E5E7EB] p-12 text-center">
+              <Trash2 className="w-16 h-16 text-[#9CA3AF] mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-[#111827] mb-2">Không có học viên nào đã xóa</h3>
+              <p className="text-[#6B7280]">Học viên đã xóa sẽ được lưu trong 24 giờ trước khi xóa vĩnh viễn</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-[#E5E7EB] overflow-hidden">
+              <div className="p-4 bg-[#FEF3C7] border-b border-[#FDE68A]">
+                <div className="flex items-center gap-2 text-[#92400E]">
+                  <AlertTriangle className="w-5 h-5" />
+                  <p className="text-sm font-medium">
+                    Học viên đã xóa sẽ tự động bị xóa vĩnh viễn sau 24 giờ
+                  </p>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
+                        Học sinh
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
+                        SĐT
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
+                        Thời gian xóa
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
+                        Còn lại
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
+                        Thao tác
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E5E7EB]">
+                    {deletedStudents.map((student) => (
+                      <tr key={student.uId} className="hover:bg-[#F9FAFB] transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            {student.avatar_url ? (
+                              <img 
+                                src={getAssetUrl(student.avatar_url)}
+                                alt={student.uName}
+                                className="w-10 h-10 rounded-full object-cover border-2 border-[#E5E7EB] opacity-60"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-[#9CA3AF] text-white flex items-center justify-center font-semibold text-sm">
+                                {student.uName?.split(' ').slice(-2).map((n: string) => n[0]).join('').toUpperCase() || 'NA'}
+                              </div>
+                            )}
+                            <span className="font-medium text-[#6B7280]">
+                              {student.uName || 'N/A'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-[#6B7280]">
+                          {student.uPhone || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-[#6B7280]">
+                          {student.deleted_hours_ago < 1 
+                            ? 'Vừa xong' 
+                            : `${Math.floor(student.deleted_hours_ago)} giờ trước`}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            student.hours_remaining > 12 
+                              ? 'bg-green-100 text-green-800'
+                              : student.hours_remaining > 6
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {student.hours_remaining > 0 
+                              ? `${Math.floor(student.hours_remaining)}h ${Math.floor((student.hours_remaining % 1) * 60)}m`
+                              : 'Hết hạn'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            {student.can_restore && (
+                              <button 
+                                onClick={() => handleRestoreStudent(student.uId, student.uName)}
+                                className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-1"
+                                title="Khôi phục"
+                              >
+                                <Check className="w-4 h-4" />
+                                Khôi phục
+                              </button>
+                            )}
+                            <button 
+                              onClick={() => handlePermanentDelete(student.uId, student.uName)}
+                              className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium flex items-center gap-1"
+                              title="Xóa vĩnh viễn"
+                            >
+                              <X className="w-4 h-4" />
+                              Xóa vĩnh viễn
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       )}
+
+      {/* Edit Student Modal */}
+      <EditStudentModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingStudent(null);
+        }}
+        student={editingStudent}
+        onSave={handleSaveEdit}
+        toast={toast}
+      />
+
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} onClose={removeToast} />
     </div>
   );
 }

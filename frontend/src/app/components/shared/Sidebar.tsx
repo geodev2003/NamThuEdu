@@ -5,22 +5,17 @@ import { logout } from "../../../services/authApi";
 import {
   LayoutDashboard,
   BookOpen,
-  School,
   Users,
   FileText,
   GraduationCap,
   ClipboardList,
   BarChart3,
-  PenTool,
   Settings,
   LogOut,
-  Mail,
   ChevronDown,
   Signal,
-  Newspaper,
   Lightbulb,
   CheckCircle2,
-  Search,
 } from "lucide-react";
 
 interface SubMenuItem {
@@ -50,26 +45,6 @@ const navigationData: MenuItem[] = [
       { name: "manageStudents", href: "/giao-vien/students" },
       { name: "addStudent", href: "/giao-vien/students/them-moi" },
       { name: "importStudents", href: "/giao-vien/students/import" },
-    ],
-  },
-  {
-    name: "classes",
-    icon: School,
-    submenu: [
-      { name: "classList", href: "/giao-vien/lop-hoc/danh-sach" },
-      { name: "createClass", href: "/giao-vien/lop-hoc/tao-moi" },
-      { name: "transferClass", href: "/giao-vien/lop-hoc/chuyen-lop" },
-      { name: "classStats", href: "/giao-vien/lop-hoc/thong-ke" },
-    ],
-  },
-  {
-    name: "courses",
-    icon: BookOpen,
-    submenu: [
-      { name: "courseList", href: "/giao-vien/khoa-hoc" },
-      { name: "createCourse", href: "/giao-vien/khoa-hoc/tao-moi" },
-      { name: "manageStudents", href: "/giao-vien/khoa-hoc/quan-ly-students" },
-      { name: "courseStats", href: "/giao-vien/khoa-hoc/thong-ke" },
     ],
   },
   {
@@ -216,10 +191,11 @@ export function Sidebar() {
   };
 
   const isSubmenuActive = (href: string): boolean => {
-    return location.pathname === href || location.pathname.startsWith(href + "/");
+    // Only exact match - no parent matching at all
+    return location.pathname === href;
   };
 
-  const renderMenuItem = (item: MenuItem, section?: string) => {
+  const renderMenuItem = (item: MenuItem) => {
     const isActive = isMenuActive(item);
     const isExpanded = expandedMenu === item.name;
     const Icon = item.icon;
@@ -232,21 +208,21 @@ export function Sidebar() {
             onClick={() => toggleMenu(item.name)}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 relative group"
             style={{
-              background: isActive ? "#2563EB" : "transparent",
-              color: isActive ? "#FFFFFF" : "#6B7280",
+              background: isActive ? "linear-gradient(135deg, #F97316 0%, #EA580C 100%)" : "transparent",
+              color: isActive ? "#FFFFFF" : "#78716C",
               fontSize: "14px",
               fontWeight: 500,
             }}
             onMouseEnter={(e) => {
               if (!isActive) {
-                (e.currentTarget as HTMLButtonElement).style.background = "#F3F4F6";
-                (e.currentTarget as HTMLButtonElement).style.color = "#374151";
+                (e.currentTarget as HTMLButtonElement).style.background = "#FFF7ED";
+                (e.currentTarget as HTMLButtonElement).style.color = "#EA580C";
               }
             }}
             onMouseLeave={(e) => {
               if (!isActive) {
                 (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                (e.currentTarget as HTMLButtonElement).style.color = "#6B7280";
+                (e.currentTarget as HTMLButtonElement).style.color = "#78716C";
               }
             }}
           >
@@ -254,18 +230,18 @@ export function Sidebar() {
             {isActive && (
               <div
                 className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
-                style={{ background: "#1E40AF" }}
+                style={{ background: "#FBBF24" }}
               />
             )}
             <Icon
               className="w-5 h-5 flex-shrink-0"
-              style={{ color: isActive ? "#FFFFFF" : "#6B7280" }}
+              style={{ color: isActive ? "#FFFFFF" : "#78716C" }}
             />
             <span className="flex-1 text-left">{t(`nav.${item.name}`)}</span>
             
             {/* Indicator for Live Monitor */}
             {item.indicator === "active" && (
-              <div className="w-2 h-2 bg-[#10B981] rounded-full animate-pulse" />
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
             )}
             
             {/* Badge */}
@@ -273,9 +249,10 @@ export function Sidebar() {
               <span
                 className="px-2 py-0.5 rounded-full text-white"
                 style={{
-                  backgroundColor: "#EF4444",
+                  background: "linear-gradient(135deg, #F97316 0%, #EA580C 100%)",
                   fontSize: "11px",
                   fontWeight: 700,
+                  boxShadow: "0 2px 4px rgba(249, 115, 22, 0.3)",
                 }}
               >
                 {item.badge}
@@ -286,7 +263,7 @@ export function Sidebar() {
               className="w-4 h-4 transition-transform duration-200"
               style={{
                 transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
-                color: isActive ? "#FFFFFF" : "#9CA3AF",
+                color: isActive ? "#FFFFFF" : "#A8A29E",
               }}
             />
           </button>
@@ -308,21 +285,22 @@ export function Sidebar() {
                     to={subItem.href}
                     className="block px-4 py-2 rounded-md transition-all duration-150"
                     style={{
-                      background: isSubActive ? "#EFF6FF" : "transparent",
-                      color: isSubActive ? "#2563EB" : "#6B7280",
+                      background: isSubActive ? "#FFF7ED" : "transparent",
+                      color: isSubActive ? "#EA580C" : "#78716C",
                       fontSize: "13px",
                       fontWeight: isSubActive ? 600 : 500,
+                      borderLeft: isSubActive ? "2px solid #F97316" : "2px solid transparent",
                     }}
                     onMouseEnter={(e) => {
                       if (!isSubActive) {
-                        (e.currentTarget as HTMLAnchorElement).style.background = "#F9FAFB";
-                        (e.currentTarget as HTMLAnchorElement).style.color = "#374151";
+                        (e.currentTarget as HTMLAnchorElement).style.background = "#FFFBEB";
+                        (e.currentTarget as HTMLAnchorElement).style.color = "#C2410C";
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (!isSubActive) {
                         (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
-                        (e.currentTarget as HTMLAnchorElement).style.color = "#6B7280";
+                        (e.currentTarget as HTMLAnchorElement).style.color = "#78716C";
                       }
                     }}
                   >
@@ -343,21 +321,21 @@ export function Sidebar() {
         to={item.href!}
         className="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 relative group"
         style={{
-          background: isActive ? "#2563EB" : "transparent",
-          color: isActive ? "#FFFFFF" : "#6B7280",
+          background: isActive ? "linear-gradient(135deg, #F97316 0%, #EA580C 100%)" : "transparent",
+          color: isActive ? "#FFFFFF" : "#78716C",
           fontSize: "14px",
           fontWeight: 500,
         }}
         onMouseEnter={(e) => {
           if (!isActive) {
-            (e.currentTarget as HTMLAnchorElement).style.background = "#F3F4F6";
-            (e.currentTarget as HTMLAnchorElement).style.color = "#374151";
+            (e.currentTarget as HTMLAnchorElement).style.background = "#FFF7ED";
+            (e.currentTarget as HTMLAnchorElement).style.color = "#EA580C";
           }
         }}
         onMouseLeave={(e) => {
           if (!isActive) {
             (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
-            (e.currentTarget as HTMLAnchorElement).style.color = "#6B7280";
+            (e.currentTarget as HTMLAnchorElement).style.color = "#78716C";
           }
         }}
       >
@@ -365,12 +343,12 @@ export function Sidebar() {
         {isActive && (
           <div
             className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
-            style={{ background: "#1E40AF" }}
+            style={{ background: "#FBBF24" }}
           />
         )}
         <Icon
           className="w-5 h-5 flex-shrink-0"
-          style={{ color: isActive ? "#FFFFFF" : "#6B7280" }}
+          style={{ color: isActive ? "#FFFFFF" : "#78716C" }}
         />
         <span className="flex-1">{t(`nav.${item.name}`)}</span>
       </Link>
@@ -378,30 +356,30 @@ export function Sidebar() {
   };
 
   return (
-    <div className="w-[280px] h-screen bg-white border-r border-[#E5E7EB] flex flex-col flex-shrink-0">
+    <div className="w-[280px] h-screen bg-gradient-to-b from-white to-orange-50/30 border-r border-orange-100 flex flex-col flex-shrink-0">
       {/* Logo Section */}
-      <div className="h-20 flex items-center px-6 border-b border-[#E5E7EB]">
+      <div className="h-20 flex items-center px-6 border-b border-orange-100/50">
         <div className="flex items-center gap-3">
           <div
             className="relative w-11 h-11 rounded-xl flex items-center justify-center overflow-hidden"
             style={{
-              background: "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
-              boxShadow: "0 4px 12px rgba(37, 99, 235, 0.25)",
+              background: "linear-gradient(135deg, #F97316 0%, #EA580C 100%)",
+              boxShadow: "0 4px 12px rgba(249, 115, 22, 0.3)",
             }}
           >
             <BookOpen className="w-6 h-6 text-white" strokeWidth={2.5} />
             <div
               className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full"
               style={{
-                background: "linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)",
-                boxShadow: "0 2px 4px rgba(239, 68, 68, 0.3)",
+                background: "linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%)",
+                boxShadow: "0 2px 4px rgba(251, 191, 36, 0.4)",
               }}
             />
           </div>
 
           <div className="flex flex-col">
             <span
-              className="text-[#111827] leading-none"
+              className="text-gray-900 leading-none"
               style={{
                 fontSize: "17px",
                 fontWeight: 700,
@@ -411,10 +389,10 @@ export function Sidebar() {
               {t("appName")}
             </span>
             <span
-              className="text-[#6B7280] leading-none mt-0.5"
+              className="text-orange-600 leading-none mt-0.5"
               style={{
                 fontSize: "11px",
-                fontWeight: 500,
+                fontWeight: 600,
                 letterSpacing: "0.02em",
               }}
             >
@@ -427,37 +405,38 @@ export function Sidebar() {
       {/* User Profile Card */}
       <div className="px-4 py-4">
         <div
-          className="rounded-xl p-4 flex items-center gap-3"
+          className="rounded-xl p-4 flex items-center gap-3 border border-orange-100"
           style={{
-            background: "linear-gradient(135deg, #F3F4F6, #E5E7EB)",
+            background: "linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%)",
           }}
         >
           <div
-            className="flex-shrink-0 w-12 h-12 bg-[#2563EB] rounded-full flex items-center justify-center text-white border-2 border-white"
+            className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-white border-2 border-white"
             style={{
+              background: "linear-gradient(135deg, #F97316 0%, #EA580C 100%)",
               fontSize: "15px",
               fontWeight: 700,
-              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+              boxShadow: "0 4px 8px rgba(249, 115, 22, 0.25)",
             }}
           >
             {userInitials}
           </div>
           <div className="flex-1 min-w-0">
             <p
-              className="text-[#111827] truncate"
+              className="text-gray-900 truncate"
               style={{ fontSize: "14px", fontWeight: 700, marginBottom: "2px" }}
             >
               {userName}
             </p>
             <p
-              className="text-[#6B7280] flex items-center gap-1"
-              style={{ fontSize: "12px", fontWeight: 500 }}
+              className="text-orange-600 flex items-center gap-1"
+              style={{ fontSize: "12px", fontWeight: 600 }}
             >
               <GraduationCap className="w-3.5 h-3.5 flex-shrink-0" />
               Giáo viên
             </p>
             <p
-              className="text-[#9CA3AF] truncate mt-0.5"
+              className="text-orange-400 truncate mt-0.5"
               style={{ fontSize: "11px" }}
             >
               {userEmail}
@@ -471,7 +450,7 @@ export function Sidebar() {
         {/* MAIN Section */}
         <div className="mb-4">
           <div
-            className="px-3 mb-2 text-[#9CA3AF] uppercase tracking-wider"
+            className="px-3 mb-2 text-orange-400 uppercase tracking-wider"
             style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em" }}
           >
             MAIN
@@ -482,60 +461,71 @@ export function Sidebar() {
         {/* TEACHING Section */}
         <div className="mb-4">
           <div
-            className="px-3 mb-2 text-[#9CA3AF] uppercase tracking-wider"
+            className="px-3 mb-2 text-orange-400 uppercase tracking-wider"
             style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em" }}
           >
             TEACHING
           </div>
           <div className="space-y-1">
-            {navigationData.slice(1, 4).map((item) => renderMenuItem(item, "teaching"))}
+            {navigationData.slice(1, 2).map((item) => renderMenuItem(item))}
           </div>
         </div>
 
         {/* ASSESSMENT Section */}
         <div className="mb-4">
           <div
-            className="px-3 mb-2 text-[#9CA3AF] uppercase tracking-wider"
+            className="px-3 mb-2 text-orange-400 uppercase tracking-wider"
             style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em" }}
           >
             ASSESSMENT
           </div>
           <div className="space-y-1">
-            {navigationData.slice(4, 9).map((item) => renderMenuItem(item, "assessment"))}
+            {navigationData.slice(2, 7).map((item) => renderMenuItem(item))}
           </div>
         </div>
 
         {/* CONTENT Section */}
         <div className="mb-4">
           <div
-            className="px-3 mb-2 text-[#9CA3AF] uppercase tracking-wider"
+            className="px-3 mb-2 text-orange-400 uppercase tracking-wider"
             style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em" }}
           >
             CONTENT
           </div>
           <div className="space-y-1">
-            {navigationData.slice(9, 11).map((item) => renderMenuItem(item, "content"))}
+            {navigationData.slice(7, 9).map((item) => renderMenuItem(item))}
           </div>
         </div>
 
         {/* Divider */}
-        <div className="my-4 h-px bg-[#E5E7EB]" />
+        <div className="my-4 h-px bg-orange-100" />
 
         {/* SYSTEM Section */}
         <div>
-          {renderMenuItem(navigationData[11])}
+          {renderMenuItem(navigationData[9])}
         </div>
       </nav>
 
       {/* Bottom Actions */}
-      <div className="px-4 py-4 border-t border-[#E5E7EB] space-y-2">
+      <div className="px-4 py-4 border-t border-orange-100 space-y-2">
         {/* Search button removed */}
 
         {/* Logout */}
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all w-full hover:bg-[#FEE2E2]"
-          style={{ fontSize: "14px", fontWeight: 500, color: "#EF4444" }}
+          className="flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all w-full"
+          style={{ 
+            fontSize: "14px", 
+            fontWeight: 500, 
+            color: "#DC2626",
+            background: "transparent"
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "#FEE2E2";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+          }}
         >
           <LogOut className="w-5 h-5" />
           <span>Đăng xuất</span>

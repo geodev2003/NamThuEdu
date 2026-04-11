@@ -39,12 +39,23 @@ class Exam extends Model
         'eTopic', // New: Topic for practice sessions
         'eDifficulty', // New: Difficulty level
         'eParent_exam_id', // New: Link to parent exam if cloned
+        // Age-group content fields
+        'age_group',
+        'content_type',
+        'difficulty_level',
+        'gamification_config',
+        'ui_config',
+        // Kids exam fields
+        'kids_exam_config',
     ];
 
     protected $casts = [
         'eIs_private' => 'boolean',
         'eCreated_at' => 'datetime',
         'eTags' => 'array',
+        'gamification_config' => 'array',
+        'ui_config' => 'array',
+        'kids_exam_config' => 'array',
     ];
 
     /**
@@ -74,6 +85,11 @@ class Exam extends Model
     public function questions()
     {
         return $this->hasMany(Question::class, 'exam_id', 'eId');
+    }
+
+    public function contentBlocks()
+    {
+        return $this->hasMany(ContentBlock::class, 'exam_id', 'eId');
     }
 
     public function testAssignments()
@@ -122,5 +138,27 @@ class Exam extends Model
     public function scopeByDifficulty($query, $difficulty)
     {
         return $query->where('eDifficulty', $difficulty);
+    }
+
+    public function scopeForAgeGroup($query, $ageGroup)
+    {
+        return $query->where(function($q) use ($ageGroup) {
+            $q->where('age_group', $ageGroup)
+              ->orWhere('age_group', 'all');
+        });
+    }
+
+    public function scopeByAgeGroup($query, $ageGroup)
+    {
+        return $query->where('age_group', $ageGroup);
+    }
+
+    /**
+     * Kids exam relationships
+     */
+    public function kidsExamType()
+    {
+        return $this->belongsTo(\stdClass::class, 'kids_exam_type_id', 'id')
+            ->from('kids_exam_types');
     }
 }

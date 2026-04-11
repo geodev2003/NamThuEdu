@@ -34,62 +34,78 @@ export function GradingQueue() {
   const [filterExam, setFilterExam] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [selectedSubmissions, setSelectedSubmissions] = useState<string[]>([]);
+  
+  // API state
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data
-  const submissions: Submission[] = [
-    {
-      id: "1",
-      studentName: "Nguyễn Văn An",
-      studentAvatar: "NA",
-      examTitle: "Cambridge KET - Reading & Writing Test 1",
-      examType: "Cambridge KET",
-      submissionTime: new Date("2024-03-20T14:30:00"),
-      status: "submitted",
-      maxScore: 100,
-      attemptNumber: 1,
-    },
-    {
-      id: "2",
-      studentName: "Trần Thị Bình",
-      studentAvatar: "TB",
-      examTitle: "IELTS Reading Practice Test - Academic",
-      examType: "IELTS",
-      submissionTime: new Date("2024-03-20T15:45:00"),
-      status: "partially_graded",
-      score: 65,
-      maxScore: 100,
-      attemptNumber: 2,
-    },
-    {
-      id: "3",
-      studentName: "Lê Hoàng Cường",
-      studentAvatar: "LC",
-      examTitle: "TOEFL Speaking Section - Test 3",
-      examType: "TOEFL",
-      submissionTime: new Date("2024-03-21T09:15:00"),
-      status: "graded",
-      score: 88,
-      maxScore: 100,
-      attemptNumber: 1,
-    },
-    {
-      id: "4",
-      studentName: "Phạm Thị Dung",
-      studentAvatar: "PD",
-      examTitle: "PET Listening Test - Module 2",
-      examType: "PET",
-      submissionTime: new Date("2024-03-21T10:30:00"),
-      status: "submitted",
-      maxScore: 100,
-      attemptNumber: 1,
-    },
-  ];
+  // Fetch submissions from API
+  useEffect(() => {
+    const fetchSubmissions = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          setError('Vui lòng đăng nhập');
+          setLoading(false);
+          return;
+        }
+
+        // Build query params
+        const params = new URLSearchParams();
+        if (filterExam) params.append('exam_id', filterExam);
+        if (filterStatus) params.append('status', filterStatus);
+
+        const response = await fetch(
+          `http://localhost:8000/api/teacher/submissions?${params}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === 'success') {
+            // Transform backend data to frontend format
+            const transformedSubmissions = result.data.map((sub: any) => ({
+              id: sub.sId.toString(),
+              studentName: sub.user?.uName || 'Unknown',
+              studentAvatar: sub.user?.uName?.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || 'NA',
+              examTitle: sub.exam?.eTitle || 'Unknown Exam',
+              examType: sub.exam?.eType || 'General',
+              submissionTime: new Date(sub.sSubmit_time),
+              status: sub.sStatus as "submitted" | "graded" | "partially_graded",
+              score: sub.sScore,
+              maxScore: sub.exam?.eTotal_score || 100,
+              attemptNumber: sub.sAttempt || 1,
+            }));
+            setSubmissions(transformedSubmissions);
+          }
+        } else {
+          setError('Không thể tải danh sách bài nộp');
+        }
+      } catch (err) {
+        console.error('Error fetching submissions:', err);
+        setError('Đã xảy ra lỗi khi tải dữ liệu');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSubmissions();
+  }, [filterExam, filterStatus]); // Re-fetch when filters change
 
   const stats = {
-    total: 45,
-    graded: 28,
-    pending: 15,
-    completionRate: 62,
+    total: submissions.length,
+    graded: submissions.filter(s => s.status === 'graded').length,
+    pending: submissions.filter(s => s.status === 'submitted' || s.status === 'partially_graded').length,
+    completionRate: submissions.length > 0 
+      ? Math.round((submissions.filter(s => s.status === 'graded').length / submissions.length) * 100)
+      : 0,
   };
 
   const getStatusBadge = (status: Submission["status"]) => {
@@ -127,19 +143,35 @@ export function GradingQueue() {
 
       <div className="flex-1 overflow-y-auto" style={{ background: "#EEEEF3" }}>
         <div className="px-8 py-6 space-y-6">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Total Submissions */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Edit3 className="w-6 h-6 text-blue-600" />
-                </div>
-                <TrendingUp className="w-5 h-5 text-green-500" />
-              </div>
-              <p className="text-gray-600 text-sm mb-1">Tổng số bài nộp</p>
-              <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+          {/* Loading State */}
+          {loading && (
+            <div className="flex items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <p className="text-red-700">{error}</p>
+            </div>
+          )}
+
+          {/* Stats Cards */}
+          {!loading && !error && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Total Submissions */}
+              <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <Edit3 className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <TrendingUp className="w-5 h-5 text-green-500" />
+                </div>
+                <p className="text-gray-600 text-sm mb-1">Tổng số bài nộp</p>
+                <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+              </div>
 
             {/* Graded */}
             <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all">
@@ -190,9 +222,11 @@ export function GradingQueue() {
               </div>
             </div>
           </div>
+          )}
 
           {/* Filter Bar */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
+          {!loading && !error && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* Search */}
               <div className="relative">
@@ -244,9 +278,11 @@ export function GradingQueue() {
               </button>
             </div>
           </div>
+          )}
 
           {/* Data Table */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          {!loading && !error && (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
@@ -356,6 +392,7 @@ export function GradingQueue() {
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
     </div>

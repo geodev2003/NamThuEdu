@@ -539,10 +539,12 @@ class GradingController extends Controller
             ], 404);
         }
 
-        // Get students in class
-        $studentIds = DB::table('class_enrollments')
+        // Get students in class - use users.class_id instead of class_enrollments
+        $studentIds = DB::table('users')
                        ->where('class_id', $classId)
-                       ->pluck('student_id');
+                       ->where('uRole', 'student')
+                       ->whereNull('uDeleted_at')
+                       ->pluck('uId');
 
         if ($studentIds->isEmpty()) {
             return response()->json([

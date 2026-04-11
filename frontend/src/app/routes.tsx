@@ -45,7 +45,7 @@ export const router = createBrowserRouter([
   // ─── Admin Console   ("/admin") ──────────────────────────────────────────
   adminRoutes,
 
-  // ─── Mock Test Demo (no auth required) ──────────────────────────────────
+  // ─── Test Pages (no auth required - DEVELOPMENT ONLY) ───────────────────
   {
     path: "/test-vstep-demo",
     element: <MockTestPage />,

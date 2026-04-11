@@ -238,7 +238,8 @@ class UserController extends Controller
             ], 401);
         }
 
-        $query = User::where('uRole', 'student')
+        $query = User::with('class')
+                    ->where('uRole', 'student')
                     ->whereNull('uDeleted_at');
 
         // Search by name or phone
@@ -257,7 +258,7 @@ class UserController extends Controller
 
         // Filter by class
         if ($request->has('class') && !empty($request->class)) {
-            $query->where('uClass', $request->class);
+            $query->where('class_id', $request->class);
         }
 
         // Filter by gender
@@ -275,17 +276,45 @@ class UserController extends Controller
         }
 
         // Pagination
-        $perPage = $request->get('per_page', 20);
+        $perPage = $request->get('per_page', 10);
         $perPage = min($perPage, 100); // Max 100 per page
 
         if ($request->has('paginate') && $request->paginate === 'false') {
-            $students = $query->get();
+            $students = $query->get()->map(function($student) {
+                return [
+                    'uId' => $student->uId,
+                    'uName' => $student->uName,
+                    'uPhone' => $student->uPhone,
+                    'uEmail' => $student->uEmail,
+                    'uStatus' => $student->uStatus,
+                    'uCreated_at' => $student->uCreated_at,
+                    'avatar_url' => $student->avatar_url,
+                    'age_group' => $student->age_group,
+                    'class_name' => $student->class ? $student->class->cName : null,
+                    'class_id' => $student->class_id,
+                ];
+            });
             $result = [
                 'data' => $students,
                 'total' => $students->count()
             ];
         } else {
-            $result = $query->paginate($perPage);
+            $paginated = $query->paginate($perPage);
+            $paginated->getCollection()->transform(function($student) {
+                return [
+                    'uId' => $student->uId,
+                    'uName' => $student->uName,
+                    'uPhone' => $student->uPhone,
+                    'uEmail' => $student->uEmail,
+                    'uStatus' => $student->uStatus,
+                    'uCreated_at' => $student->uCreated_at,
+                    'avatar_url' => $student->avatar_url,
+                    'age_group' => $student->age_group,
+                    'class_name' => $student->class ? $student->class->cName : null,
+                    'class_id' => $student->class_id,
+                ];
+            });
+            $result = $paginated;
         }
 
         return response()->json([
@@ -419,6 +448,127 @@ class UserController extends Controller
             ], 401);
         }
 
+        // Check if this is a single student or batch creation
+        $isBatch = $request->has('0') || is_array($request->input('studentPhone'));
+        
+        if ($isBatch) {
+            // Batch creation (array of students)
+            return $this->batchCreateStudents($request, $user);
+        } else {
+            // Single student creation
+            return $this->createSingleStudent($request, $user);
+        }
+    }
+
+    private function createSingleStudent(Request $request, $user)
+    {
+        // Validation for single student
+        $validator = Validator::make($request->all(), [
+            'studentPhone' => 'required|string|unique:users,uPhone|regex:/^0[0-9]{9,10}$/',
+            'studentPassword' => 'required|string|min:6',
+            'studentName' => 'required|string|max:150',
+            'studentEmail' => 'nullable|email|max:255',
+            'studentDoB' => 'nullable|date|before:today',
+            'age_group' => 'required|in:kids,teens,adults',
+            'avatar' => 'nullable|image|mimes:jpeg,jpg,png,gif,webp,bmp,svg|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $validator->errors()->first()
+            ], 400);
+        }
+
+        try {
+            $ageGroup = $request->age_group;
+            
+            // Auto-calculate age_group from DoB if provided
+            if ($request->studentDoB) {
+                $age = \Carbon\Carbon::parse($request->studentDoB)->age;
+                if ($age >= 6 && $age <= 12) {
+                    $ageGroup = 'kids';
+                } elseif ($age >= 13 && $age <= 17) {
+                    $ageGroup = 'teens';
+                } elseif ($age >= 18) {
+                    $ageGroup = 'adults';
+                }
+            }
+
+            // Find or create class for this teacher with matching age_group
+            $class = \App\Models\Classes::where('cTeacher_id', $user->uId)
+                ->where('age_group', $ageGroup)
+                ->first();
+
+            if (!$class) {
+                // Create default class for this age group
+                $ageGroupLabels = [
+                    'kids' => 'Lớp Tiểu học',
+                    'teens' => 'Lớp THCS-THPT',
+                    'adults' => 'Lớp Người lớn'
+                ];
+                
+                $class = \App\Models\Classes::create([
+                    'cName' => $ageGroupLabels[$ageGroup] . ' - ' . $user->uName,
+                    'cTeacher_id' => $user->uId,
+                    'age_group' => $ageGroup,
+                    'cStatus' => 'active',
+                    'cDescription' => 'Lớp tự động tạo cho ' . $ageGroupLabels[$ageGroup],
+                ]);
+            }
+
+            // Handle avatar upload
+            $avatarPath = null;
+            if ($request->hasFile('avatar')) {
+                $avatar = $request->file('avatar');
+                $avatarName = time() . '_' . uniqid() . '.' . $avatar->getClientOriginalExtension();
+                $avatar->move(public_path('uploads/avatars'), $avatarName);
+                $avatarPath = 'uploads/avatars/' . $avatarName;
+            }
+
+            $student = User::create([
+                'uPhone' => trim($request->studentPhone),
+                'uPassword' => Hash::make($request->studentPassword),
+                'plain_password' => encrypt($request->studentPassword), // Store encrypted plain password
+                'uName' => $request->studentName,
+                'uEmail' => $request->studentEmail ?? null,
+                'uDoB' => $request->studentDoB ?? null,
+                'avatar_url' => $avatarPath,
+                'class_id' => $class->cId,
+                'age_group' => $ageGroup,
+                'theme_preference' => 'auto',
+                'language_preference' => 'vi',
+                'uRole' => 'student',
+                'uStatus' => 'active',
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'success_count' => 1,
+                    'created_students' => [[
+                        'id' => $student->uId,
+                        'name' => $student->uName,
+                        'phone' => $student->uPhone,
+                        'age_group' => $student->age_group,
+                        'class_name' => $class->cName,
+                        'class_id' => $class->cId,
+                        'avatar_url' => $student->avatar_url,
+                    ]],
+                    'password' => $request->studentPassword, // Return plain password for teacher to copy
+                ],
+                'message' => 'Tạo học viên thành công!'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+    private function batchCreateStudents(Request $request, $user)
+    {
         $input = $request->all();
 
         if (empty($input)) {
@@ -433,18 +583,18 @@ class UserController extends Controller
 
         $results = [
             'success_count' => 0,
-            'errors' => []
+            'errors' => [],
+            'created_students' => []
         ];
 
         foreach ($students as $index => $data) {
             // Validation cho từng student
             $validator = Validator::make($data, [
-                'studentPhone' => 'required|string|unique:users,uPhone',
+                'studentPhone' => 'required|string|unique:users,uPhone|regex:/^0[0-9]{9,10}$/',
                 'studentPassword' => 'required|string|min:6',
-                'studentName' => 'nullable|string|max:150',
-                'studentDoB' => 'nullable|date',
-                'uClass' => 'nullable|integer',
-                'age_group' => 'nullable|in:kids,teens,adults',
+                'studentName' => 'required|string|max:150',
+                'studentDoB' => 'nullable|date|before:today',
+                'age_group' => 'required|in:kids,teens,adults',
             ]);
 
             if ($validator->fails()) {
@@ -457,38 +607,71 @@ class UserController extends Controller
             }
 
             try {
-                // Calculate age_group from DoB if not provided
-                $ageGroup = $data['age_group'] ?? 'teens';
-                if (isset($data['studentDoB']) && !isset($data['age_group'])) {
+                $ageGroup = $data['age_group'];
+                
+                // Auto-calculate age_group from DoB if provided
+                if (isset($data['studentDoB'])) {
                     $age = \Carbon\Carbon::parse($data['studentDoB'])->age;
                     if ($age >= 6 && $age <= 12) {
                         $ageGroup = 'kids';
                     } elseif ($age >= 13 && $age <= 17) {
                         $ageGroup = 'teens';
-                    } else {
+                    } elseif ($age >= 18) {
                         $ageGroup = 'adults';
                     }
+                }
+
+                // Find or create class for this teacher with matching age_group
+                $class = \App\Models\Classes::where('cTeacher_id', $user->uId)
+                    ->where('age_group', $ageGroup)
+                    ->first();
+
+                if (!$class) {
+                    // Create default class for this age group
+                    $ageGroupLabels = [
+                        'kids' => 'Lớp Tiểu học',
+                        'teens' => 'Lớp THCS-THPT',
+                        'adults' => 'Lớp Người lớn'
+                    ];
+                    
+                    $class = \App\Models\Classes::create([
+                        'cName' => $ageGroupLabels[$ageGroup] . ' - ' . $user->uName,
+                        'cTeacher_id' => $user->uId,
+                        'age_group' => $ageGroup,
+                        'cStatus' => 'active',
+                        'cDescription' => 'Lớp tự động tạo cho ' . $ageGroupLabels[$ageGroup],
+                    ]);
                 }
 
                 $student = User::create([
                     'uPhone' => trim($data['studentPhone']),
                     'uPassword' => Hash::make($data['studentPassword']),
-                    'uName' => $data['studentName'] ?? null,
+                    'plain_password' => encrypt($data['studentPassword']), // Store encrypted plain password
+                    'uName' => $data['studentName'],
                     'uDoB' => $data['studentDoB'] ?? null,
-                    'uClass' => $data['uClass'] ?? null,
+                    'class_id' => $class->cId,
                     'age_group' => $ageGroup,
                     'theme_preference' => 'auto',
+                    'language_preference' => 'vi',
                     'uRole' => 'student',
                     'uStatus' => 'active',
                 ]);
 
                 if ($student) {
                     $results['success_count']++;
+                    $results['created_students'][] = [
+                        'id' => $student->uId,
+                        'name' => $student->uName,
+                        'phone' => $student->uPhone,
+                        'age_group' => $student->age_group,
+                        'class_name' => $class->cName,
+                        'class_id' => $class->cId,
+                    ];
                 }
             } catch (\Exception $e) {
                 $results['errors'][] = [
                     'index' => $index,
-                    'phone' => $data['studentPhone'],
+                    'phone' => $data['studentPhone'] ?? 'N/A',
                     'error' => $e->getMessage()
                 ];
             }
@@ -576,13 +759,16 @@ class UserController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'studentName' => 'sometimes|required|string|max:150',
-            'studentPhone' => 'sometimes|required|string|unique:users,uPhone,' . $id . ',uId',
-            'studentDoB' => 'sometimes|nullable|date',
-            'studentAddress' => 'sometimes|nullable|string',
-            'studentGender' => 'sometimes|nullable|boolean',
-            'classId' => 'sometimes|nullable|integer',
-            'studentStatus' => 'sometimes|required|in:active,inactive',
+            'uName' => 'sometimes|required|string|max:150',
+            'uPhone' => 'sometimes|required|string|unique:users,uPhone,' . $id . ',uId',
+            'uEmail' => 'sometimes|nullable|email|max:255',
+            'uDoB' => 'sometimes|nullable|date',
+            'uAddress' => 'sometimes|nullable|string',
+            'uGender' => 'sometimes|nullable|boolean',
+            'age_group' => 'sometimes|nullable|in:kids,teens,adults',
+            'class_id' => 'sometimes|nullable|integer',
+            'uStatus' => 'sometimes|required|in:active,inactive',
+            'avatar' => 'sometimes|nullable|image|mimes:jpeg,jpg,png,gif,webp,bmp,svg|max:5120',
         ]);
 
         if ($validator->fails()) {
@@ -594,37 +780,52 @@ class UserController extends Controller
         }
 
         $updateData = [];
-        if ($request->has('studentName')) $updateData['uName'] = $request->studentName;
-        if ($request->has('studentPhone')) $updateData['uPhone'] = $request->studentPhone;
-        if ($request->has('studentDoB')) $updateData['uDoB'] = $request->studentDoB;
-        if ($request->has('studentAddress')) $updateData['uAddress'] = $request->studentAddress;
-        if ($request->has('studentGender')) $updateData['uGender'] = $request->studentGender;
-        if ($request->has('classId')) $updateData['uClass'] = $request->classId;
-        if ($request->has('studentStatus')) $updateData['uStatus'] = $request->studentStatus;
+        if ($request->has('uName')) $updateData['uName'] = $request->uName;
+        if ($request->has('uPhone')) $updateData['uPhone'] = $request->uPhone;
+        if ($request->has('uEmail')) $updateData['uEmail'] = $request->uEmail;
+        if ($request->has('uDoB')) $updateData['uDoB'] = $request->uDoB;
+        if ($request->has('uAddress')) $updateData['uAddress'] = $request->uAddress;
+        if ($request->has('uGender')) $updateData['uGender'] = $request->uGender;
+        if ($request->has('age_group')) $updateData['age_group'] = $request->age_group;
+        if ($request->has('class_id')) $updateData['class_id'] = $request->class_id;
+        if ($request->has('uStatus')) $updateData['uStatus'] = $request->uStatus;
+
+        // Handle avatar upload
+        if ($request->hasFile('avatar')) {
+            $avatar = $request->file('avatar');
+            $avatarName = time() . '_' . uniqid() . '.' . $avatar->getClientOriginalExtension();
+            $avatar->move(public_path('uploads/avatars'), $avatarName);
+            $updateData['avatar_url'] = 'uploads/avatars/' . $avatarName;
+        }
 
         $student->update($updateData);
 
         return response()->json([
             'status' => 'success',
+            'message' => 'Cập nhật thông tin học viên thành công',
             'data' => [
-                'UPDATE_STUDENT_SUCCESS',
-                'Cập nhật thông tin học viên thành công',
-                null,
-                200
+                'id' => $student->uId,
+                'name' => $student->uName,
+                'phone' => $student->uPhone,
+                'email' => $student->uEmail,
+                'dateOfBirth' => $student->uDoB,
+                'ageGroup' => $student->age_group,
+                'status' => $student->uStatus,
+                'avatarUrl' => $student->avatar_url,
             ]
         ]);
     }
 
     /**
      * DELETE /api/teacher/student/{id}
-     * Xóa học viên (soft delete)
+     * Xóa học viên (soft delete) - sẽ tự động xóa vĩnh viễn sau 24h
      */
     /**
      * @OA\Delete(
      *     path="/teacher/student/{id}",
      *     tags={"Student Management"},
      *     summary="Delete student",
-     *     description="Delete a student (soft delete)",
+     *     description="Delete a student (soft delete) - will be permanently deleted after 24 hours",
      *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(
      *         name="id",
@@ -673,12 +874,199 @@ class UserController extends Controller
 
         return response()->json([
             'status' => 'success',
+            'message' => 'Đã xóa học viên. Có thể khôi phục trong vòng 24 giờ.',
             'data' => [
-                'DELETE_STUDENT_SUCCESS',
-                'Xóa học viên thành công',
-                null,
-                200
+                'deleted_at' => $student->uDeleted_at,
+                'can_restore_until' => now()->addHours(24)->toIso8601String(),
             ]
+        ]);
+    }
+
+    /**
+     * POST /api/teacher/student/{id}/restore
+     * Khôi phục học viên đã xóa (trong vòng 24h)
+     */
+    /**
+     * @OA\Post(
+     *     path="/teacher/student/{id}/restore",
+     *     tags={"Student Management"},
+     *     summary="Restore deleted student",
+     *     description="Restore a soft-deleted student (within 24 hours)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Student restored successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Student not found or already restored"
+     *     ),
+     *     @OA\Response(
+     *         response=410,
+     *         description="Student was deleted more than 24 hours ago"
+     *     )
+     * )
+     */
+    public function restoreStudent(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền thực hiện hành động này.'
+            ], 401);
+        }
+
+        $student = User::where('uId', $id)
+                      ->where('uRole', 'student')
+                      ->onlyTrashed()
+                      ->first();
+
+        if (!$student) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy học viên đã xóa.'
+            ], 404);
+        }
+
+        // Check if deleted more than 24 hours ago
+        $deletedAt = \Carbon\Carbon::parse($student->uDeleted_at);
+        $hoursSinceDeleted = $deletedAt->diffInHours(now());
+
+        if ($hoursSinceDeleted > 24) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không thể khôi phục. Học viên đã bị xóa quá 24 giờ.',
+                'deleted_hours_ago' => $hoursSinceDeleted
+            ], 410);
+        }
+
+        $student->restore();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Đã khôi phục học viên thành công.',
+            'data' => $student
+        ]);
+    }
+
+    /**
+     * GET /api/teacher/students/deleted
+     * Lấy danh sách học viên đã xóa (trong vòng 24h)
+     */
+    /**
+     * @OA\Get(
+     *     path="/teacher/students/deleted",
+     *     tags={"Student Management"},
+     *     summary="Get deleted students",
+     *     description="Get list of soft-deleted students (within 24 hours)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Deleted students retrieved successfully"
+     *     )
+     * )
+     */
+    public function getDeletedStudents(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        // Get students deleted within last 24 hours
+        $students = User::where('uRole', 'student')
+                       ->onlyTrashed()
+                       ->where('uDeleted_at', '>=', now()->subHours(24))
+                       ->orderBy('uDeleted_at', 'desc')
+                       ->get()
+                       ->map(function($student) {
+                           $deletedAt = \Carbon\Carbon::parse($student->uDeleted_at);
+                           $hoursRemaining = 24 - $deletedAt->diffInHours(now());
+                           
+                           return [
+                               'uId' => $student->uId,
+                               'uName' => $student->uName,
+                               'uPhone' => $student->uPhone,
+                               'uEmail' => $student->uEmail,
+                               'class_id' => $student->class_id,
+                               'uDeleted_at' => $student->uDeleted_at,
+                               'deleted_hours_ago' => $deletedAt->diffInHours(now()),
+                               'hours_remaining' => max(0, $hoursRemaining),
+                               'can_restore' => $hoursRemaining > 0,
+                               'will_be_deleted_at' => $deletedAt->addHours(24)->toIso8601String(),
+                           ];
+                       });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $students,
+            'total' => $students->count()
+        ]);
+    }
+
+    /**
+     * DELETE /api/teacher/student/{id}/permanent
+     * Xóa vĩnh viễn học viên ngay lập tức
+     */
+    /**
+     * @OA\Delete(
+     *     path="/teacher/student/{id}/permanent",
+     *     tags={"Student Management"},
+     *     summary="Permanently delete student",
+     *     description="Permanently delete a student immediately (cannot be restored)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Student permanently deleted"
+     *     )
+     * )
+     */
+    public function permanentDeleteStudent(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền thực hiện hành động này.'
+            ], 401);
+        }
+
+        $student = User::where('uId', $id)
+                      ->where('uRole', 'student')
+                      ->onlyTrashed()
+                      ->first();
+
+        if (!$student) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy học viên đã xóa.'
+            ], 404);
+        }
+
+        $student->forceDelete(); // Permanent delete
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Đã xóa vĩnh viễn học viên.'
         ]);
     }
 
@@ -741,9 +1129,9 @@ class UserController extends Controller
         // Students by class
         $studentsByClass = User::where('uRole', 'student')
                               ->whereNull('uDeleted_at')
-                              ->selectRaw('uClass, COUNT(*) as count')
-                              ->groupBy('uClass')
-                              ->pluck('count', 'uClass');
+                              ->selectRaw('class_id, COUNT(*) as count')
+                              ->groupBy('class_id')
+                              ->pluck('count', 'class_id');
 
         // Recent registrations (last 30 days)
         $recentRegistrations = User::where('uRole', 'student')
@@ -890,7 +1278,7 @@ class UserController extends Controller
                     $student->uDoB ? $student->uDoB->format('Y-m-d') : '',
                     $student->uGender ? 'Nam' : 'Nữ',
                     $student->uAddress,
-                    $student->uClass,
+                    $student->class_id,
                     $student->uStatus === 'active' ? 'Hoạt động' : 'Không hoạt động',
                     $student->uCreated_at ? $student->uCreated_at->format('Y-m-d H:i:s') : ''
                 ]);
@@ -2628,6 +3016,188 @@ class UserController extends Controller
                 'resolved_at' => now()->toISOString(),
             ]
         ]);
+    }
+
+    /**
+     * POST /api/teacher/student/{id}/reset-password
+     * Đặt lại mật khẩu cho học viên (Teacher only)
+     */
+    /**
+     * @OA\Post(
+     *     path="/teacher/student/{id}/reset-password",
+     *     tags={"Student Management"},
+     *     summary="Reset student password",
+     *     description="Reset password for a student (teacher only)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"new_password"},
+     *             @OA\Property(property="new_password", type="string", example="newpass123")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Password reset successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Student not found"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     */
+    public function resetStudentPassword(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền thực hiện hành động này.'
+            ], 401);
+        }
+
+        $student = User::where('uId', $id)
+                      ->where('uRole', 'student')
+                      ->whereNull('uDeleted_at')
+                      ->first();
+
+        if (!$student) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy học viên.'
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'new_password' => 'required|string|min:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Mật khẩu phải có ít nhất 6 ký tự.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        try {
+            $student->update([
+                'uPassword' => Hash::make($request->new_password),
+                'plain_password' => encrypt($request->new_password) // Store encrypted plain password
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Đã đặt lại mật khẩu thành công.',
+                'data' => [
+                    'student_id' => $student->uId,
+                    'student_name' => $student->uName,
+                    'student_phone' => $student->uPhone,
+                    'reset_by' => $user->uId,
+                    'reset_at' => now()->toISOString(),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Có lỗi xảy ra khi đặt lại mật khẩu: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/teacher/student/{id}/view-password
+     * Xem mật khẩu hiện tại của học viên (Teacher only)
+     */
+    /**
+     * @OA\Get(
+     *     path="/teacher/student/{id}/view-password",
+     *     tags={"Student Management"},
+     *     summary="View student password",
+     *     description="View current password for a student (teacher only)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Password retrieved successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Student not found or password not available"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     */
+    public function viewStudentPassword(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền thực hiện hành động này.'
+            ], 401);
+        }
+
+        $student = User::where('uId', $id)
+                      ->where('uRole', 'student')
+                      ->whereNull('uDeleted_at')
+                      ->first();
+
+        if (!$student) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy học viên.'
+            ], 404);
+        }
+
+        if (!$student->plain_password) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Mật khẩu không khả dụng. Vui lòng đặt lại mật khẩu mới.'
+            ], 404);
+        }
+
+        try {
+            $plainPassword = decrypt($student->plain_password);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Lấy mật khẩu thành công.',
+                'data' => [
+                    'student_id' => $student->uId,
+                    'student_name' => $student->uName,
+                    'student_phone' => $student->uPhone,
+                    'password' => $plainPassword,
+                    'viewed_by' => $user->uId,
+                    'viewed_at' => now()->toISOString(),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không thể giải mã mật khẩu. Vui lòng đặt lại mật khẩu mới.'
+            ], 500);
+        }
     }
 
 }
