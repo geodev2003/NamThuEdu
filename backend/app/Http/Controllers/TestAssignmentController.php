@@ -206,6 +206,141 @@ class TestAssignmentController extends Controller
      * DELETE /api/teacher/assignments/{id}
      * Xóa phân công bài thi
      */
+    /**
+     * Update assignment
+     * PUT /api/teacher/assignments/{id}
+     */
+    public function update(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $assignment = TestAssignment::where('taId', $id)
+                                    ->whereHas('exam', function($q) use ($user) {
+                                        $q->where('eTeacher_id', $user->uId);
+                                    })
+                                    ->first();
+
+        if (!$assignment) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy phân công bài thi.'
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'taDeadline' => 'nullable|date|after:now',
+            'taInstructions' => 'nullable|string',
+            'taMax_attempts' => 'nullable|integer|min:1',
+            'taIs_mandatory' => 'nullable|boolean',
+            'taShow_results' => 'nullable|boolean',
+            'taAllow_review' => 'nullable|boolean',
+            'add_students' => 'nullable|array',
+            'add_students.*' => 'exists:users,uId',
+            'remove_students' => 'nullable|array',
+            'remove_students.*' => 'exists:users,uId',
+            'add_classes' => 'nullable|array',
+            'add_classes.*' => 'exists:classes,cId',
+            'remove_classes' => 'nullable|array',
+            'remove_classes.*' => 'exists:classes,cId',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        // Update basic fields
+        if ($request->has('taDeadline')) {
+            $assignment->taDeadline = $request->taDeadline;
+        }
+        if ($request->has('taInstructions')) {
+            $assignment->taInstructions = $request->taInstructions;
+        }
+        if ($request->has('taMax_attempts')) {
+            $assignment->taMax_attempts = $request->taMax_attempts;
+        }
+        if ($request->has('taIs_mandatory')) {
+            $assignment->taIs_mandatory = $request->taIs_mandatory;
+        }
+        if ($request->has('taShow_results')) {
+            $assignment->taShow_results = $request->taShow_results;
+        }
+        if ($request->has('taAllow_review')) {
+            $assignment->taAllow_review = $request->taAllow_review;
+        }
+
+        $assignment->save();
+
+        // Handle student additions/removals
+        if ($request->has('add_students')) {
+            foreach ($request->add_students as $studentId) {
+                // Check if already assigned
+                $exists = \DB::table('test_assignment_students')
+                    ->where('assignment_id', $assignment->taId)
+                    ->where('student_id', $studentId)
+                    ->exists();
+                
+                if (!$exists) {
+                    \DB::table('test_assignment_students')->insert([
+                        'assignment_id' => $assignment->taId,
+                        'student_id' => $studentId,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+            }
+        }
+
+        if ($request->has('remove_students')) {
+            \DB::table('test_assignment_students')
+                ->where('assignment_id', $assignment->taId)
+                ->whereIn('student_id', $request->remove_students)
+                ->delete();
+        }
+
+        // Handle class additions/removals
+        if ($request->has('add_classes')) {
+            foreach ($request->add_classes as $classId) {
+                $exists = \DB::table('test_assignment_classes')
+                    ->where('assignment_id', $assignment->taId)
+                    ->where('class_id', $classId)
+                    ->exists();
+                
+                if (!$exists) {
+                    \DB::table('test_assignment_classes')->insert([
+                        'assignment_id' => $assignment->taId,
+                        'class_id' => $classId,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+            }
+        }
+
+        if ($request->has('remove_classes')) {
+            \DB::table('test_assignment_classes')
+                ->where('assignment_id', $assignment->taId)
+                ->whereIn('class_id', $request->remove_classes)
+                ->delete();
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Cập nhật phân công bài thi thành công.',
+            'data' => $assignment->load(['exam', 'students', 'classes'])
+        ]);
+    }
+
     public function destroy(Request $request, $id)
     {
         $user = $request->user();
@@ -393,113 +528,131 @@ class TestAssignmentController extends Controller
      * )
      */
     public function bulkAssign(Request $request)
-    {
-        $user = $request->user();
+        {
+            $user = $request->user();
 
-        if (!$user || $user->uRole !== 'teacher') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Bạn không có quyền truy cập.'
-            ], 401);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'exam_id' => 'required|integer',
-            'targets' => 'required|array|min:1',
-            'targets.*.type' => 'required|in:class,student',
-            'targets.*.id' => 'required|integer',
-            'taDeadline' => 'nullable|date',
-            'taMax_attempt' => 'nullable|integer|min:1',
-            'taIs_public' => 'nullable|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Dữ liệu không hợp lệ.',
-                'errors' => $validator->errors()
-            ], 400);
-        }
-
-        // Verify exam belongs to teacher
-        $exam = Exam::where('eId', $request->exam_id)
-                   ->where('eTeacher_id', $user->uId)
-                   ->first();
-
-        if (!$exam) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Không tìm thấy bài thi.'
-            ], 404);
-        }
-
-        $results = [
-            'success_count' => 0,
-            'errors' => [],
-            'assignments' => [],
-        ];
-
-        foreach ($request->targets as $index => $target) {
-            try {
-                // Validate target exists
-                if ($target['type'] === 'class') {
-                    $targetEntity = Classes::find($target['id']);
-                    if (!$targetEntity) {
-                        $results['errors'][] = "Lớp học ID {$target['id']} không tồn tại.";
-                        continue;
-                    }
-                } else {
-                    $targetEntity = User::where('uId', $target['id'])
-                                       ->where('uRole', 'student')
-                                       ->whereNull('uDeleted_at')
-                                       ->first();
-                    if (!$targetEntity) {
-                        $results['errors'][] = "Học viên ID {$target['id']} không tồn tại.";
-                        continue;
-                    }
-                }
-
-                // Check if assignment already exists
-                $existingAssignment = TestAssignment::where('exam_id', $request->exam_id)
-                                                   ->where('taTarget_type', $target['type'])
-                                                   ->where('taTarget_id', $target['id'])
-                                                   ->first();
-
-                if ($existingAssignment) {
-                    $results['errors'][] = "Đã giao bài cho {$target['type']} ID {$target['id']}.";
-                    continue;
-                }
-
-                // Create assignment
-                $assignment = TestAssignment::create([
-                    'exam_id' => $request->exam_id,
-                    'taTarget_type' => $target['type'],
-                    'taTarget_id' => $target['id'],
-                    'taDeadline' => $request->taDeadline,
-                    'taMax_attempt' => $request->taMax_attempt ?? 1,
-                    'taIs_public' => $request->taIs_public ?? false,
-                ]);
-
-                $results['assignments'][] = [
-                    'assignment_id' => $assignment->taId,
-                    'target_type' => $target['type'],
-                    'target_id' => $target['id'],
-                    'target_name' => $target['type'] === 'class' ? $targetEntity->cName : $targetEntity->uName,
-                ];
-
-                $results['success_count']++;
-
-            } catch (\Exception $e) {
-                $results['errors'][] = "Lỗi khi giao bài cho {$target['type']} ID {$target['id']}: " . $e->getMessage();
+            if (!$user || $user->uRole !== 'teacher') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Bạn không có quyền truy cập.'
+                ], 401);
             }
+
+            $validator = Validator::make($request->all(), [
+                'exam_id'          => 'required|integer',
+                'age_group'        => 'required|in:kids,teens,adults',
+                'targets'          => 'required|array|min:1',
+                'targets.*.type'   => 'required|in:class,student',
+                'targets.*.id'     => 'required|integer',
+                'taDeadline'       => 'nullable|date',
+                'taMax_attempt'    => 'nullable|integer|min:1',
+                'taIs_public'      => 'nullable|boolean',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Dữ liệu không hợp lệ.',
+                    'errors' => $validator->errors()
+                ], 400);
+            }
+
+            $requiredAgeGroup = $request->age_group;
+
+            // Verify exam belongs to teacher
+            $exam = Exam::where('eId', $request->exam_id)
+                       ->where('eTeacher_id', $user->uId)
+                       ->first();
+
+            if (!$exam) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Không tìm thấy bài thi.'
+                ], 404);
+            }
+
+            $results = [
+                'success_count' => 0,
+                'errors'        => [],
+                'assignments'   => [],
+            ];
+
+            foreach ($request->targets as $target) {
+                try {
+                    if ($target['type'] === 'class') {
+                        $targetEntity = Classes::find($target['id']);
+                        if (!$targetEntity) {
+                            $results['errors'][] = "Lớp học ID {$target['id']} không tồn tại.";
+                            continue;
+                        }
+
+                        // Validate age_group của lớp
+                        $classAgeGroup = $targetEntity->age_group ?? null;
+                        if ($classAgeGroup && $classAgeGroup !== $requiredAgeGroup) {
+                            $results['errors'][] = "Lớp '{$targetEntity->cName}' thuộc nhóm '{$classAgeGroup}', không phải '{$requiredAgeGroup}'. Không thể giao bài chung nhóm tuổi khác nhau.";
+                            continue;
+                        }
+
+                    } else {
+                        $targetEntity = User::where('uId', $target['id'])
+                                           ->where('uRole', 'student')
+                                           ->whereNull('uDeleted_at')
+                                           ->first();
+                        if (!$targetEntity) {
+                            $results['errors'][] = "Học viên ID {$target['id']} không tồn tại.";
+                            continue;
+                        }
+
+                        // Validate age_group của học viên
+                        $studentAgeGroup = $targetEntity->age_group ?? null;
+                        if ($studentAgeGroup && $studentAgeGroup !== $requiredAgeGroup) {
+                            $results['errors'][] = "Học viên '{$targetEntity->uName}' thuộc nhóm '{$studentAgeGroup}', không phải '{$requiredAgeGroup}'. Không thể giao bài chung nhóm tuổi khác nhau.";
+                            continue;
+                        }
+                    }
+
+                    // Check duplicate
+                    $existingAssignment = TestAssignment::where('exam_id', $request->exam_id)
+                                                       ->where('taTarget_type', $target['type'])
+                                                       ->where('taTarget_id', $target['id'])
+                                                       ->first();
+
+                    if ($existingAssignment) {
+                        $results['errors'][] = "Đã giao bài cho {$target['type']} ID {$target['id']}.";
+                        continue;
+                    }
+
+                    $assignment = TestAssignment::create([
+                        'exam_id'        => $request->exam_id,
+                        'taTarget_type'  => $target['type'],
+                        'taTarget_id'    => $target['id'],
+                        'taDeadline'     => $request->taDeadline,
+                        'taMax_attempt'  => $request->taMax_attempt ?? 1,
+                        'taIs_public'    => $request->taIs_public ?? false,
+                    ]);
+
+                    $results['assignments'][] = [
+                        'assignment_id' => $assignment->taId,
+                        'target_type'   => $target['type'],
+                        'target_id'     => $target['id'],
+                        'target_name'   => $target['type'] === 'class' ? $targetEntity->cName : $targetEntity->uName,
+                        'age_group'     => $requiredAgeGroup,
+                    ];
+
+                    $results['success_count']++;
+
+                } catch (\Exception $e) {
+                    $results['errors'][] = "Lỗi khi giao bài cho {$target['type']} ID {$target['id']}: " . $e->getMessage();
+                }
+            }
+
+            return response()->json([
+                'status'  => 'success',
+                'data'    => $results,
+                'message' => "Đã giao bài thành công cho {$results['success_count']} đối tượng (nhóm: {$requiredAgeGroup})."
+            ], 201);
         }
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $results,
-            'message' => "Đã giao bài thành công cho {$results['success_count']} đối tượng."
-        ], 201);
-    }
 
     /**
      * GET /api/teacher/assignments/{id}/reminders

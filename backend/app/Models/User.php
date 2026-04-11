@@ -28,10 +28,11 @@ class User extends Authenticatable
     protected $fillable = [
         'uName',
         'uPhone',
+        'uEmail',
         'uPassword',
         'uGender',
         'uAddress',
-        'uClass',
+        'class_id',
         'uRole',
         'uDoB',
         'uStatus',
@@ -97,9 +98,31 @@ class User extends Authenticatable
     /**
      * Relationships
      */
+    
+    // Class relationship (for students)
+    public function class()
+    {
+        return $this->belongsTo(ClassModel::class, 'class_id', 'cId');
+    }
+    
+    // Courses taught by teacher
     public function courses()
     {
         return $this->hasMany(Course::class, 'cTeacher', 'uId');
+    }
+    
+    // Course enrollments (for students)
+    public function courseEnrollments()
+    {
+        return $this->hasMany(CourseEnrollment::class, 'student_id', 'uId');
+    }
+    
+    // Enrolled courses (for students)
+    public function enrolledCourses()
+    {
+        return $this->belongsToMany(Course::class, 'course_enrollments', 'student_id', 'course_id')
+                    ->withPivot('status', 'enrolled_at', 'completed_at', 'fee_paid', 'notes')
+                    ->withTimestamps();
     }
 
     public function posts()
@@ -110,5 +133,61 @@ class User extends Authenticatable
     public function otpLogs()
     {
         return $this->hasMany(OtpLog::class, 'userId', 'uId');
+    }
+    
+    /**
+     * Scopes
+     */
+    public function scopeStudents($query)
+    {
+        return $query->where('uRole', 'student');
+    }
+    
+    public function scopeTeachers($query)
+    {
+        return $query->where('uRole', 'teacher');
+    }
+    
+    public function scopeAdmins($query)
+    {
+        return $query->where('uRole', 'admin');
+    }
+    
+    public function scopeInClass($query, $classId)
+    {
+        return $query->where('class_id', $classId);
+    }
+    
+    public function scopeByAgeGroup($query, $ageGroup)
+    {
+        return $query->where('age_group', $ageGroup);
+    }
+    
+    public function scopeActive($query)
+    {
+        return $query->where('uStatus', 'active');
+    }
+    
+    /**
+     * Boot method for model events
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        
+        // Validate student must have class_id
+        static::saving(function ($user) {
+            if ($user->uRole === 'student' && empty($user->class_id)) {
+                throw new \Exception('Students must be assigned to a class');
+            }
+            
+            // Validate age_group matches class age_group
+            if ($user->class_id && $user->isDirty('class_id')) {
+                $class = ClassModel::find($user->class_id);
+                if ($class && $user->age_group !== $class->age_group) {
+                    throw new \Exception("Student age_group ({$user->age_group}) must match class age_group ({$class->age_group})");
+                }
+            }
+        });
     }
 }

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import {
   BarChart3,
@@ -10,6 +11,7 @@ import {
   FileText,
   Users,
   Target,
+  Loader2,
 } from "lucide-react";
 import {
   BarChart,
@@ -25,29 +27,80 @@ import {
 } from "recharts";
 
 export function AssignmentStats() {
-  // Mock data for charts
-  const assignmentsByExam = [
-    { name: "Cambridge KET", count: 12 },
-    { name: "IELTS", count: 8 },
-    { name: "TOEFL", count: 6 },
-    { name: "PET", count: 5 },
-    { name: "FCE", count: 3 },
-  ];
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const assignmentTrends = [
-    { date: "T2", assignments: 3 },
-    { date: "T3", assignments: 5 },
-    { date: "T4", assignments: 4 },
-    { date: "T5", assignments: 7 },
-    { date: "T6", assignments: 6 },
-    { date: "T7", assignments: 8 },
-    { date: "CN", assignments: 2 },
-  ];
+  useEffect(() => {
+    const fetchAssignmentStats = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/assignments/statistics`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
 
-  const stats = [
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === 'success') {
+            setStats(result.data);
+          } else {
+            setError('Không thể tải thống kê giao bài');
+          }
+        } else {
+          setError('Lỗi khi tải dữ liệu');
+        }
+      } catch (err) {
+        setError('Lỗi kết nối đến server');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAssignmentStats();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-semibold">Đang tải thống kê giao bài...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
+        <div className="text-center bg-white rounded-2xl p-8 border border-red-200">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <p className="text-red-600 font-semibold mb-2">{error || 'Không tìm thấy dữ liệu'}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const assignmentsByExam = stats.assignmentsByExam || [];
+  const assignmentTrends = stats.assignmentTrends || [];
+  const recentAssignments = stats.recentAssignments || [];
+
+  const statsCards = [
     {
       label: "Tổng số bài đã giao",
-      value: "34",
+      value: stats.totalAssignments || "0",
       change: "+12%",
       trend: "up",
       icon: BarChart3,
@@ -57,7 +110,7 @@ export function AssignmentStats() {
     },
     {
       label: "Bài có deadline",
-      value: "28",
+      value: stats.withDeadlines || "0",
       change: "+8%",
       trend: "up",
       icon: Calendar,
@@ -67,7 +120,7 @@ export function AssignmentStats() {
     },
     {
       label: "Giao gần đây (7 ngày)",
-      value: "15",
+      value: stats.recentAssignmentsCount || "0",
       change: "+25%",
       trend: "up",
       icon: Clock,
@@ -77,7 +130,7 @@ export function AssignmentStats() {
     },
     {
       label: "Bài quá hạn",
-      value: "3",
+      value: stats.overdue || "0",
       change: "-15%",
       trend: "down",
       icon: AlertCircle,
@@ -92,7 +145,7 @@ export function AssignmentStats() {
       title: "Xem tất cả bài thi",
       description: "Danh sách đầy đủ các bài đã giao",
       icon: Eye,
-      link: "/bai-tap",
+      link: "/giao-vien/bai-tap",
       color: "from-blue-500 to-blue-600",
     },
     {
@@ -106,38 +159,8 @@ export function AssignmentStats() {
       title: "Báo cáo chi tiết",
       description: "Xem phân tích và báo cáo đầy đủ",
       icon: FileText,
-      link: "/bao-cao",
+      link: "/giao-vien/bao-cao",
       color: "from-purple-500 to-purple-600",
-    },
-  ];
-
-  const recentAssignments = [
-    {
-      id: "1",
-      title: "Cambridge KET - Reading Test 1",
-      target: "Lớp KET Morning A1",
-      targetType: "class",
-      students: 20,
-      completed: 15,
-      date: "28/12/2024",
-    },
-    {
-      id: "2",
-      title: "IELTS Reading Practice",
-      target: "Lớp IELTS 6.5 Evening",
-      targetType: "class",
-      students: 25,
-      completed: 11,
-      date: "27/12/2024",
-    },
-    {
-      id: "3",
-      title: "TOEFL Speaking Test",
-      target: "Nguyễn Văn An",
-      targetType: "student",
-      students: 1,
-      completed: 1,
-      date: "26/12/2024",
     },
   ];
 
@@ -161,7 +184,7 @@ export function AssignmentStats() {
 
         {/* Overview Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
+          {statsCards.map((stat, index) => (
             <div
               key={index}
               className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 group"

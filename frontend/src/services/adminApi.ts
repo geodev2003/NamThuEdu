@@ -377,4 +377,26 @@ export const adminApi = {
     const response = await api.post<ApiResponse<unknown>>("/admin/courses", payload);
     return response.data;
   },
+
+  // Settings
+  async getSettings() {
+    const response = await api.get<ApiResponse<Record<string, unknown>>>("/admin/system/settings");
+    return unwrap(response.data);
+  },
+
+  async updateSettings(payload: Record<string, unknown>) {
+    const response = await api.post<ApiResponse<unknown>>("/admin/system/settings", payload);
+    return response.data;
+  },
+
+  // Notifications
+  async getNotifications() {
+    const response = await api.get<ApiResponse<Array<{ id: number; title: string; body: string; is_read: boolean; time: string }>>>("/admin/system/notifications");
+    return unwrap(response.data) || [];
+  },
+
+  async markNotificationRead(id: number) {
+    const response = await api.post<ApiResponse<unknown>>(`/admin/system/notifications/${id}/read`);
+    return response.data;
+  },
 };

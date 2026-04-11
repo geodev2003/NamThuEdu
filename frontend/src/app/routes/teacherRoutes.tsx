@@ -27,9 +27,13 @@ import { AllExams } from "../features/teacher/exams/AllExams";
 import CreateExam from "../features/teacher/exams/CreateExam";
 import { CreateVSTEPExam } from "../features/teacher/exams/CreateVSTEPExam";
 import { ExamDetail } from "../features/teacher/exams/ExamDetail";
+import { ExamPreview } from "../features/teacher/exams/ExamPreview";
+import { ExamPreviewNew } from "../features/teacher/exams/ExamPreviewNew";
 import { EditExam } from "../features/teacher/exams/EditExam";
 import { ExamTemplates } from "../features/teacher/exams/ExamTemplates";
 import { MyExams } from "../features/teacher/exams/MyExams";
+import CreateKidsExam from "../features/teacher/exams/kids/CreateKidsExam";
+import { TestExamPlayer } from "../features/test";
 
 // Assignment
 import { AssignmentList } from "../features/teacher/assignments/AssignmentList";
@@ -108,11 +112,16 @@ export const teacherRoutes = {
     { path: "de-thi/tao-moi/:examId", Component: CreateExam }, // With exam ID
     { path: "de-thi/tao-thu-cong", Component: lazy(() => import("@/app/features/teacher/exams/CreateExamManual").then(m => ({ default: m.CreateExamManual }))) },
     { path: "de-thi/import", Component: lazy(() => import("@/app/features/teacher/exams/ImportExam").then(m => ({ default: m.ImportExam }))) },
+    { path: "de-thi/kids/tao-moi", Component: CreateKidsExam },
+    { path: "de-thi/kids/tao-moi/:examId", Component: CreateKidsExam },
     { path: "de-thi/mau-de", Component: ExamTemplates },
     { path: "de-thi/cua-toi", Component: MyExams },
     { path: "mau-de-cambridge", Component: CambridgeTemplates },
     { path: "de-thi/:examId", Component: ExamDetail },
+    { path: "de-thi/:examId/xem", Component: ExamPreview },
+    { path: "de-thi/:examId/xem-moi", Component: ExamPreviewNew }, // NEW: Test shared component
     { path: "de-thi/:examId/chinh-sua", Component: EditExam },
+    { path: "test-exam/:examId", Component: TestExamPlayer }, // TEST: Drag & drop testing
 
     // Giao bài thi
     { path: "bai-tap", Component: AssignmentList },

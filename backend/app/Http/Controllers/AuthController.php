@@ -175,8 +175,9 @@ class AuthController extends Controller
             ], 400);
         }
 
-        // Tìm user theo SĐT
-        $user = User::where('uPhone', $request->phone)
+        // Tìm user theo SĐT với class info
+        $user = User::with(['class.teacher'])
+                   ->where('uPhone', $request->phone)
                    ->whereNull('uDeleted_at')
                    ->first();
 
@@ -211,6 +212,31 @@ class AuthController extends Controller
             'refresh_token_expires_at' => now()->addDays(30),
         ]);
 
+        // Prepare user data
+        $userData = [
+            'id'    => $user->uId,
+            'name'  => $user->uName,
+            'phone' => $user->uPhone,
+            'age'   => $age,
+            'role'  => $user->uRole,
+            'age_group' => $user->age_group ?? 'teens',
+            'theme_preference' => $user->theme_preference ?? 'auto',
+        ];
+        
+        // Add class info for students
+        if ($user->uRole === 'student' && $user->class) {
+            $userData['class_id'] = $user->class_id;
+            $userData['class'] = [
+                'id' => $user->class->cId,
+                'name' => $user->class->cName,
+                'age_group' => $user->class->age_group,
+                'teacher' => $user->class->teacher ? [
+                    'id' => $user->class->teacher->uId,
+                    'name' => $user->class->teacher->uName,
+                ] : null,
+            ];
+        }
+
         return response()->json([
             'status' => 'success',
             'data' => [
@@ -218,15 +244,7 @@ class AuthController extends Controller
                 'token_type'    => 'Bearer',
                 'expires_in'    => 86400,
                 'refresh_token' => $refreshToken,
-                'user' => [
-                    'id'    => $user->uId,
-                    'name'  => $user->uName,
-                    'phone' => $user->uPhone,
-                    'age'   => $age,
-                    'role'  => $user->uRole,
-                    'age_group' => $user->age_group ?? 'teens',
-                    'theme_preference' => $user->theme_preference ?? 'auto',
-                ]
+                'user' => $userData
             ]
         ]);
     }

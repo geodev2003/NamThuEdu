@@ -47,7 +47,7 @@ class PracticeService
                 'eTeacher_id' => $data['teacher_id'],
                 'eDuration_minutes' => $data['duration'] ?? 30,
                 'eIs_private' => $data['is_private'] ?? true,
-                'eSource_type' => 'practice_generated',
+                'eSource_type' => 'template',
             ]);
 
             // Cập nhật practice session với exam_id
@@ -95,11 +95,16 @@ class PracticeService
             ]);
 
             // Tạo exam từ template
+            // Map template_code to valid eType enum
+            $validTypes = ['VSTEP', 'IELTS', 'GENERAL', 'STARTERS', 'MOVERS', 'FLYERS', 'KET', 'PET', 'FCE', 'CAE', 'CPE', 'TOEFL_IBT', 'PTE_ACADEMIC', 'APTIS'];
+            $templateCode = strtoupper(explode('_', $template->template_code)[0]);
+            $eType = in_array($templateCode, $validTypes) ? $templateCode : 'GENERAL';
+
             $exam = Exam::create([
                 'template_id' => $template->id,
                 'eTitle' => $practiceSession->ps_title,
                 'eDescription' => $practiceSession->ps_description,
-                'eType' => $template->template_code,
+                'eType' => $eType,
                 'eSkill' => $data['skill'] ?? 'listening',
                 'ePurpose' => 'practice',
                 'eDifficulty' => $data['difficulty'] ?? 'medium',
@@ -161,7 +166,7 @@ class PracticeService
                 'eTeacher_id' => $data['teacher_id'],
                 'eDuration_minutes' => $practiceSession->ps_duration_minutes,
                 'eIs_private' => true,
-                'eSource_type' => 'random_generated',
+                'eSource_type' => 'template',
             ]);
 
             $practiceSession->update(['ps_exam_id' => $exam->eId]);

@@ -8,6 +8,7 @@ import { AdultsLayout } from '../layouts/AdultsLayout';
 import { UnderConstruction } from '../components/shared';
 import { StudentProtectedRoute } from './StudentProtectedRoute';
 import { WaitingForClass } from '../features/student/WaitingForClass';
+import { TakeExam } from '../features/student/exam';
 
 // ─── Age Group Dashboards ─────────────────────────────────────────────────────
 const KidsDashboard = lazy(() =>
@@ -125,6 +126,11 @@ export const studentRoutes: RouteObject = {
     {
       path: 'cho-xep-lop',
       element: <WaitingForClass />,
+    },
+    // Exam routes
+    {
+      path: 'lam-bai/:examId',
+      element: <Suspense fallback={<LoadingFallback />}><TakeExam /></Suspense>,
     },
     // Legacy routes (shared functionality)
     {

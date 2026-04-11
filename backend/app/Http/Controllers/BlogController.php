@@ -103,10 +103,11 @@ class BlogController extends Controller
         $validator = Validator::make($request->all(), [
             'blogName' => 'required|string|max:255',
             'blogContent' => 'required|string',
-            'blogType' => 'required|in:grammar,tips,vocabulary',
-            'blogCategory' => 'required|integer|exists:category,caId',
+            'blogType' => 'nullable|in:grammar,tips,vocabulary,teaching,news',
+            'blogCategory' => 'nullable|integer|exists:category,caId',
             'blogUrl' => 'nullable|string',
             'blogThumbnail' => 'nullable|string',
+            'blogStatus' => 'nullable|in:draft,published',
         ]);
 
         if ($validator->fails()) {
@@ -120,19 +121,20 @@ class BlogController extends Controller
         $blog = Post::create([
             'pTitle' => $request->blogName,
             'pContent' => $request->blogContent,
-            'pType' => $request->blogType,
-            'pCategory' => $request->blogCategory,
+            'pType' => $request->blogType ?? 'teaching',
+            'pCategory' => $request->blogCategory ?? 1,
             'pUrl' => $request->blogUrl ?? '',
             'pThumbnail' => $request->blogThumbnail ?? '',
             'pAuthor_id' => $user->uId,
-            'pStatus' => 'draft', // Default status
+            'pStatus' => $request->blogStatus ?? 'draft',
             'pView' => 0,
             'pLike' => 0,
         ]);
 
         return response()->json([
             'status' => 'success',
-            'data' => ['blogId' => $blog->pId]
+            'data' => $blog,
+            'message' => 'Tạo blog thành công.'
         ]);
     }
 
@@ -265,11 +267,11 @@ class BlogController extends Controller
         $validator = Validator::make($request->all(), [
             'blogName' => 'sometimes|required|string|max:255',
             'blogContent' => 'sometimes|required|string',
-            'blogType' => 'sometimes|required|in:grammar,tips,vocabulary',
+            'blogType' => 'sometimes|required|in:grammar,tips,vocabulary,teaching,news',
             'blogCategory' => 'sometimes|required|integer|exists:category,caId',
             'blogUrl' => 'nullable|string',
             'blogThumbnail' => 'nullable|string',
-            'pStatus' => 'sometimes|required|in:active,inactive,draft',
+            'blogStatus' => 'sometimes|required|in:draft,published',
         ]);
 
         if ($validator->fails()) {
@@ -287,18 +289,14 @@ class BlogController extends Controller
         if ($request->has('blogCategory')) $updateData['pCategory'] = $request->blogCategory;
         if ($request->has('blogUrl')) $updateData['pUrl'] = $request->blogUrl;
         if ($request->has('blogThumbnail')) $updateData['pThumbnail'] = $request->blogThumbnail;
-        if ($request->has('pStatus')) $updateData['pStatus'] = $request->pStatus;
+        if ($request->has('blogStatus')) $updateData['pStatus'] = $request->blogStatus;
 
         $blog->update($updateData);
 
         return response()->json([
             'status' => 'success',
-            'data' => [
-                'UPDATE_BLOG_SUCCESS',
-                'Cập nhật bài viết thành công',
-                null,
-                200
-            ]
+            'data' => $blog,
+            'message' => 'Cập nhật bài viết thành công.'
         ]);
     }
 

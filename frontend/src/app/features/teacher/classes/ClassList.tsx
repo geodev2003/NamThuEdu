@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import {
@@ -22,150 +22,142 @@ import {
   BookOpen,
   Award,
   Target,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 
 type ViewMode = "grid" | "list";
 
-// Mock Data
-const statsData = [
-  {
-    label: "Tổng số lớp",
-    value: 48,
-    change: 12.5,
-    trend: "up",
-    icon: School,
-    color: "#EA580C",
-  },
-  {
-    label: "Lớp đang hoạt động",
-    value: 42,
-    change: 8.3,
-    trend: "up",
-    icon: UserCheck,
-    color: "#10B981",
-  },
-  {
-    label: "Tổng số học sinh",
-    value: 1248,
-    change: 15.2,
-    trend: "up",
-    icon: Users,
-    color: "#F59E0B",
-  },
-  {
-    label: "Sĩ số trung bình",
-    value: 26,
-    change: -2.1,
-    trend: "down",
-    icon: Target,
-    color: "#8B5CF6",
-  },
-];
-
-const mockClasses = [
-  {
-    id: 1,
-    name: "IELTS 7.0 - Intensive Morning",
-    code: "CLS-2024-001",
-    course: "IELTS Advanced",
-    studentCount: 28,
-    maxStudents: 30,
-    status: "active",
-    schedule: "T2, T4, T6 - 8:00-10:00",
-    room: "A101",
-    teacher: "Nguyễn Thị Mai",
-    startDate: "15/01/2024",
-    avgScore: 7.2,
-    attendance: 92,
-    assignments: 12,
-  },
-  {
-    id: 2,
-    name: "TOEIC 750+ Evening Class",
-    code: "CLS-2024-002",
-    course: "TOEIC Intermediate",
-    studentCount: 25,
-    maxStudents: 30,
-    status: "active",
-    schedule: "T3, T5, T7 - 18:00-20:00",
-    room: "B203",
-    teacher: "Trần Văn Phúc",
-    startDate: "20/01/2024",
-    avgScore: 6.8,
-    attendance: 88,
-    assignments: 10,
-  },
-  {
-    id: 3,
-    name: "Cambridge FCE Preparation",
-    code: "CLS-2024-003",
-    course: "Cambridge FCE",
-    studentCount: 18,
-    maxStudents: 25,
-    status: "active",
-    schedule: "T2, T4 - 14:00-16:30",
-    room: "C305",
-    teacher: "Lê Thu Hương",
-    startDate: "10/01/2024",
-    avgScore: 7.5,
-    attendance: 95,
-    assignments: 15,
-  },
-  {
-    id: 4,
-    name: "VSTEP B2 Weekend",
-    code: "CLS-2024-004",
-    course: "VSTEP B2",
-    studentCount: 30,
-    maxStudents: 30,
-    status: "active",
-    schedule: "T7, CN - 9:00-12:00",
-    room: "D102",
-    teacher: "Phạm Minh Tú",
-    startDate: "05/01/2024",
-    avgScore: 6.5,
-    attendance: 85,
-    assignments: 8,
-  },
-  {
-    id: 5,
-    name: "IELTS 6.5 Foundation",
-    code: "CLS-2024-005",
-    course: "IELTS Foundation",
-    studentCount: 22,
-    maxStudents: 30,
-    status: "active",
-    schedule: "T2, T4, T6 - 14:00-16:00",
-    room: "A205",
-    teacher: "Đỗ Hải Yến",
-    startDate: "12/01/2024",
-    avgScore: 6.2,
-    attendance: 90,
-    assignments: 11,
-  },
-  {
-    id: 6,
-    name: "TOEIC Basic Afternoon",
-    code: "CLS-2024-006",
-    course: "TOEIC Basic",
-    studentCount: 15,
-    maxStudents: 25,
-    status: "inactive",
-    schedule: "T3, T5 - 15:00-17:00",
-    room: "B104",
-    teacher: "Nguyễn Văn An",
-    startDate: "08/01/2024",
-    avgScore: 5.8,
-    attendance: 78,
-    assignments: 6,
-  },
-];
+interface ClassItem {
+  id: number;
+  name: string;
+  code: string;
+  course: string;
+  studentCount: number;
+  maxStudents: number;
+  status: string;
+  schedule: string;
+  room: string;
+  teacher: string;
+  startDate: string;
+  avgScore: number;
+  attendance: number;
+  assignments: number;
+}
 
 export function ClassList() {
   const { t } = useTranslation();
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  useEffect(() => {
+    const fetchClasses = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/classes`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === 'success') {
+            setClasses(result.data || []);
+          } else {
+            setError('Không thể tải danh sách lớp học');
+          }
+        } else {
+          setError('Lỗi khi tải dữ liệu');
+        }
+      } catch (err) {
+        setError('Lỗi kết nối đến server');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClasses();
+  }, []);
+
+  const statsData = [
+    {
+      label: "Tổng số lớp",
+      value: classes.length,
+      change: 12.5,
+      trend: "up",
+      icon: School,
+      color: "#EA580C",
+    },
+    {
+      label: "Lớp đang hoạt động",
+      value: classes.filter(c => c.status === 'active').length,
+      change: 8.3,
+      trend: "up",
+      icon: UserCheck,
+      color: "#10B981",
+    },
+    {
+      label: "Tổng số học sinh",
+      value: classes.reduce((sum, c) => sum + c.studentCount, 0),
+      change: 15.2,
+      trend: "up",
+      icon: Users,
+      color: "#F59E0B",
+    },
+    {
+      label: "Sĩ số trung bình",
+      value: classes.length > 0 ? Math.round(classes.reduce((sum, c) => sum + c.studentCount, 0) / classes.length) : 0,
+      change: -2.1,
+      trend: "down",
+      icon: Target,
+      color: "#8B5CF6",
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="p-8 min-h-screen bg-gradient-to-br from-[#F9FAFB] to-[#F3F4F6] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-[#EA580C] animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-semibold">Đang tải danh sách lớp học...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 min-h-screen bg-gradient-to-br from-[#F9FAFB] to-[#F3F4F6] flex items-center justify-center">
+        <div className="text-center bg-white rounded-2xl p-8 border border-red-200">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <p className="text-red-600 font-semibold mb-2">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const filteredClasses = classes.filter((classItem) => {
+    const matchesSearch = classItem.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         classItem.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         classItem.teacher.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || classItem.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const getStatusBadge = (status: string) => {
     const config = {
@@ -324,10 +316,32 @@ export function ClassList() {
         </div>
       </div>
 
+      {/* Empty State */}
+      {filteredClasses.length === 0 && (
+        <div className="text-center py-16 bg-white rounded-2xl border border-gray-200">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+            <Search className="w-8 h-8 text-gray-400" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            Không tìm thấy lớp học
+          </h3>
+          <p className="text-gray-600 mb-6">
+            Thử thay đổi bộ lọc hoặc tạo lớp học mới
+          </p>
+          <Link
+            to="/giao-vien/lop-hoc/tao-moi"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#EA580C] text-white font-semibold rounded-xl hover:bg-[#C2410C] transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            Tạo lớp học đầu tiên
+          </Link>
+        </div>
+      )}
+
       {/* Grid View */}
-      {viewMode === "grid" && (
+      {viewMode === "grid" && filteredClasses.length > 0 && (
         <div className="grid grid-cols-3 gap-6">
-          {mockClasses.map((classItem) => (
+          {filteredClasses.map((classItem) => (
             <div
               key={classItem.id}
               className="bg-white rounded-2xl p-6 border border-[#E5E7EB] hover:shadow-xl hover:-translate-y-1 transition-all group"
@@ -439,7 +453,7 @@ export function ClassList() {
       )}
 
       {/* List View */}
-      {viewMode === "list" && (
+      {viewMode === "list" && filteredClasses.length > 0 && (
         <div className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -475,7 +489,7 @@ export function ClassList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E5E7EB]">
-                {mockClasses.map((classItem) => (
+                {filteredClasses.map((classItem) => (
                   <tr
                     key={classItem.id}
                     className="hover:bg-[#F9FAFB] transition-colors"
@@ -543,8 +557,8 @@ export function ClassList() {
           <div className="px-6 py-4 border-t border-[#E5E7EB] flex items-center justify-between bg-[#F9FAFB]">
             <p className="text-sm text-[#6B7280]">
               Hiển thị{" "}
-              <span className="font-bold text-[#111827]">1-6</span> trong{" "}
-              <span className="font-bold text-[#111827]">48</span> lớp học
+              <span className="font-bold text-[#111827]">1-{Math.min(filteredClasses.length, 10)}</span> trong{" "}
+              <span className="font-bold text-[#111827]">{filteredClasses.length}</span> lớp học
             </p>
             <div className="flex gap-2">
               <button className="px-4 py-2 border border-[#E5E7EB] rounded-lg hover:bg-white transition-all text-sm font-medium text-[#6B7280]">
@@ -552,12 +566,6 @@ export function ClassList() {
               </button>
               <button className="px-4 py-2 bg-[#EA580C] text-white rounded-lg font-medium text-sm">
                 1
-              </button>
-              <button className="px-4 py-2 border border-[#E5E7EB] rounded-lg hover:bg-white transition-all text-sm font-medium text-[#6B7280]">
-                2
-              </button>
-              <button className="px-4 py-2 border border-[#E5E7EB] rounded-lg hover:bg-white transition-all text-sm font-medium text-[#6B7280]">
-                3
               </button>
               <button className="px-4 py-2 border border-[#E5E7EB] rounded-lg hover:bg-white transition-all text-sm font-medium text-[#6B7280]">
                 Sau

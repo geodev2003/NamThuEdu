@@ -39,6 +39,7 @@ export function TeacherLogin() {
       localStorage.setItem('auth_token', access_token);
       localStorage.setItem('auth_role', user.role);
       localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('teacher_phone', phone.trim()); // Store phone for re-authentication
       navigate('/giao-vien');
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {

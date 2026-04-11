@@ -2,9 +2,6 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { Header } from "../../../components/shared/Header";
-import { useApiQuery } from "../../../../hooks/useTeacherApi";
-import { teacherApi } from "../../../../services/teacherApi";
-import { handleApiError } from "../../../../components/shared/ErrorHandler";
 import {
   BookOpen,
   School,
@@ -127,6 +124,19 @@ const activityIcon = (type: string) => {
   return Sparkles;
 };
 
+// Map backend colors to frontend theme
+const mapActivityColor = (color: string) => {
+  // Backend returns colors like #2563EB, #10B981, #F59E0B
+  // Map to orange theme
+  const colorMap: Record<string, { color: string; bg: string }> = {
+    '#2563EB': { color: '#EA580C', bg: '#FFF7ED' }, // Blue -> Orange
+    '#10B981': { color: '#F97316', bg: '#FFEDD5' }, // Green -> Orange-500
+    '#F59E0B': { color: '#FB923C', bg: '#FED7AA' }, // Amber -> Orange-400
+  };
+  
+  return colorMap[color] || { color: '#EA580C', bg: '#FFF7ED' };
+};
+
 export function Dashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -138,35 +148,102 @@ export function Dashboard() {
   const userName = user?.name || user?.uName || 'Teacher';
 
   // Fetch dashboard statistics with 30-second polling
-  const { data: dashboardStats, loading: statsLoading } = useApiQuery(
-    () => teacherApi.dashboard.getTestStatistics(0), // 0 for dashboard overview
-    {
-      refetchInterval: 30000, // 30 seconds
-      onError: (error: any) => {
-        handleApiError(error, () => window.location.reload());
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [performanceData, setPerformanceData] = useState(fallbackPerformanceData);
+  const [recentActivities, setRecentActivities] = useState(fallbackActivities);
+
+  // Fetch dashboard overview
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+
+        const response = await fetch('http://localhost:8000/api/teacher/dashboard/overview', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === 'success') {
+            setDashboardStats(result.data);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+      } finally {
+        setStatsLoading(false);
       }
-    }
-  );
+    };
+
+    fetchDashboardStats();
+    const interval = setInterval(fetchDashboardStats, 30000); // Refresh every 30s
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch performance data
-  const { data: performanceResponse, loading: performanceLoading } = useApiQuery(
-    () => teacherApi.dashboard.getPerformanceData(),
-    {
-      refetchInterval: 60000, // 60 seconds
-    }
-  );
+  useEffect(() => {
+    const fetchPerformanceData = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+
+        const response = await fetch('http://localhost:8000/api/teacher/dashboard/performance-data', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === 'success' && result.data && result.data.length > 0) {
+            setPerformanceData(result.data);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching performance data:', error);
+      }
+    };
+
+    fetchPerformanceData();
+    const interval = setInterval(fetchPerformanceData, 60000); // Refresh every 60s
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch recent activities
-  const { data: activitiesResponse, loading: activitiesLoading } = useApiQuery(
-    () => teacherApi.dashboard.getRecentActivities(),
-    {
-      refetchInterval: 30000, // 30 seconds
-    }
-  );
+  useEffect(() => {
+    const fetchRecentActivities = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
 
-  // Use real data or fallback
-  const performanceData = performanceResponse || fallbackPerformanceData;
-  const recentActivities = activitiesResponse || fallbackActivities;
+        const response = await fetch('http://localhost:8000/api/teacher/dashboard/recent-activities', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === 'success' && result.data && result.data.length > 0) {
+            setRecentActivities(result.data);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching recent activities:', error);
+      }
+    };
+
+    fetchRecentActivities();
+    const interval = setInterval(fetchRecentActivities, 30000); // Refresh every 30s
+    return () => clearInterval(interval);
+  }, []);
 
   const hour = new Date().getHours();
   const greeting =
@@ -596,6 +673,7 @@ export function Dashboard() {
               <div className="flex-1 space-y-3">
                 {recentActivities.map((activity) => {
                   const Icon = activityIcon(activity.type);
+                  const mappedColors = mapActivityColor(activity.color);
                   return (
                     <div
                       key={activity.id}
@@ -603,9 +681,9 @@ export function Dashboard() {
                     >
                       <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                        style={{ backgroundColor: activity.bg }}
+                        style={{ backgroundColor: mappedColors.bg }}
                       >
-                        <Icon className="w-4 h-4" style={{ color: activity.color }} />
+                        <Icon className="w-4 h-4" style={{ color: mappedColors.color }} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p

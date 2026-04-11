@@ -18,6 +18,143 @@ class TeacherDashboardController extends Controller
 {
     /**
      * @OA\Get(
+     *     path="/teacher/dashboard/student-stats",
+     *     tags={"Teacher Dashboard"},
+     *     summary="Get student statistics for teacher",
+     *     description="Get student counts and statistics for student management page",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(response=200, description="Student statistics retrieved successfully")
+     * )
+     */
+    public function getStudentStats(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+
+        // Get class IDs for this teacher
+        $classIds = \App\Models\Classes::where('cTeacher_id', $user->uId)->pluck('cId');
+        
+        // Total students
+        $totalStudents = \App\Models\User::where('uRole', 'student')
+            ->whereIn('class_id', $classIds)
+            ->whereNull('uDeleted_at')
+            ->count();
+            
+        // Active students (status = active)
+        $activeStudents = \App\Models\User::where('uRole', 'student')
+            ->whereIn('class_id', $classIds)
+            ->whereNull('uDeleted_at')
+            ->where('uStatus', 'active')
+            ->count();
+            
+        // Inactive students (status = inactive)
+        $inactiveStudents = \App\Models\User::where('uRole', 'student')
+            ->whereIn('class_id', $classIds)
+            ->whereNull('uDeleted_at')
+            ->where('uStatus', 'inactive')
+            ->count();
+            
+        // New students this month
+        $newStudentsThisMonth = \App\Models\User::where('uRole', 'student')
+            ->whereIn('class_id', $classIds)
+            ->whereNull('uDeleted_at')
+            ->whereMonth('uCreated_at', now()->month)
+            ->whereYear('uCreated_at', now()->year)
+            ->count();
+            
+        // Calculate changes (compare with last month)
+        // Total students last month (students created before this month)
+        $totalStudentsLastMonth = \App\Models\User::where('uRole', 'student')
+            ->whereIn('class_id', $classIds)
+            ->whereNull('uDeleted_at')
+            ->where(function($query) {
+                $query->where(function($q) {
+                    $q->whereYear('uCreated_at', '<', now()->year);
+                })->orWhere(function($q) {
+                    $q->whereYear('uCreated_at', '=', now()->year)
+                      ->whereMonth('uCreated_at', '<', now()->month);
+                });
+            })
+            ->count();
+            
+        // Active students last month (check status updates)
+        $activeStudentsLastMonth = \App\Models\User::where('uRole', 'student')
+            ->whereIn('class_id', $classIds)
+            ->whereNull('uDeleted_at')
+            ->where('uStatus', 'active')
+            ->where(function($query) {
+                $query->where(function($q) {
+                    $q->whereYear('uCreated_at', '<', now()->year);
+                })->orWhere(function($q) {
+                    $q->whereYear('uCreated_at', '=', now()->year)
+                      ->whereMonth('uCreated_at', '<', now()->month);
+                });
+            })
+            ->count();
+            
+        // Inactive students last month
+        $inactiveStudentsLastMonth = \App\Models\User::where('uRole', 'student')
+            ->whereIn('class_id', $classIds)
+            ->whereNull('uDeleted_at')
+            ->where('uStatus', 'inactive')
+            ->where(function($query) {
+                $query->where(function($q) {
+                    $q->whereYear('uCreated_at', '<', now()->year);
+                })->orWhere(function($q) {
+                    $q->whereYear('uCreated_at', '=', now()->year)
+                      ->whereMonth('uCreated_at', '<', now()->month);
+                });
+            })
+            ->count();
+            
+        // New students last month
+        $newStudentsLastMonth = \App\Models\User::where('uRole', 'student')
+            ->whereIn('class_id', $classIds)
+            ->whereNull('uDeleted_at')
+            ->whereMonth('uCreated_at', now()->subMonth()->month)
+            ->whereYear('uCreated_at', now()->subMonth()->year)
+            ->count();
+            
+        // Calculate percentage changes
+        $totalChange = $totalStudentsLastMonth > 0 
+            ? round((($totalStudents - $totalStudentsLastMonth) / $totalStudentsLastMonth) * 100, 1) 
+            : ($totalStudents > 0 ? 100 : 0);
+            
+        $activeChange = $activeStudentsLastMonth > 0 
+            ? round((($activeStudents - $activeStudentsLastMonth) / $activeStudentsLastMonth) * 100, 1) 
+            : ($activeStudents > 0 ? 100 : 0);
+            
+        $inactiveChange = $inactiveStudentsLastMonth > 0 
+            ? round((($inactiveStudents - $inactiveStudentsLastMonth) / $inactiveStudentsLastMonth) * 100, 1) 
+            : ($inactiveStudents > 0 ? 100 : 0);
+            
+        $newStudentsChange = $newStudentsLastMonth > 0 
+            ? round((($newStudentsThisMonth - $newStudentsLastMonth) / $newStudentsLastMonth) * 100, 1) 
+            : ($newStudentsThisMonth > 0 ? 100 : 0);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'total_students' => $totalStudents,
+                'total_change' => $totalChange,
+                'active_students' => $activeStudents,
+                'active_change' => $activeChange,
+                'inactive_students' => $inactiveStudents,
+                'inactive_change' => $inactiveChange,
+                'new_students_this_month' => $newStudentsThisMonth,
+                'new_students_change' => $newStudentsChange,
+            ]
+        ]);
+    }
+
+    /**
+     * @OA\Get(
      *     path="/teacher/dashboard/overview",
      *     tags={"Teacher Dashboard"},
      *     summary="Get dashboard overview statistics",
@@ -42,10 +179,12 @@ class TeacherDashboardController extends Controller
         $totalClasses = \App\Models\Classes::where('cTeacher_id', $user->uId)->count();
         $totalExams = \App\Models\Exam::where('teacher_id', $user->uId)->count();
         
-        // Get total students across all classes
-        $totalStudents = \App\Models\ClassEnrollment::whereIn('class_id', 
-            \App\Models\Classes::where('cTeacher_id', $user->uId)->pluck('cId')
-        )->distinct('student_id')->count('student_id');
+        // Get total students - use class_id in users table
+        $classIds = \App\Models\Classes::where('cTeacher_id', $user->uId)->pluck('cId');
+        $totalStudents = \App\Models\User::where('uRole', 'student')
+            ->whereIn('class_id', $classIds)
+            ->whereNull('uDeleted_at')
+            ->count();
 
         // Get this month's new items
         $newCoursesThisMonth = \App\Models\Course::where('cTeacher', $user->uId)
@@ -56,12 +195,11 @@ class TeacherDashboardController extends Controller
             ->whereMonth('cCreated_at', now()->month)
             ->count();
             
-        $newStudentsThisMonth = \App\Models\ClassEnrollment::whereIn('class_id',
-            \App\Models\Classes::where('cTeacher_id', $user->uId)->pluck('cId')
-        )
-            ->whereMonth('enrolled_at', now()->month)
-            ->distinct('student_id')
-            ->count('student_id');
+        $newStudentsThisMonth = \App\Models\User::where('uRole', 'student')
+            ->whereIn('class_id', $classIds)
+            ->whereNull('uDeleted_at')
+            ->whereMonth('uCreated_at', now()->month)
+            ->count();
             
         $newExamsThisMonth = \App\Models\Exam::where('teacher_id', $user->uId)
             ->whereMonth('eCreated_at', now()->month)

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import * as XLSX from 'xlsx';
 import {
   ArrowLeft,
   Upload,
@@ -13,74 +14,242 @@ import {
   Info,
   Users,
   Check,
+  X,
+  BookOpen,
 } from "lucide-react";
 
 type ImportStep = "upload" | "mapping" | "preview" | "result";
 
-// Mock data for preview
-const mockPreviewData = [
-  {
-    id: 1,
-    name: "Nguyễn Văn An",
-    phone: "0901234567",
-    email: "an.nguyen@email.com",
-    dob: "15/03/2005",
-    class: "IELTS 6.5",
-    status: "valid",
-  },
-  {
-    id: 2,
-    name: "Trần Thị Bình",
-    phone: "0912345678",
-    email: "binh.tran@email.com",
-    dob: "20/05/2004",
-    class: "TOEIC 750",
-    status: "valid",
-  },
-  {
-    id: 3,
-    name: "Lê Minh Châu",
-    phone: "Invalid",
-    email: "chau.le@email.com",
-    dob: "10/08/2006",
-    class: "Cambridge FCE",
-    status: "error",
-  },
-  {
-    id: 4,
-    name: "Phạm Đức Duy",
-    phone: "0934567890",
-    email: "invalid-email",
-    dob: "05/12/2005",
-    class: "IELTS 7.0",
-    status: "warning",
-  },
-  {
-    id: 5,
-    name: "Hoàng Thu Hà",
-    phone: "0945678901",
-    email: "ha.hoang@email.com",
-    dob: "25/02/2005",
-    class: "VSTEP B2",
-    status: "valid",
-  },
-];
+interface PreviewStudent {
+  id: number;
+  name: string;
+  phone: string;
+  email: string;
+  ageGroup: string;
+  class: string;
+  course: string;
+  status: 'valid' | 'warning' | 'error';
+  statusMessage?: string;
+}
 
 const columnMappings = [
   { source: "Họ và tên", target: "name" },
   { source: "Số điện thoại", target: "phone" },
   { source: "Email", target: "email" },
-  { source: "Ngày sinh", target: "dob" },
-  { source: "Lớp học", target: "class" },
+  { source: "Nhóm tuổi", target: "ageGroup" },
+  { source: "Lớp", target: "class" },
+  { source: "Khóa", target: "course" },
+  { source: "Trạng thái", target: "statusText" },
 ];
 
 export function ImportStudents() {
   const [currentStep, setCurrentStep] = useState<ImportStep>("upload");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [previewData, setPreviewData] = useState<PreviewStudent[]>([]);
+  const [validCount, setValidCount] = useState(0);
+  const [warningCount, setWarningCount] = useState(0);
+  const [errorCount, setErrorCount] = useState(0);
+  const [showGuideModal, setShowGuideModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Function to download template Excel for import (without STT and Ngày tạo)
+  const handleDownloadTemplate = () => {
+    // Prevent multiple downloads
+    if (isDownloading) return;
+    
+    setIsDownloading(true);
+    
+    // Template data - only fields needed for import (7 columns)
+    const templateData = [
+      {
+        'Họ và tên': 'Nguyễn Văn A',
+        'Số điện thoại': '0900000001',
+        'Email': '',
+        'Nhóm tuổi': 'Trẻ em',
+        'Lớp': 'Test Class',
+        'Khóa': 'Khóa tháng 4',
+        'Trạng thái': 'Đang học',
+      },
+      {
+        'Họ và tên': 'Trần Thị B',
+        'Số điện thoại': '0900000002',
+        'Email': '',
+        'Nhóm tuổi': 'Thiếu niên',
+        'Lớp': 'Lớp THCS-THPT - Nhựt Tuấn',
+        'Khóa': 'Khóa tháng 4',
+        'Trạng thái': 'Đang học',
+      },
+      {
+        'Họ và tên': 'Lê Văn C',
+        'Số điện thoại': '0900000003',
+        'Email': '',
+        'Nhóm tuổi': 'Người lớn',
+        'Lớp': 'Lớp Người lớn - Nhựt Tuấn',
+        'Khóa': 'Khóa tháng 4',
+        'Trạng thái': 'Đang học',
+      },
+    ];
+
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(templateData);
+
+    // Set column widths (7 columns for import)
+    ws['!cols'] = [
+      { wch: 25 }, // Họ và tên
+      { wch: 15 }, // Số điện thoại
+      { wch: 30 }, // Email
+      { wch: 15 }, // Nhóm tuổi
+      { wch: 30 }, // Lớp
+      { wch: 15 }, // Khóa
+      { wch: 12 }, // Trạng thái
+    ];
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Mẫu Import Học viên');
+
+    // Generate filename
+    const filename = `Mau_Import_Hoc_Vien.xlsx`;
+
+    // Save file
+    XLSX.writeFile(wb, filename);
+    
+    // Lock button for 5 seconds to prevent multiple downloads
+    setTimeout(() => {
+      setIsDownloading(false);
+    }, 5000);
+  };
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
+    setIsProcessing(true);
+    setUploadProgress(0);
+    
+    // Simulate upload progress
+    const progressInterval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          return 100;
+        }
+        return prev + 5;
+      });
+    }, 100); // Update every 100ms for smooth animation
+    
+    // Parse file after 2 seconds
+    setTimeout(() => {
+      parseExcelFile(file);
+      setIsProcessing(false);
+    }, 2000);
+  };
+
+  const parseExcelFile = async (file: File) => {
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
+
+      // Validate and transform data
+      const students: PreviewStudent[] = jsonData.map((row, index) => {
+        const student: PreviewStudent = {
+          id: index + 1,
+          name: row['Họ và tên'] || '',
+          phone: row['Số điện thoại'] || '',
+          email: row['Email'] || '',
+          ageGroup: row['Nhóm tuổi'] || '',
+          class: row['Lớp'] || '',
+          course: row['Khóa'] || '',
+          status: 'valid',
+        };
+
+        // Validation logic
+        const errors: string[] = [];
+        const warnings: string[] = [];
+
+        // Required fields
+        if (!student.name) errors.push('Thiếu họ tên');
+        if (!student.phone) errors.push('Thiếu số điện thoại');
+        if (!student.ageGroup) errors.push('Thiếu nhóm tuổi');
+        if (!student.class) errors.push('Thiếu lớp');
+
+        // Phone validation (Vietnamese format)
+        if (student.phone && !/^(0|\+84)[0-9]{9,10}$/.test(student.phone.replace(/\s/g, ''))) {
+          errors.push('Số điện thoại không hợp lệ');
+        }
+
+        // Email validation (optional but must be valid if provided)
+        if (student.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(student.email)) {
+          warnings.push('Email không đúng định dạng');
+        }
+
+        // Age group validation
+        if (student.ageGroup && !['Trẻ em', 'Thiếu niên', 'Người lớn'].includes(student.ageGroup)) {
+          errors.push('Nhóm tuổi không hợp lệ');
+        }
+
+        // Set status
+        if (errors.length > 0) {
+          student.status = 'error';
+          student.statusMessage = errors.join(', ');
+        } else if (warnings.length > 0) {
+          student.status = 'warning';
+          student.statusMessage = warnings.join(', ');
+        }
+
+        return student;
+      });
+
+      // Check for duplicate phone numbers within the file
+      const phoneMap = new Map<string, number[]>();
+      students.forEach((student, index) => {
+        if (student.phone) {
+          const normalizedPhone = student.phone.replace(/\s/g, '');
+          if (!phoneMap.has(normalizedPhone)) {
+            phoneMap.set(normalizedPhone, []);
+          }
+          phoneMap.get(normalizedPhone)!.push(index);
+        }
+      });
+
+      // Mark duplicates as errors
+      phoneMap.forEach((indices, phone) => {
+        if (indices.length > 1) {
+          // Get the row numbers for better error message
+          const rowNumbers = indices.map(i => i + 1).join(', ');
+          const duplicateMessage = `SĐT trùng lặp với dòng ${rowNumbers}`;
+          
+          indices.forEach(index => {
+            const student = students[index];
+            
+            if (student.status === 'valid') {
+              student.status = 'error';
+              student.statusMessage = duplicateMessage;
+            } else if (student.statusMessage) {
+              student.statusMessage += '; ' + duplicateMessage;
+            } else {
+              student.statusMessage = duplicateMessage;
+            }
+            student.status = 'error';
+          });
+        }
+      });
+
+      // Count statuses (recount after duplicate check)
+      const valid = students.filter(s => s.status === 'valid').length;
+      const warning = students.filter(s => s.status === 'warning').length;
+      const error = students.filter(s => s.status === 'error').length;
+
+      setPreviewData(students);
+      setValidCount(valid);
+      setWarningCount(warning);
+      setErrorCount(error);
+    } catch (error) {
+      console.error('Error parsing Excel file:', error);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -210,24 +379,30 @@ export function ImportStudents() {
             <div className="bg-[#FFF7ED] border border-[#FDBA74] rounded-xl p-6 mb-6">
               <div className="flex items-start gap-3">
                 <Info className="w-5 h-5 text-[#EA580C] flex-shrink-0 mt-0.5" />
-                <div>
+                <div className="flex-1">
                   <h3 className="font-bold text-[#C2410C] mb-2">
                     Hướng dẫn import dữ liệu
                   </h3>
                   <ul className="space-y-1.5 text-sm text-[#C2410C]">
                     <li>• File phải có định dạng .xlsx hoặc .csv</li>
                     <li>• Dòng đầu tiên phải chứa tên các cột</li>
-                    <li>• Các cột bắt buộc: Họ tên, Số điện thoại, Email</li>
-                    <li>• Tối đa 1000 học sinh mỗi lần import</li>
-                    <li>• Số điện thoại phải hợp lệ (10 số, bắt đầu bằng 0)</li>
+                    <li>• Các cột bắt buộc: Họ và tên, Số điện thoại, Nhóm tuổi, Lớp</li>
+                    <li>• Số điện thoại phải hợp lệ và không trùng lặp</li>
                   </ul>
+                  <button 
+                    onClick={() => setShowGuideModal(true)}
+                    className="inline-flex items-center gap-1 mt-3 text-sm font-medium text-[#EA580C] hover:text-[#C2410C] hover:underline"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    Xem hướng dẫn chi tiết
+                  </button>
                 </div>
               </div>
             </div>
 
             {/* Template Download */}
             <div className="bg-white rounded-xl p-6 border border-[#E5E7EB] mb-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-lg bg-[#10B98115] flex items-center justify-center">
                     <FileSpreadsheet className="w-6 h-6 text-[#10B981]" />
@@ -237,19 +412,89 @@ export function ImportStudents() {
                       Tải file mẫu
                     </h3>
                     <p className="text-sm text-[#6B7280]">
-                      Sử dụng file Excel mẫu để đảm bảo định dạng đúng
+                      File Excel mẫu với cấu trúc giống file export (7 cột, 3 dòng mẫu)
                     </p>
                   </div>
                 </div>
-                <button className="flex items-center gap-2 px-4 py-2.5 bg-[#10B981] text-white rounded-lg hover:bg-[#059669] transition-colors font-medium">
-                  <Download className="w-4 h-4" />
-                  Tải xuống mẫu
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleDownloadTemplate}
+                    disabled={isDownloading}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors font-medium ${
+                      isDownloading 
+                        ? 'bg-gray-400 cursor-not-allowed' 
+                        : 'bg-[#10B981] hover:bg-[#059669]'
+                    } text-white`}
+                  >
+                    <Download className="w-4 h-4" />
+                    {isDownloading ? 'Đang tải...' : 'Tải Excel'}
+                  </button>
+                </div>
+              </div>
+              
+              {/* Additional Help */}
+              <div className="pt-4 border-t border-[#E5E7EB]">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-[#6B7280]">
+                    💡 Tải file mẫu, điền thông tin và import vào hệ thống
+                  </p>
+                  <button 
+                    onClick={() => setShowGuideModal(true)}
+                    className="text-sm font-medium text-[#EA580C] hover:text-[#C2410C] hover:underline flex items-center gap-1"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    Xem hướng dẫn
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Upload Area */}
             <div className="bg-white rounded-xl p-8 border border-[#E5E7EB]">
+              {/* Selected File Display - Above drag area */}
+              {selectedFile && (
+                <div className="mb-6 p-4 bg-[#F9FAFB] rounded-lg border border-[#E5E7EB]">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <FileSpreadsheet className="w-10 h-10 text-[#10B981]" />
+                      <div>
+                        <p className="font-medium text-[#111827]">{selectedFile.name}</p>
+                        <p className="text-sm text-[#6B7280]">
+                          {(selectedFile.size / 1024).toFixed(2)} KB
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedFile(null);
+                        setIsProcessing(false);
+                        setUploadProgress(0);
+                      }}
+                      className="text-[#EF4444] hover:text-[#DC2626] font-medium text-sm"
+                    >
+                      Xóa
+                    </button>
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  {isProcessing && (
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-[#6B7280]">Đang xử lý file...</span>
+                        <span className="text-sm font-medium text-[#EA580C]">{uploadProgress}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-[#E5E7EB] rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-[#EA580C] transition-all duration-300 ease-out"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Drag & Drop Area */}
               <div
                 className="border-2 border-dashed rounded-xl p-12 text-center transition-all"
                 style={{
@@ -283,29 +528,7 @@ export function ImportStudents() {
                 </label>
               </div>
 
-              {selectedFile && (
-                <div className="mt-6 p-4 bg-[#F9FAFB] rounded-lg border border-[#E5E7EB]">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <FileSpreadsheet className="w-8 h-8 text-[#10B981]" />
-                      <div>
-                        <p className="font-medium text-[#111827]">{selectedFile.name}</p>
-                        <p className="text-sm text-[#6B7280]">
-                          {(selectedFile.size / 1024).toFixed(2)} KB
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setSelectedFile(null)}
-                      className="text-[#EF4444] hover:text-[#DC2626] font-medium text-sm"
-                    >
-                      Xóa
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {selectedFile && (
+              {selectedFile && !isProcessing && (
                 <div className="mt-6 flex justify-end">
                   <button
                     onClick={() => setCurrentStep("mapping")}
@@ -381,21 +604,21 @@ export function ImportStudents() {
                   <Users className="w-5 h-5 text-[#EA580C]" />
                   <span className="text-sm text-[#6B7280]">Tổng số dòng</span>
                 </div>
-                <p className="text-3xl font-bold text-[#111827]">5</p>
+                <p className="text-3xl font-bold text-[#111827]">{previewData.length}</p>
               </div>
               <div className="bg-white rounded-xl p-6 border border-[#E5E7EB]">
                 <div className="flex items-center gap-3 mb-2">
                   <CheckCircle2 className="w-5 h-5 text-[#10B981]" />
                   <span className="text-sm text-[#6B7280]">Hợp lệ</span>
                 </div>
-                <p className="text-3xl font-bold text-[#10B981]">3</p>
+                <p className="text-3xl font-bold text-[#10B981]">{validCount}</p>
               </div>
               <div className="bg-white rounded-xl p-6 border border-[#E5E7EB]">
                 <div className="flex items-center gap-3 mb-2">
                   <XCircle className="w-5 h-5 text-[#EF4444]" />
                   <span className="text-sm text-[#6B7280]">Có lỗi</span>
                 </div>
-                <p className="text-3xl font-bold text-[#EF4444]">2</p>
+                <p className="text-3xl font-bold text-[#EF4444]">{errorCount}</p>
               </div>
             </div>
 
@@ -421,7 +644,7 @@ export function ImportStudents() {
                         Email
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                        Ngày sinh
+                        Nhóm tuổi
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
                         Lớp
@@ -432,7 +655,7 @@ export function ImportStudents() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB]">
-                    {mockPreviewData.map((row, index) => (
+                    {previewData.map((row, index) => (
                       <tr
                         key={row.id}
                         className="hover:bg-[#F9FAFB] transition-colors"
@@ -447,15 +670,22 @@ export function ImportStudents() {
                           {row.phone}
                         </td>
                         <td className="px-6 py-4 text-sm text-[#6B7280]">
-                          {row.email}
+                          {row.email || '-'}
                         </td>
                         <td className="px-6 py-4 text-sm text-[#6B7280]">
-                          {row.dob}
+                          {row.ageGroup}
                         </td>
                         <td className="px-6 py-4 text-sm text-[#6B7280]">
                           {row.class}
                         </td>
-                        <td className="px-6 py-4">{getStatusBadge(row.status)}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1">
+                            {getStatusBadge(row.status)}
+                            {row.statusMessage && (
+                              <span className="text-xs text-[#6B7280]">{row.statusMessage}</span>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -464,19 +694,21 @@ export function ImportStudents() {
             </div>
 
             {/* Warning */}
-            <div className="bg-[#FEF3C7] border border-[#FDE68A] rounded-xl p-4 mb-6">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-[#F59E0B] flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-[#92400E] mb-1">
-                    Lưu ý trước khi import
-                  </p>
-                  <p className="text-sm text-[#92400E]">
-                    Có 2 dòng dữ liệu có lỗi sẽ bị bỏ qua. Chỉ 3 học sinh hợp lệ sẽ được thêm vào hệ thống.
-                  </p>
+            {errorCount > 0 && (
+              <div className="bg-[#FEF3C7] border border-[#FDE68A] rounded-xl p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-[#F59E0B] flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-[#92400E] mb-1">
+                      Lưu ý trước khi import
+                    </p>
+                    <p className="text-sm text-[#92400E]">
+                      Có {errorCount} dòng dữ liệu có lỗi sẽ bị bỏ qua. Chỉ {validCount} học sinh hợp lệ sẽ được thêm vào hệ thống.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div className="flex items-center justify-between">
               <button
@@ -506,7 +738,7 @@ export function ImportStudents() {
                 Import thành công!
               </h3>
               <p className="text-[#6B7280]">
-                Đã thêm <span className="font-bold text-[#10B981]">3 học sinh</span> vào hệ thống
+                Đã thêm <span className="font-bold text-[#10B981]">{validCount} học sinh</span> vào hệ thống
               </p>
             </div>
 
@@ -516,47 +748,42 @@ export function ImportStudents() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-[#F9FAFB] rounded-lg">
                   <span className="text-sm text-[#6B7280]">Tổng số dòng đã xử lý</span>
-                  <span className="font-bold text-[#111827]">5</span>
+                  <span className="font-bold text-[#111827]">{previewData.length}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-[#D1FAE5] rounded-lg">
                   <span className="text-sm text-[#059669]">Thành công</span>
-                  <span className="font-bold text-[#059669]">3</span>
+                  <span className="font-bold text-[#059669]">{validCount}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-[#FEE2E2] rounded-lg">
                   <span className="text-sm text-[#DC2626]">Lỗi</span>
-                  <span className="font-bold text-[#DC2626]">2</span>
+                  <span className="font-bold text-[#DC2626]">{errorCount}</span>
                 </div>
               </div>
             </div>
 
             {/* Error Details */}
-            <div className="bg-white rounded-xl p-6 border border-[#E5E7EB] mb-6">
-              <h3 className="font-bold text-[#111827] mb-4">Chi tiết lỗi</h3>
-              <div className="space-y-2">
-                <div className="flex items-start gap-3 p-3 bg-[#FEF3C7] rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-[#F59E0B] flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-[#92400E]">
-                      Dòng 3: Lê Minh Châu
-                    </p>
-                    <p className="text-sm text-[#92400E]">
-                      Số điện thoại không hợp lệ
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 bg-[#FEF3C7] rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-[#F59E0B] flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-[#92400E]">
-                      Dòng 4: Phạm Đức Duy
-                    </p>
-                    <p className="text-sm text-[#92400E]">
-                      Email không đúng định dạng
-                    </p>
-                  </div>
+            {errorCount > 0 && (
+              <div className="bg-white rounded-xl p-6 border border-[#E5E7EB] mb-6">
+                <h3 className="font-bold text-[#111827] mb-4">Chi tiết lỗi</h3>
+                <div className="space-y-2">
+                  {previewData
+                    .filter(student => student.status === 'error' || student.status === 'warning')
+                    .map((student, index) => (
+                      <div key={index} className="flex items-start gap-3 p-3 bg-[#FEF3C7] rounded-lg">
+                        <AlertCircle className="w-5 h-5 text-[#F59E0B] flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-[#92400E]">
+                            Dòng {student.id}: {student.name}
+                          </p>
+                          <p className="text-sm text-[#92400E]">
+                            {student.statusMessage}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Actions */}
             <div className="flex items-center justify-between">
@@ -569,6 +796,10 @@ export function ImportStudents() {
               <button
                 onClick={() => {
                   setSelectedFile(null);
+                  setPreviewData([]);
+                  setValidCount(0);
+                  setWarningCount(0);
+                  setErrorCount(0);
                   setCurrentStep("upload");
                 }}
                 className="px-6 py-2.5 bg-[#EA580C] text-white rounded-lg hover:bg-[#C2410C] transition-colors font-medium"
@@ -579,6 +810,118 @@ export function ImportStudents() {
           </div>
         )}
       </div>
+
+      {/* Guide Modal */}
+      {showGuideModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-[#E5E7EB]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#EA580C15] flex items-center justify-center">
+                  <BookOpen className="w-5 h-5 text-[#EA580C]" />
+                </div>
+                <h2 className="text-xl font-bold text-[#111827]">Hướng dẫn Import Học viên</h2>
+              </div>
+              <button
+                onClick={() => setShowGuideModal(false)}
+                className="w-8 h-8 rounded-lg hover:bg-[#F3F4F6] flex items-center justify-center transition-colors"
+              >
+                <X className="w-5 h-5 text-[#6B7280]" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="prose prose-sm max-w-none">
+                {/* Bước 1 */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-[#EA580C] text-white flex items-center justify-center font-bold text-sm">
+                      1
+                    </div>
+                    <h3 className="text-lg font-bold text-[#111827] m-0">Tải file mẫu Excel</h3>
+                  </div>
+                  <div className="ml-10 space-y-2 text-[#6B7280]">
+                    <p>• Click nút "Tải Excel" để tải file mẫu về máy</p>
+                    <p>• File mẫu có 7 cột: Họ và tên, Số điện thoại, Email, Nhóm tuổi, Lớp, Khóa, Trạng thái</p>
+                    <p>• File đã có 3 dòng dữ liệu mẫu để tham khảo</p>
+                  </div>
+                </div>
+
+                {/* Bước 2 */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-[#EA580C] text-white flex items-center justify-center font-bold text-sm">
+                      2
+                    </div>
+                    <h3 className="text-lg font-bold text-[#111827] m-0">Điền thông tin học viên</h3>
+                  </div>
+                  <div className="ml-10 space-y-3">
+                    <div className="bg-[#F9FAFB] rounded-lg p-4 border border-[#E5E7EB]">
+                      <p className="font-semibold text-[#111827] mb-2">Các trường bắt buộc:</p>
+                      <ul className="space-y-1 text-[#6B7280]">
+                        <li>• <span className="font-medium">Họ và tên:</span> Tên đầy đủ của học viên</li>
+                        <li>• <span className="font-medium">Số điện thoại:</span> 10 số, bắt đầu bằng 0 (VD: 0904521297)</li>
+                        <li>• <span className="font-medium">Nhóm tuổi:</span> Chọn 1 trong 3: "Trẻ em", "Thiếu niên", "Người lớn"</li>
+                        <li>• <span className="font-medium">Lớp:</span> Tên lớp học</li>
+                      </ul>
+                    </div>
+                    <div className="bg-[#FEF3C7] rounded-lg p-4 border border-[#FDE68A]">
+                      <p className="font-semibold text-[#92400E] mb-2">⚠️ Lưu ý quan trọng:</p>
+                      <ul className="space-y-1 text-[#92400E]">
+                        <li>• Số điện thoại phải UNIQUE (không trùng lặp trong file)</li>
+                        <li>• Email có thể để trống nhưng nếu điền phải đúng format</li>
+                        <li>• Nhóm tuổi phải viết chính xác: "Trẻ em", "Thiếu niên", hoặc "Người lớn"</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bước 3 */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-[#EA580C] text-white flex items-center justify-center font-bold text-sm">
+                      3
+                    </div>
+                    <h3 className="text-lg font-bold text-[#111827] m-0">Upload file và kiểm tra</h3>
+                  </div>
+                  <div className="ml-10 space-y-2 text-[#6B7280]">
+                    <p>• Kéo thả file vào vùng upload hoặc click để chọn file</p>
+                    <p>• Hệ thống sẽ tự động kiểm tra và hiển thị kết quả</p>
+                    <p>• Các dòng có lỗi sẽ được đánh dấu màu đỏ với thông báo chi tiết</p>
+                    <p>• Chỉ những dòng hợp lệ mới được import vào hệ thống</p>
+                  </div>
+                </div>
+
+                {/* Ví dụ */}
+                <div className="bg-[#D1FAE5] rounded-lg p-4 border border-[#10B981]">
+                  <p className="font-semibold text-[#065F46] mb-2">✅ Ví dụ dữ liệu hợp lệ:</p>
+                  <div className="bg-white rounded p-3 text-sm font-mono text-[#111827]">
+                    <div>Họ và tên: Nguyễn Văn A</div>
+                    <div>Số điện thoại: 0900000001</div>
+                    <div>Email: (có thể để trống)</div>
+                    <div>Nhóm tuổi: Trẻ em</div>
+                    <div>Lớp: Test Class</div>
+                    <div>Khóa: Khóa tháng 4</div>
+                    <div>Trạng thái: Đang học</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-[#E5E7EB] flex justify-end">
+              <button
+                onClick={() => setShowGuideModal(false)}
+                className="px-6 py-2.5 bg-[#EA580C] text-white rounded-lg hover:bg-[#C2410C] transition-colors font-medium"
+              >
+                Đã hiểu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

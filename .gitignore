@@ -3,6 +3,31 @@
 .vscode/
 .idea/
 
+# Documentation and test files
+docs/
+*.md
+!README.md
+!QUICK_START.md
+.kiro/docs/
+.kiro/test-scripts/
+.kiro/specs/
+.kiro/prompts/
+.kiro/exam-samples/
+backend/test*.php
+backend/check*.php
+backend/verify*.php
+backend/analyze*.php
+frontend/src/app/features/test/
+.tmp-verify/
+*.ps1
+test-*.js
+test-*.html
+debug-*.js
+check-*.js
+update-*.js
+clear-*.js
+force-*.js
+
 # OS files
 .DS_Store
 Thumbs.db
@@ -44,6 +69,8 @@ backend/bootstrap/cache/
 *.swp
 *.swo
 *~
+nul
+backend/nul
 
 # Package manager locks (keep these)
 # package-lock.json

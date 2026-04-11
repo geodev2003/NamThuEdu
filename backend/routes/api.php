@@ -21,8 +21,12 @@ use App\Http\Controllers\StudentProfileController;
 use App\Http\Controllers\StudentCourseController;
 use App\Http\Controllers\StudentPracticeController;
 use App\Http\Controllers\StudentGamificationController;
+use App\Http\Controllers\TestGamificationController;
+use App\Http\Controllers\GamificationTestController;
 use App\Http\Controllers\StudentAnalyticsController;
 use App\Http\Controllers\FileUploadController;
+use App\Http\Controllers\AgeGroupContentController;
+use App\Http\Controllers\AdminSystemController;
 
 /*
 |--------------------------------------------------------------------------
@@ -112,10 +116,15 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // Student Management
         Route::get('/students', [UserController::class, 'teacherStudents']);
+        Route::get('/students/deleted', [UserController::class, 'getDeletedStudents']); // Get deleted students
         Route::get('/student/{id}', [UserController::class, 'getStudentById']);
         Route::post('/student', [UserController::class, 'storeStudent']);
         Route::put('/student/{id}', [UserController::class, 'update']);
-        Route::delete('/student/{id}', [UserController::class, 'destroyStudent']);
+        Route::delete('/student/{id}', [UserController::class, 'destroyStudent']); // Soft delete
+        Route::post('/student/{id}/restore', [UserController::class, 'restoreStudent']); // Restore deleted
+        Route::get('/student/{id}/view-password', [UserController::class, 'viewStudentPassword']); // View password
+        Route::post('/student/{id}/reset-password', [UserController::class, 'resetStudentPassword']); // Reset password
+        Route::delete('/student/{id}/permanent', [UserController::class, 'permanentDeleteStudent']); // Permanent delete
         Route::get('/students/statistics', [UserController::class, 'studentStatistics']);
         Route::get('/students/export', [UserController::class, 'exportStudents']);
         
@@ -149,6 +158,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/random', [PracticeController::class, 'createRandom']);
             Route::get('/statistics', [PracticeController::class, 'statistics']);
             Route::get('/{id}', [PracticeController::class, 'show']);
+            Route::put('/{id}', [PracticeController::class, 'update']);
             Route::delete('/{id}', [PracticeController::class, 'destroy']);
         });
         
@@ -172,6 +182,31 @@ Route::middleware('auth:sanctum')->group(function () {
         // Exam Import from JSON (Gemini AI)
         Route::post('/exams/import', [App\Http\Controllers\ExamImportController::class, 'import']);
         Route::post('/exams/import/validate', [App\Http\Controllers\ExamImportController::class, 'validateImport']);
+        
+        // Kids Exam Management
+        Route::prefix('kids-exams')->group(function () {
+            // Get exam types and task types
+            Route::get('/types', [App\Http\Controllers\KidsExamController::class, 'getExamTypes']);
+            Route::get('/task-types', [App\Http\Controllers\KidsExamController::class, 'getTaskTypes']);
+            Route::get('/task-types/{code}', [App\Http\Controllers\KidsExamController::class, 'getTaskType']);
+            
+            // CRUD operations
+            Route::get('/', [App\Http\Controllers\KidsExamController::class, 'index']);
+            Route::post('/', [App\Http\Controllers\KidsExamController::class, 'store']);
+            Route::get('/{id}', [App\Http\Controllers\KidsExamController::class, 'show']);
+            Route::put('/{id}', [App\Http\Controllers\KidsExamController::class, 'update']);
+            Route::delete('/{id}', [App\Http\Controllers\KidsExamController::class, 'destroy']);
+            
+            // Question management
+            Route::post('/{examId}/questions', [App\Http\Controllers\KidsExamController::class, 'addQuestion']);
+            Route::put('/{examId}/questions/{questionId}', [App\Http\Controllers\KidsExamController::class, 'updateQuestion']);
+            Route::delete('/{examId}/questions/{questionId}', [App\Http\Controllers\KidsExamController::class, 'deleteQuestion']);
+            
+            // Media upload
+            Route::post('/media/upload', [App\Http\Controllers\KidsExamController::class, 'uploadMedia']);
+            Route::get('/{examId}/media', [App\Http\Controllers\KidsExamController::class, 'getExamMedia']);
+            Route::delete('/media/{id}', [App\Http\Controllers\KidsExamController::class, 'deleteMedia']);
+        });
         
         // Exam Templates
         Route::get('/exam-templates', [App\Http\Controllers\ExamTemplateController::class, 'index']);
@@ -198,6 +233,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Test Assignment
         Route::post('/exams/{examId}/assign', [TestAssignmentController::class, 'assign']);
         Route::get('/assignments', [TestAssignmentController::class, 'index']);
+        Route::put('/assignments/{id}', [TestAssignmentController::class, 'update']);
         Route::delete('/assignments/{id}', [TestAssignmentController::class, 'destroy']);
         Route::get('/assignments/{id}/progress', [TestAssignmentController::class, 'progress']);
         Route::post('/assignments/bulk', [TestAssignmentController::class, 'bulkAssign']);
@@ -215,12 +251,27 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // Real-time Dashboard & Monitoring
         Route::get('/dashboard/overview', [App\Http\Controllers\TeacherDashboardController::class, 'getDashboardOverview']);
+        Route::get('/dashboard/student-stats', [App\Http\Controllers\TeacherDashboardController::class, 'getStudentStats']);
         Route::get('/dashboard/performance-data', [App\Http\Controllers\TeacherDashboardController::class, 'getPerformanceData']);
         Route::get('/dashboard/recent-activities', [App\Http\Controllers\TeacherDashboardController::class, 'getRecentActivities']);
         Route::get('/dashboard/test-statistics/{examId}', [App\Http\Controllers\TeacherDashboardController::class, 'getTestStatistics']);
         Route::get('/dashboard/active-sessions', [App\Http\Controllers\TeacherDashboardController::class, 'getActiveSessions']);
         Route::post('/dashboard/send-message', [App\Http\Controllers\TeacherDashboardController::class, 'sendMessageToStudent']);
         Route::get('/dashboard/connection-logs/{submissionId}', [App\Http\Controllers\TeacherDashboardController::class, 'getConnectionLogs']);
+        
+        // Age-Group Content Management (NEW)
+        Route::prefix('content')->group(function () {
+            Route::post('/kids/create', [AgeGroupContentController::class, 'createKidsContent']);
+            Route::post('/teens/create', [AgeGroupContentController::class, 'createTeensContent']);
+            Route::post('/adults/create', [AgeGroupContentController::class, 'createAdultsContent']);
+            Route::get('/{id}/preview/{ageGroup}', [AgeGroupContentController::class, 'previewContent']);
+        });
+        
+        // Smart Assignment (NEW)
+        Route::post('/assignments/smart-assign', [AgeGroupContentController::class, 'smartAssign']);
+        
+        // Analytics by Age Group (NEW)
+        Route::get('/analytics/by-age-group', [AgeGroupContentController::class, 'getAnalyticsByAgeGroup']);
     });
     
     /* ======== STUDENT ROUTES ========= */
@@ -278,14 +329,28 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/practice/{id}/start', [StudentPracticeController::class, 'start']);
         Route::post('/practice/{submissionId}/answer', [StudentPracticeController::class, 'answer']);
         Route::post('/practice/{submissionId}/complete', [StudentPracticeController::class, 'complete']);
+        
+        // Gamification & Rewards
+        Route::prefix('gamification')->group(function () {
+            Route::get('/overview', [StudentGamificationController::class, 'getOverview']);
+            Route::get('/coins', [StudentGamificationController::class, 'getCoins']);
+            Route::get('/badges', [StudentGamificationController::class, 'getBadges']);
+            Route::get('/achievements', [StudentGamificationController::class, 'getAchievements']);
+            Route::get('/stats', [StudentGamificationController::class, 'getStats']);
+            Route::get('/streak', [StudentGamificationController::class, 'getStreak']);
+        });
+        
+        // Lesson/Exam/Practice Completion (with Gamification)
+        Route::post('/lessons/{lessonId}/complete', [App\Http\Controllers\StudentLessonController::class, 'completeLesson']);
+        Route::post('/exams/{examId}/submit', [App\Http\Controllers\StudentExamController::class, 'submitExam']);
+        Route::post('/practice/complete', [App\Http\Controllers\StudentPracticeController::class, 'completePractice']);
         Route::get('/practice/{submissionId}/result', [StudentPracticeController::class, 'result']);
 
-        // Gamification
-        Route::get('/gamification/achievements', [StudentGamificationController::class, 'getAchievements']);
-        Route::get('/gamification/points', [StudentGamificationController::class, 'getPoints']);
-        Route::get('/gamification/leaderboard', [StudentGamificationController::class, 'getLeaderboard']);
-        Route::get('/gamification/streak', [StudentGamificationController::class, 'getStreak']);
-        Route::post('/gamification/sync-rewards', [StudentGamificationController::class, 'syncRewards']);
+        // Gamification Test Routes (for testing integration)
+        Route::prefix('test/gamification')->group(function () {
+            Route::post('/lesson-complete', [TestGamificationController::class, 'testLessonCompletion']);
+            Route::post('/exam-complete', [TestGamificationController::class, 'testExamCompletion']);
+        });
 
         // Analytics
         Route::get('/analytics/overview', [StudentAnalyticsController::class, 'overview']);
@@ -362,6 +427,14 @@ Route::middleware('auth:sanctum')->group(function () {
         // Statistics
         Route::get('/content/statistics', [BlogController::class, 'contentStatistics']);
         Route::get('/templates/statistics', [ExamTemplateController::class, 'templateStatistics']);
+        // System Settings & Notifications
+        Route::prefix('system')->group(function () {
+            Route::get('/settings', [AdminSystemController::class, 'getSettings']);
+            Route::post('/settings', [AdminSystemController::class, 'updateSettings']);
+            Route::get('/notifications', [AdminSystemController::class, 'getNotifications']);
+            Route::post('/notifications/{id}/read', [AdminSystemController::class, 'markNotificationRead']);
+        });
+
         // System Reports & Analytics
         Route::prefix('reports')->group(function () {
             Route::get('/dashboard', [SystemReportController::class, 'dashboard']);

@@ -442,6 +442,100 @@ class PracticeController extends Controller
      *     @OA\Response(response=404, description="Practice session not found")
      * )
      */
+    /**
+     * Update practice session
+     * PUT /api/teacher/practice-sessions/{id}
+     */
+    public function update(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $practiceSession = PracticeSession::where('ps_id', $id)
+                                         ->where('ps_teacher_id', $user->uId)
+                                         ->first();
+
+        if (!$practiceSession) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy bài ôn tập.'
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'ps_title' => 'nullable|string|max:255',
+            'ps_description' => 'nullable|string',
+            'ps_duration_minutes' => 'nullable|integer|min:1',
+            'ps_difficulty' => 'nullable|in:easy,medium,hard',
+            'ps_topic' => 'nullable|string|max:100',
+            'ps_tags' => 'nullable|string',
+            'ps_is_active' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        // Update practice session fields
+        if ($request->has('ps_title')) {
+            $practiceSession->ps_title = $request->ps_title;
+        }
+        if ($request->has('ps_description')) {
+            $practiceSession->ps_description = $request->ps_description;
+        }
+        if ($request->has('ps_duration_minutes')) {
+            $practiceSession->ps_duration_minutes = $request->ps_duration_minutes;
+        }
+        if ($request->has('ps_difficulty')) {
+            $practiceSession->ps_difficulty = $request->ps_difficulty;
+        }
+        if ($request->has('ps_topic')) {
+            $practiceSession->ps_topic = $request->ps_topic;
+        }
+        if ($request->has('ps_tags')) {
+            $practiceSession->ps_tags = $request->ps_tags;
+        }
+        if ($request->has('ps_is_active')) {
+            $practiceSession->ps_is_active = $request->ps_is_active;
+        }
+
+        $practiceSession->save();
+
+        // Update associated exam if needed
+        if ($practiceSession->exam && $request->has('exam')) {
+            $examData = $request->exam;
+            $exam = $practiceSession->exam;
+
+            if (isset($examData['eTitle'])) {
+                $exam->eTitle = $examData['eTitle'];
+            }
+            if (isset($examData['eDescription'])) {
+                $exam->eDescription = $examData['eDescription'];
+            }
+            if (isset($examData['eDuration_minutes'])) {
+                $exam->eDuration_minutes = $examData['eDuration_minutes'];
+            }
+
+            $exam->save();
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Cập nhật bài ôn tập thành công.',
+            'data' => $practiceSession->load('exam')
+        ]);
+    }
+
     public function destroy(Request $request, $id)
     {
         $user = $request->user();

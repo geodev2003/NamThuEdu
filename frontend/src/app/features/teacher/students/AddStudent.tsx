@@ -1,66 +1,215 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
   ArrowLeft,
   Upload,
   Camera,
-  RefreshCw,
   Save,
   X,
   Eye,
   EyeOff,
   User,
-  BookOpen,
   Shield,
-  Check,
   Phone,
   Mail,
   MapPin,
   Calendar,
-  Hash,
-  FileText,
+  Baby,
+  Users,
+  GraduationCap,
 } from "lucide-react";
+import { useToast } from "../../../../hooks/useToast";
+import { ToastContainer } from "../../../../components/ui";
+import { StudentCredentialsModal } from "./StudentCredentialsModal";
 
 export function AddStudent() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { toasts, removeToast, success, error: showError } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [autoPassword, setAutoPassword] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [studentCredentials, setStudentCredentials] = useState<{
+    name: string;
+    phone: string;
+    password: string;
+  } | null>(null);
   const [formData, setFormData] = useState({
-    fullName: "",
-    phone: "",
-    email: "",
-    dob: "",
+    studentName: "",
+    studentPhone: "",
+    studentEmail: "",
+    studentDoB: "",
     gender: "male",
     address: "",
-    classes: [] as string[],
-    courses: [] as string[],
-    studentId: "ST2024-001248",
-    notes: "",
-    password: "",
+    age_group: "teens" as "kids" | "teens" | "adults",
+    studentPassword: "",
     confirmPassword: "",
     sendSMS: false,
     status: "active",
   });
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+
+  const ageGroups = [
+    {
+      value: 'kids' as const,
+      label: 'Trẻ em',
+      ageRange: '6-12 tuổi',
+      icon: Baby,
+      color: 'from-pink-400 to-purple-400',
+      bgColor: 'bg-pink-50',
+      borderColor: 'border-pink-300',
+      description: 'Lớp 1 - 5 (Tiểu học)'
+    },
+    {
+      value: 'teens' as const,
+      label: 'Thiếu niên',
+      ageRange: '13-17 tuổi',
+      icon: Users,
+      color: 'from-orange-400 to-amber-400',
+      bgColor: 'bg-orange-50',
+      borderColor: 'border-orange-300',
+      description: 'Cấp 2 - 3 (THCS + THPT)'
+    },
+    {
+      value: 'adults' as const,
+      label: 'Người lớn',
+      ageRange: '18+ tuổi',
+      icon: GraduationCap,
+      color: 'from-slate-400 to-gray-400',
+      bgColor: 'bg-slate-50',
+      borderColor: 'border-slate-300',
+      description: 'Sinh viên & người đi làm'
+    },
+  ];
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Kích thước ảnh không được vượt quá 5MB');
+        return;
+      }
+
+      // Validate file type - accept common image formats
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml'];
+      if (!allowedTypes.includes(file.type)) {
+        setError('Vui lòng chọn file ảnh hợp lệ (JPG, PNG, GIF, WEBP, BMP, SVG)');
+        return;
+      }
+
+      setAvatarFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      setError(null);
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    console.log("Form submitted:", formData);
+    setError(null);
+    
+    // Validate password if not auto-generating
+    if (!autoPassword && !formData.studentPassword) {
+      setError('Vui lòng nhập mật khẩu');
+      return;
+    }
+    
+    setIsLoading(true);
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      // Create FormData for multipart/form-data
+      const formDataToSend = new FormData();
+      
+      // Append all form fields
+      formDataToSend.append('studentName', formData.studentName);
+      formDataToSend.append('studentPhone', formData.studentPhone);
+      if (formData.studentEmail) formDataToSend.append('studentEmail', formData.studentEmail);
+      if (formData.studentDoB) formDataToSend.append('studentDoB', formData.studentDoB);
+      formDataToSend.append('gender', formData.gender);
+      if (formData.address) formDataToSend.append('address', formData.address);
+      formDataToSend.append('age_group', formData.age_group);
+      
+      // Handle password - auto-generate if checkbox is checked
+      const passwordToSend = autoPassword 
+        ? Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase() 
+        : formData.studentPassword;
+      formDataToSend.append('studentPassword', passwordToSend);
+      
+      formDataToSend.append('status', formData.status);
+      
+      // Append avatar if selected
+      if (avatarFile) {
+        formDataToSend.append('avatar', avatarFile);
+        console.log('Avatar file attached:', avatarFile.name, avatarFile.size);
+      }
+
+      console.log('Submitting form data...');
+      console.log('Auto password:', autoPassword);
+      console.log('Password length:', passwordToSend.length);
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/teacher/student`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          // Don't set Content-Type, let browser set it with boundary for FormData
+        },
+        body: formDataToSend,
+      });
+
+      const data = await response.json();
+      console.log('Response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Không thể tạo học viên');
+      }
+
+      // Success - show credentials modal with password
+      setStudentCredentials({
+        name: formData.studentName,
+        phone: formData.studentPhone,
+        password: data.data?.password || passwordToSend, // Get password from response or use the one we sent
+      });
+      setShowCredentialsModal(true);
+      
+      success(`Đã tạo học viên "${formData.studentName}" thành công! 🎉`);
+    } catch (err: any) {
+      console.error('Error:', err);
+      setError(err.message || 'Có lỗi xảy ra');
+      showError(err.message || 'Có lỗi xảy ra khi tạo học viên');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const steps = [
     { id: 1, title: "Thông tin cá nhân", icon: User },
-    { id: 2, title: "Thông tin học tập", icon: BookOpen },
-    { id: 3, title: "Tài khoản", icon: Shield },
+    { id: 2, title: "Tài khoản", icon: Shield },
   ];
 
   return (
     <div className="p-8 min-h-screen pb-48 bg-gradient-to-br from-[#F9FAFB] to-[#F3F4F6]">
+      <ToastContainer toasts={toasts} onClose={removeToast} />
       {/* Header */}
       <div className="mb-8">
         <Link
@@ -108,7 +257,7 @@ export function AddStudent() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="max-w-6xl">
+      <form onSubmit={handleSubmit} className="w-full">
         {/* Section 1: Personal Information */}
         <div className="bg-white rounded-2xl p-8 border border-[#E5E7EB] shadow-sm hover:shadow-md transition-shadow mb-6">
           <div className="flex items-center gap-3 mb-8 pb-6 border-b border-[#F3F4F6]">
@@ -130,21 +279,39 @@ export function AddStudent() {
             <div className="flex flex-col items-center">
               <div className="relative group">
                 <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-[#F3F4F6] to-[#E5E7EB] border-2 border-dashed border-[#D1D5DB] flex items-center justify-center group-hover:border-[#EA580C] transition-all cursor-pointer overflow-hidden">
-                  <Camera className="w-10 h-10 text-[#9CA3AF] group-hover:text-[#EA580C] transition-colors" />
+                  {avatarPreview ? (
+                    <img 
+                      src={avatarPreview} 
+                      alt="Avatar preview" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Camera className="w-10 h-10 text-[#9CA3AF] group-hover:text-[#EA580C] transition-colors" />
+                  )}
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp,image/svg+xml"
+                    onChange={handleAvatarChange}
                     className="absolute inset-0 opacity-0 cursor-pointer"
                   />
                 </div>
                 <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-[#EA580C] flex items-center justify-center shadow-lg">
                   <Upload className="w-5 h-5 text-white" />
                 </div>
+                {avatarPreview && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-red-500 flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors"
+                  >
+                    <X className="w-4 h-4 text-white" />
+                  </button>
+                )}
               </div>
               <p className="text-xs text-[#6B7280] mt-3 text-center font-medium">
                 Tải ảnh đại diện
                 <br />
-                <span className="text-[#9CA3AF]">PNG, JPG (Max 2MB)</span>
+                <span className="text-[#9CA3AF]">JPG, PNG, GIF, WEBP (Max 5MB)</span>
               </p>
             </div>
 
@@ -157,8 +324,8 @@ export function AddStudent() {
                 <input
                   type="text"
                   required
-                  value={formData.fullName}
-                  onChange={(e) => handleInputChange("fullName", e.target.value)}
+                  value={formData.studentName}
+                  onChange={(e) => handleInputChange("studentName", e.target.value)}
                   placeholder="Nhập họ và tên đầy đủ"
                   className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
                 />
@@ -172,8 +339,8 @@ export function AddStudent() {
                 <input
                   type="tel"
                   required
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
+                  value={formData.studentPhone}
+                  onChange={(e) => handleInputChange("studentPhone", e.target.value)}
                   placeholder="0901 234 567"
                   className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
                 />
@@ -182,12 +349,12 @@ export function AddStudent() {
               <div>
                 <label className="flex items-center gap-2 text-sm font-semibold text-[#111827] mb-3">
                   <Mail className="w-4 h-4 text-[#6B7280]" />
-                  Email
+                  Email <span className="text-[#9CA3AF] font-normal">(Không bắt buộc)</span>
                 </label>
                 <input
                   type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  value={formData.studentEmail}
+                  onChange={(e) => handleInputChange("studentEmail", e.target.value)}
                   placeholder="hocsinh@email.com"
                   className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
                 />
@@ -203,8 +370,8 @@ export function AddStudent() {
               </label>
               <input
                 type="date"
-                value={formData.dob}
-                onChange={(e) => handleInputChange("dob", e.target.value)}
+                value={formData.studentDoB}
+                onChange={(e) => handleInputChange("studentDoB", e.target.value)}
                 className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] hover:border-[#D1D5DB]"
               />
             </div>
@@ -254,115 +421,65 @@ export function AddStudent() {
                 className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent resize-none transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
               />
             </div>
-          </div>
-        </div>
-
-        {/* Section 2: Academic Information */}
-        <div className="bg-white rounded-2xl p-8 border border-[#E5E7EB] shadow-sm hover:shadow-md transition-shadow mb-6">
-          <div className="flex items-center gap-3 mb-8 pb-6 border-b border-[#F3F4F6]">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7]">
-              <BookOpen className="w-6 h-6 text-[#10B981]" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-[#111827]">
-                Thông tin học tập
-              </h2>
-              <p className="text-sm text-[#6B7280]">
-                Lớp học, khóa học và thông tin liên quan
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-semibold text-[#111827] mb-3">
-                Lớp học
-              </label>
-              <select
-                multiple
-                className="w-full px-4 py-3 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] hover:border-[#D1D5DB]"
-                style={{ minHeight: "140px" }}
-              >
-                <option className="py-2 hover:bg-[#FFF7ED]">IELTS 6.5 - Sáng (T2, T4, T6)</option>
-                <option className="py-2 hover:bg-[#FFF7ED]">TOEIC 750 - Chiều (T3, T5, T7)</option>
-                <option className="py-2 hover:bg-[#FFF7ED]">Cambridge FCE - Tối (T2, T4)</option>
-                <option className="py-2 hover:bg-[#FFF7ED]">VSTEP B2 - Cuối tuần (T7, CN)</option>
-              </select>
-              <div className="flex items-center gap-2 mt-2 text-xs text-[#6B7280] bg-[#F9FAFB] px-3 py-2 rounded-lg">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#EA580C]" />
-                Giữ Ctrl/Cmd để chọn nhiều lớp
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-[#111827] mb-3">
-                Khóa học
-              </label>
-              <select
-                multiple
-                className="w-full px-4 py-3 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] hover:border-[#D1D5DB]"
-                style={{ minHeight: "140px" }}
-              >
-                <option className="py-2 hover:bg-[#FFF7ED]">IELTS Foundation</option>
-                <option className="py-2 hover:bg-[#FFF7ED]">IELTS Intermediate</option>
-                <option className="py-2 hover:bg-[#FFF7ED]">TOEIC Basic</option>
-                <option className="py-2 hover:bg-[#FFF7ED]">TOEIC Advanced</option>
-                <option className="py-2 hover:bg-[#FFF7ED]">Cambridge FCE</option>
-                <option className="py-2 hover:bg-[#FFF7ED]">VSTEP B2</option>
-              </select>
-              <div className="flex items-center gap-2 mt-2 text-xs text-[#6B7280] bg-[#F9FAFB] px-3 py-2 rounded-lg">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#EA580C]" />
-                Giữ Ctrl/Cmd để chọn nhiều khóa
-              </div>
-            </div>
 
             <div className="col-span-2">
-              <label className="flex items-center gap-2 text-sm font-semibold text-[#111827] mb-3">
-                <Hash className="w-4 h-4 text-[#6B7280]" />
-                Mã học sinh
+              <label className="block text-sm font-semibold text-[#111827] mb-3">
+                Chọn độ tuổi học viên <span className="text-red-500">*</span>
               </label>
-              <div className="flex items-center gap-3">
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    value={formData.studentId}
-                    readOnly
-                    className="w-full px-4 py-3.5 bg-gradient-to-r from-[#F9FAFB] to-[#F3F4F6] border border-[#E5E7EB] rounded-xl text-[#6B7280] font-mono font-semibold"
-                  />
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-0.5 bg-[#FFEDD5] text-[#EA580C] text-xs font-bold rounded">
-                    AUTO
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="p-3.5 border border-[#E5E7EB] rounded-xl hover:bg-[#FFF7ED] hover:border-[#EA580C] transition-all group"
-                >
-                  <RefreshCw className="w-5 h-5 text-[#6B7280] group-hover:text-[#EA580C] group-hover:rotate-180 transition-all duration-500" />
-                </button>
-              </div>
-              <p className="text-xs text-[#6B7280] mt-2 flex items-center gap-1.5">
-                <Check className="w-3.5 h-3.5 text-[#10B981]" />
-                Mã tự động tạo, click để tạo lại mã mới
+              <p className="text-xs text-[#6B7280] mb-3">
+                Học viên sẽ được tự động gán vào lớp phù hợp với độ tuổi
               </p>
-            </div>
-
-            <div className="col-span-2">
-              <label className="flex items-center gap-2 text-sm font-semibold text-[#111827] mb-3">
-                <FileText className="w-4 h-4 text-[#6B7280]" />
-                Ghi chú
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => handleInputChange("notes", e.target.value)}
-                placeholder="Thêm ghi chú về học sinh: năng lực, mục tiêu học tập, lưu ý đặc biệt..."
-                rows={4}
-                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent resize-none transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
-              />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {ageGroups.map((group) => {
+                  const Icon = group.icon;
+                  const isSelected = formData.age_group === group.value;
+                  
+                  return (
+                    <button
+                      key={group.value}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, age_group: group.value }))}
+                      className={`
+                        relative p-4 rounded-xl border-2 transition-all
+                        ${isSelected 
+                          ? `${group.borderColor} ${group.bgColor} shadow-lg scale-105` 
+                          : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                        }
+                      `}
+                    >
+                      <div className="flex flex-col items-center text-center space-y-2">
+                        <div className={`
+                          w-12 h-12 rounded-full bg-gradient-to-r ${group.color} 
+                          flex items-center justify-center
+                          ${isSelected ? 'scale-110' : ''}
+                          transition-transform
+                        `}>
+                          <Icon className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-800">{group.label}</div>
+                          <div className="text-sm text-slate-600 font-medium">{group.ageRange}</div>
+                          <div className="text-xs text-slate-500 mt-1">{group.description}</div>
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <div className="absolute top-2 right-2">
+                          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Section 3: Account */}
+        {/* Section 2: Account */}
         <div className="bg-white rounded-2xl p-8 border border-[#E5E7EB] shadow-sm hover:shadow-md transition-shadow mb-6">
           <div className="flex items-center gap-3 mb-8 pb-6 border-b border-[#F3F4F6]">
             <div className="p-3 rounded-xl bg-gradient-to-br from-[#FEF3C7] to-[#FDE68A]">
@@ -411,8 +528,8 @@ export function AddStudent() {
                     <input
                       type={showPassword ? "text" : "password"}
                       required={!autoPassword}
-                      value={formData.password}
-                      onChange={(e) => handleInputChange("password", e.target.value)}
+                      value={formData.studentPassword}
+                      onChange={(e) => handleInputChange("studentPassword", e.target.value)}
                       placeholder="Nhập mật khẩu mạnh"
                       className="w-full px-4 py-3.5 pr-12 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all bg-white"
                     />
@@ -516,6 +633,13 @@ export function AddStudent() {
 
         {/* Action Buttons */}
         <div className="sticky bottom-0 bg-white/95 backdrop-blur-sm border-t-2 border-[#E5E7EB] -mx-8 px-8 py-5 flex items-center justify-between shadow-2xl rounded-t-2xl">
+          {error && (
+            <div className="flex-1 mr-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-red-700 text-sm flex items-center gap-2">
+                <span>⚠️</span> {error}
+              </p>
+            </div>
+          )}
           <Link
             to="/giao-vien/students"
             className="flex items-center gap-2 px-6 py-3.5 border-2 border-[#E5E7EB] text-[#374151] rounded-xl hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-all font-semibold"
@@ -525,21 +649,43 @@ export function AddStudent() {
           </Link>
           <div className="flex items-center gap-3">
             <button
-              type="button"
-              className="px-6 py-3.5 border-2 border-[#E5E7EB] text-[#374151] rounded-xl hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-all font-semibold"
-            >
-              Lưu nháp
-            </button>
-            <button
               type="submit"
-              className="flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#EA580C] to-[#C2410C] text-white rounded-xl hover:shadow-xl hover:shadow-orange-500/30 hover:scale-105 transition-all font-bold"
+              disabled={isLoading}
+              className="flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#EA580C] to-[#C2410C] text-white rounded-xl hover:shadow-xl hover:shadow-orange-500/30 hover:scale-105 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
-              <Save className="w-5 h-5" />
-              Thêm học sinh
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Đang tạo...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-5 h-5" />
+                  Thêm học sinh
+                </>
+              )}
             </button>
           </div>
         </div>
       </form>
+      
+      {/* Student Credentials Modal */}
+      {studentCredentials && (
+        <StudentCredentialsModal
+          isOpen={showCredentialsModal}
+          onClose={() => {
+            setShowCredentialsModal(false);
+            // Navigate to students list after closing modal
+            setTimeout(() => {
+              navigate('/giao-vien/students');
+            }, 300);
+          }}
+          studentData={studentCredentials}
+        />
+      )}
     </div>
   );
 }

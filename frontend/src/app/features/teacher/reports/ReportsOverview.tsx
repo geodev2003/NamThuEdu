@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import {
   Users,
@@ -15,6 +15,7 @@ import {
   PieChart,
   Activity,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 import {
   LineChart,
@@ -36,9 +37,73 @@ import {
 
 export function ReportsOverview() {
   const [dateRange, setDateRange] = useState("30days");
+  const [reportsData, setReportsData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data for performance over time
-  const performanceData = [
+  useEffect(() => {
+    const fetchReportsData = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/reports/overview`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === 'success') {
+            setReportsData(result.data);
+          } else {
+            setError('Không thể tải báo cáo tổng quan');
+          }
+        } else {
+          setError('Lỗi khi tải dữ liệu');
+        }
+      } catch (err) {
+        setError('Lỗi kết nối đến server');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReportsData();
+  }, [dateRange]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-semibold">Đang tải báo cáo tổng quan...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !reportsData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
+        <div className="text-center bg-white rounded-2xl p-8 border border-red-200">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <p className="text-red-600 font-semibold mb-2">{error || 'Không tìm thấy dữ liệu'}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const performanceData = reportsData.performanceData || [
     { date: "T2", score: 65, submissions: 12 },
     { date: "T3", score: 68, submissions: 15 },
     { date: "T4", score: 72, submissions: 18 },
@@ -47,16 +112,14 @@ export function ReportsOverview() {
     { date: "T7", score: 78, submissions: 22 },
     { date: "CN", score: 80, submissions: 25 },
   ];
-
-  // Submissions by status
-  const submissionStatus = [
+  
+  const submissionStatus = reportsData.submissionStatus || [
     { name: "Đã chấm", value: 245, color: "#10B981" },
     { name: "Đang chờ", value: 38, color: "#F59E0B" },
     { name: "Đang làm", value: 15, color: "#3B82F6" },
   ];
-
-  // Recent activities
-  const recentActivities = [
+  
+  const recentActivities = reportsData.recentActivities || [
     {
       id: "1",
       type: "completed",

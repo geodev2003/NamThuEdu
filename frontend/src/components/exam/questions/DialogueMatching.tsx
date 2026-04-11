@@ -1,0 +1,105 @@
+interface DialogueMatchingProps {
+  question: any;
+  taskData: any;
+  interactiveMode: boolean;
+  userAnswer?: any;
+  onAnswerChange?: (answer: any) => void;
+}
+
+export function DialogueMatching({
+  question,
+  taskData,
+  interactiveMode,
+  userAnswer,
+  onAnswerChange
+}: DialogueMatchingProps) {
+  const realTaskData = taskData.task_data || taskData;
+  const config = taskData.config || realTaskData.config || {};
+  
+  const questions = realTaskData?.questions || config?.questions || [];
+  const distractors = realTaskData?.distractors || config?.distractors || [];
+  const instructions = realTaskData?.instructions || config?.instructions;
+  
+  // Combine correct answers and distractors for selection
+  const allOptions = [
+    ...questions.map((q: any) => q.correct_answer || q.correctAnswer),
+    ...distractors
+  ].filter(Boolean);
+  
+  return (
+    <div className="space-y-4">
+      {/* Instructions */}
+      {instructions && (
+        <div className="p-4 bg-green-50 rounded-lg border-2 border-green-200">
+          <p className="text-green-900 font-medium text-lg">💬 {instructions}</p>
+        </div>
+      )}
+      
+      {/* Available responses */}
+      {allOptions.length > 0 && (
+        <div className="p-4 bg-green-50 rounded-lg border-2 border-green-200">
+          <p className="text-sm font-bold text-green-900 mb-3">📝 Các câu trả lời:</p>
+          <div className="grid grid-cols-1 gap-2">
+            {allOptions.map((option: string, idx: number) => (
+              <div key={idx} className="px-3 py-2 bg-white border-2 border-green-300 rounded-lg">
+                <span className="font-medium text-gray-800">{String.fromCharCode(65 + idx)}. {option}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Questions */}
+      {questions.length > 0 ? (
+        <div className="space-y-4">
+          {questions.map((q: any, idx: number) => {
+            const questionText = q.question || q.text || q.questionText;
+            const isExample = q.isExample || q.is_example;
+            
+            return (
+              <div key={idx} className="p-5 bg-white rounded-xl border-3 border-green-200 shadow-md hover:shadow-lg transition-shadow">
+                <div className="flex items-start gap-4">
+                  <span className="flex-shrink-0 w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center font-bold">
+                    {idx + 1}
+                  </span>
+                  <div className="flex-1 space-y-3">
+                    <p className="font-medium text-lg text-gray-800">
+                      {questionText}
+                      {isExample && <span className="ml-2 text-amber-600 font-bold">📌 (Ví dụ)</span>}
+                    </p>
+                    
+                    {/* Dropdown to select answer */}
+                    <select
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none text-lg font-medium"
+                      disabled={!interactiveMode}
+                      value={userAnswer?.[idx] || ''}
+                      onChange={(e) => {
+                        if (onAnswerChange) {
+                          onAnswerChange({
+                            ...userAnswer,
+                            [idx]: e.target.value
+                          });
+                        }
+                      }}
+                    >
+                      <option value="">-- Chọn câu trả lời --</option>
+                      {allOptions.map((option: string, optIdx: number) => (
+                        <option key={optIdx} value={option}>
+                          {String.fromCharCode(65 + optIdx)}. {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="p-6 bg-yellow-50 rounded-lg border-2 border-yellow-300">
+          <p className="text-yellow-800 font-medium">⚠️ Không tìm thấy questions cho task này</p>
+        </div>
+      )}
+    </div>
+  );
+}

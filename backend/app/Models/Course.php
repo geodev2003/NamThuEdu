@@ -24,6 +24,7 @@ class Course extends Model
         'cEndDate',
         'cStatus',
         'cTeacher',
+        'class_id',
         'cDescription',
         'cDeleteAt',
     ];
@@ -41,6 +42,13 @@ class Course extends Model
     /**
      * Relationships
      */
+    
+    // Class this course belongs to
+    public function class()
+    {
+        return $this->belongsTo(ClassModel::class, 'class_id', 'cId');
+    }
+    
     public function teacher()
     {
         return $this->belongsTo(User::class, 'cTeacher', 'uId');
@@ -88,5 +96,10 @@ class Course extends Model
     public function scopeByTeacher($query, $teacherId)
     {
         return $query->where('cTeacher', $teacherId);
+    }
+    
+    public function scopeInClass($query, $classId)
+    {
+        return $query->where('class_id', $classId);
     }
 }

@@ -92,11 +92,24 @@ class ExamController extends Controller
         $validator = Validator::make($request->all(), [
             'eTitle' => 'required|string|max:255',
             'eDescription' => 'nullable|string',
-            'eType' => 'required|in:VSTEP,IELTS,GENERAL',
+            'eType' => 'required|in:VSTEP,IELTS,GENERAL,exam,practice',
             'eSkill' => 'required|in:listening,reading,writing,speaking,mixed',
             'eDuration_minutes' => 'required|integer|min:1',
             'eIs_private' => 'nullable|boolean',
             'eSource_type' => 'nullable|in:manual,upload',
+            'age_group' => 'nullable|in:kids,teens,adults,all',
+            // New flexible format
+            'content_blocks' => 'nullable|array',
+            'content_blocks.*.block_type' => 'required_with:content_blocks|in:passage,audio,video,image,instruction',
+            'content_blocks.*.content' => 'nullable|string',
+            'content_blocks.*.metadata' => 'nullable|array',
+            'content_blocks.*.display_order' => 'nullable|integer',
+            'questions' => 'nullable|array',
+            'questions.*.qType' => 'required_with:questions|string',
+            'questions.*.qContent' => 'required_with:questions|string',
+            'questions.*.qPoints' => 'nullable|integer',
+            'questions.*.qData' => 'nullable|array',
+            'questions.*.content_block_id' => 'nullable|integer',
         ]);
 
         if ($validator->fails()) {
@@ -107,21 +120,102 @@ class ExamController extends Controller
             ], 400);
         }
 
-        $exam = Exam::create([
-            'eTitle' => $request->eTitle,
-            'eDescription' => $request->eDescription,
-            'eType' => $request->eType,
-            'eSkill' => $request->eSkill,
-            'eTeacher_id' => $user->uId,
-            'eDuration_minutes' => $request->eDuration_minutes,
-            'eIs_private' => $request->eIs_private ?? false,
-            'eSource_type' => $request->eSource_type ?? 'manual',
-        ]);
+        \DB::beginTransaction();
+        try {
+            // 1. Create exam
+            $exam = Exam::create([
+                'eTitle' => $request->eTitle,
+                'eDescription' => $request->eDescription,
+                'eType' => $request->eType,
+                'eSkill' => $request->eSkill,
+                'eTeacher_id' => $user->uId,
+                'eDuration_minutes' => $request->eDuration_minutes,
+                'eIs_private' => $request->eIs_private ?? false,
+                'eSource_type' => $request->eSource_type ?? 'manual',
+                'age_group' => $request->age_group ?? 'all',
+            ]);
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $exam
-        ]);
+            // 2. Create content blocks (if provided)
+            $contentBlockMap = [];
+            if ($request->has('content_blocks')) {
+                foreach ($request->content_blocks as $index => $blockData) {
+                    $block = \App\Models\ContentBlock::create([
+                        'exam_id' => $exam->eId,
+                        'block_type' => $blockData['block_type'],
+                        'content' => $blockData['content'] ?? null,
+                        'metadata' => $blockData['metadata'] ?? null,
+                        'display_order' => $blockData['display_order'] ?? ($index + 1),
+                    ]);
+                    
+                    // Map index (1-based) to block id
+                    $contentBlockMap[$index + 1] = $block->id;
+                }
+            }
+
+            // 3. Create questions (if provided)
+            if ($request->has('questions')) {
+                foreach ($request->questions as $qIndex => $questionData) {
+                    // Resolve content_block_id (support both index and actual id)
+                    $contentBlockId = null;
+                    if (isset($questionData['content_block_id'])) {
+                        $cbId = $questionData['content_block_id'];
+                        // If it's a small number (1-10), treat as index
+                        if ($cbId <= 10 && isset($contentBlockMap[$cbId])) {
+                            $contentBlockId = $contentBlockMap[$cbId];
+                        } else {
+                            $contentBlockId = $cbId;
+                        }
+                    }
+                    
+                    $question = \App\Models\Question::create([
+                        'exam_id' => $exam->eId,
+                        'content_block_id' => $contentBlockId,
+                        'qType' => $questionData['qType'],
+                        'qContent' => $questionData['qContent'],
+                        'qPoints' => $questionData['qPoints'] ?? 1,
+                        'qData' => $questionData['qData'] ?? null,
+                        'age_group' => $questionData['age_group'] ?? $exam->age_group,
+                        'qSection_order' => $qIndex + 1,
+                    ]);
+                    
+                    // 4. Create answers from qData (if options provided)
+                    if (isset($questionData['qData']['options'])) {
+                        foreach ($questionData['qData']['options'] as $aIndex => $option) {
+                            $isCorrect = false;
+                            if (isset($questionData['qData']['correct_answer'])) {
+                                $correctAnswer = $questionData['qData']['correct_answer'];
+                                // Support both id-based and index-based correct answer
+                                $isCorrect = ($option['id'] == $correctAnswer) || ($aIndex == $correctAnswer);
+                            }
+                            
+                            \App\Models\Answer::create([
+                                'question_id' => $question->qId,
+                                'aText' => $option['text'],
+                                'aIs_correct' => $isCorrect,
+                                'aOrder' => $aIndex,
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            \DB::commit();
+
+            // Load relationships
+            $exam->load(['contentBlocks', 'questions.answers']);
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $exam
+            ]);
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Lỗi khi tạo đề thi: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -158,7 +252,16 @@ class ExamController extends Controller
 
         $exam = Exam::where('eId', $id)
                    ->where('eTeacher_id', $user->uId)
-                   ->with(['questions.answers'])
+                   ->with([
+                       'contentBlocks' => function($q) {
+                           $q->orderBy('display_order');
+                       },
+                       'questions' => function($q) {
+                           $q->orderBy('qSection_order');
+                       },
+                       'questions.answers',
+                       'questions.contentBlock'
+                   ])
                    ->first();
 
         if (!$exam) {

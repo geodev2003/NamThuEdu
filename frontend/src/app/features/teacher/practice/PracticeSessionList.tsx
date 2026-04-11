@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import {
   Plus,
@@ -25,6 +25,7 @@ import {
   TrendingUp,
   CheckCircle,
   Calendar,
+  Loader2,
 } from "lucide-react";
 
 type PracticeType = "topic" | "template" | "random";
@@ -48,104 +49,48 @@ interface PracticeSession {
   isPrivate: boolean;
 }
 
-const mockSessions: PracticeSession[] = [
-  {
-    id: "1",
-    title: "IELTS Reading - Cambridge 18 Test 1",
-    type: "template",
-    skill: "reading",
-    difficulty: "medium",
-    purpose: "mock_test",
-    duration: 60,
-    questionCount: 40,
-    createdAt: "2024-03-20",
-    timesAssigned: 5,
-    completionRate: 78,
-    avgScore: 7.5,
-    isPrivate: false,
-  },
-  {
-    id: "2",
-    title: "Grammar - Present Perfect vs Past Simple",
-    type: "topic",
-    skill: "reading",
-    difficulty: "easy",
-    purpose: "practice",
-    duration: 30,
-    questionCount: 25,
-    createdAt: "2024-03-19",
-    timesAssigned: 12,
-    completionRate: 92,
-    avgScore: 8.2,
-    isPrivate: false,
-  },
-  {
-    id: "3",
-    title: "Listening Comprehension - Mixed Skills",
-    type: "random",
-    skill: "listening",
-    difficulty: "mixed",
-    purpose: "drill",
-    duration: 45,
-    questionCount: 30,
-    createdAt: "2024-03-18",
-    timesAssigned: 8,
-    completionRate: 65,
-    avgScore: 6.8,
-    isPrivate: true,
-  },
-  {
-    id: "4",
-    title: "TOEIC Speaking Part 1-2",
-    type: "template",
-    skill: "speaking",
-    difficulty: "medium",
-    purpose: "practice",
-    duration: 20,
-    questionCount: 10,
-    createdAt: "2024-03-17",
-    timesAssigned: 3,
-    isPrivate: false,
-  },
-  {
-    id: "5",
-    title: "Essay Writing - Opinion Essays",
-    type: "topic",
-    skill: "writing",
-    difficulty: "hard",
-    purpose: "homework",
-    duration: 60,
-    questionCount: 2,
-    createdAt: "2024-03-16",
-    timesAssigned: 6,
-    completionRate: 83,
-    avgScore: 7.0,
-    isPrivate: false,
-  },
-  {
-    id: "6",
-    title: "Vocabulary - Academic Word List",
-    type: "topic",
-    skill: "reading",
-    difficulty: "easy",
-    purpose: "review",
-    duration: 25,
-    questionCount: 50,
-    createdAt: "2024-03-15",
-    timesAssigned: 15,
-    completionRate: 88,
-    avgScore: 8.5,
-    isPrivate: false,
-  },
-];
-
 export function PracticeSessionList() {
+  const [sessions, setSessions] = useState<PracticeSession[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterSkill, setFilterSkill] = useState<string>("all");
   const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
   const [filterPurpose, setFilterPurpose] = useState<string>("all");
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/practice-sessions`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === 'success') {
+            setSessions(result.data || []);
+          } else {
+            setError('Không thể tải danh sách bài luyện tập');
+          }
+        } else {
+          setError('Lỗi khi tải dữ liệu');
+        }
+      } catch (err) {
+        setError('Lỗi kết nối đến server');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSessions();
+  }, []);
 
   const getTypeConfig = (type: PracticeType) => {
     const configs = {
@@ -187,7 +132,7 @@ export function PracticeSessionList() {
     return labels[purpose];
   };
 
-  const filteredSessions = mockSessions.filter((session) => {
+  const filteredSessions = sessions.filter((session) => {
     const matchesSearch = session.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === "all" || session.type === filterType;
     const matchesSkill = filterSkill === "all" || session.skill === filterSkill;
@@ -195,6 +140,36 @@ export function PracticeSessionList() {
     const matchesPurpose = filterPurpose === "all" || session.purpose === filterPurpose;
     return matchesSearch && matchesType && matchesSkill && matchesDifficulty && matchesPurpose;
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-8 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-semibold">Đang tải bài luyện tập...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-8 flex items-center justify-center">
+        <div className="text-center bg-white rounded-2xl p-8 border border-red-200">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <p className="text-red-600 font-semibold mb-2">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-8">
@@ -222,7 +197,7 @@ export function PracticeSessionList() {
                 Tổng số
               </span>
             </div>
-            <p className="text-3xl font-bold text-gray-900 mb-1">{mockSessions.length}</p>
+            <p className="text-3xl font-bold text-gray-900 mb-1">{sessions.length}</p>
             <p className="text-sm text-gray-600">Bài luyện tập</p>
           </div>
 

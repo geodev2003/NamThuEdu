@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router";
 import {
   ArrowLeft,
@@ -13,6 +13,7 @@ import {
   Bell,
   TrendingUp,
   Target,
+  Loader2,
 } from "lucide-react";
 
 interface Student {
@@ -29,72 +30,56 @@ interface Student {
 export function AssignmentProgress() {
   const { assignmentId } = useParams();
   const [showReminderModal, setShowReminderModal] = useState(false);
+  const [assignment, setAssignment] = useState<any>(null);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data
-  const assignment = {
-    id: assignmentId,
-    examTitle: "Cambridge KET - Reading & Writing Test 1",
-    examType: "Cambridge KET",
-    targetType: "class" as const,
-    targetName: "Lớp KET Morning A1",
-    deadline: new Date(2024, 11, 30, 23, 59),
-    maxAttempts: 2,
-    isOverdue: false,
-  };
+  useEffect(() => {
+    const fetchAssignmentProgress = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/assignments/${assignmentId}/progress`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
 
-  const students: Student[] = [
-    {
-      id: "1",
-      name: "Nguyễn Văn An",
-      phone: "0901234567",
-      status: "completed",
-      score: 85,
-      submittedAt: new Date(2024, 11, 25, 14, 30),
-      attemptNumber: 1,
-      isGraded: true,
-    },
-    {
-      id: "2",
-      name: "Trần Thị Bình",
-      phone: "0901234568",
-      status: "completed",
-      score: 92,
-      submittedAt: new Date(2024, 11, 26, 10, 15),
-      attemptNumber: 1,
-      isGraded: true,
-    },
-    {
-      id: "3",
-      name: "Lê Hoàng Cường",
-      phone: "0901234569",
-      status: "completed",
-      score: 78,
-      submittedAt: new Date(2024, 11, 27, 16, 45),
-      attemptNumber: 2,
-      isGraded: true,
-    },
-    {
-      id: "4",
-      name: "Phạm Thị Dung",
-      phone: "0901234570",
-      status: "not-started",
-    },
-    {
-      id: "5",
-      name: "Hoàng Văn Em",
-      phone: "0901234571",
-      status: "not-started",
-    },
-  ];
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === 'success') {
+            setAssignment(result.data.assignment);
+            setStudents([...result.data.completed, ...result.data.not_completed]);
+          } else {
+            setError('Không thể tải tiến độ làm bài');
+          }
+        } else {
+          setError('Lỗi khi tải dữ liệu');
+        }
+      } catch (err) {
+        setError('Lỗi kết nối đến server');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (assignmentId) {
+      fetchAssignmentProgress();
+    }
+  }, [assignmentId]);
 
   const completedStudents = students.filter((s) => s.status === "completed");
   const notCompletedStudents = students.filter((s) => s.status === "not-started");
   const totalStudents = students.length;
-  const completionRate = Math.round((completedStudents.length / totalStudents) * 100);
+  const completionRate = totalStudents > 0 ? Math.round((completedStudents.length / totalStudents) * 100) : 0;
 
   const getTimeRemaining = () => {
+    if (!assignment?.deadline) return "Không có hạn";
     const now = new Date();
-    const diff = assignment.deadline.getTime() - now.getTime();
+    const deadline = new Date(assignment.deadline);
+    const diff = deadline.getTime() - now.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
@@ -103,6 +88,36 @@ export function AssignmentProgress() {
     if (hours > 0) return `Còn ${hours} giờ`;
     return "Sắp hết hạn";
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-semibold">Đang tải tiến độ làm bài...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !assignment) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
+        <div className="text-center bg-white rounded-2xl p-8 border border-red-200">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <p className="text-red-600 font-semibold mb-2">{error || 'Không tìm thấy dữ liệu'}</p>
+          <Link
+            to="/giao-vien/bai-tap"
+            className="inline-block px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all"
+          >
+            Quay lại
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const stats = [
     {

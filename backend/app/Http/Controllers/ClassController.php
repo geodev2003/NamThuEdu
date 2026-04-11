@@ -44,32 +44,22 @@ class ClassController extends Controller
             ], 401);
         }
 
-        $classes = Classes::with(['course', 'enrollments'])
-                         ->where('cTeacher_id', $user->uId)
+        $classes = Classes::where('cTeacher_id', $user->uId)
                          ->orderBy('cCreated_at', 'desc')
                          ->get();
 
-        // Thêm thống kê cho mỗi lớp
+        // Add stats for each class
         $classesWithStats = $classes->map(function($class) {
-            $courseData = null;
-            if ($class->course) {
-                $courseData = [
-                    'cId' => $class->course->cId ?? null,
-                    'cName' => $class->course->cName ?? null,
-                ];
-            }
-            
             return [
                 'cId' => $class->cId,
                 'cName' => $class->cName,
                 'cDescription' => $class->cDescription,
                 'cStatus' => $class->cStatus,
+                'age_group' => $class->age_group,
+                'max_students' => $class->max_students,
+                'current_student_count' => $class->current_student_count,
+                'is_full' => $class->is_full,
                 'cCreated_at' => $class->cCreated_at,
-                'course' => $courseData,
-                'enrollment_stats' => [
-                    'total_students' => $class->enrollments ? $class->enrollments->count() : 0,
-                    'active_students' => $class->enrollments ? $class->enrollments->count() : 0,
-                ],
             ];
         });
 
@@ -124,10 +114,10 @@ class ClassController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'cName' => 'required|string|max:100',
-            'cDescription' => 'nullable|string|max:1000',
-            'cStatus' => 'required|in:active,inactive',
-            'course' => 'required|integer|exists:course,cId',
+            'name' => 'required|string|max:100',
+            'description' => 'nullable|string|max:1000',
+            'age_group' => 'required|in:kids,teens,adults',
+            'max_students' => 'required|integer|min:1|max:100',
         ]);
 
         if ($validator->fails()) {
@@ -138,32 +128,20 @@ class ClassController extends Controller
             ], 400);
         }
 
-        // Kiểm tra teacher có quyền với course này không
-        $course = Course::where('cId', $request->course)
-                       ->where('cTeacher', $user->uId)
-                       ->whereNull('cDeleteAt')
-                       ->first();
-
-        if (!$course) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Bạn không có quyền tạo lớp trong khóa học này.'
-            ], 403);
-        }
-
         $class = Classes::create([
-            'cName' => $request->cName,
+            'cName' => $request->name,
             'cTeacher_id' => $user->uId,
-            'cDescription' => $request->cDescription,
-            'cStatus' => $request->cStatus,
-            'course' => $request->course,
+            'cDescription' => $request->description,
+            'age_group' => $request->age_group,
+            'max_students' => $request->max_students,
+            'current_student_count' => 0,
+            'cStatus' => 'active',
         ]);
 
         return response()->json([
             'status' => 'success',
-            'data' => [
-                'classId' => $class->cId
-            ]
+            'data' => $class,
+            'message' => 'Tạo lớp học thành công.'
         ]);
     }
 
@@ -221,12 +199,19 @@ class ClassController extends Controller
             ], 404);
         }
 
-        // Load enrolled students
-        $class->load(['enrollments.student']);
+        // Get students in this class
+        $students = User::where('uRole', 'student')
+                       ->where('class_id', $id)
+                       ->whereNull('uDeleted_at')
+                       ->get(['uId', 'uName', 'uPhone', 'uDoB', 'age_group']);
 
         return response()->json([
             'status' => 'success',
-            'data' => $class
+            'data' => [
+                'class' => $class,
+                'students' => $students,
+                'student_count' => $students->count(),
+            ]
         ]);
     }
 
@@ -293,10 +278,10 @@ class ClassController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'cName' => 'sometimes|required|string|max:100',
-            'cDescription' => 'nullable|string',
-            'cStatus' => 'sometimes|required|in:active,inactive',
-            'course' => 'nullable|integer',
+            'name' => 'sometimes|required|string|max:100',
+            'description' => 'nullable|string|max:1000',
+            'age_group' => 'sometimes|required|in:kids,teens,adults',
+            'max_students' => 'sometimes|required|integer|min:1|max:100',
         ]);
 
         if ($validator->fails()) {
@@ -307,13 +292,18 @@ class ClassController extends Controller
             ], 400);
         }
 
-        $class->update($request->only(['cName', 'cDescription', 'cStatus', 'course']));
+        $updateData = [];
+        if ($request->has('name')) $updateData['cName'] = $request->name;
+        if ($request->has('description')) $updateData['cDescription'] = $request->description;
+        if ($request->has('age_group')) $updateData['age_group'] = $request->age_group;
+        if ($request->has('max_students')) $updateData['max_students'] = $request->max_students;
+
+        $class->update($updateData);
 
         return response()->json([
             'status' => 'success',
-            'data' => [
-                'message' => 'Cập nhật lớp học thành công'
-            ]
+            'data' => $class,
+            'message' => 'Cập nhật lớp học thành công.'
         ]);
     }
 
@@ -943,19 +933,32 @@ class ClassController extends Controller
         }
 
         $classes = Classes::where('cTeacher_id', $user->uId)->get();
-        $totalStudents = ClassEnrollment::whereIn('class_id', $classes->pluck('cId'))->count();
-        $recentTransfers = ClassTransfer::where('teacher_id', $user->uId)
-                                      ->recent(7)
-                                      ->count();
+        
+        // Count students by class_id in users table
+        $totalStudents = User::where('uRole', 'student')
+                            ->whereIn('class_id', $classes->pluck('cId'))
+                            ->whereNull('uDeleted_at')
+                            ->count();
 
         $statistics = [
             'total_classes' => $classes->count(),
             'active_classes' => $classes->where('cStatus', 'active')->count(),
-            'inactive_classes' => $classes->where('cStatus', 'inactive')->count(),
             'total_students' => $totalStudents,
-            'recent_transfers' => $recentTransfers,
-            'classes_by_course' => $classes->groupBy('course')->map(function($group) {
-                return $group->count();
+            'classes_by_age_group' => [
+                'kids' => $classes->where('age_group', 'kids')->count(),
+                'teens' => $classes->where('age_group', 'teens')->count(),
+                'adults' => $classes->where('age_group', 'adults')->count(),
+            ],
+            'average_class_size' => $classes->count() > 0 ? round($totalStudents / $classes->count(), 1) : 0,
+            'classes' => $classes->map(function($class) {
+                return [
+                    'id' => $class->cId,
+                    'name' => $class->cName,
+                    'age_group' => $class->age_group,
+                    'current_students' => $class->current_student_count,
+                    'max_students' => $class->max_students,
+                    'is_full' => $class->is_full,
+                ];
             }),
         ];
 
