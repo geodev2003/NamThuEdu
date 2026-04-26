@@ -15,7 +15,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('questions', function (Blueprint $table) {
+        if (Schema::hasTable('questions')) {
+            Schema::table('questions', function (Blueprint $table) {
             // Add qSubPart for Cambridge YLE structure
             if (!Schema::hasColumn('questions', 'qSubPart')) {
                 $table->integer('qSubPart')
@@ -24,6 +25,7 @@ return new class extends Migration
                       ->comment('Cambridge sub-part number (Part 1, Part 2, etc. within a skill section)');
             }
         });
+        }
     }
 
     /**
@@ -31,10 +33,12 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('questions', function (Blueprint $table) {
+        if (Schema::hasTable('questions')) {
+            Schema::table('questions', function (Blueprint $table) {
             if (Schema::hasColumn('questions', 'qSubPart')) {
                 $table->dropColumn('qSubPart');
             }
         });
+        }
     }
 };

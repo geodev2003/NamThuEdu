@@ -85,7 +85,7 @@ export function WaitingForClass() {
             <button
               onClick={() => {
                 localStorage.clear();
-                window.location.href = '/dang-nhap-hoc-vien';
+                window.location.href = '/dang-nhap';
               }}
               className="text-gray-500 hover:text-gray-700 underline"
             >

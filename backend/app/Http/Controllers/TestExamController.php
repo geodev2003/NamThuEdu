@@ -128,10 +128,10 @@ class TestExamController extends Controller
                         'type' => $question->qType,
                         'skill' => $question->qSkill,
                         'part' => $question->qPart,
-                        'order' => $question->qOrder,
+                        'order' => $question->qOrder ?? $question->qSection_order,
                         'points' => $question->qPoints,
-                        'passage' => $question->qPassage,
-                        'audioFile' => $question->qAudio_file,
+                        'passage' => $question->qPassage_text ?? $question->qPassage,
+                        'audioFile' => $question->qAudio_file ?? $question->qMedia_url,
                         'answers' => $question->answers->map(function ($answer) {
                             return [
                                 'id' => $answer->aId,

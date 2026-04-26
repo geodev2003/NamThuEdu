@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router";
 import { Header } from "../../../components/shared/Header";
 import { ToastContainer } from "../../../../components/ui/ToastContainer";
 import { useToast } from "../../../../hooks/useToast";
+import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
 import { teacherApi } from "../../../../services/teacherApi";
 import {
   User,
@@ -33,6 +34,7 @@ import {
 } from "lucide-react";
 
 export function Settings() {
+  usePageTitle(PAGE_TITLES.TEACHER_SETTINGS);
   const { t, i18n } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [mounted, setMounted] = useState(false);

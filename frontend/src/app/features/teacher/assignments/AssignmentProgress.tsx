@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router";
 import {
   ArrowLeft,
@@ -15,70 +15,27 @@ import {
   Target,
   Loader2,
 } from "lucide-react";
-
-interface Student {
-  id: string;
-  name: string;
-  phone: string;
-  status: "completed" | "not-started";
-  score?: number;
-  submittedAt?: Date;
-  attemptNumber?: number;
-  isGraded?: boolean;
-}
+import { useAssignmentProgress } from "@/hooks/useAssignmentProgress";
 
 export function AssignmentProgress() {
   const { assignmentId } = useParams();
   const [showReminderModal, setShowReminderModal] = useState(false);
-  const [assignment, setAssignment] = useState<any>(null);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
+  // Use custom hook
+  const { data: progressData, loading, error } = useAssignmentProgress(assignmentId || '');
 
-  useEffect(() => {
-    const fetchAssignmentProgress = async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem('auth_token');
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/assignments/${assignmentId}/progress`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success') {
-            setAssignment(result.data.assignment);
-            setStudents([...result.data.completed, ...result.data.not_completed]);
-          } else {
-            setError('Không thể tải tiến độ làm bài');
-          }
-        } else {
-          setError('Lỗi khi tải dữ liệu');
-        }
-      } catch (err) {
-        setError('Lỗi kết nối đến server');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (assignmentId) {
-      fetchAssignmentProgress();
-    }
-  }, [assignmentId]);
-
+  // Extract data
+  const assignment = progressData?.assignment;
+  const students = progressData?.students || [];
   const completedStudents = students.filter((s) => s.status === "completed");
-  const notCompletedStudents = students.filter((s) => s.status === "not-started");
-  const totalStudents = students.length;
-  const completionRate = totalStudents > 0 ? Math.round((completedStudents.length / totalStudents) * 100) : 0;
+  const notCompletedStudents = students.filter((s) => s.status !== "completed");
+  const totalStudents = progressData?.total_students || 0;
+  const completionRate = progressData?.completion_rate || 0;
 
   const getTimeRemaining = () => {
-    if (!assignment?.deadline) return "Không có hạn";
+    if (!assignment?.taDue_date) return "Không có hạn";
     const now = new Date();
-    const deadline = new Date(assignment.deadline);
+    const deadline = new Date(assignment.taDue_date);
     const diff = deadline.getTime() - now.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -88,6 +45,8 @@ export function AssignmentProgress() {
     if (hours > 0) return `Còn ${hours} giờ`;
     return "Sắp hết hạn";
   };
+
+  const isOverdue = assignment?.taDue_date && new Date(assignment.taDue_date) < new Date();
 
   if (loading) {
     return (
@@ -163,7 +122,7 @@ export function AssignmentProgress() {
             Quản lý giao bài
           </Link>
           <span className="text-gray-400">/</span>
-          <span className="text-gray-900 font-medium">{assignment.examTitle}</span>
+          <span className="text-gray-900 font-medium">{assignment?.taTitle || 'Chi tiết bài tập'}</span>
         </div>
 
         {/* Header */}
@@ -187,16 +146,16 @@ export function AssignmentProgress() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div>
               <p className="text-blue-100 text-sm mb-1">Đề thi</p>
-              <p className="font-bold text-lg">{assignment.examTitle}</p>
+              <p className="font-bold text-lg">{assignment?.taTitle || 'N/A'}</p>
               <span className="inline-block mt-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-xs font-semibold">
-                {assignment.examType}
+                {assignment?.taStatus || 'active'}
               </span>
             </div>
             <div>
               <p className="text-blue-100 text-sm mb-1">Giao cho</p>
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5" />
-                <p className="font-bold text-lg">{assignment.targetName}</p>
+                <p className="font-bold text-lg">{totalStudents} học sinh</p>
               </div>
               <span className="inline-block mt-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-xs font-semibold">
                 Lớp học
@@ -207,23 +166,23 @@ export function AssignmentProgress() {
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5" />
                 <p className="font-bold text-lg">
-                  {assignment.deadline.toLocaleDateString("vi-VN")}
+                  {assignment?.taDue_date ? new Date(assignment.taDue_date).toLocaleDateString("vi-VN") : 'N/A'}
                 </p>
               </div>
               <p className="text-sm mt-2 font-semibold">{getTimeRemaining()}</p>
             </div>
             <div>
-              <p className="text-blue-100 text-sm mb-1">Số lần làm bài</p>
+              <p className="text-blue-100 text-sm mb-1">Điểm trung bình</p>
               <div className="flex items-center gap-2">
                 <Target className="w-5 h-5" />
-                <p className="font-bold text-lg">{assignment.maxAttempts} lần</p>
+                <p className="font-bold text-lg">{progressData?.average_score?.toFixed(1) || 0}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Overdue Banner */}
-        {assignment.isOverdue && (
+        {isOverdue && (
           <div className="bg-red-50 border-l-4 border-red-500 rounded-xl p-4 flex items-center gap-3">
             <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
             <div>
@@ -271,39 +230,42 @@ export function AssignmentProgress() {
             <div className="space-y-3">
               {completedStudents.map((student) => (
                 <div
-                  key={student.id}
+                  key={student.uId}
                   className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 p-4 hover:shadow-lg transition-all duration-200"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <p className="font-semibold text-gray-900">{student.name}</p>
-                      <p className="text-sm text-gray-600">{student.phone}</p>
+                      <p className="font-semibold text-gray-900">{student.uName}</p>
+                      <p className="text-sm text-gray-600">{student.uPhone}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="px-3 py-1 bg-green-100 rounded-lg">
-                        <p className="text-2xl font-bold text-green-700">{student.score}</p>
-                      </div>
-                      <Trophy className="w-5 h-5 text-yellow-500" />
+                      {student.submission?.sScore !== undefined && (
+                        <>
+                          <div className="px-3 py-1 bg-green-100 rounded-lg">
+                            <p className="text-2xl font-bold text-green-700">{student.submission.sScore}</p>
+                          </div>
+                          <Trophy className="w-5 h-5 text-yellow-500" />
+                        </>
+                      )}
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 text-xs text-gray-600">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {student.submittedAt?.toLocaleString("vi-VN")}
-                      </span>
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded font-semibold">
-                        Lần {student.attemptNumber}
-                      </span>
-                      {student.isGraded && (
+                      {student.submission?.sSubmitted_at && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {new Date(student.submission.sSubmitted_at).toLocaleString("vi-VN")}
+                        </span>
+                      )}
+                      {student.submission?.sStatus === 'graded' && (
                         <span className="px-2 py-1 bg-green-100 text-green-700 rounded font-semibold">
                           Đã chấm
                         </span>
                       )}
                     </div>
                     <Link
-                      to={`/bai-tap/${assignment.id}/students/${student.id}`}
+                      to={`/giao-vien/bai-tap/${assignmentId}/students/${student.uId}`}
                       className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-1"
                     >
                       <Eye className="w-4 h-4" />
@@ -327,13 +289,13 @@ export function AssignmentProgress() {
             <div className="space-y-3">
               {notCompletedStudents.map((student) => (
                 <div
-                  key={student.id}
+                  key={student.uId}
                   className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 p-4 hover:shadow-lg transition-all duration-200"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <p className="font-semibold text-gray-900">{student.name}</p>
-                      <p className="text-sm text-gray-600">{student.phone}</p>
+                      <p className="font-semibold text-gray-900">{student.uName}</p>
+                      <p className="text-sm text-gray-600">{student.uPhone}</p>
                     </div>
                     <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-semibold">
                       Chưa làm bài

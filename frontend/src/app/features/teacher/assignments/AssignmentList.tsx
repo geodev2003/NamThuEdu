@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import {
@@ -14,6 +14,7 @@ import {
   Send,
 } from "lucide-react";
 import { Header } from "../../../components/shared/Header";
+import { api } from "../../../../services/api";
 import { BulkAssignment } from "./BulkAssignment";
 import { ReminderModal } from "./ReminderModal";
 
@@ -57,43 +58,30 @@ export function AssignmentList() {
           return;
         }
 
-        // Build query params
-        const params = new URLSearchParams();
-        if (targetFilter !== 'all') params.append('target_type', targetFilter);
+        const params: Record<string, string> = {};
+        if (targetFilter !== 'all') params.target_type = targetFilter;
 
-        const response = await fetch(
-          `http://localhost:8000/api/teacher/assignments?${params}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
+        const { data: result } = await api.get('/teacher/assignments', { params });
+        if (result.status === 'success') {
+          // Transform backend data to frontend format
+          const transformedAssignments = result.data.map((assign: any) => {
+            const deadline = assign.taDeadline ? new Date(assign.taDeadline) : null;
+            const isOverdue = deadline ? new Date() > deadline : false;
 
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success') {
-            // Transform backend data to frontend format
-            const transformedAssignments = result.data.map((assign: any) => {
-              const deadline = assign.taDeadline ? new Date(assign.taDeadline) : null;
-              const isOverdue = deadline ? new Date() > deadline : false;
-              
-              return {
-                id: assign.taId.toString(),
-                examTitle: assign.exam?.eTitle || 'Unknown Exam',
-                targetType: assign.taTarget_type as "class" | "student",
-                targetName: assign.target_name || `ID: ${assign.taTarget_id}`,
-                deadline: deadline,
-                maxAttempts: assign.taMax_attempt || 1,
-                completionRate: assign.completion_rate || 0,
-                isOverdue: isOverdue,
-                totalStudents: assign.total_students || 0,
-                completedStudents: assign.completed_students || 0,
-              };
-            });
-            setAssignments(transformedAssignments);
-          }
+            return {
+              id: assign.taId.toString(),
+              examTitle: assign.exam?.eTitle || 'Unknown Exam',
+              targetType: assign.taTarget_type as "class" | "student",
+              targetName: assign.target_name || `ID: ${assign.taTarget_id}`,
+              deadline: deadline,
+              maxAttempts: assign.taMax_attempt || 1,
+              completionRate: assign.completion_rate || 0,
+              isOverdue: isOverdue,
+              totalStudents: assign.total_students || 0,
+              completedStudents: assign.completed_students || 0,
+            };
+          });
+          setAssignments(transformedAssignments);
         } else {
           setError('Không thể tải danh sách bài tập');
         }

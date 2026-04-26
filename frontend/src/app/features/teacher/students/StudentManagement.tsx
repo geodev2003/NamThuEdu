@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import {
@@ -41,6 +42,7 @@ interface StudentStats {
 }
 
 export function StudentManagement() {
+  usePageTitle(PAGE_TITLES.TEACHER_STUDENTS);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { toasts, removeToast, success, error, warning } = useToast();
@@ -66,10 +68,10 @@ export function StudentManagement() {
   const [totalStudents, setTotalStudents] = useState(0);
   const [perPage] = useState(10);
   const [studentStats, setStudentStats] = useState<StudentStats[]>([
-    { label: "Tổng học sinh", value: 0, change: 0, trend: "up", icon: Users, color: "#EA580C" },
-    { label: "Đang học", value: 0, change: 0, trend: "up", icon: UserCheck, color: "#F97316" },
-    { label: "Tạm nghỉ", value: 0, change: 0, trend: "down", icon: UserX, color: "#FB923C" },
-    { label: "Mới tháng này", value: 0, change: 0, trend: "up", icon: Calendar, color: "#FDBA74" },
+    { label: t('teacher.students.management.stats.label.totalStudents'), value: 0, change: 0, trend: "up", icon: Users, color: "#EA580C" },
+    { label: t('teacher.students.management.stats.label.activeStudents'), value: 0, change: 0, trend: "up", icon: UserCheck, color: "#F97316" },
+    { label: t('teacher.students.management.stats.label.inactiveStudents'), value: 0, change: 0, trend: "down", icon: UserX, color: "#FB923C" },
+    { label: t('teacher.students.management.stats.label.newThisMonth'), value: 0, change: 0, trend: "up", icon: Calendar, color: "#FDBA74" },
   ]);
   const [editingStudent, setEditingStudent] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -124,7 +126,7 @@ export function StudentManagement() {
           
           setStudentStats([
             { 
-              label: "Tổng học sinh", 
+              label: t('teacher.students.management.stats.label.totalStudents'), 
               value: data.total_students, 
               change: data.total_change, 
               trend: data.total_change >= 0 ? "up" : "down", 
@@ -132,7 +134,7 @@ export function StudentManagement() {
               color: "#EA580C" 
             },
             { 
-              label: "Đang học", 
+              label: t('teacher.students.management.stats.label.activeStudents'), 
               value: data.active_students, 
               change: data.active_change, 
               trend: data.active_change >= 0 ? "up" : "down", 
@@ -140,7 +142,7 @@ export function StudentManagement() {
               color: "#F97316" 
             },
             { 
-              label: "Tạm nghỉ", 
+              label: t('teacher.students.management.stats.label.inactiveStudents'), 
               value: data.inactive_students, 
               change: data.inactive_change, 
               trend: data.inactive_change >= 0 ? "up" : "down", 
@@ -148,7 +150,7 @@ export function StudentManagement() {
               color: "#FB923C" 
             },
             { 
-              label: "Mới tháng này", 
+              label: t('teacher.students.management.stats.label.newThisMonth'), 
               value: data.new_students_this_month, 
               change: data.new_students_change, 
               trend: data.new_students_change >= 0 ? "up" : "down", 

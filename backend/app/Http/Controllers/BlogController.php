@@ -103,11 +103,11 @@ class BlogController extends Controller
         $validator = Validator::make($request->all(), [
             'blogName' => 'required|string|max:255',
             'blogContent' => 'required|string',
-            'blogType' => 'nullable|in:grammar,tips,vocabulary,teaching,news',
-            'blogCategory' => 'nullable|integer|exists:category,caId',
+            'blogType' => 'nullable|string|exists:blog_types,type_value',
+            'blogCategory' => 'nullable|integer', // Removed exists validation temporarily
             'blogUrl' => 'nullable|string',
             'blogThumbnail' => 'nullable|string',
-            'blogStatus' => 'nullable|in:draft,published',
+            'blogStatus' => 'nullable|in:draft,pending,published',
         ]);
 
         if ($validator->fails()) {
@@ -267,11 +267,11 @@ class BlogController extends Controller
         $validator = Validator::make($request->all(), [
             'blogName' => 'sometimes|required|string|max:255',
             'blogContent' => 'sometimes|required|string',
-            'blogType' => 'sometimes|required|in:grammar,tips,vocabulary,teaching,news',
-            'blogCategory' => 'sometimes|required|integer|exists:category,caId',
+            'blogType' => 'sometimes|required|string|exists:blog_types,type_value',
+            'blogCategory' => 'sometimes|required|integer', // Removed exists validation temporarily
             'blogUrl' => 'nullable|string',
             'blogThumbnail' => 'nullable|string',
-            'blogStatus' => 'sometimes|required|in:draft,published',
+            'blogStatus' => 'sometimes|required|in:draft,pending,published',
         ]);
 
         if ($validator->fails()) {
@@ -811,5 +811,57 @@ class BlogController extends Controller
                 'recent_posts' => $recentPosts,
             ]
         ]);
+    }
+
+    /**
+     * GET /api/teacher/blog-types
+     * Lấy danh sách loại bài viết
+     */
+    public function getBlogTypes(Request $request)
+    {
+        $blogTypes = \App\Models\BlogType::orderBy('sort_order')->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $blogTypes
+        ]);
+    }
+
+    /**
+     * POST /api/teacher/blog-types
+     * Tạo loại bài viết mới
+     */
+    public function createBlogType(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'type_value' => 'required|string|max:50|unique:blog_types,type_value',
+            'type_label' => 'required|string|max:100',
+            'type_icon' => 'nullable|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Get the highest sort_order and add 1
+        $maxSortOrder = \App\Models\BlogType::max('sort_order') ?? 0;
+
+        $blogType = \App\Models\BlogType::create([
+            'type_value' => strtolower($request->type_value),
+            'type_label' => $request->type_label,
+            'type_icon' => $request->type_icon ?? 'FileText',
+            'is_default' => false,
+            'sort_order' => $maxSortOrder + 1,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Blog type created successfully',
+            'data' => $blogType
+        ], 201);
     }
 }

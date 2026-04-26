@@ -50,8 +50,28 @@ class StudentTestController extends Controller
                                    ->pluck('class_id')
                                    ->toArray();
 
+        // Phân loại exam theo độ tuổi
+        $adultOnlyTypes = ['VSTEP', 'IELTS'];
+        $kidsOnlyTypes  = ['STARTERS', 'MOVERS', 'FLYERS'];
+        $ageGroup = $user->age_group;
+
         // Get assignments for student (individual or class-based)
+        // VSTEP đề thi chính thức phải là full (eSkill=mixed); đề nào skill riêng thuộc về /practice
         $assignments = TestAssignment::with(['exam'])
+                                    ->whereHas('exam', function ($q) use ($ageGroup, $adultOnlyTypes, $kidsOnlyTypes) {
+                                        $q->where(function ($inner) {
+                                            $inner->where('eType', '!=', 'VSTEP')
+                                                  ->orWhere('eSkill', 'mixed');
+                                        });
+                                        // Ẩn VSTEP/IELTS với học viên không phải adults
+                                        if ($ageGroup !== 'adults') {
+                                            $q->whereNotIn('eType', $adultOnlyTypes);
+                                        }
+                                        // Ẩn STARTERS/MOVERS/FLYERS với học viên không phải kids
+                                        if ($ageGroup !== 'kids') {
+                                            $q->whereNotIn('eType', $kidsOnlyTypes);
+                                        }
+                                    })
                                     ->where(function($query) use ($user, $classIds) {
                                         // Individual assignments
                                         $query->where(function($q) use ($user) {
@@ -126,7 +146,7 @@ class StudentTestController extends Controller
             ], 401);
         }
 
-        $assignment = TestAssignment::with(['exam.questions.answers'])
+        $assignment = TestAssignment::with(['exam.questions.answers', 'exam.contentBlocks'])
                                     ->find($id);
 
         if (!$assignment) {
@@ -134,6 +154,30 @@ class StudentTestController extends Controller
                 'status' => 'error',
                 'message' => 'Không tìm thấy bài thi.'
             ], 404);
+        }
+
+        // VSTEP đề thi chính thức phải là full mixed
+        if ($assignment->exam->eType === 'VSTEP' && $assignment->exam->eSkill !== 'mixed') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đề thi VSTEP từng kỹ năng chỉ có trong mục ôn tập. Vui lòng truy cập /student/practice.'
+            ], 403);
+        }
+
+        // VSTEP / IELTS chỉ dành cho sinh viên và người đi làm
+        if (in_array($assignment->exam->eType, ['VSTEP', 'IELTS']) && $user->age_group !== 'adults') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đề thi ' . $assignment->exam->eType . ' chỉ dành cho học viên từ 18 tuổi trở lên (sinh viên / người đi làm).'
+            ], 403);
+        }
+
+        // STARTERS / MOVERS / FLYERS chỉ dành cho kids
+        if (in_array($assignment->exam->eType, ['STARTERS', 'MOVERS', 'FLYERS']) && $user->age_group !== 'kids') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đề thi ' . $assignment->exam->eType . ' chỉ dành cho học viên nhỏ tuổi (kids).'
+            ], 403);
         }
 
         // Check if student is eligible
@@ -161,12 +205,17 @@ class StudentTestController extends Controller
                                  ->where('assignment_id', $id)
                                  ->count();
 
+        $responseData = [
+            'taId'         => $assignment->taId,
+            'taDeadline'   => $assignment->taDeadline,
+            'taMax_attempt' => $assignment->taMax_attempt,
+            'attemptsUsed' => $attemptsUsed,
+            'exam'         => $this->buildExamData($exam),
+        ];
+
         return response()->json([
             'status' => 'success',
-            'data' => [
-                'assignment' => $assignment,
-                'attemptsUsed' => $attemptsUsed,
-            ]
+            'data'   => $responseData,
         ]);
     }
 
@@ -201,7 +250,7 @@ class StudentTestController extends Controller
             ], 401);
         }
 
-        $assignment = TestAssignment::with(['exam.questions.answers'])
+        $assignment = TestAssignment::with(['exam.questions.answers', 'exam.contentBlocks'])
                                     ->find($id);
 
         if (!$assignment) {
@@ -209,6 +258,30 @@ class StudentTestController extends Controller
                 'status' => 'error',
                 'message' => 'Không tìm thấy bài thi.'
             ], 404);
+        }
+
+        // VSTEP đề thi chính thức phải là full mixed
+        if ($assignment->exam->eType === 'VSTEP' && $assignment->exam->eSkill !== 'mixed') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đề thi VSTEP từng kỹ năng chỉ có trong mục ôn tập. Vui lòng truy cập /student/practice.'
+            ], 403);
+        }
+
+        // VSTEP / IELTS chỉ dành cho sinh viên và người đi làm
+        if (in_array($assignment->exam->eType, ['VSTEP', 'IELTS']) && $user->age_group !== 'adults') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đề thi ' . $assignment->exam->eType . ' chỉ dành cho học viên từ 18 tuổi trở lên (sinh viên / người đi làm).'
+            ], 403);
+        }
+
+        // STARTERS / MOVERS / FLYERS chỉ dành cho kids
+        if (in_array($assignment->exam->eType, ['STARTERS', 'MOVERS', 'FLYERS']) && $user->age_group !== 'kids') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đề thi ' . $assignment->exam->eType . ' chỉ dành cho học viên nhỏ tuổi (kids).'
+            ], 403);
         }
 
         // Check eligibility
@@ -293,8 +366,8 @@ class StudentTestController extends Controller
             'status' => 'success',
             'data' => [
                 'submissionId' => $submission->sId,
-                'sStart_time' => $submission->sStart_time,
-                'exam' => $exam,
+                'sStart_time'  => $submission->sStart_time,
+                'exam'         => $this->buildExamData($exam),
             ]
         ]);
     }
@@ -752,7 +825,7 @@ class StudentTestController extends Controller
         }
 
         // Tìm submission đang dở
-        $submission = Submission::with(['exam.questions.answers', 'answers'])
+        $submission = Submission::with(['exam.questions.answers', 'exam.contentBlocks', 'answers'])
                                ->where('user_id', $user->uId)
                                ->where('assignment_id', $id)
                                ->where('sStatus', 'in_progress')
@@ -792,10 +865,10 @@ class StudentTestController extends Controller
             'message' => 'Khôi phục bài thi thành công. Bạn có thể tiếp tục làm bài.',
             'data' => [
                 'submissionId' => $submission->sId,
-                'sStart_time' => $submission->sStart_time,
+                'sStart_time'  => $submission->sStart_time,
                 'timeRemaining' => $timeRemaining,
-                'exam' => $exam,
-                'savedAnswers' => $submission->answers, // Câu trả lời đã lưu
+                'exam'         => $this->buildExamData($exam),
+                'savedAnswers' => $submission->answers,
             ]
         ]);
     }
@@ -1568,5 +1641,150 @@ class StudentTestController extends Controller
     private function isCorrectAnswer($studentAnswer, $correctAnswer)
     {
         return $this->normalizeAnswer($studentAnswer) === $this->normalizeAnswer($correctAnswer);
+    }
+
+    /**
+     * Chuẩn bị dữ liệu đề thi trả về cho học viên.
+     * - VSTEP skill riêng: trả về cấu trúc parts (passage/audio/instruction + câu hỏi theo part)
+     * - VSTEP mixed (full 4 kỹ năng): trả về cấu trúc skills -> parts
+     * - Đề thường: trả về flat (questions + contentBlocks)
+     */
+    private function buildExamData($exam): array
+    {
+        $base = [
+            'eId'               => $exam->eId,
+            'eTitle'            => $exam->eTitle,
+            'eDescription'      => $exam->eDescription,
+            'eType'             => $exam->eType,
+            'eSkill'            => $exam->eSkill,
+            'eDuration_minutes' => $exam->eDuration_minutes,
+        ];
+
+        if ($exam->eType !== 'VSTEP') {
+            $base['questions']     = $exam->questions->values();
+            $base['contentBlocks'] = $exam->contentBlocks->sortBy('display_order')->values();
+            return $base;
+        }
+
+        $skill = $exam->eSkill ?? 'mixed';
+
+        if ($skill === 'mixed') {
+            $base['vstep_structure'] = $this->buildMixedVstepStructure($exam);
+        } else {
+            $base['vstep_structure'] = $this->buildSkillVstepStructure($exam, $skill);
+        }
+
+        return $base;
+    }
+
+    /**
+     * Cấu trúc VSTEP cho 1 kỹ năng cụ thể (reading/listening/writing/speaking)
+     */
+    private function buildSkillVstepStructure($exam, string $skill): array
+    {
+        $contentBlocks = $exam->contentBlocks->sortBy('display_order');
+        $questions     = $exam->questions->sortBy(['qPart', 'qOrder', 'qId']);
+
+        $partNumbers = $questions->pluck('qPart')->unique()->sort()->values();
+        $parts = [];
+
+        foreach ($partNumbers as $partNum) {
+            $partBlock = $contentBlocks->first(function ($cb) use ($partNum) {
+                $meta = $cb->metadata ?? [];
+                return ($meta['part_number'] ?? null) == $partNum;
+            });
+
+            $partQuestions = $questions->where('qPart', $partNum)->values();
+
+            $partData = [
+                'partNumber' => $partNum,
+                'partName'   => $partBlock ? ($partBlock->metadata['part_name'] ?? "Part $partNum") : "Part $partNum",
+            ];
+
+            if ($skill === 'reading') {
+                $partData['passage']   = $partBlock ? $partBlock->content : null;
+                $partData['wordCount'] = $partBlock ? ($partBlock->metadata['word_count'] ?? null) : null;
+            } elseif ($skill === 'listening') {
+                $partData['audioUrl']       = $partBlock ? $partBlock->content : null;
+                $partData['audioDuration']  = $partBlock ? ($partBlock->metadata['audio_duration'] ?? null) : null;
+                $partData['transcript']     = $partBlock ? ($partBlock->metadata['transcript'] ?? null) : null;
+            } elseif ($skill === 'speaking') {
+                $partData['instruction'] = $partBlock ? $partBlock->content : null;
+                $partData['timeLimit']   = $partBlock ? ($partBlock->metadata['time_limit'] ?? null) : null;
+            } elseif ($skill === 'writing') {
+                $partData['prompt']    = $partBlock ? $partBlock->content : null;
+                $partData['wordCount'] = $partBlock ? ($partBlock->metadata['min_words'] ?? null) : null;
+            }
+
+            $partData['questions'] = $partQuestions->map(function ($q) {
+                return [
+                    'qId'       => $q->qId,
+                    'qContent'  => $q->qContent,
+                    'qType'     => $q->qType,
+                    'qPart'     => $q->qPart,
+                    'qOrder'    => $q->qOrder,
+                    'qPoints'   => $q->qPoints,
+                    'qWord_count'  => $q->qWord_count,
+                    'qTime_limit'  => $q->qTime_limit,
+                    'answers'   => $q->answers->values(),
+                ];
+            })->values();
+
+            $parts[] = $partData;
+        }
+
+        return ['skill' => $skill, 'parts' => $parts];
+    }
+
+    /**
+     * Cấu trúc VSTEP full mixed (4 kỹ năng), group theo skill rồi parts
+     */
+    private function buildMixedVstepStructure($exam): array
+    {
+        $contentBlocks = $exam->contentBlocks->sortBy('display_order');
+        $questions     = $exam->questions->sortBy(['qSkillSection', 'qPart', 'qOrder', 'qId']);
+
+        $skillGroups = $questions->groupBy('qSkillSection');
+        $skills = [];
+
+        foreach ($skillGroups as $skill => $skillQuestions) {
+            $partNumbers = $skillQuestions->pluck('qPart')->unique()->sort()->values();
+            $parts = [];
+
+            foreach ($partNumbers as $partNum) {
+                $partBlock = $contentBlocks->first(function ($cb) use ($skill, $partNum) {
+                    $meta = $cb->metadata ?? [];
+                    return ($meta['skill'] ?? null) === $skill
+                        && ($meta['part_number'] ?? null) == $partNum;
+                });
+
+                $partQuestions = $skillQuestions->where('qPart', $partNum)->values();
+
+                $partData = [
+                    'partNumber' => $partNum,
+                    'partName'   => $partBlock ? ($partBlock->metadata['part_name'] ?? "Part $partNum") : "Part $partNum",
+                    'blockType'  => $partBlock ? $partBlock->block_type : null,
+                    'content'    => $partBlock ? $partBlock->content : null,
+                    'metadata'   => $partBlock ? $partBlock->metadata : null,
+                    'questions'  => $partQuestions->map(function ($q) {
+                        return [
+                            'qId'      => $q->qId,
+                            'qContent' => $q->qContent,
+                            'qType'    => $q->qType,
+                            'qPart'    => $q->qPart,
+                            'qOrder'   => $q->qOrder,
+                            'qPoints'  => $q->qPoints,
+                            'answers'  => $q->answers->values(),
+                        ];
+                    })->values(),
+                ];
+
+                $parts[] = $partData;
+            }
+
+            $skills[$skill] = ['skill' => $skill, 'parts' => $parts];
+        }
+
+        return ['skills' => array_values($skills)];
     }
 }

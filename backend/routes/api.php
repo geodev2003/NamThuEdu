@@ -135,6 +135,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/blogs/{id}', [BlogController::class, 'update']);
         Route::delete('/blogs/{id}', [BlogController::class, 'destroy']);
         
+        // Blog Types Management
+        Route::get('/blog-types', [BlogController::class, 'getBlogTypes']);
+        Route::post('/blog-types', [BlogController::class, 'createBlogType']);
+        
         // Categories
         Route::get('/categories', [CategoryController::class, 'index']);
         
@@ -178,6 +182,32 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/exams/{id}/clone', [ExamController::class, 'clone']);
         Route::get('/exams/{id}/preview', [ExamController::class, 'preview']);
         Route::post('/exams/{id}/publish', [ExamController::class, 'publish']);
+        
+        // VSTEP-specific routes
+        // Reading
+        Route::post('/exams/{examId}/vstep/parts/{partNumber}', [ExamController::class, 'saveVstepPart']);
+        Route::post('/exams/{examId}/vstep/publish', [ExamController::class, 'publishVstepExam']);
+        Route::get('/exams/{examId}/vstep/load', [ExamController::class, 'loadVstepExam']);
+        
+        // Listening
+        Route::post('/exams/{examId}/vstep/listening/parts/{partNumber}', [ExamController::class, 'saveVstepListeningPart']);
+        // New section-based endpoints (Part 1: 8 sections, Part 2/3: 3 sections each)
+        Route::post('/exams/{examId}/vstep/listening/parts/{partNumber}/sections/{sectionNumber}/audio', [ExamController::class, 'saveVstepListeningSectionAudio']);
+        Route::post('/exams/{examId}/vstep/listening/parts/{partNumber}/sections/{sectionNumber}', [ExamController::class, 'saveVstepListeningSection']);
+        // Legacy single-audio endpoint (kept for backwards compat)
+        Route::post('/exams/{examId}/vstep/listening/parts/{partNumber}/audio', [ExamController::class, 'saveVstepListeningAudio']);
+        Route::post('/exams/{examId}/vstep/listening/publish', [ExamController::class, 'publishVstepListeningExam']);
+        Route::get('/exams/{examId}/vstep/listening/load', [ExamController::class, 'loadVstepListeningExam']);
+        
+        // Writing
+        Route::post('/exams/{examId}/vstep/writing/tasks/{taskNumber}', [ExamController::class, 'saveVstepWritingTask']);
+        Route::post('/exams/{examId}/vstep/writing/publish', [ExamController::class, 'publishVstepWritingExam']);
+        Route::get('/exams/{examId}/vstep/writing/load', [ExamController::class, 'loadVstepWritingExam']);
+        
+        // Speaking
+        Route::post('/exams/{examId}/vstep/speaking/parts/{partNumber}', [ExamController::class, 'saveVstepSpeakingPart']);
+        Route::post('/exams/{examId}/vstep/speaking/publish', [ExamController::class, 'publishVstepSpeakingExam']);
+        Route::get('/exams/{examId}/vstep/speaking/load', [ExamController::class, 'loadVstepSpeakingExam']);
         
         // Exam Import from JSON (Gemini AI)
         Route::post('/exams/import', [App\Http\Controllers\ExamImportController::class, 'import']);

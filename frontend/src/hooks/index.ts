@@ -6,3 +6,8 @@ export { useLocalStorage } from "./useLocalStorage";
 export { usePageTitle, PAGE_TITLES } from "./usePageTitle";
 export { useTeacherApi } from "./useTeacherApi";
 export { useTheme } from "./useTheme";
+export { usePracticeSessions, usePracticeTemplates } from './usePracticeSessions';
+export { useClassReport } from './useClassReport';
+export { useGradingStats } from './useGradingStats';
+export { useAssignmentProgress } from './useAssignmentProgress';
+export { useBlog } from './useBlog';

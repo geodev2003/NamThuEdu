@@ -13,7 +13,8 @@ return new class extends Migration
     public function up(): void
     {
         // Add age_group and max_students to classes table
-        Schema::table('classes', function (Blueprint $table) {
+        if (Schema::hasTable('classes')) {
+            Schema::table('classes', function (Blueprint $table) {
             $table->enum('age_group', ['kids', 'teens', 'adults'])
                   ->after('cDescription')
                   ->comment('Age group for the class: kids (6-12), teens (13-17), adults (18-45)');
@@ -25,6 +26,7 @@ return new class extends Migration
             
             $table->index('age_group', 'idx_classes_age_group');
         });
+        }
         
         // Assign age_group to existing classes based on student demographics
         DB::statement("
@@ -52,9 +54,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('classes', function (Blueprint $table) {
+        if (Schema::hasTable('classes')) {
+            Schema::table('classes', function (Blueprint $table) {
             $table->dropIndex('idx_classes_age_group');
             $table->dropColumn(['age_group', 'max_students']);
         });
+        }
     }
 };

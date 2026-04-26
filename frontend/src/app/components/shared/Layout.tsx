@@ -1,13 +1,27 @@
 import { Outlet } from "react-router";
 import { Sidebar } from "./Sidebar";
+import { SidebarProvider, useSidebar } from "../../../contexts/SidebarContext";
 
-export function Layout() {
+function LayoutContent() {
+  const { isCollapsed, toggle } = useSidebar();
+
   return (
     <div className="flex h-screen bg-[#F9FAFB]">
-      <Sidebar />
+      <Sidebar 
+        isCollapsed={isCollapsed}
+        onToggle={toggle}
+      />
       <div className="flex-1 flex flex-col overflow-y-auto">
         <Outlet />
       </div>
     </div>
+  );
+}
+
+export function Layout() {
+  return (
+    <SidebarProvider>
+      <LayoutContent />
+    </SidebarProvider>
   );
 }

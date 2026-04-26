@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { CheckCircle2, XCircle, AlertCircle, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CheckCircle2, XCircle, AlertCircle, Info, X } from "lucide-react";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
@@ -12,62 +12,94 @@ export interface ToastProps {
 }
 
 export function Toast({ id, type, message, duration = 3000, onClose }: ToastProps) {
+  const [isExiting, setIsExiting] = useState(false);
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      onClose(id);
+      setIsExiting(true);
+      setTimeout(() => onClose(id), 300); // Wait for exit animation
     }, duration);
 
     return () => clearTimeout(timer);
   }, [id, duration, onClose]);
 
-  const icons = {
-    success: <CheckCircle2 className="w-5 h-5" />,
-    error: <XCircle className="w-5 h-5" />,
-    warning: <AlertCircle className="w-5 h-5" />,
-    info: <AlertCircle className="w-5 h-5" />,
+  const handleClose = () => {
+    setIsExiting(true);
+    setTimeout(() => onClose(id), 300);
   };
 
-  const styles = {
+  const config = {
     success: {
-      bg: "bg-green-50",
-      border: "border-green-200",
-      text: "text-green-800",
-      icon: "text-green-600",
+      icon: <CheckCircle2 className="w-5 h-5" />,
+      iconBg: "bg-green-100",
+      iconColor: "text-green-600",
+      borderColor: "border-l-green-500",
+      progressBg: "bg-green-500",
     },
     error: {
-      bg: "bg-red-50",
-      border: "border-red-200",
-      text: "text-red-800",
-      icon: "text-red-600",
+      icon: <XCircle className="w-5 h-5" />,
+      iconBg: "bg-red-100",
+      iconColor: "text-red-600",
+      borderColor: "border-l-red-500",
+      progressBg: "bg-red-500",
     },
     warning: {
-      bg: "bg-orange-50",
-      border: "border-orange-200",
-      text: "text-orange-800",
-      icon: "text-orange-600",
+      icon: <AlertCircle className="w-5 h-5" />,
+      iconBg: "bg-orange-100",
+      iconColor: "text-orange-600",
+      borderColor: "border-l-orange-500",
+      progressBg: "bg-orange-500",
     },
     info: {
-      bg: "bg-blue-50",
-      border: "border-blue-200",
-      text: "text-blue-800",
-      icon: "text-blue-600",
+      icon: <Info className="w-5 h-5" />,
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600",
+      borderColor: "border-l-blue-500",
+      progressBg: "bg-blue-500",
     },
   };
 
-  const style = styles[type];
+  const style = config[type];
 
   return (
     <div
-      className={`${style.bg} ${style.border} border rounded-lg shadow-lg p-4 mb-3 flex items-start gap-3 min-w-[320px] max-w-[420px] animate-slide-in-right`}
+      className={`
+        relative overflow-hidden
+        bg-white border-l-4 ${style.borderColor}
+        rounded-lg shadow-lg hover:shadow-xl
+        transition-all duration-300 ease-out
+        min-w-[320px] max-w-[400px]
+        ${isExiting ? 'animate-slide-out-right opacity-0' : 'animate-slide-in-right'}
+      `}
     >
-      <div className={style.icon}>{icons[type]}</div>
-      <p className={`${style.text} flex-1 text-sm font-medium`}>{message}</p>
-      <button
-        onClick={() => onClose(id)}
-        className={`${style.icon} hover:opacity-70 transition-opacity`}
-      >
-        <X className="w-4 h-4" />
-      </button>
+      {/* Progress bar */}
+      <div 
+        className={`absolute top-0 left-0 h-1 ${style.progressBg} opacity-30`}
+        style={{
+          animation: `shrink ${duration}ms linear forwards`
+        }}
+      />
+      
+      <div className="flex items-start gap-3 p-4">
+        {/* Icon */}
+        <div className={`${style.iconBg} ${style.iconColor} rounded-full p-2 flex-shrink-0`}>
+          {style.icon}
+        </div>
+        
+        {/* Message */}
+        <p className="text-gray-800 flex-1 text-sm font-medium leading-relaxed pt-1">
+          {message}
+        </p>
+        
+        {/* Close button */}
+        <button
+          onClick={handleClose}
+          className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 p-1 hover:bg-gray-100 rounded"
+          aria-label="Đóng"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
+import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
 import {
   BookOpen,
   Users,
@@ -150,6 +151,7 @@ const statusLabels = {
 };
 
 export function CourseList() {
+  usePageTitle(PAGE_TITLES.TEACHER_COURSES);
   const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchTerm, setSearchTerm] = useState("");

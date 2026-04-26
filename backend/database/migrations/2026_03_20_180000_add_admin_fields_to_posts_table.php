@@ -13,16 +13,20 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('posts', function (Blueprint $table) {
-            $table->unsignedBigInteger('pApproved_by')->nullable()->after('pStatus');
-            $table->timestamp('pApproved_at')->nullable()->after('pApproved_by');
-            $table->unsignedBigInteger('pRejected_by')->nullable()->after('pApproved_at');
-            $table->timestamp('pRejected_at')->nullable()->after('pRejected_by');
-            $table->text('pReject_reason')->nullable()->after('pRejected_at');
-            
-            $table->foreign('pApproved_by')->references('uId')->on('users')->onDelete('set null');
-            $table->foreign('pRejected_by')->references('uId')->on('users')->onDelete('set null');
+        if (Schema::hasTable('posts')) {
+            Schema::table('posts', function (Blueprint $table) {
+            if (!Schema::hasColumn('posts', 'pApproved_by')) {
+                $table->unsignedBigInteger('pApproved_by')->nullable()->after('pStatus');
+                $table->timestamp('pApproved_at')->nullable()->after('pApproved_by');
+                $table->unsignedBigInteger('pRejected_by')->nullable()->after('pApproved_at');
+                $table->timestamp('pRejected_at')->nullable()->after('pRejected_by');
+                $table->text('pReject_reason')->nullable()->after('pRejected_at');
+
+                $table->foreign('pApproved_by')->references('uId')->on('users')->onDelete('set null');
+                $table->foreign('pRejected_by')->references('uId')->on('users')->onDelete('set null');
+            }
         });
+        }
     }
 
     /**
@@ -32,7 +36,8 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('posts', function (Blueprint $table) {
+        if (Schema::hasTable('posts')) {
+            Schema::table('posts', function (Blueprint $table) {
             $table->dropForeign(['pApproved_by']);
             $table->dropForeign(['pRejected_by']);
             $table->dropColumn([
@@ -43,5 +48,6 @@ return new class extends Migration
                 'pReject_reason'
             ]);
         });
+        }
     }
 };

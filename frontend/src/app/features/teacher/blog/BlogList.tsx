@@ -1,527 +1,445 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router";
+import { useState, useEffect, useCallback } from "react";
+import { Link, useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
 import {
-  Plus,
-  Search,
-  ChevronDown,
-  Eye,
-  Heart,
-  FileText,
-  Edit,
-  Trash2,
-  Copy,
-  MoreVertical,
-  Grid3x3,
-  List,
-  Calendar,
-  Loader2,
-  AlertCircle,
+  Plus, Search, Eye, Edit3, Trash2, Send, FileText, Clock,
+  CheckCircle2, XCircle, MoreHorizontal, Calendar, Heart,
+  PenLine, BarChart3, Tag, Loader2, BookOpen, Lightbulb,
+  GraduationCap, Newspaper, BookMarked, SlidersHorizontal,
+  Grid3X3, List,
 } from "lucide-react";
-
-interface BlogPost {
-  id: string;
-  title: string;
-  thumbnail: string;
-  type: "grammar" | "tips" | "vocabulary";
-  category: string;
-  status: "active" | "draft" | "rejected";
-  author: {
-    name: string;
-    avatar: string;
-  };
-  createdDate: Date;
-  views: number;
-  likes: number;
-}
+import { useBlog } from "../../../../hooks/useBlog";
+import { useToast } from "../../../../hooks/useToast";
 
 export function BlogList() {
-  const [posts, setPosts] = useState<BlogPost[]>([]);
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [filterStatus, setFilterStatus] = useState("");
-  const [filterType, setFilterType] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { blogs, loading, error, fetchBlogs, deleteBlog, submitForReview } = useBlog();
+  const { success: showSuccess, error: showError } = useToast();
 
-  useEffect(() => {
-    const fetchBlogs = async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem('auth_token');
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/blogs`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+  const [search, setSearch]           = useState("");
+  const [statusFilter, setStatus]     = useState("all");
+  const [typeFilter, setType]         = useState("all");
+  const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode]       = useState<"grid" | "list">("grid");
+  const [menuOpen, setMenuOpen]       = useState<number | null>(null);
+  const [deleteId, setDeleteId]       = useState<number | null>(null);
 
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success') {
-            setPosts(result.data || []);
-            // Calculate stats from data
-            const activePosts = result.data.filter((p: any) => p.status === 'active').length;
-            const draftPosts = result.data.filter((p: any) => p.status === 'draft').length;
-            const rejectedPosts = result.data.filter((p: any) => p.status === 'rejected').length;
-            const totalViews = result.data.reduce((sum: number, p: any) => sum + (p.views || 0), 0);
-            const totalLikes = result.data.reduce((sum: number, p: any) => sum + (p.likes || 0), 0);
-            
-            setStats({
-              totalPosts: result.data.length,
-              activePosts,
-              draftPosts,
-              rejectedPosts,
-              totalViews,
-              totalLikes,
-            });
-          } else {
-            setError('Không thể tải danh sách bài viết');
-          }
-        } else {
-          setError('Lỗi khi tải dữ liệu');
-        }
-      } catch (err) {
-        setError('Lỗi kết nối đến server');
-      } finally {
-        setLoading(false);
-      }
-    };
+  useEffect(() => { fetchBlogs(); }, []);
 
-    fetchBlogs();
-  }, []);
-
-  const getTypeBadge = (type: BlogPost["type"]) => {
-    const badges = {
-      grammar: { text: "Grammar", color: "bg-blue-100 text-blue-700" },
-      tips: { text: "Tips", color: "bg-purple-100 text-purple-700" },
-      vocabulary: { text: "Vocabulary", color: "bg-green-100 text-green-700" },
-    };
-    return badges[type];
-  };
-
-  const getStatusBadge = (status: BlogPost["status"]) => {
-    const badges = {
-      active: { text: "Hoạt động", color: "bg-green-100 text-green-700" },
-      draft: { text: "Nháp", color: "bg-gray-100 text-gray-700" },
-      rejected: { text: "Bị từ chối", color: "bg-red-100 text-red-700" },
-    };
-    return badges[status];
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
-  const filteredPosts = posts.filter((post) => {
-    const matchSearch =
-      searchQuery === "" ||
-      post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.category.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchStatus = filterStatus === "" || post.status === filterStatus;
-    const matchType = filterType === "" || post.type === filterType;
-    return matchSearch && matchStatus && matchType;
+  const filtered = blogs.filter((b) => {
+    const q = search.toLowerCase();
+    const matchQ = b.pTitle.toLowerCase().includes(q) || b.pContent.toLowerCase().includes(q);
+    const matchS = statusFilter === "all" || b.pStatus === statusFilter;
+    const matchT = typeFilter   === "all" || b.pType   === typeFilter;
+    return matchQ && matchS && matchT;
   });
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 font-semibold">Đang tải danh sách bài viết...</p>
-        </div>
-      </div>
-    );
-  }
+  const stats = {
+    total:    blogs.length,
+    draft:    blogs.filter((b) => b.pStatus === "draft").length,
+    pending:  blogs.filter((b) => b.pStatus === "pending").length,
+    active:   blogs.filter((b) => b.pStatus === "active").length,
+    inactive: blogs.filter((b) => b.pStatus === "inactive").length,
+  };
 
-  if (error) {
+  const handleDelete = useCallback(async (id: number) => {
+    try {
+      await deleteBlog(id);
+      showSuccess(t("blog.list.toastDeleted"));
+      setDeleteId(null);
+    } catch (e: any) {
+      showError(e.response?.data?.message || t("blog.list.toastDeleteError"));
+    }
+  }, [deleteBlog, showSuccess, showError, t]);
+
+  const handleSubmit = useCallback(async (id: number) => {
+    try {
+      await submitForReview(id);
+      showSuccess(t("blog.list.toastSubmitted"));
+      setMenuOpen(null);
+    } catch (e: any) {
+      showError(e.response?.data?.message || t("blog.list.toastSubmitError"));
+    }
+  }, [submitForReview, showSuccess, showError, t]);
+
+  // ── Config maps ──────────────────────────────────────────────────────────
+  const statusCfg: Record<string, { color: string; bg: string; border: string; icon: React.ElementType }> = {
+    draft:    { color: "text-slate-600",   bg: "bg-slate-100",   border: "border-slate-200",   icon: FileText     },
+    pending:  { color: "text-amber-700",   bg: "bg-amber-50",    border: "border-amber-200",   icon: Clock        },
+    active:   { color: "text-emerald-700", bg: "bg-emerald-50",  border: "border-emerald-200", icon: CheckCircle2 },
+    inactive: { color: "text-rose-700",    bg: "bg-rose-50",     border: "border-rose-200",    icon: XCircle      },
+  };
+
+  const typeCfg: Record<string, { color: string; bg: string; icon: React.ElementType }> = {
+    grammar:    { color: "text-blue-700",   bg: "bg-blue-50",   icon: BookOpen      },
+    tips:       { color: "text-amber-700",  bg: "bg-amber-50",  icon: Lightbulb     },
+    vocabulary: { color: "text-violet-700", bg: "bg-violet-50", icon: BookMarked    },
+    teaching:   { color: "text-emerald-700",bg: "bg-emerald-50",icon: GraduationCap },
+    news:       { color: "text-orange-700", bg: "bg-orange-50", icon: Newspaper     },
+  };
+
+  const statCards = [
+    { key: "total",    value: stats.total,    icon: FileText,     light: "bg-blue-50",    text: "text-blue-600"    },
+    { key: "draft",    value: stats.draft,    icon: PenLine,      light: "bg-slate-50",   text: "text-slate-600"   },
+    { key: "pending",  value: stats.pending,  icon: Clock,        light: "bg-amber-50",   text: "text-amber-600"   },
+    { key: "active",   value: stats.active,   icon: CheckCircle2, light: "bg-emerald-50", text: "text-emerald-600" },
+    { key: "inactive", value: stats.inactive, icon: XCircle,      light: "bg-rose-50",    text: "text-rose-600"    },
+  ];
+
+  const StatusBadge = ({ status }: { status: string }) => {
+    const cfg = statusCfg[status] ?? statusCfg.draft;
+    const Icon = cfg.icon;
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
-        <div className="text-center bg-white rounded-2xl p-8 border border-red-200">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-8 h-8 text-red-600" />
-          </div>
-          <p className="text-red-600 font-semibold mb-2">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
-          >
-            Thử lại
-          </button>
-        </div>
-      </div>
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
+        <Icon className="w-3 h-3" />
+        {t(`blog.status.${status}`, t("blog.status.draft"))}
+      </span>
     );
-  }
+  };
+
+  const TypeBadge = ({ type }: { type: string }) => {
+    const cfg = typeCfg[type] ?? typeCfg.teaching;
+    const Icon = cfg.icon;
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${cfg.bg} ${cfg.color}`}>
+        <Icon className="w-3 h-3" />
+        {t(`blog.type.${type}`, type)}
+      </span>
+    );
+  };
+
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString("vi-VN", { day: "numeric", month: "short", year: "numeric" });
+
+  const stripHtml = (html: string, max = 100) => {
+    const clean = html.replace(/<[^>]*>/g, "");
+    return clean.length > max ? clean.slice(0, max) + "…" : clean;
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">
-      {/* Header */}
-      <div className="mb-6">
+    <div className="min-h-screen" style={{ background: '#F5F5F7' }}>
+      <div className="w-full px-6 py-6 space-y-4">
+
+        {/* Header — Clean, minimal */}
         <div className="flex items-center justify-between mb-2">
-          <h1 className="text-3xl font-bold text-gray-900">Quản lý bài viết 📝</h1>
-          <Link
-            to="/giao-vien/bai-viet/tao-moi"
-            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all flex items-center gap-2 shadow-lg shadow-blue-500/30"
-          >
-            <Plus className="w-5 h-5" />
-            Tạo bài viết mới
-          </Link>
-        </div>
-        <p className="text-gray-600">Tạo và quản lý nội dung giáo dục của bạn</p>
-      </div>
-
-      {/* Quick Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-6">
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-              <FileText className="w-6 h-6 text-blue-600" />
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{t("blog.list.title")}</h1>
+            <p className="text-sm text-slate-500 mt-1">{t("blog.list.subtitle")}</p>
           </div>
-          <p className="text-gray-600 text-sm mb-1">Tổng bài viết</p>
-          <p className="text-3xl font-bold text-gray-900">{stats?.totalPosts || 0}</p>
-        </div>
-
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-              <FileText className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-          <p className="text-gray-600 text-sm mb-1">Đang hoạt động</p>
-          <p className="text-3xl font-bold text-green-600">{stats?.activePosts || 0}</p>
-        </div>
-
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
-              <FileText className="w-6 h-6 text-gray-600" />
-            </div>
-          </div>
-          <p className="text-gray-600 text-sm mb-1">Bản nháp</p>
-          <p className="text-3xl font-bold text-gray-600">{stats?.draftPosts || 0}</p>
-        </div>
-
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-              <FileText className="w-6 h-6 text-red-600" />
-            </div>
-          </div>
-          <p className="text-gray-600 text-sm mb-1">Bị từ chối</p>
-          <p className="text-3xl font-bold text-red-600">{stats?.rejectedPosts || 0}</p>
-        </div>
-
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-              <Eye className="w-6 h-6 text-purple-600" />
-            </div>
-          </div>
-          <p className="text-gray-600 text-sm mb-1">Tổng lượt xem</p>
-          <p className="text-2xl font-bold text-gray-900">{(stats?.totalViews || 0).toLocaleString()}</p>
-        </div>
-
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center">
-              <Heart className="w-6 h-6 text-pink-600" />
-            </div>
-          </div>
-          <p className="text-gray-600 text-sm mb-1">Tổng lượt thích</p>
-          <p className="text-2xl font-bold text-gray-900">{(stats?.totalLikes || 0).toLocaleString()}</p>
-        </div>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-          {/* Search */}
-          <div className="md:col-span-2 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm bài viết..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Filter Status */}
-          <div className="relative">
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-            >
-              <option value="">Tất cả trạng thái</option>
-              <option value="active">Hoạt động</option>
-              <option value="draft">Nháp</option>
-              <option value="rejected">Bị từ chối</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-          </div>
-
-          {/* Filter Type */}
-          <div className="relative">
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-            >
-              <option value="">Tất cả loại</option>
-              <option value="grammar">Grammar</option>
-              <option value="tips">Tips</option>
-              <option value="vocabulary">Vocabulary</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-          </div>
-
-          {/* Date Range */}
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="date"
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* View Toggle */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`flex-1 px-4 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 ${
-                viewMode === "grid"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              <Grid3x3 className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className={`flex-1 px-4 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 ${
-                viewMode === "list"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              <List className="w-5 h-5" />
-            </button>
+          <div className="flex items-center gap-2.5">
+            <Link to="/giao-vien/bai-viet/thong-ke"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white rounded-2xl hover:scale-[1.02] transition-transform duration-200 shadow-sm cursor-pointer"
+              style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <BarChart3 className="w-4 h-4" />{t("blog.list.btnStats")}
+            </Link>
+            <Link to="/giao-vien/bai-viet/danh-muc"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white rounded-2xl hover:scale-[1.02] transition-transform duration-200 shadow-sm cursor-pointer"
+              style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <Tag className="w-4 h-4" />{t("blog.list.btnCategories")}
+            </Link>
+            <Link to="/giao-vien/bai-viet/tao-moi"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white rounded-2xl hover:scale-[1.02] transition-transform duration-200 shadow-md cursor-pointer"
+              style={{ background: '#EC4899', boxShadow: '0 4px 12px rgba(236,72,153,0.25)' }}>
+              <Plus className="w-4 h-4" />{t("blog.list.btnCreate")}
+            </Link>
           </div>
         </div>
-      </div>
 
-      {/* Posts Grid */}
-      {viewMode === "grid" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredPosts.map((post) => {
-            const typeBadge = getTypeBadge(post.type);
-            const statusBadge = getStatusBadge(post.status);
-
-            return (
-              <div
-                key={post.id}
-                className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all group"
-              >
-                {/* Thumbnail */}
-                <div className="relative h-48 overflow-hidden">
-                  <img
-                    src={post.thumbnail}
-                    alt={post.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute top-3 right-3">
-                    <span className={`px-3 py-1 rounded-lg text-xs font-bold ${statusBadge.color}`}>
-                      {statusBadge.text}
-                    </span>
-                  </div>
+        {/* Stats — Bento Grid style */}
+        <div className="grid grid-cols-5 gap-4">
+          {statCards.map((c) => (
+            <div key={c.key} 
+              className="bg-white rounded-2xl p-5 hover:scale-[1.02] transition-transform duration-200 cursor-default"
+              style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div className="flex items-start justify-between mb-3">
+                <div className={`w-10 h-10 rounded-xl ${c.light} flex items-center justify-center`}>
+                  <c.icon className={`${c.text}`} style={{ width: 20, height: 20 }} />
                 </div>
+              </div>
+              <p className="text-3xl font-bold text-slate-900 leading-none tabular-nums mb-1">{c.value}</p>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t(`blog.stats.${c.key}`)}</p>
+            </div>
+          ))}
+        </div>
 
-                {/* Content */}
-                <div className="p-6">
-                  {/* Type & Category */}
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className={`px-3 py-1 rounded-lg text-xs font-semibold ${typeBadge.color}`}>
-                      {typeBadge.text}
-                    </span>
-                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-xs font-semibold">
-                      {post.category}
-                    </span>
-                  </div>
+        {/* Search + Filter — Bento style */}
+        <div className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
+              <input type="text" placeholder={t("blog.list.searchPlaceholder")} value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 bg-slate-50/50 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                style={{ border: '1px solid rgba(0,0,0,0.06)' }} />
+            </div>
+            <button onClick={() => setShowFilters(!showFilters)}
+              className={`inline-flex items-center gap-1.5 px-4 py-3 text-sm font-medium rounded-xl transition-all cursor-pointer ${showFilters ? "bg-blue-50 text-blue-700" : "bg-slate-50/50 text-slate-600 hover:bg-slate-100"}`}
+              style={{ border: showFilters ? '1px solid #3B82F6' : '1px solid rgba(0,0,0,0.06)' }}>
+              <SlidersHorizontal className="w-4 h-4" />{t("blog.list.btnFilter")}
+            </button>
+            <div className="flex items-center bg-slate-50/50 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.06)' }}>
+              <button onClick={() => setViewMode("grid")}
+                className={`p-2.5 transition-colors cursor-pointer ${viewMode === "grid" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>
+                <Grid3X3 className="w-4 h-4" />
+              </button>
+              <button onClick={() => setViewMode("list")}
+                className={`p-2.5 transition-colors cursor-pointer ${viewMode === "list" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>
+                <List className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          {showFilters && (
+            <div className="mt-4 pt-4 grid grid-cols-2 gap-3" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">{t("blog.list.filterStatus")}</label>
+                <select value={statusFilter} onChange={(e) => setStatus(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50/50 rounded-xl text-sm text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  style={{ border: '1px solid rgba(0,0,0,0.06)' }}>
+                  <option value="all">{t("blog.filter.all")}</option>
+                  <option value="draft">{t("blog.filter.draft")}</option>
+                  <option value="pending">{t("blog.filter.pending")}</option>
+                  <option value="active">{t("blog.filter.active")}</option>
+                  <option value="inactive">{t("blog.filter.inactive")}</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">{t("blog.list.filterType")}</label>
+                <select value={typeFilter} onChange={(e) => setType(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50/50 rounded-xl text-sm text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  style={{ border: '1px solid rgba(0,0,0,0.06)' }}>
+                  <option value="all">{t("blog.type.all")}</option>
+                  <option value="grammar">{t("blog.type.grammar")}</option>
+                  <option value="tips">{t("blog.type.tips")}</option>
+                  <option value="vocabulary">{t("blog.type.vocabulary")}</option>
+                  <option value="teaching">{t("blog.type.teaching")}</option>
+                  <option value="news">{t("blog.type.news")}</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
 
-                  {/* Title */}
-                  <h3 className="text-lg font-bold text-gray-900 mb-3 line-clamp-2 group-hover:text-blue-600 transition-colors">
-                    {post.title}
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-6 h-6 text-blue-600 animate-spin mr-2.5" />
+            <span className="text-sm text-slate-500">{t("blog.list.loading")}</span>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && !loading && (
+          <div className="bg-white rounded-xl border border-rose-200 p-8 text-center">
+            <XCircle className="w-9 h-9 text-rose-500 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-rose-800 mb-1">{t("blog.list.errorTitle")}</p>
+            <p className="text-xs text-rose-600 mb-4">{error}</p>
+            <button onClick={() => fetchBlogs()}
+              className="px-4 py-2 text-sm font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors cursor-pointer">
+              {t("blog.list.btnRetry")}
+            </button>
+          </div>
+        )}
+
+        {/* Empty — Bento style */}
+        {!loading && !error && blogs.length === 0 && (
+          <div className="bg-white rounded-2xl p-16 text-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+            <div className="w-16 h-16 mx-auto mb-5 bg-gradient-to-br from-slate-100 to-slate-50 rounded-2xl flex items-center justify-center">
+              <FileText className="w-8 h-8 text-slate-400" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">{t("blog.list.emptyTitle")}</h3>
+            <p className="text-sm text-slate-500 mb-6 leading-relaxed">{t("blog.list.emptySubtitle")}</p>
+            <Link to="/giao-vien/bai-viet/tao-moi"
+              className="inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold text-white rounded-2xl hover:scale-[1.02] transition-transform cursor-pointer"
+              style={{ background: '#EC4899', boxShadow: '0 4px 12px rgba(236,72,153,0.25)' }}>
+              <Plus className="w-4.5 h-4.5" />{t("blog.list.btnCreateFirst")}
+            </Link>
+          </div>
+        )}
+
+        {/* No results — Bento style */}
+        {!loading && !error && filtered.length === 0 && blogs.length > 0 && (
+          <div className="bg-white rounded-2xl p-12 text-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+            <div className="w-14 h-14 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-50 rounded-2xl flex items-center justify-center">
+              <Search className="w-7 h-7 text-slate-400" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">{t("blog.list.noResultTitle")}</h3>
+            <p className="text-sm text-slate-500 mb-5 leading-relaxed">{t("blog.list.noResultSubtitle")}</p>
+            <button onClick={() => { setSearch(""); setStatus("all"); setType("all"); }}
+              className="px-5 py-2.5 text-sm font-semibold text-slate-700 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-colors cursor-pointer">
+              {t("blog.list.btnClearFilter")}
+            </button>
+          </div>
+        )}
+
+        {/* Grid View — Bento style */}
+        {!loading && !error && filtered.length > 0 && viewMode === "grid" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filtered.map((blog) => (
+              <div
+                key={blog.pId}
+                className="group relative bg-white rounded-2xl overflow-hidden hover:scale-[1.02] transition-transform duration-200 cursor-pointer"
+                style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+                onClick={() => navigate(`/giao-vien/bai-viet/${blog.pId}`)}>
+                {/* Thumbnail */}
+                <div className="relative h-44 bg-gradient-to-br from-slate-100 to-slate-50 overflow-hidden">
+                  {blog.pThumbnail ? (
+                    <img src={blog.pThumbnail} alt={blog.pTitle}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <FileText className="w-10 h-10 text-slate-300" />
+                    </div>
+                  )}
+                  <div className="absolute top-3 left-3"><StatusBadge status={blog.pStatus} /></div>
+                  <div className="absolute top-3 right-3"><TypeBadge type={blog.pType} /></div>
+                </div>
+                {/* Body */}
+                <div className="p-5">
+                  <h3 className="text-base font-semibold text-slate-900 line-clamp-2 group-hover:text-blue-700 transition-colors mb-2">
+                    {blog.pTitle}
                   </h3>
-
-                  {/* Author */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
-                      {post.author.avatar}
-                    </div>
-                    <div className="text-sm text-gray-600">{post.author.name}</div>
-                  </div>
-
+                  <p className="text-sm text-slate-500 line-clamp-2 mb-4">{stripHtml(blog.pContent)}</p>
                   {/* Meta */}
-                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <Eye className="w-4 h-4" />
-                        <span>{post.views.toLocaleString()}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Heart className="w-4 h-4" />
-                        <span>{post.likes}</span>
-                      </div>
-                    </div>
-                    <span className="text-xs text-gray-500">{formatDate(post.createdDate)}</span>
+                  <div className="flex items-center gap-4 text-xs text-slate-400 pb-4 mb-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                    <span className="inline-flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />{fmtDate(blog.pCreated_at)}</span>
+                    <span className="inline-flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" />{blog.pView || 0}</span>
+                    <span className="inline-flex items-center gap-1.5"><Heart className="w-3.5 h-3.5" />{blog.pLike || 0}</span>
                   </div>
-
                   {/* Actions */}
-                  <div className="flex gap-2">
-                    <Link
-                      to={`/giao-vien/bai-viet/${post.id}`}
-                      className="flex-1 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all flex items-center justify-center gap-2 font-semibold text-sm"
-                    >
+                  <div className="flex items-center gap-2">
+                    <Link to={`/giao-vien/bai-viet/${blog.pId}`} onClick={(e) => e.stopPropagation()}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors cursor-pointer">
+                      <Eye className="w-4 h-4" />{t("blog.list.btnView")}
+                    </Link>
+                    <Link to={`/giao-vien/bai-viet/${blog.pId}/chinh-sua`} onClick={(e) => e.stopPropagation()}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors cursor-pointer">
+                      <Edit3 className="w-4 h-4" />{t("blog.list.btnEdit")}
+                    </Link>
+                    <button onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === blog.pId ? null : blog.pId); }}
+                      className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer">
+                      <MoreHorizontal className="w-4.5 h-4.5" />
+                    </button>
+                  </div>
+                  {/* Dropdown */}
+                  {menuOpen === blog.pId && (
+                    <div className="absolute right-4 bottom-16 w-44 bg-white rounded-xl py-1.5 z-20"
+                      style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
+                      onClick={(e) => e.stopPropagation()}>
+                      {blog.pStatus === "draft" && (
+                        <button onClick={() => handleSubmit(blog.pId)}
+                          className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition-colors cursor-pointer">
+                          <Send className="w-4 h-4" />{t("blog.list.btnSubmit")}
+                        </button>
+                      )}
+                      <button onClick={() => { setDeleteId(blog.pId); setMenuOpen(null); }}
+                        className="w-full px-3 py-2 text-left text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors cursor-pointer">
+                        <Trash2 className="w-4 h-4" />{t("blog.list.btnDelete")}
+                      </button>
+                    </div>
+                  )}
+                  {/* Reject reason */}
+                  {blog.pStatus === "inactive" && blog.pReject_reason && (
+                    <div className="mt-3 p-3 bg-rose-50 rounded-xl" style={{ border: '1px solid rgba(244,63,94,0.2)' }}>
+                      <p className="text-xs font-semibold text-rose-700 mb-1">{t("blog.list.rejectReason")}</p>
+                      <p className="text-xs text-rose-600">{blog.pReject_reason}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* List View — Bento style */}
+        {!loading && !error && filtered.length > 0 && viewMode === "list" && (
+          <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+            <div className="divide-y" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
+              {filtered.map((blog) => (
+                <div key={blog.pId}
+                  className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50/60 transition-colors cursor-pointer group"
+                  onClick={() => navigate(`/giao-vien/bai-viet/${blog.pId}`)}>
+                  <div className="w-20 h-14 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 overflow-hidden flex-shrink-0">
+                    {blog.pThumbnail ? (
+                      <img src={blog.pThumbnail} alt={blog.pTitle} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-slate-300" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-sm font-semibold text-slate-900 truncate group-hover:text-blue-700 transition-colors">
+                        {blog.pTitle}
+                      </h3>
+                      <StatusBadge status={blog.pStatus} />
+                      <TypeBadge type={blog.pType} />
+                    </div>
+                    <p className="text-xs text-slate-500 truncate">{stripHtml(blog.pContent, 80)}</p>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-5 text-xs text-slate-400 flex-shrink-0">
+                    <span className="inline-flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />{fmtDate(blog.pCreated_at)}</span>
+                    <span className="inline-flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" />{blog.pView || 0}</span>
+                    <span className="inline-flex items-center gap-1.5"><Heart className="w-3.5 h-3.5" />{blog.pLike || 0}</span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <Link to={`/giao-vien/bai-viet/${blog.pId}`}
+                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors cursor-pointer">
                       <Eye className="w-4 h-4" />
-                      Xem
                     </Link>
-                    <Link
-                      to={`/giao-vien/bai-viet/${post.id}/chinh-sua`}
-                      className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-all"
-                    >
-                      <Edit className="w-4 h-4" />
+                    <Link to={`/giao-vien/bai-viet/${blog.pId}/chinh-sua`}
+                      className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer">
+                      <Edit3 className="w-4 h-4" />
                     </Link>
-                    <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all">
-                      <MoreVertical className="w-4 h-4" />
+                    {blog.pStatus === "draft" && (
+                      <button onClick={() => handleSubmit(blog.pId)}
+                        className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer">
+                        <Send className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button onClick={() => setDeleteId(blog.pId)}
+                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer">
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Bài viết
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Loại
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Trạng thái
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Tác giả
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Lượt xem
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Ngày tạo
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Hành động
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredPosts.map((post) => {
-                const typeBadge = getTypeBadge(post.type);
-                const statusBadge = getStatusBadge(post.status);
+              ))}
+            </div>
+          </div>
+        )}
 
-                return (
-                  <tr key={post.id} className="hover:bg-blue-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={post.thumbnail}
-                          alt={post.title}
-                          className="w-16 h-16 object-cover rounded-lg"
-                        />
-                        <div>
-                          <p className="font-semibold text-gray-900 line-clamp-1">{post.title}</p>
-                          <p className="text-sm text-gray-500">{post.category}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-lg text-xs font-semibold ${typeBadge.color}`}>
-                        {typeBadge.text}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-lg text-xs font-bold ${statusBadge.color}`}>
-                        {statusBadge.text}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
-                          {post.author.avatar}
-                        </div>
-                        <span className="text-sm text-gray-700">{post.author.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1 text-sm text-gray-700">
-                        <Eye className="w-4 h-4" />
-                        <span>{post.views.toLocaleString()}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">{formatDate(post.createdDate)}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <Link
-                          to={`/giao-vien/bai-viet/${post.id}`}
-                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Link>
-                        <Link
-                          to={`/giao-vien/bai-viet/${post.id}/chinh-sua`}
-                          className="p-2 bg-purple-100 text-purple-600 rounded-lg hover:bg-purple-200 transition-all"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Link>
-                        <button className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-all">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      </div>
+
+      {/* Delete Modal — Bento style */}
+      {deleteId !== null && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          onClick={() => setDeleteId(null)}>
+          <div className="bg-white rounded-3xl max-w-sm w-full p-7" 
+            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="w-14 h-14 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
+              <Trash2 className="w-7 h-7 text-rose-600" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 text-center mb-2">{t("blog.list.deleteTitle")}</h3>
+            <p className="text-sm text-slate-500 text-center mb-6 leading-relaxed">{t("blog.list.deleteMessage")}</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteId(null)}
+                className="flex-1 px-4 py-3 text-sm font-semibold text-slate-700 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-colors cursor-pointer">
+                {t("blog.list.btnCancel")}
+              </button>
+              <button onClick={() => handleDelete(deleteId)}
+                className="flex-1 px-4 py-3 text-sm font-semibold text-white rounded-2xl hover:scale-[1.02] transition-transform cursor-pointer"
+                style={{ background: '#EC4899', boxShadow: '0 4px 12px rgba(236,72,153,0.3)' }}>
+                {t("blog.list.btnConfirmDelete")}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Empty State */}
-      {filteredPosts.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200">
-          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <FileText className="w-10 h-10 text-gray-400" />
-          </div>
-          <p className="text-gray-600 font-semibold mb-2">Chưa có bài viết nào</p>
-          <p className="text-sm text-gray-500 mb-4">Bắt đầu tạo bài viết đầu tiên của bạn</p>
-          <Link
-            to="/giao-vien/bai-viet/tao-moi"
-            className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all"
-          >
-            Tạo bài viết mới
-          </Link>
-        </div>
+      {menuOpen !== null && (
+        <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />
       )}
     </div>
   );

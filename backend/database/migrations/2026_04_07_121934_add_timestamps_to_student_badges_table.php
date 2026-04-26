@@ -13,8 +13,13 @@ class AddTimestampsToStudentBadgesTable extends Migration
      */
     public function up()
     {
+        if (!Schema::hasTable('student_badges')) {
+            return;
+        }
         Schema::table('student_badges', function (Blueprint $table) {
-            $table->timestamps();
+            if (!Schema::hasColumn('student_badges', 'created_at')) {
+                $table->timestamps();
+            }
         });
     }
 

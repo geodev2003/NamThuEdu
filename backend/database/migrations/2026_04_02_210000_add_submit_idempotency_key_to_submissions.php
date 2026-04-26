@@ -13,12 +13,14 @@ class AddSubmitIdempotencyKeyToSubmissions extends Migration
      */
     public function up()
     {
-        Schema::table('submissions', function (Blueprint $table) {
+        if (Schema::hasTable('submissions')) {
+            Schema::table('submissions', function (Blueprint $table) {
             if (!Schema::hasColumn('submissions', 'submit_idempotency_key')) {
                 $table->string('submit_idempotency_key', 64)->nullable()->after('sGraded_time');
                 $table->unique('submit_idempotency_key', 'submissions_submit_idempotency_key_unique');
             }
         });
+        }
     }
 
     /**
@@ -28,11 +30,13 @@ class AddSubmitIdempotencyKeyToSubmissions extends Migration
      */
     public function down()
     {
-        Schema::table('submissions', function (Blueprint $table) {
+        if (Schema::hasTable('submissions')) {
+            Schema::table('submissions', function (Blueprint $table) {
             if (Schema::hasColumn('submissions', 'submit_idempotency_key')) {
                 $table->dropUnique('submissions_submit_idempotency_key_unique');
                 $table->dropColumn('submit_idempotency_key');
             }
         });
+        }
     }
 }

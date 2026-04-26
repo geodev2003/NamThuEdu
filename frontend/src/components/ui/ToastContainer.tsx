@@ -7,10 +7,12 @@ interface ToastContainerProps {
 
 export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
   return (
-    <div className="fixed top-4 right-4 z-[9999] flex flex-col items-end">
-      {toasts.map((toast) => (
-        <Toast key={toast.id} {...toast} onClose={onClose} />
-      ))}
+    <div className="fixed top-6 right-6 z-[9999] flex flex-col items-end gap-3 pointer-events-none">
+      <div className="flex flex-col gap-3 pointer-events-auto">
+        {toasts.map((toast) => (
+          <Toast key={toast.id} {...toast} onClose={onClose} />
+        ))}
+      </div>
     </div>
   );
 }

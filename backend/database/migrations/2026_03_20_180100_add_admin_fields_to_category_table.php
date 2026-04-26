@@ -13,11 +13,13 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('category', function (Blueprint $table) {
+        if (Schema::hasTable('category')) {
+            Schema::table('category', function (Blueprint $table) {
             $table->text('caDescription')->nullable()->after('caName');
             $table->enum('caType', ['VSTEP', 'IELTS', 'GENERAL'])->default('GENERAL')->after('caDescription');
             $table->timestamp('caCreated_at')->useCurrent()->after('caType');
         });
+        }
     }
 
     /**
@@ -27,8 +29,10 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('category', function (Blueprint $table) {
+        if (Schema::hasTable('category')) {
+            Schema::table('category', function (Blueprint $table) {
             $table->dropColumn(['caDescription', 'caType', 'caCreated_at']);
         });
+        }
     }
 };

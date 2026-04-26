@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams } from "react-router";
 import {
   Users,
@@ -16,54 +16,22 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { useClassReport } from "@/hooks/useClassReport";
 
 export function ClassReport() {
   const { classId } = useParams();
   const [selectedExam, setSelectedExam] = useState("all");
-  const [classStats, setClassStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
+  // Use custom hook
+  const { data: reportData, loading, error } = useClassReport(classId || '');
 
-  useEffect(() => {
-    const fetchClassReport = async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem('auth_token');
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/class/${classId}/report`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success') {
-            setClassStats(result.data);
-          } else {
-            setError('Không thể tải báo cáo lớp học');
-          }
-        } else {
-          setError('Lỗi khi tải dữ liệu');
-        }
-      } catch (err) {
-        setError('Lỗi kết nối đến server');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (classId) {
-      fetchClassReport();
-    }
-  }, [classId]);
-
-  const scoreDistribution = [
-    { range: "90-100", count: 5, color: "#10B981" },
-    { range: "80-89", count: 8, color: "#3B82F6" },
-    { range: "70-79", count: 6, color: "#F59E0B" },
-    { range: "60-69", count: 3, color: "#EF4444" },
-    { range: "0-59", count: 1, color: "#6B7280" },
+  // Mock data for charts (will be replaced with real data when available)
+  const scoreDistribution = reportData?.stats?.score_distribution || [
+    { range: "90-100", count: 0, color: "#10B981" },
+    { range: "80-89", count: 0, color: "#3B82F6" },
+    { range: "70-79", count: 0, color: "#F59E0B" },
+    { range: "60-69", count: 0, color: "#EF4444" },
+    { range: "0-59", count: 0, color: "#6B7280" },
   ];
 
   const examPerformance = [
@@ -186,7 +154,7 @@ export function ClassReport() {
     );
   }
 
-  if (error || !classStats) {
+  if (error || !reportData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
         <div className="text-center bg-white rounded-2xl p-8 border border-red-200">
@@ -205,13 +173,18 @@ export function ClassReport() {
     );
   }
 
+  // Extract data from reportData
+  const classInfo = reportData.class;
+  const students = reportData.students;
+  const stats = reportData.stats;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-3xl font-bold text-gray-900">
-            Báo cáo lớp: Lớp KET Morning A1 📊
+            Báo cáo lớp: {classInfo.cName} 📊
           </h1>
           <button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all flex items-center gap-2 shadow-lg shadow-blue-500/30">
             <Download className="w-5 h-5" />
@@ -247,7 +220,7 @@ export function ClassReport() {
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-1">Tổng số học sinh</p>
-          <p className="text-3xl font-bold text-gray-900">{classStats.totalStudents}</p>
+          <p className="text-3xl font-bold text-gray-900">{stats.total_students || 0}</p>
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
@@ -257,7 +230,7 @@ export function ClassReport() {
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-1">Đã nộp bài</p>
-          <p className="text-3xl font-bold text-gray-900">{classStats.submitted}</p>
+          <p className="text-3xl font-bold text-gray-900">{stats.total_submissions || 0}</p>
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
@@ -267,7 +240,7 @@ export function ClassReport() {
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-1">Tỷ lệ tham gia</p>
-          <p className="text-3xl font-bold text-gray-900">{classStats.participationRate}%</p>
+          <p className="text-3xl font-bold text-gray-900">{stats.completion_rate || 0}%</p>
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
@@ -277,7 +250,7 @@ export function ClassReport() {
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-1">Điểm trung bình</p>
-          <p className="text-3xl font-bold text-gray-900">{classStats.averageScore}</p>
+          <p className="text-3xl font-bold text-gray-900">{stats.average_score?.toFixed(1) || 0}</p>
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
@@ -287,7 +260,7 @@ export function ClassReport() {
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-1">Tỷ lệ đạt</p>
-          <p className="text-3xl font-bold text-gray-900">{classStats.passRate}%</p>
+          <p className="text-3xl font-bold text-gray-900">{stats.pass_rate?.toFixed(1) || 0}%</p>
         </div>
       </div>
 

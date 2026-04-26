@@ -8,7 +8,6 @@ import { lazy } from "react";
 import { ProtectedRoute } from "../../components/auth";
 import { TeacherLayout } from "../layouts/TeacherLayout";
 import { Dashboard } from "../features/teacher/dashboard";
-import { CambridgeTemplates } from "../features/teacher/exams/CambridgeTemplates";
 import { CourseDetail } from "../features/teacher/courses/CourseDetail";
 import { ClassList, CreateClass, TransferClass, ClassStats } from "../features/teacher/classes";
 import { StudentManagement, AddStudent, ImportStudents } from "../features/teacher/students";
@@ -29,10 +28,16 @@ import { CreateVSTEPExam } from "../features/teacher/exams/CreateVSTEPExam";
 import { ExamDetail } from "../features/teacher/exams/ExamDetail";
 import { ExamPreview } from "../features/teacher/exams/ExamPreview";
 import { ExamPreviewNew } from "../features/teacher/exams/ExamPreviewNew";
+import { VstepExamPreview } from "../features/teacher/exams/VstepExamPreview";
 import { EditExam } from "../features/teacher/exams/EditExam";
 import { ExamTemplates } from "../features/teacher/exams/ExamTemplates";
 import { MyExams } from "../features/teacher/exams/MyExams";
 import CreateKidsExam from "../features/teacher/exams/kids/CreateKidsExam";
+import { CreateVstepReading } from "../features/teacher/exams/vstep/CreateVstepReading";
+import { CreateVstepListening } from "../features/teacher/exams/vstep/CreateVstepListening";
+import { CreateVstepWriting } from "../features/teacher/exams/vstep/CreateVstepWriting";
+import { CreateVstepSpeaking } from "../features/teacher/exams/vstep/CreateVstepSpeaking";
+import { CreateVstepFull } from "../features/teacher/exams/vstep/CreateVstepFull";
 import { TestExamPlayer } from "../features/test";
 
 // Assignment
@@ -114,10 +119,15 @@ export const teacherRoutes = {
     { path: "de-thi/import", Component: lazy(() => import("@/app/features/teacher/exams/ImportExam").then(m => ({ default: m.ImportExam }))) },
     { path: "de-thi/kids/tao-moi", Component: CreateKidsExam },
     { path: "de-thi/kids/tao-moi/:examId", Component: CreateKidsExam },
+    { path: "de-thi/vstep/reading/tao-moi", Component: CreateVstepReading }, // NEW: VSTEP Reading
+    { path: "de-thi/vstep/listening/tao-moi", Component: CreateVstepListening }, // NEW: VSTEP Listening
+    { path: "de-thi/vstep/writing/tao-moi", Component: CreateVstepWriting }, // NEW: VSTEP Writing
+    { path: "de-thi/vstep/speaking/tao-moi", Component: CreateVstepSpeaking }, // NEW: VSTEP Speaking
+    { path: "de-thi/vstep/full/tao-moi", Component: CreateVstepFull }, // NEW: VSTEP Full Test (4 skills)
     { path: "de-thi/mau-de", Component: ExamTemplates },
     { path: "de-thi/cua-toi", Component: MyExams },
-    { path: "mau-de-cambridge", Component: CambridgeTemplates },
     { path: "de-thi/:examId", Component: ExamDetail },
+    { path: "de-thi/:examId/vstep", Component: VstepExamPreview }, // VSTEP exam preview
     { path: "de-thi/:examId/xem", Component: ExamPreview },
     { path: "de-thi/:examId/xem-moi", Component: ExamPreviewNew }, // NEW: Test shared component
     { path: "de-thi/:examId/chinh-sua", Component: EditExam },

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router";
 import {
   FileText,
@@ -29,43 +29,11 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { useGradingStats } from "@/hooks/useGradingStats";
 
 export function GradingStats() {
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchGradingStats = async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem('auth_token');
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/grading/stats`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success') {
-            setStats(result.data);
-          } else {
-            setError('Không thể tải thống kê chấm bài');
-          }
-        } else {
-          setError('Lỗi khi tải dữ liệu');
-        }
-      } catch (err) {
-        setError('Lỗi kết nối đến server');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchGradingStats();
-  }, []);
+  // Use custom hook
+  const { data: statsData, loading, error } = useGradingStats();
 
   if (loading) {
     return (
@@ -78,7 +46,7 @@ export function GradingStats() {
     );
   }
 
-  if (error || !stats) {
+  if (error || !statsData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
         <div className="text-center bg-white rounded-2xl p-8 border border-red-200">
@@ -97,26 +65,33 @@ export function GradingStats() {
     );
   }
 
-  const scoresByExamType = stats.scoresByExamType || [];
+  // Extract data from statsData
+  const overview = statsData.overview;
+  const bySkill = statsData.bySkill;
+  const trend = statsData.trend;
+
+  // Calculate completion rate
+  const completionRate = overview.total > 0 
+    ? Math.round((overview.graded / overview.total) * 100) 
+    : 0;
+
+  // Prepare data for charts
+  const submissionsByStatus = [
+    { name: "Đã chấm", value: overview.graded, color: "#10B981" },
+    { name: "Chờ chấm", value: overview.pending, color: "#F59E0B" },
+  ];
+  
+  const gradingActivity = trend.map(item => ({
+    date: new Date(item.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+    graded: item.count,
+  }));
+
+  // Mock data for exam types (will be replaced with real data when available)
+  const scoresByExamType: any[] = [];
   const avgScoresByType = scoresByExamType.map((item: any) => ({
     name: item.type,
     score: item.average,
   }));
-
-  const submissionsByStatus = stats.submissionsByStatus || [
-    { name: "Đã chấm", value: 98, color: "#10B981" },
-    { name: "Chờ chấm", value: 47, color: "#F59E0B" },
-  ];
-  
-  const gradingActivity = stats.gradingActivity || [
-    { date: "17/03", graded: 12 },
-    { date: "18/03", graded: 15 },
-    { date: "19/03", graded: 18 },
-    { date: "20/03", graded: 14 },
-    { date: "21/03", graded: 20 },
-    { date: "22/03", graded: 16 },
-    { date: "23/03", graded: 23 },
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">
@@ -137,7 +112,7 @@ export function GradingStats() {
             <TrendingUp className="w-5 h-5 text-green-500" />
           </div>
           <p className="text-gray-600 text-sm mb-1">Tổng số bài nộp</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.totalSubmissions}</p>
+          <p className="text-3xl font-bold text-gray-900">{overview.total}</p>
         </div>
 
         {/* Graded Submissions */}
@@ -147,11 +122,11 @@ export function GradingStats() {
               <CheckCircle2 className="w-6 h-6 text-green-600" />
             </div>
             <span className="px-2 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">
-              {stats.graded}
+              {Math.round((overview.graded / overview.total) * 100)}%
             </span>
           </div>
           <p className="text-gray-600 text-sm mb-1">Đã chấm</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.graded}</p>
+          <p className="text-3xl font-bold text-gray-900">{overview.graded}</p>
         </div>
 
         {/* Pending Submissions */}
@@ -161,11 +136,11 @@ export function GradingStats() {
               <Clock className="w-6 h-6 text-orange-600" />
             </div>
             <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-bold">
-              {stats.pending}
+              {Math.round((overview.pending / overview.total) * 100)}%
             </span>
           </div>
           <p className="text-gray-600 text-sm mb-1">Chờ chấm</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.pending}</p>
+          <p className="text-3xl font-bold text-gray-900">{overview.pending}</p>
         </div>
 
         {/* Completion Rate */}
@@ -177,12 +152,12 @@ export function GradingStats() {
           </div>
           <p className="text-gray-600 text-sm mb-1">Tỷ lệ hoàn thành</p>
           <div className="flex items-end gap-3">
-            <p className="text-3xl font-bold text-gray-900">{stats.completionRate}%</p>
+            <p className="text-3xl font-bold text-gray-900">{completionRate}%</p>
             <div className="flex-1">
               <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full"
-                  style={{ width: `${stats.completionRate}%` }}
+                  style={{ width: `${completionRate}%` }}
                 />
               </div>
             </div>
@@ -197,7 +172,7 @@ export function GradingStats() {
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-1">Hoạt động 7 ngày qua</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.recentActivity}</p>
+          <p className="text-3xl font-bold text-gray-900">{overview.graded}</p>
           <p className="text-xs text-gray-500 mt-1">Bài đã chấm gần đây</p>
         </div>
 
@@ -209,7 +184,7 @@ export function GradingStats() {
             </div>
           </div>
           <p className="text-gray-600 text-sm mb-1">Thời gian chấm TB</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.averageGradingTime}</p>
+          <p className="text-3xl font-bold text-gray-900">{overview.avgTime}</p>
           <p className="text-xs text-gray-500 mt-1">phút / bài</p>
         </div>
       </div>
@@ -368,7 +343,7 @@ export function GradingStats() {
             <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
               <Eye className="w-6 h-6" />
             </div>
-            <span className="text-2xl font-bold">{stats.pending}</span>
+            <span className="text-2xl font-bold">{overview.pending}</span>
           </div>
           <h3 className="text-lg font-bold mb-2">Xem bài chờ chấm</h3>
           <p className="text-sm text-blue-100">Danh sách bài thi cần chấm điểm</p>
@@ -379,7 +354,7 @@ export function GradingStats() {
             <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
               <Zap className="w-6 h-6" />
             </div>
-            <span className="text-2xl font-bold">{stats.pending}</span>
+            <span className="text-2xl font-bold">{overview.pending}</span>
           </div>
           <h3 className="text-lg font-bold mb-2">Chấm tự động hàng loạt</h3>
           <p className="text-sm text-green-100">Chấm nhiều bài cùng lúc</p>

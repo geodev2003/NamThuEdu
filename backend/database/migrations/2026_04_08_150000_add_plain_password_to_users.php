@@ -11,11 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        if (Schema::hasTable('users')) {
+            Schema::table('users', function (Blueprint $table) {
             // Add encrypted plain password field for teachers to view student passwords
             // This is encrypted using Laravel's encryption for security
             $table->text('plain_password')->nullable()->after('uPassword');
         });
+        }
     }
 
     /**
@@ -23,8 +25,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        if (Schema::hasTable('users')) {
+            Schema::table('users', function (Blueprint $table) {
             $table->dropColumn('plain_password');
         });
+        }
     }
 };

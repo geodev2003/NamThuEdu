@@ -1,243 +1,325 @@
-import { Link, useParams } from "react-router";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useParams } from "react-router";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
-  Edit,
+  Edit3,
   Trash2,
-  Share2,
-  Eye,
-  Heart,
+  Send,
   Calendar,
+  Eye as EyeIcon,
+  Heart,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  FileText,
+  BookOpen,
+  Lightbulb,
+  BookMarked,
+  GraduationCap,
+  Newspaper,
+  Loader2,
+  ChevronRight,
   User,
-  Tag,
 } from "lucide-react";
+import { teacherBlogApi, Blog } from "../../../../services/blogApi";
+import { useToast } from "../../../../hooks/useToast";
+
+const typeConfig: Record<
+  string,
+  { label: string; icon: React.ElementType; color: string; bg: string }
+> = {
+  grammar: { label: "Grammar", icon: BookOpen, color: "text-blue-700", bg: "bg-blue-50" },
+  tips: { label: "Tips", icon: Lightbulb, color: "text-amber-700", bg: "bg-amber-50" },
+  vocabulary: { label: "Vocabulary", icon: BookMarked, color: "text-violet-700", bg: "bg-violet-50" },
+  teaching: { label: "Teaching", icon: GraduationCap, color: "text-emerald-700", bg: "bg-emerald-50" },
+  news: { label: "News", icon: Newspaper, color: "text-orange-700", bg: "bg-orange-50" },
+};
+
+const statusConfig: Record<
+  string,
+  { label: string; color: string; bg: string; icon: React.ElementType }
+> = {
+  draft: { label: "Nhap", color: "text-slate-600", bg: "bg-slate-100", icon: FileText },
+  pending: { label: "Cho duyet", color: "text-amber-700", bg: "bg-amber-50", icon: Clock },
+  active: { label: "Da xuat ban", color: "text-emerald-700", bg: "bg-emerald-50", icon: CheckCircle2 },
+  inactive: { label: "Tu choi", color: "text-rose-700", bg: "bg-rose-50", icon: XCircle },
+};
 
 export function PostDetail() {
   const { postId } = useParams();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { success: showSuccess, error: showError } = useToast();
 
-  // Mock data
-  const post = {
-    id: postId,
-    title: "10 Common Grammar Mistakes and How to Fix Them",
-    thumbnail: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=1200",
-    type: "grammar",
-    category: "English Grammar",
-    status: "active",
-    author: {
-      name: "Nguyễn Văn An",
-      avatar: "NA",
-    },
-    publishedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    views: 1245,
-    likes: 89,
-    content: `
-      <h2>Introduction</h2>
-      <p>Grammar mistakes are common among English learners, but with practice and awareness, you can avoid them. In this article, we'll explore 10 of the most frequent grammar errors and provide clear solutions.</p>
+  const [blog, setBlog] = useState<Blog | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-      <h2>1. Subject-Verb Agreement</h2>
-      <p>One of the most common mistakes is failing to match the subject with the correct verb form. Remember that singular subjects take singular verbs, and plural subjects take plural verbs.</p>
-      <p><strong>Wrong:</strong> The group of students were late.</p>
-      <p><strong>Correct:</strong> The group of students was late.</p>
-
-      <h2>2. Misusing Apostrophes</h2>
-      <p>Apostrophes are often misused, especially with possessives and contractions.</p>
-      <p><strong>Wrong:</strong> Its' a beautiful day.</p>
-      <p><strong>Correct:</strong> It's a beautiful day. (It is)</p>
-
-      <h2>3. Confusing Their, There, and They're</h2>
-      <p>These three words sound the same but have different meanings and uses.</p>
-      <ul>
-        <li><strong>Their:</strong> Possessive pronoun (their book)</li>
-        <li><strong>There:</strong> Location or existence (over there, there is)</li>
-        <li><strong>They're:</strong> Contraction of "they are"</li>
-      </ul>
-
-      <h2>Conclusion</h2>
-      <p>By being aware of these common mistakes and practicing regularly, you can significantly improve your English grammar. Remember, practice makes perfect!</p>
-    `,
-    tags: ["Grammar", "English Tips", "Common Mistakes", "Language Learning"],
-  };
-
-  const relatedPosts = [
-    {
-      id: "2",
-      title: "Essential IELTS Vocabulary for Academic Writing",
-      thumbnail: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400",
-    },
-    {
-      id: "3",
-      title: "Study Tips for Cambridge KET Exam Success",
-      thumbnail: "https://images.unsplash.com/photo-1488190211105-8b0e65b80b4e?w=400",
-    },
-  ];
-
-  const getTypeBadge = (type: string) => {
-    const badges: Record<string, { text: string; color: string }> = {
-      grammar: { text: "Grammar", color: "bg-blue-100 text-blue-700" },
-      tips: { text: "Tips", color: "bg-purple-100 text-purple-700" },
-      vocabulary: { text: "Vocabulary", color: "bg-green-100 text-green-700" },
+  useEffect(() => {
+    const fetchBlog = async () => {
+      if (!postId) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await teacherBlogApi.getBlogDetail(parseInt(postId));
+        setBlog(response.data.data);
+      } catch (err: any) {
+        setError(err.response?.data?.message || "Khong the tai bai viet");
+      } finally {
+        setLoading(false);
+      }
     };
-    return badges[type];
+    fetchBlog();
+  }, [postId]);
+
+  const handleDelete = async () => {
+    if (!blog) return;
+    try {
+      await teacherBlogApi.deleteBlog(blog.pId);
+      showSuccess(t("blog.detail.toastDeleted"));
+      navigate("/giao-vien/bai-viet");
+    } catch (err: any) {
+      showError(err.response?.data?.message || t("blog.detail.toastDeleteError"));
+    }
   };
 
-  const typeBadge = getTypeBadge(post.type);
+  const handleSubmitForReview = async () => {
+    if (!blog) return;
+    try {
+      await teacherBlogApi.submitForReview(blog.pId);
+      showSuccess(t("blog.detail.toastSubmitted"));
+      setBlog({ ...blog, pStatus: "pending" });
+    } catch (err: any) {
+      showError(err.response?.data?.message || t("blog.detail.toastSubmitError"));
+    }
+  };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">
-      {/* Header with Actions */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("vi-VN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  const wordCount = blog
+    ? blog.pContent.replace(/<[^>]*>/g, "").split(/\s+/).filter((w) => w.length > 0).length
+    : 0;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F5F7' }}>
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
+          <p className="text-sm text-slate-500">{t("blog.detail.loading")}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !blog) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F5F7' }}>
+        <div className="text-center bg-white rounded-2xl p-12" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+          <XCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
+          <p className="text-base font-bold text-rose-800 mb-2">{t("blog.detail.notFound")}</p>
+          <p className="text-sm text-rose-600 mb-6">{error}</p>
           <Link
             to="/giao-vien/bai-viet"
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold"
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-slate-700 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-colors cursor-pointer"
           >
-            <ArrowLeft className="w-5 h-5" />
-            Quay lại
+            <ArrowLeft className="w-4 h-4" />
+            {t("blog.detail.btnBack")}
           </Link>
+        </div>
+      </div>
+    );
+  }
 
-          <div className="flex items-center gap-2">
+  const typeInfo = typeConfig[blog.pType] || typeConfig.teaching;
+  const statusInfo = statusConfig[blog.pStatus] || statusConfig.draft;
+  const TypeIcon = typeInfo.icon;
+  const StatusIcon = statusInfo.icon;
+
+  return (
+    <div className="min-h-screen" style={{ background: '#F5F5F7' }}>
+      {/* Breadcrumb - Full width */}
+      <div className="w-full px-6 pt-6 pb-3">
+        <div className="flex items-center gap-4">
+          <Link
+            to="/giao-vien/bai-viet"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-700 bg-white rounded-2xl hover:bg-orange-50 hover:text-orange-600 transition-colors cursor-pointer"
+            style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            {t("blog.detail.btnBack")}
+          </Link>
+          <div className="flex items-center gap-2 text-sm text-slate-500">
             <Link
-              to={`/giao-vien/bai-viet/${post.id}/chinh-sua`}
-              className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all flex items-center gap-2 font-semibold"
+              to="/giao-vien/bai-viet"
+              className="hover:text-blue-600 transition-colors cursor-pointer font-medium"
             >
-              <Edit className="w-4 h-4" />
-              Chỉnh sửa
+              {t("blog.detail.breadcrumb")}
             </Link>
-            <button className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-all flex items-center gap-2 font-semibold">
+            <ChevronRight className="w-4 h-4" />
+            <span className="text-slate-900 font-semibold truncate max-w-md">
+              {blog.pTitle}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Header Actions - Full width */}
+      <div className="w-full px-6 pb-5">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold ${statusInfo.bg} ${statusInfo.color}`}
+            >
+              <StatusIcon className="w-4 h-4" />
+              {t(`blog.status.${blog.pStatus}`)}
+            </span>
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium ${typeInfo.bg} ${typeInfo.color}`}
+            >
+              <TypeIcon className="w-4 h-4" />
+              {t(`blog.type.${blog.pType}`)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2.5 flex-shrink-0">
+            {blog.pStatus === "draft" && (
+              <button
+                onClick={handleSubmitForReview}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-blue-700 bg-blue-50 rounded-2xl hover:bg-blue-100 transition-colors cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+                {t("blog.detail.btnSubmit")}
+              </button>
+            )}
+            <Link
+              to={`/giao-vien/bai-viet/${blog.pId}/chinh-sua`}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-slate-700 bg-white rounded-2xl hover:bg-slate-50 transition-colors cursor-pointer"
+              style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+            >
+              <Edit3 className="w-4 h-4" />
+              {t("blog.detail.btnEdit")}
+            </Link>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-rose-600 bg-rose-50 rounded-2xl hover:bg-rose-100 transition-colors cursor-pointer"
+            >
               <Trash2 className="w-4 h-4" />
-              Xóa
-            </button>
-            <button className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-all flex items-center gap-2 font-semibold">
-              <Share2 className="w-4 h-4" />
-              Chia sẻ
+              {t("blog.detail.btnDelete")}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Main Content Container */}
-      <div className="max-w-4xl mx-auto">
-        {/* Post Metadata */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-8 mb-6">
-          {/* Badges */}
-          <div className="flex items-center gap-2 mb-4">
-            <span className={`px-3 py-1 rounded-lg text-sm font-semibold ${typeBadge.color}`}>
-              {typeBadge.text}
-            </span>
-            <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold">
-              {post.category}
-            </span>
-            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm font-bold">
-              Hoạt động
-            </span>
-          </div>
-
-          {/* Author & Date */}
-          <div className="flex items-center gap-6 text-sm text-gray-600 mb-6">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-                {post.author.avatar}
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900">{post.author.name}</p>
-                <p className="text-xs">Tác giả</p>
-              </div>
+      {/* Article Card - Centered with max-width */}
+      <div className="max-w-5xl mx-auto px-6 pb-6">
+        <article className="bg-white rounded-3xl overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+          {/* Featured Image */}
+          {blog.pThumbnail && (
+            <div className="w-full h-80 sm:h-96 overflow-hidden bg-gradient-to-br from-slate-100 to-slate-50">
+              <img
+                src={blog.pThumbnail}
+                alt={blog.pTitle}
+                className="w-full h-full object-cover"
+              />
             </div>
+          )}
 
-            <div className="flex items-center gap-1">
-              <Calendar className="w-4 h-4" />
-              <span>
-                {post.publishedDate.toLocaleDateString("vi-VN", {
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                })}
+          {/* Article Content */}
+          <div className="p-8 sm:p-12">
+            {/* Meta */}
+            <div className="flex flex-wrap items-center gap-5 mb-6 text-sm text-slate-500">
+              <span className="inline-flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                {formatDate(blog.pCreated_at)}
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <User className="w-4 h-4" />
+                {blog.author?.uName || t("blog.detail.author")}
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                {wordCount} {t("blog.detail.words")}
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <EyeIcon className="w-4 h-4" />
+                {blog.pView || 0} {t("blog.detail.views")}
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Heart className="w-4 h-4" />
+                {blog.pLike || 0} {t("blog.detail.likes")}
               </span>
             </div>
 
-            <div className="flex items-center gap-1">
-              <Eye className="w-4 h-4" />
-              <span>{post.views.toLocaleString()} lượt xem</span>
-            </div>
+            {/* Title */}
+            <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-8 leading-tight">
+              {blog.pTitle}
+            </h1>
 
-            <div className="flex items-center gap-1">
-              <Heart className="w-4 h-4" />
-              <span>{post.likes} lượt thích</span>
-            </div>
+            {/* Content */}
+            <div
+              className="prose prose-lg prose-slate max-w-none prose-headings:text-slate-900 prose-headings:font-bold prose-p:text-slate-700 prose-p:leading-relaxed prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-strong:text-slate-900 prose-strong:font-semibold"
+              dangerouslySetInnerHTML={{ __html: blog.pContent }}
+            />
+
+            {/* Reject Reason */}
+            {blog.pStatus === "inactive" && blog.pReject_reason && (
+              <div className="mt-8 p-5 bg-rose-50 rounded-2xl" style={{ border: '1px solid rgba(244,63,94,0.2)' }}>
+                <p className="text-sm font-bold text-rose-800 mb-2">
+                  {t("blog.detail.rejectReason")}
+                </p>
+                <p className="text-sm text-rose-700 leading-relaxed">{blog.pReject_reason}</p>
+              </div>
+            )}
           </div>
-        </div>
+        </article>
+      </div>
 
-        {/* Thumbnail */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 overflow-hidden mb-6">
-          <img
-            src={post.thumbnail}
-            alt={post.title}
-            className="w-full h-96 object-cover"
-          />
-        </div>
-
-        {/* Post Title */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-8 mb-6">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">{post.title}</h1>
-        </div>
-
-        {/* Post Content */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-8 mb-6">
+      {/* Delete Confirmation Modal — Bento style */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
           <div
-            className="prose prose-lg max-w-none"
-            dangerouslySetInnerHTML={{ __html: post.content }}
-            style={{
-              fontSize: "16px",
-              lineHeight: "1.6",
-              color: "#374151",
-            }}
-          />
-        </div>
-
-        {/* Tags */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6 mb-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-            <Tag className="w-5 h-5" />
-            Thẻ
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {post.tags.map((tag, index) => (
-              <span
-                key={index}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-200 transition-all cursor-pointer"
+            className="bg-white rounded-3xl max-w-sm w-full p-7"
+            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-14 h-14 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
+              <Trash2 className="w-7 h-7 text-rose-600" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 text-center mb-2">
+              {t("blog.detail.deleteTitle")}
+            </h3>
+            <p className="text-sm text-slate-500 text-center mb-6 leading-relaxed">
+              {t("blog.detail.deleteMessage")}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-3 text-sm font-semibold text-slate-700 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-colors cursor-pointer"
               >
-                #{tag}
-              </span>
-            ))}
+                {t("blog.detail.btnCancel")}
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 px-4 py-3 text-sm font-semibold text-white rounded-2xl hover:scale-[1.02] transition-transform cursor-pointer"
+                style={{ background: '#EC4899', boxShadow: '0 4px 12px rgba(236,72,153,0.3)' }}
+              >
+                {t("blog.detail.btnConfirmDelete")}
+              </button>
+            </div>
           </div>
         </div>
-
-        {/* Related Posts */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Bài viết liên quan</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {relatedPosts.map((relatedPost) => (
-              <Link
-                key={relatedPost.id}
-                to={`/giao-vien/bai-viet/${relatedPost.id}`}
-                className="group"
-              >
-                <div className="bg-gray-50 rounded-xl overflow-hidden hover:shadow-lg transition-all">
-                  <img
-                    src={relatedPost.thumbnail}
-                    alt={relatedPost.title}
-                    className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="p-4">
-                    <p className="font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
-                      {relatedPost.title}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        if (Schema::hasTable('users')) {
+            Schema::table('users', function (Blueprint $table) {
             // Age group: kids (6-12), teens (13-17), adults (18-45)
             $table->enum('age_group', ['kids', 'teens', 'adults'])
                   ->default('teens')
@@ -36,6 +37,7 @@ return new class extends Migration
                   ->after('theme_preference')
                   ->comment('Last time theme was updated');
         });
+        }
     }
 
     /**
@@ -43,7 +45,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        if (Schema::hasTable('users')) {
+            Schema::table('users', function (Blueprint $table) {
             $table->dropColumn([
                 'age_group',
                 'date_of_birth',
@@ -51,5 +54,6 @@ return new class extends Migration
                 'theme_updated_at'
             ]);
         });
+        }
     }
 };

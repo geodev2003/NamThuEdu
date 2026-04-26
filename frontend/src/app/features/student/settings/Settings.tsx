@@ -1,74 +1,42 @@
 import ThemeSwitcher from './ThemeSwitcher';
-import { User, Bell, Shield, Globe } from 'lucide-react';
+import { Palette } from 'lucide-react';
+import { AccountInfoCard } from '../account/AccountInfoCard';
+import { PasswordChangeCard } from '../account/PasswordChangeCard';
 
 export function Settings() {
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4 sm:space-y-6">
+      {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Cài đặt</h1>
-        <p className="text-gray-600 mt-1">Quản lý tài khoản và tùy chỉnh giao diện</p>
+        <p className="text-xs sm:text-sm text-rose-500 font-semibold mb-1">Cài đặt</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+          Quản lý tài khoản
+        </h1>
+        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          Cập nhật thông tin cá nhân, mật khẩu và tùy chỉnh giao diện
+        </p>
       </div>
 
+      {/* Account info */}
+      <AccountInfoCard />
+
+      {/* Password change */}
+      <PasswordChangeCard />
+
       {/* Theme Settings */}
-      <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-            <Globe className="w-5 h-5 text-purple-600" />
+      <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6">
+        <header className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center flex-shrink-0">
+            <Palette className="w-5 h-5 text-rose-600" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Giao diện</h2>
-            <p className="text-sm text-gray-600">Chọn giao diện phù hợp với độ tuổi của bạn</p>
+            <h2 className="text-base sm:text-lg font-bold text-slate-900">Giao diện</h2>
+            <p className="text-xs sm:text-sm text-slate-500">
+              Chọn giao diện phù hợp với độ tuổi của bạn
+            </p>
           </div>
-        </div>
+        </header>
         <ThemeSwitcher />
-      </section>
-
-      {/* Account Settings */}
-      <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-            <User className="w-5 h-5 text-blue-600" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Tài khoản</h2>
-            <p className="text-sm text-gray-600">Thông tin cá nhân và bảo mật</p>
-          </div>
-        </div>
-        <div className="text-sm text-gray-500">
-          Tính năng đang phát triển...
-        </div>
-      </section>
-
-      {/* Notification Settings */}
-      <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
-            <Bell className="w-5 h-5 text-green-600" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Thông báo</h2>
-            <p className="text-sm text-gray-600">Quản lý thông báo và nhắc nhở</p>
-          </div>
-        </div>
-        <div className="text-sm text-gray-500">
-          Tính năng đang phát triển...
-        </div>
-      </section>
-
-      {/* Privacy Settings */}
-      <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-red-600" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Quyền riêng tư</h2>
-            <p className="text-sm text-gray-600">Bảo mật và quyền riêng tư</p>
-          </div>
-        </div>
-        <div className="text-sm text-gray-500">
-          Tính năng đang phát triển...
-        </div>
       </section>
     </div>
   );

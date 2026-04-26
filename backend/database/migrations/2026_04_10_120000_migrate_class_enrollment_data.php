@@ -13,6 +13,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Skip data migration on empty databases (e.g. test environment)
+        if (!DB::table('users')->exists()) {
+            return;
+        }
+
         // Step 1: Migrate student class assignments from class_enrollments
         Log::info('Starting class enrollment data migration');
         
@@ -166,9 +171,11 @@ return new class extends Migration
         Log::info('Dropped class_enrollments table');
         
         // Step 7: Remove uClass column from users
-        Schema::table('users', function (Blueprint $table) {
+        if (Schema::hasTable('users')) {
+            Schema::table('users', function (Blueprint $table) {
             $table->dropColumn('uClass');
         });
+        }
         
         Log::info('Removed uClass column from users table');
         Log::info('Class enrollment data migration completed successfully');
@@ -200,9 +207,11 @@ return new class extends Migration
         ");
         
         // Restore uClass column
-        Schema::table('users', function (Blueprint $table) {
+        if (Schema::hasTable('users')) {
+            Schema::table('users', function (Blueprint $table) {
             $table->unsignedBigInteger('uClass')->nullable()->after('uAddress');
         });
+        }
         
         DB::statement("UPDATE users SET uClass = class_id WHERE uRole = 'student'");
         

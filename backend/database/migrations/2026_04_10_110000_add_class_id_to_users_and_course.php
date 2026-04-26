@@ -12,7 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         // Add class_id to users table (nullable initially for migration)
-        Schema::table('users', function (Blueprint $table) {
+        if (Schema::hasTable('users')) {
+            Schema::table('users', function (Blueprint $table) {
             $table->unsignedBigInteger('class_id')
                   ->nullable()
                   ->after('uClass')
@@ -26,9 +27,11 @@ return new class extends Migration
             $table->index('class_id', 'idx_users_class_id');
             $table->index(['uRole', 'class_id'], 'idx_users_role_class');
         });
+        }
         
         // Add class_id to course table (nullable initially for migration)
-        Schema::table('course', function (Blueprint $table) {
+        if (Schema::hasTable('course')) {
+            Schema::table('course', function (Blueprint $table) {
             $table->unsignedBigInteger('class_id')
                   ->nullable()
                   ->after('cTeacher')
@@ -42,6 +45,7 @@ return new class extends Migration
             $table->index('class_id', 'idx_course_class_id');
             $table->index(['cStatus', 'class_id'], 'idx_course_status_class');
         });
+        }
     }
 
     /**
@@ -49,18 +53,22 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        if (Schema::hasTable('users')) {
+            Schema::table('users', function (Blueprint $table) {
             $table->dropForeign('fk_users_class_id');
             $table->dropIndex('idx_users_class_id');
             $table->dropIndex('idx_users_role_class');
             $table->dropColumn('class_id');
         });
+        }
         
-        Schema::table('course', function (Blueprint $table) {
+        if (Schema::hasTable('course')) {
+            Schema::table('course', function (Blueprint $table) {
             $table->dropForeign('fk_course_class_id');
             $table->dropIndex('idx_course_class_id');
             $table->dropIndex('idx_course_status_class');
             $table->dropColumn('class_id');
         });
+        }
     }
 };

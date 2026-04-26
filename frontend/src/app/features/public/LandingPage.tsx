@@ -1,9 +1,9 @@
  import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { usePageTitle, PAGE_TITLES } from "../../../hooks/usePageTitle";
-import { publicApi, type PublicCourse } from "../../../services/publicApi";
+import { publicApi, type PublicCourse, type PublicTest } from "../../../services/publicApi";
 import { StickyContactBar, Header, ParticlesBackground, Footer } from "./components";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Clock, Award } from "lucide-react";
 
 type CourseGroup = {
   title: string;
@@ -25,18 +25,26 @@ export function LandingPage() {
   usePageTitle(PAGE_TITLES.LANDING);
   const [courses, setCourses] = useState<PublicCourse[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
+  const [tests, setTests] = useState<PublicTest[]>([]);
+  const [testsLoading, setTestsLoading] = useState(true);
 
   useEffect(() => {
-    const loadCourses = async () => {
+    const loadData = async () => {
       try {
         setCoursesLoading(true);
-        const result = await publicApi.getCourses();
-        setCourses(result);
+        setTestsLoading(true);
+        const [coursesResult, testsResult] = await Promise.all([
+          publicApi.getCourses(),
+          publicApi.getTests()
+        ]);
+        setCourses(coursesResult);
+        setTests(testsResult.slice(0, 6));
       } finally {
         setCoursesLoading(false);
+        setTestsLoading(false);
       }
     };
-    loadCourses();
+    loadData();
   }, []);
 
   const courseGroups = useMemo<CourseGroup[]>(() => {
@@ -140,30 +148,55 @@ export function LandingPage() {
             </div>
           </section>
 
-        <section className="bg-[#fbeee7] px-4 py-12">
+        {/* Tests Section - Neutral background */}
+        <section className="bg-gray-50 px-4 py-16">
           <div className="mx-auto max-w-7xl">
-            <div className="mb-8 text-center">
-              <h2 className="text-3xl font-bold">Kho học liệu số toàn diện</h2>
-              <p className="mt-2 text-slate-600">Khóa học được lấy từ backend và chia theo nhóm để học sinh chọn nhanh.</p>
+            <div className="mb-10 text-center">
+              <h2 className="text-3xl font-bold text-slate-900">Đề thi & Đề kiểm tra nổi bật</h2>
+              <p className="mt-3 text-lg text-slate-600">Thử sức với các bộ đề VSTEP, IELTS được cập nhật liên tục.</p>
             </div>
 
-            {coursesLoading ? (
-              <div className="rounded-2xl border border-orange-100 bg-white p-8 text-center text-slate-500">Đang tải khóa học...</div>
+            {testsLoading ? (
+              <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-slate-500">Đang tải danh sách đề thi...</div>
             ) : (
-              <div className="grid gap-6 lg:grid-cols-2">
-                {courseGroups.map((group) => (
-                  <div key={group.title} className="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
-                    <h3 className="mb-4 text-xl font-bold text-orange-700">{group.title}</h3>
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {group.items.map((course) => (
-                        <div key={course.cId} className="rounded-xl border border-slate-200 p-3">
-                          <p className="line-clamp-2 min-h-[42px] text-sm font-semibold text-slate-800">{course.cName}</p>
-                          <p className="mt-1 text-xs text-slate-500">{course.cSchedule || "Lịch linh hoạt"}</p>
-                          <button onClick={() => navigate("/dang-ky")} className="mt-3 text-xs font-semibold text-orange-600 hover:text-orange-700">
-                            Xem thêm <ArrowRight className="inline size-3" />
-                          </button>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {tests.map((test) => (
+                  <div 
+                    key={test.id} 
+                    className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl"
+                  >
+                    <div>
+                      <div className="mb-4 flex items-center gap-2">
+                        <span className="rounded-lg bg-orange-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-orange-700">
+                          {test.type || "VSTEP"}
+                        </span>
+                        <span className="rounded-lg bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600 capitalize">
+                          {test.skill || "Mixed"}
+                        </span>
+                      </div>
+                      <h3 className="mb-2 text-xl font-bold text-slate-800 line-clamp-2">{test.title}</h3>
+                      <p className="mb-6 text-sm text-slate-600 line-clamp-2">{test.description || "Bài thi đánh giá năng lực tiêu chuẩn."}</p>
+                    </div>
+
+                    <div className="mt-auto">
+                      <div className="mb-6 flex items-center gap-6 text-sm font-medium text-slate-500">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="size-4 text-orange-500" />
+                          <span>{test.duration} phút</span>
                         </div>
-                      ))}
+                        <div className="flex items-center gap-1.5">
+                          <Award className="size-4 text-amber-500" />
+                          <span>{test.total_score} điểm</span>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={() => navigate("/dang-nhap")} 
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-50 py-3 text-sm font-bold text-orange-600 transition-colors hover:bg-orange-50 group-hover:bg-orange-500 group-hover:text-white"
+                      >
+                        Đăng nhập để làm bài
+                        <ArrowRight className="size-4" />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -172,31 +205,54 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="bg-[#fff7f0] px-4 py-12">
-          <div className="mx-auto grid max-w-7xl gap-5 md:grid-cols-3">
-            <div className="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
-              <h3 className="text-lg font-bold">Hỏi đáp cộng đồng</h3>
-              <p className="mt-2 text-sm text-slate-600">Đặt câu hỏi và nhận hỗ trợ từ giáo viên.</p>
+        {/* Features Section - White background */}
+        <section className="bg-white px-4 py-16">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-10 text-center">
+              <h2 className="text-3xl font-bold text-slate-900">Tính năng nổi bật</h2>
+              <p className="mt-3 text-lg text-slate-600">Trải nghiệm học tập toàn diện với công nghệ hiện đại</p>
             </div>
-            <div className="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
-              <h3 className="text-lg font-bold">Đấu trường tri thức</h3>
-              <p className="mt-2 text-sm text-slate-600">Thi đua hàng tuần, tăng động lực học tập.</p>
-            </div>
-            <div className="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
-              <h3 className="text-lg font-bold">Cuộc thi vui</h3>
-              <p className="mt-2 text-sm text-slate-600">Nhiệm vụ nhanh, phần thưởng hấp dẫn.</p>
+            
+            <div className="grid gap-6 md:grid-cols-3">
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-2xl">
+                  💬
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Hỏi đáp cộng đồng</h3>
+                <p className="text-sm text-slate-600">Đặt câu hỏi và nhận hỗ trợ từ giáo viên, cộng đồng học viên.</p>
+              </div>
+              
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 text-2xl">
+                  🏆
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Đấu trường tri thức</h3>
+                <p className="text-sm text-slate-600">Thi đua hàng tuần, tăng động lực học tập với bảng xếp hạng.</p>
+              </div>
+              
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 text-2xl">
+                  🎯
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Cuộc thi vui</h3>
+                <p className="text-sm text-slate-600">Nhiệm vụ nhanh, phần thưởng hấp dẫn, học mà vui.</p>
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="bg-white px-4 py-12">
-          <div className="mx-auto max-w-7xl rounded-3xl bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400 p-8 text-white">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h3 className="text-3xl font-bold">Tham gia NamThuEdu ngay hôm nay!</h3>
-                <p className="mt-2 text-orange-50">Bắt đầu học thông minh hơn với hệ sinh thái giáo dục số toàn diện.</p>
+        {/* CTA Section - Orange gradient (DUY NHẤT) */}
+        <section className="bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 px-4 py-16">
+          <div className="mx-auto max-w-7xl">
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+              <div className="flex-1">
+                <h2 className="text-4xl font-bold text-white mb-3">Tham gia NamThuEdu ngay hôm nay!</h2>
+                <p className="text-xl text-orange-50">Bắt đầu học thông minh hơn với hệ sinh thái giáo dục số toàn diện.</p>
               </div>
-              <button onClick={() => navigate("/dang-nhap")} className="rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-white hover:bg-orange-600">
+              <button 
+                onClick={() => navigate("/dang-nhap")} 
+                className="rounded-xl bg-white px-8 py-4 text-lg font-bold text-orange-600 shadow-lg hover:bg-orange-50 hover:shadow-xl transition-all hover:-translate-y-1"
+              >
                 Trải nghiệm ngay
               </button>
             </div>

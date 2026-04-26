@@ -13,7 +13,8 @@ class AddProfileFieldsToUsersTable extends Migration
      */
     public function up()
     {
-        Schema::table('users', function (Blueprint $table) {
+        if (Schema::hasTable('users')) {
+            Schema::table('users', function (Blueprint $table) {
             // Avatar URL for profile picture
             $table->string('avatar_url', 255)->nullable()->after('uAddress');
             
@@ -23,6 +24,7 @@ class AddProfileFieldsToUsersTable extends Migration
             // Language preference (vi = Vietnamese, en = English)
             $table->string('language_preference', 10)->default('vi')->after('theme_preference');
         });
+        }
     }
 
     /**
@@ -32,8 +34,10 @@ class AddProfileFieldsToUsersTable extends Migration
      */
     public function down()
     {
-        Schema::table('users', function (Blueprint $table) {
+        if (Schema::hasTable('users')) {
+            Schema::table('users', function (Blueprint $table) {
             $table->dropColumn(['avatar_url', 'bio', 'language_preference']);
         });
+        }
     }
 }

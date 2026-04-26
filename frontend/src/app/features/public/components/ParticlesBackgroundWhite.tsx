@@ -38,13 +38,13 @@ export function ParticlesBackgroundWhite() {
       },
       particles: {
         color: {
-          value: "#EA580C", // Darker orange (orange-600)
+          value: "#FDBA74", // Orange-300 - light orange
         },
         links: {
-          color: "#EA580C",
+          color: "#FDBA74",
           distance: 150,
           enable: true,
-          opacity: 0.4, // More visible on white
+          opacity: 0.3, // Subtle opacity
           width: 1.5,
         },
         move: {
@@ -64,7 +64,7 @@ export function ParticlesBackgroundWhite() {
           value: 60, // Fewer particles for cleaner look
         },
         opacity: {
-          value: 0.6, // More visible
+          value: 0.5, // Subtle visibility
         },
         shape: {
           type: "circle",
@@ -79,12 +79,10 @@ export function ParticlesBackgroundWhite() {
   );
 
   return (
-    <div className="absolute inset-0 pointer-events-none">
+    <div className="absolute inset-0 pointer-events-none bg-white">
       <Particles
         id="tsparticles-white"
         options={options}
-        className="!bg-transparent"
-        style={{ background: 'transparent !important' }}
       />
     </div>
   );

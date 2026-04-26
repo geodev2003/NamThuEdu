@@ -6,6 +6,19 @@ interface ApiResponse<T> {
   data: T;
 }
 
+export interface PublicTest {
+  id: number;
+  title: string;
+  description: string;
+  type: string;
+  skill: string;
+  duration: number;
+  total_score: number;
+  status: string;
+  visibility: string;
+  created_at: string;
+}
+
 export interface PublicCourse {
   cId: number;
   cName: string;
@@ -29,4 +42,9 @@ export const publicApi = {
     const response = await api.get<ApiResponse<PublicCourse[]>>("/public/courses");
     return response.data.data || [];
   },
+  
+  async getTests() {
+    const response = await api.get<ApiResponse<PublicTest[]>>("/tests");
+    return response.data.data || [];
+  }
 };

@@ -15,7 +15,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('questions', function (Blueprint $table) {
+        if (Schema::hasTable('questions')) {
+            Schema::table('questions', function (Blueprint $table) {
             // Add qPart field for VSTEP structure (Part 1, Part 2, Part 3)
             $table->integer('qPart')
                   ->nullable()
@@ -34,6 +35,7 @@ return new class extends Migration
                   ->after('qSection')
                   ->comment('Alternative field name for qSection (listening, reading, writing, speaking)');
         });
+        }
     }
 
     /**
@@ -41,8 +43,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('questions', function (Blueprint $table) {
+        if (Schema::hasTable('questions')) {
+            Schema::table('questions', function (Blueprint $table) {
             $table->dropColumn(['qPart', 'qAudio_duration', 'qSkill']);
         });
+        }
     }
 };

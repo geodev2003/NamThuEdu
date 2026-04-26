@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
+import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
 import {
   FileText,
   Plus,
@@ -37,6 +38,7 @@ interface KidsExam {
 }
 
 export function AllExams() {
+  usePageTitle(PAGE_TITLES.TEACHER_EXAMS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exams, setExams] = useState<KidsExam[]>([]);

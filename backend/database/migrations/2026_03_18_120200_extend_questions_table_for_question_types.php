@@ -13,7 +13,8 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('questions', function (Blueprint $table) {
+        if (Schema::hasTable('questions')) {
+            Schema::table('questions', function (Blueprint $table) {
             // Add question type support
             $table->enum('qType', [
                 'multiple_choice',
@@ -56,6 +57,7 @@ return new class extends Migration
             // Add tags for categorization
             $table->json('qTags')->nullable()->after('qDifficulty'); // ['grammar', 'vocabulary', etc.]
         });
+        }
     }
 
     /**
@@ -65,7 +67,8 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('questions', function (Blueprint $table) {
+        if (Schema::hasTable('questions')) {
+            Schema::table('questions', function (Blueprint $table) {
             $table->dropColumn([
                 'qType',
                 'qSection', 
@@ -75,5 +78,6 @@ return new class extends Migration
                 'qTags'
             ]);
         });
+        }
     }
 };

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
+import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
 import {
   Search,
   Eye,
@@ -14,6 +15,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Header } from "../../../components/shared/Header";
+import { api } from "../../../../services/api";
 
 interface Submission {
   id: string;
@@ -29,6 +31,7 @@ interface Submission {
 }
 
 export function GradingQueue() {
+  usePageTitle(PAGE_TITLES.TEACHER_GRADING);
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterExam, setFilterExam] = useState("");
@@ -52,39 +55,26 @@ export function GradingQueue() {
           return;
         }
 
-        // Build query params
-        const params = new URLSearchParams();
-        if (filterExam) params.append('exam_id', filterExam);
-        if (filterStatus) params.append('status', filterStatus);
+        const params: Record<string, string> = {};
+        if (filterExam) params.exam_id = filterExam;
+        if (filterStatus) params.status = filterStatus;
 
-        const response = await fetch(
-          `http://localhost:8000/api/teacher/submissions?${params}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success') {
-            // Transform backend data to frontend format
-            const transformedSubmissions = result.data.map((sub: any) => ({
-              id: sub.sId.toString(),
-              studentName: sub.user?.uName || 'Unknown',
-              studentAvatar: sub.user?.uName?.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || 'NA',
-              examTitle: sub.exam?.eTitle || 'Unknown Exam',
-              examType: sub.exam?.eType || 'General',
-              submissionTime: new Date(sub.sSubmit_time),
-              status: sub.sStatus as "submitted" | "graded" | "partially_graded",
-              score: sub.sScore,
-              maxScore: sub.exam?.eTotal_score || 100,
-              attemptNumber: sub.sAttempt || 1,
-            }));
-            setSubmissions(transformedSubmissions);
-          }
+        const { data: result } = await api.get('/teacher/submissions', { params });
+        if (result.status === 'success') {
+          // Transform backend data to frontend format
+          const transformedSubmissions = result.data.map((sub: any) => ({
+            id: sub.sId.toString(),
+            studentName: sub.user?.uName || 'Unknown',
+            studentAvatar: sub.user?.uName?.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || 'NA',
+            examTitle: sub.exam?.eTitle || 'Unknown Exam',
+            examType: sub.exam?.eType || 'General',
+            submissionTime: new Date(sub.sSubmit_time),
+            status: sub.sStatus as "submitted" | "graded" | "partially_graded",
+            score: sub.sScore,
+            maxScore: sub.exam?.eTotal_score || 100,
+            attemptNumber: sub.sAttempt || 1,
+          }));
+          setSubmissions(transformedSubmissions);
         } else {
           setError('Không thể tải danh sách bài nộp');
         }

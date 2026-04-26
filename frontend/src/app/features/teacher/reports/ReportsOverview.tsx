@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
+import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
 import {
   Users,
   BookOpen,
@@ -36,6 +37,7 @@ import {
 } from "recharts";
 
 export function ReportsOverview() {
+  usePageTitle(PAGE_TITLES.TEACHER_REPORTS);
   const [dateRange, setDateRange] = useState("30days");
   const [reportsData, setReportsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);

@@ -10,57 +10,53 @@
 
 import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
-import { 
-  Home, 
-  BookOpen, 
-  Trophy, 
-  Star, 
-  Settings, 
+import {
+  Home,
+  ClipboardList,
+  Sparkles,
+  Trophy,
+  Settings,
   LogOut,
   Menu,
-  X
+  X,
 } from 'lucide-react';
 
-const KidsNavItem = ({ 
-  icon: Icon, 
-  emoji, 
-  label, 
-  path, 
-  isActive, 
-  onClick 
+type NavItem = { icon: any; label: string; path: string };
+
+const NavLink = ({
+  icon: Icon,
+  label,
+  isActive,
+  onClick,
 }: {
   icon: any;
-  emoji: string;
   label: string;
-  path: string;
   isActive: boolean;
   onClick: () => void;
-}) => {
-  return (
-    <button
-      onClick={onClick}
-      className={`
-        w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-200
-        ${isActive 
-          ? 'bg-gradient-to-r from-purple-400 to-pink-400 text-white shadow-lg scale-105' 
-          : 'text-gray-700 hover:bg-purple-100 hover:scale-105'
-        }
-      `}
-    >
-      <div className="flex items-center gap-2">
-        <span className="text-3xl">{emoji}</span>
-        <Icon className="w-6 h-6" />
-      </div>
-      <span className="text-xl font-bold">{label}</span>
-    </button>
-  );
-};
+}) => (
+  <button
+    onClick={onClick}
+    className={`
+      relative w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] font-semibold
+      transition-all duration-150 active:scale-[0.98]
+      ${isActive
+        ? 'bg-rose-50 text-rose-700'
+        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}
+    `}
+  >
+    {isActive && (
+      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-rose-500 rounded-r-full" />
+    )}
+    <Icon className={`w-[18px] h-[18px] ${isActive ? 'text-rose-500' : 'text-slate-400'}`} />
+    <span>{label}</span>
+  </button>
+);
 
 export function KidsLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
 
@@ -71,69 +67,74 @@ export function KidsLayout() {
     navigate('/dang-nhap');
   };
 
-  const navItems = [
-    { icon: Home, emoji: '🏠', label: 'Trang chủ', path: '/hoc-vien/kids' },
-    { icon: BookOpen, emoji: '📚', label: 'Học bài', path: '/hoc-vien/kids/hoc-bai' },
-    { icon: Trophy, emoji: '🏆', label: 'Huy hiệu', path: '/hoc-vien/kids/huy-hieu' },
-    { icon: Star, emoji: '⭐', label: 'Thành tích', path: '/hoc-vien/kids/thanh-tich' },
-    { icon: Settings, emoji: '⚙️', label: 'Cài đặt', path: '/hoc-vien/kids/cai-dat' },
+  const navItems: NavItem[] = [
+    { icon: Home,          label: 'Trang chủ',  path: '/hoc-vien/kids' },
+    { icon: ClipboardList, label: 'Bài thi',    path: '/hoc-vien/bai-tap' },
+    { icon: Sparkles,      label: 'Luyện tập',  path: '/hoc-vien/luyen-tap' },
+    { icon: Trophy,        label: 'Thành tích', path: '/hoc-vien/kids/thanh-tich' },
+    { icon: Settings,      label: 'Cài đặt',    path: '/hoc-vien/kids/cai-dat' },
   ];
 
+  const initial = (user?.uName || 'B')[0]?.toUpperCase() || 'B';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-blue-100">
+    <div className="kids-scope min-h-screen bg-slate-50">
       {/* Mobile Header */}
-      <div className="lg:hidden bg-white shadow-lg p-4 border-b-4 border-yellow-400">
-        <div className="flex items-center justify-between">
+      <div className="lg:hidden bg-white border-b border-slate-200">
+        <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center">
-              <span className="text-2xl">😊</span>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-400 to-pink-500 text-white flex items-center justify-center text-base font-bold shadow-sm">
+              {initial}
             </div>
             <div>
-              <h1 className="text-xl font-bold text-purple-600">
-                Xin chào {user?.uName}! 🎉
-              </h1>
+              <p className="text-[15px] font-bold text-slate-900 leading-tight">{user?.uName || 'Bạn'}</p>
+              <p className="text-xs text-slate-500">Cambridge YL</p>
             </div>
           </div>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-xl bg-purple-100 text-purple-600 hover:bg-purple-200 transition-colors"
+            className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+            aria-label="Toggle menu"
           >
-            {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
       <div className="flex">
         {/* Sidebar */}
-        <div className={`
-          fixed lg:static inset-y-0 left-0 z-50 w-80 bg-white shadow-2xl border-r-4 border-yellow-400
-          transform transition-transform duration-300 ease-in-out
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}>
-          {/* Header */}
-          <div className="p-6 bg-gradient-to-r from-purple-400 to-pink-400 text-white">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                <span className="text-3xl">😊</span>
+        <aside
+          className={`
+            fixed lg:sticky lg:top-0 inset-y-0 left-0 z-50 w-64 h-screen
+            bg-white border-r border-slate-200 flex flex-col
+            transform transition-transform duration-200 ease-out
+            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          `}
+        >
+          {/* Brand / User */}
+          <div className="px-5 py-5 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-rose-400 via-pink-500 to-orange-400 text-white flex items-center justify-center text-lg font-bold shadow-md shadow-rose-200/60">
+                {initial}
+                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-white" />
               </div>
-              <div>
-                <h2 className="text-2xl font-bold">
-                  Xin chào {user?.uName}! 🎉
-                </h2>
-                <p className="text-purple-100">Hôm nay học gì nhỉ? ✨</p>
+              <div className="min-w-0">
+                <p className="text-[15px] font-bold text-slate-900 truncate">{user?.uName || 'Bạn'}</p>
+                <p className="text-xs text-slate-500">Cambridge YL · Kids</p>
               </div>
             </div>
           </div>
 
           {/* Navigation */}
-          <div className="p-6 space-y-3">
-            {navItems.map((item) => (
-              <KidsNavItem
+          <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+            <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold px-3 mb-1">
+              Khám phá
+            </p>
+            {navItems.map(item => (
+              <NavLink
                 key={item.path}
                 icon={item.icon}
-                emoji={item.emoji}
                 label={item.label}
-                path={item.path}
                 isActive={location.pathname === item.path}
                 onClick={() => {
                   navigate(item.path);
@@ -141,35 +142,32 @@ export function KidsLayout() {
                 }}
               />
             ))}
-          </div>
+          </nav>
 
-          {/* Logout Button */}
-          <div className="absolute bottom-6 left-6 right-6">
+          {/* Footer / Logout */}
+          <div className="px-3 py-4 border-t border-slate-100">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-red-100 text-red-600 hover:bg-red-200 transition-all duration-200 hover:scale-105"
+              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] font-semibold text-slate-600 hover:bg-rose-50 hover:text-rose-700 transition-colors"
             >
-              <div className="flex items-center gap-2">
-                <span className="text-3xl">👋</span>
-                <LogOut className="w-6 h-6" />
-              </div>
-              <span className="text-xl font-bold">Tạm biệt!</span>
+              <LogOut className="w-[18px] h-[18px] text-slate-400" />
+              <span>Đăng xuất</span>
             </button>
           </div>
-        </div>
+        </aside>
 
         {/* Overlay for mobile */}
         {sidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          <div
+            className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* Main Content */}
-        <div className="flex-1 lg:ml-0">
+        <main className="flex-1 min-w-0">
           <Outlet />
-        </div>
+        </main>
       </div>
     </div>
   );

@@ -360,7 +360,13 @@
           "totalStudents": "Tổng học sinh",
           "activeStudents": "Đang học",
           "inactiveStudents": "Tạm nghỉ",
-          "newThisMonth": "Mới tháng này"
+          "newThisMonth": "Mới tháng này",
+          "label": {
+            "totalStudents": "Tổng học sinh",
+            "activeStudents": "Đang học",
+            "inactiveStudents": "Tạm nghỉ",
+            "newThisMonth": "Mới tháng này"
+          }
         },
         "search": {
           "placeholder": "Tìm theo tên, SĐT, email...",
@@ -1105,6 +1111,212 @@
       }
     }
   },
+  "vstep": {
+    "full": {
+      "title": "VSTEP Full Test",
+      "subtitle": "Tạo đề thi đầy đủ 4 kỹ năng: Reading • Listening • Writing • Speaking",
+      "skills": {
+        "reading": "Reading",
+        "listening": "Listening",
+        "writing": "Writing",
+        "speaking": "Speaking"
+      },
+      "progress": {
+        "skills": "kỹ năng",
+        "completed": "hoàn thành",
+        "remaining": "Còn {{count}} kỹ năng"
+      },
+      "actions": {
+        "back": "Quay lại",
+        "publish": "Xuất bản đề thi Full",
+        "publishSuccess": "Đã xuất bản đề thi VSTEP Full thành công!",
+        "publishError": "Lỗi khi xuất bản đề thi",
+        "completeAll": "Vui lòng hoàn thành tất cả 4 kỹ năng trước khi xuất bản ({{completed}}/4)",
+        "skillCompleted": "{{skill}} đã hoàn thành!"
+      },
+      "examId": "Exam ID"
+    },
+    "reading": {
+      "title": "Đề VSTEP Reading mới",
+      "subtitle": "4 Parts - 40 câu hỏi - 60 phút",
+      "examIdLabel": "ID",
+      "parts": {
+        "1": { "description": "Văn bản ngắn" },
+        "2": { "description": "Văn bản mô tả" },
+        "3": { "description": "Văn bản lập luận" },
+        "4": { "description": "Văn bản học thuật" }
+      },
+      "partTab": {
+        "words": "từ",
+        "questions": "câu"
+      },
+      "passage": {
+        "title": "Đoạn văn",
+        "placeholder": "Nhập đoạn văn ở đây...",
+        "wordCount": "từ",
+        "wordRange": "({{min}}-{{max}} từ)"
+      },
+      "questions": {
+        "title": "Câu hỏi",
+        "count": "({{completed}}/10 câu)",
+        "label": "Câu hỏi",
+        "placeholder": "Nhập câu hỏi...",
+        "answerPlaceholder": "Đáp án {{option}}",
+        "tip": "💡 Mẹo:",
+        "tipText": "Double-click vào ô đáp án để chọn làm đáp án đúng",
+        "doubleClickTitle": "Double-click để chọn làm đáp án đúng"
+      },
+      "actions": {
+        "savePart": "Lưu Part",
+        "saving": "Đang lưu...",
+        "publish": "Xuất bản",
+        "publishing": "Đang xuất bản...",
+        "needQuestion": "Vui lòng hoàn thành ít nhất 1 câu hỏi"
+      },
+      "loading": "Đang tải đề thi...",
+      "toast": {
+        "loadSuccess": "Đã tải đề thi thành công",
+        "savePartSuccess": "Đã lưu Part {{part}} ({{count}} câu hỏi){{warning}}",
+        "savePartError": "Không thể lưu Part {{part}}",
+        "publishSuccess": "Đã xuất bản đề thi thành công!",
+        "publishError": "Không thể xuất bản đề thi. Vui lòng thử lại.",
+        "noQuestion": "Part {{part}}: Vui lòng hoàn thành ít nhất 1 câu hỏi",
+        "invalidWordCount": "Part {{part}}: Số từ không hợp lệ ({{current}}/{{min}}-{{max}})",
+        "missingQuestion": "Part {{part}}, Câu {{num}}: Chưa nhập câu hỏi",
+        "missingOptions": "Part {{part}}, Câu {{num}}: Chưa nhập đủ 4 đáp án",
+        "wordCountLow": " ⚠️ Đoạn văn còn thiếu {{count}} từ ({{current}}/{{min}}-{{max}})",
+        "wordCountHigh": " ⚠️ Đoạn văn thừa {{count}} từ ({{current}}/{{min}}-{{max}})",
+        "noPassage": " ⚠️ Chưa có đoạn văn"
+      }
+    },
+    "listening": {
+      "title": "Đề VSTEP Listening mới",
+      "subtitle": "3 Parts - 35 câu hỏi - 40 phút",
+      "examIdLabel": "ID",
+      "parts": {
+        "1": { "description": "Thông báo ngắn" },
+        "2": { "description": "Hội thoại" },
+        "3": { "description": "Bài giảng" }
+      },
+      "partTab": {
+        "questions": "câu"
+      },
+      "audio": {
+        "title": "Audio",
+        "uploadLabel": "Upload Audio File",
+        "uploadClick": "Click để chọn file audio",
+        "uploadHint": "MP3, WAV, hoặc các định dạng audio khác",
+        "duration": "✓ Thời lượng: {{duration}}",
+        "transcriptLabel": "Transcript (Tùy chọn)",
+        "transcriptPlaceholder": "Nhập transcript của audio (không bắt buộc)..."
+      },
+      "questions": {
+        "title": "Câu hỏi",
+        "count": "({{completed}}/{{total}} câu)",
+        "label": "Câu hỏi",
+        "placeholder": "Nhập câu hỏi...",
+        "answerPlaceholder": "Đáp án {{option}}",
+        "tip": "💡 Mẹo:",
+        "tipText": "Double-click vào ô đáp án để chọn làm đáp án đúng"
+      },
+      "actions": {
+        "savePart": "Lưu Part",
+        "saving": "Đang lưu...",
+        "publish": "Xuất bản",
+        "publishing": "Đang xuất bản..."
+      },
+      "loading": "Đang tải đề thi...",
+      "toast": {
+        "loadSuccess": "Đã tải đề thi thành công",
+        "audioError": "Vui lòng chọn file audio",
+        "audioSuccess": "Đã tải audio ({{duration}})",
+        "savePartSuccess": "Đã lưu Part {{part}} ({{count}} câu hỏi)",
+        "savePartError": "Không thể lưu Part {{part}}",
+        "noQuestion": "Part {{part}}: Vui lòng hoàn thành ít nhất 1 câu hỏi",
+        "noAudio": "Part {{part}}: Vui lòng upload file audio",
+        "missingAudio": "Part {{part}}: Chưa upload audio",
+        "missingQuestion": "Part {{part}}, Câu {{num}}: Chưa nhập câu hỏi",
+        "missingOptions": "Part {{part}}, Câu {{num}}: Chưa nhập đủ 4 đáp án",
+        "publishSuccess": "Đã xuất bản đề thi thành công!",
+        "publishError": "Không thể xuất bản đề thi. Vui lòng thử lại."
+      }
+    },
+    "writing": {
+      "title": "Đề VSTEP Writing mới",
+      "subtitle": "2 Tasks - 60 phút",
+      "examIdLabel": "ID",
+      "tasks": {
+        "1": { "description": "Thư điện tử/Thư tay" },
+        "2": { "description": "Bài luận" }
+      },
+      "taskTab": {
+        "words": "từ",
+        "minutes": "phút"
+      },
+      "prompt": {
+        "title": "Đề bài",
+        "placeholder": "Nhập đề bài ở đây...",
+        "requirement": "Yêu cầu: {{words}} từ",
+        "time": "Thời gian: {{minutes}} phút"
+      },
+      "actions": {
+        "saveTask": "Lưu Task",
+        "saving": "Đang lưu...",
+        "publish": "Xuất bản",
+        "publishing": "Đang xuất bản..."
+      },
+      "loading": "Đang tải đề thi...",
+      "toast": {
+        "loadSuccess": "Đã tải đề thi thành công",
+        "saveTaskSuccess": "Đã lưu Task {{task}}",
+        "saveTaskError": "Không thể lưu Task {{task}}",
+        "noPrompt": "Task {{task}}: Vui lòng nhập đề bài",
+        "missingPrompt": "Task {{task}}: Chưa nhập đề bài",
+        "publishSuccess": "Đã xuất bản đề thi thành công!",
+        "publishError": "Không thể xuất bản đề thi. Vui lòng thử lại."
+      }
+    },
+    "speaking": {
+      "title": "Đề VSTEP Speaking mới",
+      "subtitle": "3 Parts - 12 phút",
+      "examIdLabel": "ID",
+      "parts": {
+        "1": { "description": "Phỏng vấn" },
+        "2": { "description": "Nói dài" },
+        "3": { "description": "Thảo luận" }
+      },
+      "partTab": {
+        "minutes": "phút"
+      },
+      "questions": {
+        "title": "Câu hỏi",
+        "count": "({{completed}}/{{total}} câu)",
+        "label": "Câu hỏi",
+        "placeholder": "Nhập câu hỏi...",
+        "prepTime": "Thời gian chuẩn bị (giây)",
+        "responseTime": "Thời gian trả lời (giây)",
+        "addQuestion": "Thêm câu hỏi",
+        "deleteTitle": "Xóa câu hỏi",
+        "timeLabel": "Thời gian: {{minutes}} phút"
+      },
+      "actions": {
+        "savePart": "Lưu Part",
+        "saving": "Đang lưu...",
+        "publish": "Xuất bản",
+        "publishing": "Đang xuất bản..."
+      },
+      "loading": "Đang tải đề thi...",
+      "toast": {
+        "loadSuccess": "Đã tải đề thi thành công",
+        "savePartSuccess": "Đã lưu Part {{part}} ({{count}} câu hỏi)",
+        "savePartError": "Không thể lưu Part {{part}}",
+        "noQuestion": "Part {{part}}: Vui lòng nhập ít nhất 1 câu hỏi",
+        "missingQuestion": "Part {{part}}: Chưa có câu hỏi nào",
+        "publishSuccess": "Đã xuất bản đề thi thành công!",
+        "publishError": "Không thể xuất bản đề thi. Vui lòng thử lại."
+      }
+    }
+  },
   "auth": {
     "login": {
       "title": "Chào mừng trở lại! 👋",
@@ -1208,6 +1420,154 @@
         "notAdmin": "Tài khoản này không có quyền quản trị.",
         "failed": "Đăng nhập thất bại."
       }
+    }
+  },
+  "blog": {
+    "list": {
+      "title": "Quản lý bài viết",
+      "subtitle": "Tạo và quản lý nội dung blog của bạn",
+      "btnStats": "Thống kê",
+      "btnCategories": "Danh mục",
+      "btnCreate": "Tạo bài viết",
+      "searchPlaceholder": "Tìm kiếm bài viết...",
+      "btnFilter": "Lọc",
+      "filterStatus": "Trạng thái",
+      "filterType": "Loại bài viết",
+      "loading": "Đang tải bài viết...",
+      "errorTitle": "Không thể tải danh sách bài viết",
+      "btnRetry": "Thử lại",
+      "emptyTitle": "Chưa có bài viết nào",
+      "emptySubtitle": "Bắt đầu tạo bài viết đầu tiên của bạn ngay hôm nay!",
+      "btnCreateFirst": "Tạo bài viết đầu tiên",
+      "noResultTitle": "Không tìm thấy kết quả",
+      "noResultSubtitle": "Thử thay đổi từ khóa hoặc bộ lọc",
+      "btnClearFilter": "Xóa bộ lọc",
+      "btnView": "Xem",
+      "btnEdit": "Sửa",
+      "btnSubmit": "Gửi duyệt",
+      "btnDelete": "Xóa",
+      "rejectReason": "Lý do từ chối:",
+      "deleteTitle": "Xác nhận xóa bài viết",
+      "deleteMessage": "Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác.",
+      "btnCancel": "Hủy",
+      "btnConfirmDelete": "Xóa bài viết",
+      "toastDeleted": "Đã xóa bài viết thành công",
+      "toastDeleteError": "Không thể xóa bài viết",
+      "toastSubmitted": "Đã gửi bài viết để duyệt",
+      "toastSubmitError": "Không thể gửi bài viết",
+      "toastLoadError": "Không thể tải danh sách bài viết"
+    },
+    "detail": {
+      "loading": "Đang tải bài viết...",
+      "notFound": "Không tìm thấy bài viết",
+      "btnBack": "Quay lại danh sách",
+      "breadcrumb": "Bài viết",
+      "btnSubmit": "Gửi duyệt",
+      "btnEdit": "Chỉnh sửa",
+      "btnDelete": "Xóa",
+      "author": "Tác giả",
+      "words": "từ",
+      "views": "lượt xem",
+      "likes": "thích",
+      "rejectReason": "Lý do từ chối:",
+      "deleteTitle": "Xác nhận xóa bài viết",
+      "deleteMessage": "Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác.",
+      "btnCancel": "Hủy",
+      "btnConfirmDelete": "Xóa bài viết",
+      "toastDeleted": "Đã xóa bài viết thành công",
+      "toastDeleteError": "Không thể xóa bài viết",
+      "toastSubmitted": "Đã gửi bài viết để duyệt",
+      "toastSubmitError": "Không thể gửi bài viết"
+    },
+    "create": {
+      "breadcrumb": "Bài viết",
+      "breadcrumbCreate": "Tạo mới",
+      "breadcrumbEdit": "Chỉnh sửa",
+      "titleCreate": "Tạo bài viết mới",
+      "titleEdit": "Chỉnh sửa bài viết",
+      "btnBack": "Quay lại",
+      "inputTitlePlaceholder": "Nhập tiêu đề bài viết...",
+      "contentPlaceholder": "Bắt đầu viết nội dung của bạn...",
+      "words": "từ",
+      "characters": "ký tự",
+      "btnSaveDraft": "Lưu nháp",
+      "btnPreview": "Xem trước",
+      "btnSubmitReview": "Gửi duyệt",
+      "btnSubmitting": "Đang gửi...",
+      "categoryGeneral": "Chung",
+      "sectionPostType": "Loại bài viết",
+      "sectionSettings": "Cài đặt",
+      "labelCategory": "Danh mục",
+      "labelSlug": "URL Slug",
+      "slugPlaceholder": "url-slug-bai-viet",
+      "sectionThumbnail": "Ảnh thumbnail",
+      "thumbnailDesc": "Ảnh đại diện cho bài viết (1200x630px)",
+      "btnChangeImage": "Đổi ảnh",
+      "btnRemove": "Xóa",
+      "uploadPrompt": "Click để chọn ảnh",
+      "uploadHint": "JPG, PNG, GIF, WebP (tối đa 5MB)",
+      "labelMetaDesc": "Mô tả meta",
+      "metaDescPlaceholder": "Mô tả ngắn gọn về bài viết...",
+      "labelKeywords": "Từ khóa",
+      "keywordsPlaceholder": "grammar, english, tips...",
+      "infoDraftTitle": "Lưu nháp",
+      "infoDraftDesc": "Bài viết được lưu và có thể chỉnh sửa sau",
+      "infoSubmitTitle": "Gửi duyệt",
+      "infoSubmitDesc": "Bài viết sẽ được gửi đến Admin để duyệt",
+      "infoNotification": "Bạn sẽ nhận thông báo khi bài viết được duyệt hoặc từ chối",
+      "previewTitle": "Xem trước bài viết",
+      "closePreview": "Đóng xem trước",
+      "titlePlaceholder": "Tiêu đề bài viết",
+      "contentPreview": "Nội dung bài viết sẽ hiển thị ở đây...",
+      "errorImageType": "Vui lòng chọn file ảnh (JPG, PNG, GIF, WebP)",
+      "errorImageSize": "Kích thước ảnh không được vượt quá 5MB",
+      "successImageUpload": "Đã tải ảnh lên thành công",
+      "errorImageRead": "Không thể đọc file ảnh",
+      "errorTitleRequired": "Vui lòng nhập tiêu đề bài viết",
+      "errorContentRequired": "Vui lòng nhập nội dung bài viết",
+      "successDraft": "Đã lưu bản nháp thành công",
+      "successSubmit": "Đã gửi bài viết để duyệt thành công",
+      "errorSave": "Không thể lưu bài viết",
+      "btnAddType": "Thêm loại",
+      "addTypeTitle": "Thêm loại bài viết mới",
+      "labelTypeName": "Tên loại bài viết",
+      "typeNamePlaceholder": "VD: Phát âm, Luyện nghe...",
+      "typeAutoSlugHint": "Mã loại sẽ tự động tạo từ tên (VD: Phát âm → phat-am)",
+      "btnCancel": "Hủy",
+      "btnAddTypeConfirm": "Thêm loại",
+      "errorTypeRequired": "Vui lòng nhập đầy đủ thông tin loại bài viết",
+      "errorTypeExists": "Loại bài viết này đã tồn tại",
+      "successTypeAdded": "Đã thêm loại bài viết mới thành công",
+      "errorLoadTypes": "Không thể tải danh sách loại bài viết",
+      "errorTypeCreate": "Không thể tạo loại bài viết mới"
+    },
+    "stats": {
+      "total": "Tổng",
+      "draft": "Nháp",
+      "pending": "Chờ duyệt",
+      "active": "Đã xuất bản",
+      "inactive": "Từ chối"
+    },
+    "status": {
+      "draft": "Nháp",
+      "pending": "Chờ duyệt",
+      "active": "Đã xuất bản",
+      "inactive": "Từ chối"
+    },
+    "type": {
+      "grammar": "Grammar",
+      "tips": "Tips",
+      "vocabulary": "Vocabulary",
+      "teaching": "Teaching",
+      "news": "News",
+      "all": "Tất cả"
+    },
+    "filter": {
+      "all": "Tất cả",
+      "draft": "Nháp",
+      "pending": "Chờ duyệt",
+      "active": "Đã xuất bản",
+      "inactive": "Từ chối"
     }
   }
 }

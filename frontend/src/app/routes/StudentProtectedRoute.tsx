@@ -15,7 +15,7 @@ export const StudentProtectedRoute: React.FC<StudentProtectedRouteProps> = ({
   
   // Not logged in
   if (!token || !userStr) {
-    return <Navigate to="/dang-nhap-hoc-vien" replace />;
+    return <Navigate to="/dang-nhap" replace />;
   }
   
   try {
@@ -32,8 +32,10 @@ export const StudentProtectedRoute: React.FC<StudentProtectedRouteProps> = ({
     }
     
     // Wrong age group - redirect to correct dashboard
-    if (user.age_group !== ageGroup) {
-      return <Navigate to={`/hoc-vien/${user.age_group}`} replace />;
+    // Fallback to 'teens' nếu age_group thiếu (data cũ)
+    const userAgeGroup = user.age_group || 'teens';
+    if (userAgeGroup !== ageGroup) {
+      return <Navigate to={`/hoc-vien/${userAgeGroup}`} replace />;
     }
     
     // All checks passed
@@ -43,6 +45,6 @@ export const StudentProtectedRoute: React.FC<StudentProtectedRouteProps> = ({
     // Invalid user data
     localStorage.removeItem('user');
     localStorage.removeItem('auth_token');
-    return <Navigate to="/dang-nhap-hoc-vien" replace />;
+    return <Navigate to="/dang-nhap" replace />;
   }
 };

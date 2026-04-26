@@ -74,7 +74,7 @@ const Step1ExamType: React.FC<Step1ExamTypeProps> = ({
   const canProceed = examData.examType && examData.title;
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] space-y-8">
+    <div className="w-full space-y-8">
       <div>
         <h2 className="mb-2 text-2xl font-semibold text-[#1E293B]">
           Bước 1: Chọn loại đề thi

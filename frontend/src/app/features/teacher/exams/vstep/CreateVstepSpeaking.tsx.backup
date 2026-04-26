@@ -1,0 +1,465 @@
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router";
+import { ArrowLeft, Save, Mic, Plus, Trash2 } from "lucide-react";
+import { useToast } from "../../../../../hooks/useToast";
+import { useTranslation } from "react-i18next";
+import { saveVstepSpeakingPart, publishVstepSpeakingExam, loadVstepSpeakingExam } from "../../../../../services/vstepApi";
+
+interface Question {
+  id: string;
+  questionNumber: number;
+  questionText: string;
+  preparationTime: number;
+  responseTime: number;
+}
+
+interface SpeakingPart {
+  partNumber: 1 | 2 | 3;
+  partName: string;
+  timeLimit: number;
+  questions: Question[];
+}
+
+const VSTEP_SPEAKING_PARTS = [
+  { part: 1, name: "Part 1 - Interview", description: "vstep.speaking.parts.1.description", timeLimit: 3, questionCount: 3 },
+  { part: 2, name: "Part 2 - Long Turn", description: "vstep.speaking.parts.2.description", timeLimit: 4, questionCount: 1 },
+  { part: 3, name: "Part 3 - Discussion", description: "vstep.speaking.parts.3.description", timeLimit: 5, questionCount: 3 },
+];
+
+interface CreateVstepSpeakingProps {
+  examId?: string;
+  onComplete?: () => void;
+  isFullTest?: boolean;
+}
+
+export const CreateVstepSpeaking = ({ examId: propExamId, onComplete, isFullTest = false }: CreateVstepSpeakingProps = {}) => {
+  const navigate = useNavigate();
+  const { success, error } = useToast();
+  const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  const initialExamId = propExamId || searchParams.get("id") || `vstep-speaking-${Date.now()}`;
+  const [examId, setExamId] = useState<string>(initialExamId);
+  const [examTitle, setExamTitle] = useState<string>(t('vstep.speaking.title'));
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savingPart, setSavingPart] = useState<number | null>(null);
+  const [currentPart, setCurrentPart] = useState<1 | 2 | 3>(1);
+  
+  const [parts, setParts] = useState<SpeakingPart[]>(
+    VSTEP_SPEAKING_PARTS.map((p) => ({
+      partNumber: p.part as 1 | 2 | 3,
+      partName: p.name,
+      timeLimit: p.timeLimit,
+      questions: Array.from({ length: p.questionCount }, (_, i) => ({
+        id: `part${p.part}-q${i + 1}`,
+        questionNumber: i + 1,
+        questionText: "",
+        preparationTime: p.part === 2 ? 60 : 0,
+        responseTime: p.part === 2 ? 120 : 60,
+      })),
+    }))
+  );
+
+  const currentPartData = parts.find((p) => p.partNumber === currentPart)!;
+
+  useEffect(() => {
+    // Priority: propExamId (from Full Test) > URL param > generate new
+    const effectiveExamId = propExamId || searchParams.get("id");
+    
+    if (effectiveExamId) {
+      // Update examId state if different
+      if (effectiveExamId !== examId) {
+        setExamId(effectiveExamId);
+      }
+      
+      // Update URL if not in Full Test mode and URL doesn't have ID
+      if (!isFullTest && !searchParams.get("id")) {
+        setSearchParams({ id: effectiveExamId }, { replace: true });
+      }
+      
+      // Load exam data from API
+      console.log("Loading existing exam:", effectiveExamId, "isFullTest:", isFullTest);
+      setIsLoading(true);
+      loadVstepSpeakingExam(effectiveExamId)
+        .then((response) => {
+          if (response.status === "success" && response.data) {
+            const examData = response.data;
+            setExamTitle(examData.title);
+            
+            const loadedParts = examData.parts.map((part: any) => {
+              // If no questions in DB, use default empty questions for CREATE mode
+              const hasQuestions = part.questions && part.questions.length > 0;
+              const partConfig = VSTEP_SPEAKING_PARTS.find(p => p.part === part.partNumber);
+              const questionCount = partConfig?.questionCount || 1;
+              
+              const questions = hasQuestions 
+                ? part.questions.map((q: any, index: number) => ({
+                    id: `part${part.partNumber}-q${index + 1}`,
+                    questionNumber: q.questionNumber,
+                    questionText: q.questionText,
+                    preparationTime: q.preparationTime || 0,
+                    responseTime: q.responseTime || 60,
+                  }))
+                : Array.from({ length: questionCount }, (_, i) => ({
+                    id: `part${part.partNumber}-q${i + 1}`,
+                    questionNumber: i + 1,
+                    questionText: "",
+                    preparationTime: 0,
+                    responseTime: 60,
+                  }));
+              
+              return {
+                partNumber: part.partNumber as 1 | 2 | 3,
+                partName: part.partName,
+                timeLimit: part.timeLimit,
+                questions,
+              };
+            });
+            
+            setParts((prev) =>
+              prev.map((p) => {
+                const loaded = loadedParts.find((lp: any) => lp.partNumber === p.partNumber);
+                return loaded || p;
+              })
+            );
+            
+            console.log("✅ Loaded parts:", loadedParts.length);
+            success(t('vstep.speaking.toast.loadSuccess'));
+          }
+        })
+        .catch((err) => {
+          console.log("Exam not found or error loading, starting fresh:", err);
+        })
+        .finally(() => setIsLoading(false));
+    } else if (!isFullTest) {
+      // No ID anywhere and not in Full Test, add generated ID to URL
+      setSearchParams({ id: examId }, { replace: true });
+    }
+  }, [propExamId]); // Re-run when propExamId changes (important for Full Test)
+
+  const updateQuestion = (questionId: string, field: string, value: any) => {
+    setParts((prev) =>
+      prev.map((p) =>
+        p.partNumber === currentPart
+          ? {
+              ...p,
+              questions: p.questions.map((q) =>
+                q.id === questionId ? { ...q, [field]: value } : q
+              ),
+            }
+          : p
+      )
+    );
+  };
+
+  const addQuestion = () => {
+    const newQuestion: Question = {
+      id: `part${currentPart}-q${currentPartData.questions.length + 1}`,
+      questionNumber: currentPartData.questions.length + 1,
+      questionText: "",
+      preparationTime: currentPart === 2 ? 60 : 0,
+      responseTime: currentPart === 2 ? 120 : 60,
+    };
+
+    setParts((prev) =>
+      prev.map((p) =>
+        p.partNumber === currentPart
+          ? { ...p, questions: [...p.questions, newQuestion] }
+          : p
+      )
+    );
+  };
+
+  const deleteQuestion = (questionId: string) => {
+    setParts((prev) =>
+      prev.map((p) =>
+        p.partNumber === currentPart
+          ? {
+              ...p,
+              questions: p.questions
+                .filter((q) => q.id !== questionId)
+                .map((q, index) => ({ ...q, questionNumber: index + 1 })),
+            }
+          : p
+      )
+    );
+  };
+
+  const handleSavePart = async (partNumber: 1 | 2 | 3) => {
+    const part = parts.find(p => p.partNumber === partNumber);
+    if (!part) return;
+
+    const completedQuestions = part.questions.filter(q => q.questionText.trim());
+
+    if (completedQuestions.length === 0) {
+      error(t('vstep.speaking.toast.noQuestion', { part: partNumber }));
+      return;
+    }
+
+    setSavingPart(partNumber);
+    
+    try {
+      const partData = {
+        partNumber: part.partNumber,
+        partName: part.partName,
+        timeLimit: part.timeLimit,
+        questions: completedQuestions.map(q => ({
+          questionNumber: q.questionNumber,
+          questionText: q.questionText,
+          preparationTime: q.preparationTime,
+          responseTime: q.responseTime,
+        })),
+      };
+
+      await saveVstepSpeakingPart(examId, partNumber, partData);
+      success(t('vstep.speaking.toast.savePartSuccess', { part: partNumber, count: completedQuestions.length }));
+    } catch (err: any) {
+      error(err.response?.data?.message || t('vstep.speaking.toast.savePartError', { part: partNumber }));
+    } finally {
+      setSavingPart(null);
+    }
+  };
+
+  const handleSave = async () => {
+    for (const part of parts) {
+      const completedQuestions = part.questions.filter(q => q.questionText.trim());
+      if (completedQuestions.length === 0) {
+        error(t('vstep.speaking.toast.missingQuestion', { part: part.partNumber }));
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    try {
+      const examData = {
+        title: examTitle,
+        parts: parts.map(part => ({
+          partNumber: part.partNumber,
+          partName: part.partName,
+          questions: part.questions
+            .filter(q => q.questionText.trim())
+            .map(q => ({
+              questionNumber: q.questionNumber,
+              questionText: q.questionText,
+            })),
+        })),
+      };
+
+      await publishVstepSpeakingExam(examId, examData);
+      success(t('vstep.speaking.toast.publishSuccess'));
+      
+      setTimeout(() => {
+        navigate("/giao-vien/luyen-tap");
+      }, 1500);
+    } catch (err: any) {
+      error(err.response?.data?.message || t('vstep.speaking.toast.publishError'));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className={`bg-gray-50 flex flex-col ${isFullTest ? 'h-full' : 'h-screen overflow-hidden'}`}>
+      {!isFullTest && (
+        <div className="bg-white border-b border-gray-200 flex-shrink-0 z-10">
+          <div className="max-w-[1800px] mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => navigate("/giao-vien/de-thi")}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                  <input
+                    type="text"
+                    value={examTitle}
+                    onChange={(e) => setExamTitle(e.target.value)}
+                    className="text-2xl font-bold text-gray-900 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 -ml-2"
+                    placeholder={t('vstep.speaking.title')}
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    {t('vstep.speaking.subtitle')}
+                    <span className="ml-2 text-xs text-green-600 font-medium">• {t('vstep.speaking.examIdLabel')}: {examId}</span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving || isLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-4 h-4" />
+                  {isSaving ? t('vstep.speaking.actions.publishing') : t('vstep.speaking.actions.publish')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white border-b border-gray-200 flex-shrink-0">
+        <div className="max-w-[1800px] mx-auto px-6">
+          <div className="flex gap-2 overflow-x-auto">
+            {VSTEP_SPEAKING_PARTS.map((part) => {
+              const partData = parts.find((p) => p.partNumber === part.part)!;
+              const hasQuestions = partData.questions.some(q => q.questionText.trim());
+
+              return (
+                <button
+                  key={part.part}
+                  onClick={() => setCurrentPart(part.part as 1 | 2 | 3)}
+                  className={`flex items-center gap-3 px-6 py-4 border-b-2 transition-colors whitespace-nowrap ${
+                    currentPart === part.part
+                      ? "border-blue-600 text-blue-600 bg-blue-50"
+                      : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  }`}
+                >
+                  <Mic className="w-5 h-5" />
+                  <div className="text-left">
+                    <div className="font-semibold">Part {part.part} - {t(part.description)}</div>
+                    <div className="text-xs text-gray-500">
+                      {part.timeLimit} {t('vstep.speaking.partTab.minutes')}
+                    </div>
+                  </div>
+                  {hasQuestions && (
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto">
+        {isLoading ? (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">{t('vstep.speaking.loading')}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="max-w-[1200px] mx-auto px-6 py-6 min-h-full">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden min-h-[600px]">
+              <div className="p-4 border-b border-gray-200 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Mic className="w-5 h-5 text-blue-600" />
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Part {currentPart} - {t('vstep.speaking.questions.title')}
+                    </h2>
+                    <span className="text-sm text-gray-500">
+                      {t('vstep.speaking.questions.count', {
+                        completed: currentPartData.questions.filter(q => q.questionText.trim()).length,
+                        total: currentPartData.questions.length
+                      })}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={addQuestion}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      {t('vstep.speaking.questions.addQuestion')}
+                    </button>
+                    
+                    <button
+                      onClick={() => handleSavePart(currentPart)}
+                      disabled={
+                        savingPart === currentPart || 
+                        currentPartData.questions.filter(q => q.questionText.trim()).length === 0
+                      }
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      {savingPart === currentPart ? t('vstep.speaking.actions.saving') : t('vstep.speaking.actions.savePart')}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  {t(VSTEP_SPEAKING_PARTS[currentPart - 1].description)} • {t('vstep.speaking.questions.timeLabel', { minutes: currentPartData.timeLimit })}
+                </p>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {currentPartData.questions.map((question) => (
+                  <div key={question.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold">
+                        {question.questionNumber}
+                      </div>
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            {t('vstep.speaking.questions.label')}
+                          </label>
+                          <textarea
+                            value={question.questionText}
+                            onChange={(e) =>
+                              updateQuestion(question.id, "questionText", e.target.value)
+                            }
+                            rows={3}
+                            placeholder={t('vstep.speaking.questions.placeholder')}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {t('vstep.speaking.questions.prepTime')}
+                            </label>
+                            <input
+                              type="number"
+                              value={question.preparationTime}
+                              onChange={(e) =>
+                                updateQuestion(question.id, "preparationTime", parseInt(e.target.value) || 0)
+                              }
+                              min="0"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {t('vstep.speaking.questions.responseTime')}
+                            </label>
+                            <input
+                              type="number"
+                              value={question.responseTime}
+                              onChange={(e) =>
+                                updateQuestion(question.id, "responseTime", parseInt(e.target.value) || 60)
+                              }
+                              min="1"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {currentPartData.questions.length > 1 && (
+                        <button
+                          onClick={() => deleteQuestion(question.id)}
+                          className="flex-shrink-0 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title={t('vstep.speaking.questions.deleteTitle')}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

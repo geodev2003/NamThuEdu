@@ -14,7 +14,8 @@ class AddOrderFieldsToQuestionsTable extends Migration
      */
     public function up()
     {
-        Schema::table('questions', function (Blueprint $table) {
+        if (Schema::hasTable('questions')) {
+            Schema::table('questions', function (Blueprint $table) {
             // Add qOrder for question ordering (if not exists)
             if (!Schema::hasColumn('questions', 'qOrder')) {
                 $table->integer('qOrder')->default(0)->after('qId');
@@ -35,9 +36,11 @@ class AddOrderFieldsToQuestionsTable extends Migration
                 $table->string('qSkillSection', 50)->nullable()->after('qCustomTitle');
             }
         });
+        }
         
         // Add indexes for performance (check if they don't exist)
-        Schema::table('questions', function (Blueprint $table) {
+        if (Schema::hasTable('questions')) {
+            Schema::table('questions', function (Blueprint $table) {
             $sm = Schema::getConnection()->getDoctrineSchemaManager();
             $indexesFound = $sm->listTableIndexes('questions');
             
@@ -49,6 +52,7 @@ class AddOrderFieldsToQuestionsTable extends Migration
                 $table->index(['exam_id', 'qSkillSection'], 'idx_exam_skill');
             }
         });
+        }
         
         // Migrate existing data: set qOrder = qId to maintain current order (only for records with qOrder = 0 or 1)
         DB::statement('UPDATE questions SET qOrder = qId WHERE qOrder IN (0, 1)');
@@ -61,7 +65,8 @@ class AddOrderFieldsToQuestionsTable extends Migration
      */
     public function down()
     {
-        Schema::table('questions', function (Blueprint $table) {
+        if (Schema::hasTable('questions')) {
+            Schema::table('questions', function (Blueprint $table) {
             // Drop indexes first (check if they exist)
             $sm = Schema::getConnection()->getDoctrineSchemaManager();
             $indexesFound = $sm->listTableIndexes('questions');
@@ -90,5 +95,6 @@ class AddOrderFieldsToQuestionsTable extends Migration
             
             // Note: We don't drop qOrder as it was added by a previous migration
         });
+        }
     }
 }

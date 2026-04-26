@@ -857,6 +857,212 @@
       }
     }
   },
+  "vstep": {
+    "full": {
+      "title": "VSTEP Full Test",
+      "subtitle": "Create full 4-skill test: Reading • Listening • Writing • Speaking",
+      "skills": {
+        "reading": "Reading",
+        "listening": "Listening",
+        "writing": "Writing",
+        "speaking": "Speaking"
+      },
+      "progress": {
+        "skills": "skills",
+        "completed": "completed",
+        "remaining": "{{count}} skills remaining"
+      },
+      "actions": {
+        "back": "Back",
+        "publish": "Publish Full Test",
+        "publishSuccess": "VSTEP Full Test published successfully!",
+        "publishError": "Error publishing test",
+        "completeAll": "Please complete all 4 skills before publishing ({{completed}}/4)",
+        "skillCompleted": "{{skill}} completed!"
+      },
+      "examId": "Exam ID"
+    },
+    "reading": {
+      "title": "New VSTEP Reading Test",
+      "subtitle": "4 Parts - 40 questions - 60 minutes",
+      "examIdLabel": "ID",
+      "parts": {
+        "1": { "description": "Short Text" },
+        "2": { "description": "Descriptive Text" },
+        "3": { "description": "Argumentative Text" },
+        "4": { "description": "Academic Text" }
+      },
+      "partTab": {
+        "words": "words",
+        "questions": "questions"
+      },
+      "passage": {
+        "title": "Passage",
+        "placeholder": "Enter passage here...",
+        "wordCount": "words",
+        "wordRange": "({{min}}-{{max}} words)"
+      },
+      "questions": {
+        "title": "Questions",
+        "count": "({{completed}}/10 questions)",
+        "label": "Question",
+        "placeholder": "Enter question...",
+        "answerPlaceholder": "Option {{option}}",
+        "tip": "💡 Tip:",
+        "tipText": "Double-click an answer field to set it as the correct answer",
+        "doubleClickTitle": "Double-click to set as correct answer"
+      },
+      "actions": {
+        "savePart": "Save Part",
+        "saving": "Saving...",
+        "publish": "Publish",
+        "publishing": "Publishing...",
+        "needQuestion": "Please complete at least 1 question"
+      },
+      "loading": "Loading exam...",
+      "toast": {
+        "loadSuccess": "Exam loaded successfully",
+        "savePartSuccess": "Part {{part}} saved ({{count}} questions){{warning}}",
+        "savePartError": "Cannot save Part {{part}}",
+        "publishSuccess": "Exam published successfully!",
+        "publishError": "Cannot publish exam. Please try again.",
+        "noQuestion": "Part {{part}}: Please complete at least 1 question",
+        "invalidWordCount": "Part {{part}}: Invalid word count ({{current}}/{{min}}-{{max}})",
+        "missingQuestion": "Part {{part}}, Question {{num}}: Question text is missing",
+        "missingOptions": "Part {{part}}, Question {{num}}: Please fill in all 4 options",
+        "wordCountLow": " ⚠️ Passage is {{count}} words short ({{current}}/{{min}}-{{max}})",
+        "wordCountHigh": " ⚠️ Passage is {{count}} words over limit ({{current}}/{{min}}-{{max}})",
+        "noPassage": " ⚠️ No passage entered"
+      }
+    },
+    "listening": {
+      "title": "New VSTEP Listening Test",
+      "subtitle": "3 Parts - 35 questions - 40 minutes",
+      "examIdLabel": "ID",
+      "parts": {
+        "1": { "description": "Announcements" },
+        "2": { "description": "Dialogues" },
+        "3": { "description": "Lectures" }
+      },
+      "partTab": {
+        "questions": "questions"
+      },
+      "audio": {
+        "title": "Audio",
+        "uploadLabel": "Upload Audio File",
+        "uploadClick": "Click to select audio file",
+        "uploadHint": "MP3, WAV, or other audio formats",
+        "duration": "✓ Duration: {{duration}}",
+        "transcriptLabel": "Transcript (Optional)",
+        "transcriptPlaceholder": "Enter audio transcript (optional)..."
+      },
+      "questions": {
+        "title": "Questions",
+        "count": "({{completed}}/{{total}} questions)",
+        "label": "Question",
+        "placeholder": "Enter question...",
+        "answerPlaceholder": "Option {{option}}",
+        "tip": "💡 Tip:",
+        "tipText": "Double-click an answer field to set it as the correct answer"
+      },
+      "actions": {
+        "savePart": "Save Part",
+        "saving": "Saving...",
+        "publish": "Publish",
+        "publishing": "Publishing..."
+      },
+      "loading": "Loading exam...",
+      "toast": {
+        "loadSuccess": "Exam loaded successfully",
+        "audioError": "Please select an audio file",
+        "audioSuccess": "Audio loaded ({{duration}})",
+        "savePartSuccess": "Part {{part}} saved ({{count}} questions)",
+        "savePartError": "Cannot save Part {{part}}",
+        "noQuestion": "Part {{part}}: Please complete at least 1 question",
+        "noAudio": "Part {{part}}: Please upload an audio file",
+        "missingAudio": "Part {{part}}: No audio uploaded",
+        "missingQuestion": "Part {{part}}, Question {{num}}: Question text is missing",
+        "missingOptions": "Part {{part}}, Question {{num}}: Please fill in all 4 options",
+        "publishSuccess": "Exam published successfully!",
+        "publishError": "Cannot publish exam. Please try again."
+      }
+    },
+    "writing": {
+      "title": "New VSTEP Writing Test",
+      "subtitle": "2 Tasks - 60 minutes",
+      "examIdLabel": "ID",
+      "tasks": {
+        "1": { "description": "Email/Letter" },
+        "2": { "description": "Essay" }
+      },
+      "taskTab": {
+        "words": "words",
+        "minutes": "minutes"
+      },
+      "prompt": {
+        "title": "Prompt",
+        "placeholder": "Enter the writing prompt here...",
+        "requirement": "Required: {{words}} words",
+        "time": "Time: {{minutes}} minutes"
+      },
+      "actions": {
+        "saveTask": "Save Task",
+        "saving": "Saving...",
+        "publish": "Publish",
+        "publishing": "Publishing..."
+      },
+      "loading": "Loading exam...",
+      "toast": {
+        "loadSuccess": "Exam loaded successfully",
+        "saveTaskSuccess": "Task {{task}} saved",
+        "saveTaskError": "Cannot save Task {{task}}",
+        "noPrompt": "Task {{task}}: Please enter the prompt",
+        "missingPrompt": "Task {{task}}: Prompt is missing",
+        "publishSuccess": "Exam published successfully!",
+        "publishError": "Cannot publish exam. Please try again."
+      }
+    },
+    "speaking": {
+      "title": "New VSTEP Speaking Test",
+      "subtitle": "3 Parts - 12 minutes",
+      "examIdLabel": "ID",
+      "parts": {
+        "1": { "description": "Interview" },
+        "2": { "description": "Long Turn" },
+        "3": { "description": "Discussion" }
+      },
+      "partTab": {
+        "minutes": "minutes"
+      },
+      "questions": {
+        "title": "Questions",
+        "count": "({{completed}}/{{total}} questions)",
+        "label": "Question",
+        "placeholder": "Enter question...",
+        "prepTime": "Preparation time (seconds)",
+        "responseTime": "Response time (seconds)",
+        "addQuestion": "Add question",
+        "deleteTitle": "Delete question",
+        "timeLabel": "Time: {{minutes}} minutes"
+      },
+      "actions": {
+        "savePart": "Save Part",
+        "saving": "Saving...",
+        "publish": "Publish",
+        "publishing": "Publishing..."
+      },
+      "loading": "Loading exam...",
+      "toast": {
+        "loadSuccess": "Exam loaded successfully",
+        "savePartSuccess": "Part {{part}} saved ({{count}} questions)",
+        "savePartError": "Cannot save Part {{part}}",
+        "noQuestion": "Part {{part}}: Please add at least 1 question",
+        "missingQuestion": "Part {{part}}: No questions added",
+        "publishSuccess": "Exam published successfully!",
+        "publishError": "Cannot publish exam. Please try again."
+      }
+    }
+  },
   "auth": {
     "login": {
       "title": "Welcome back! 👋",
@@ -960,6 +1166,154 @@
         "notAdmin": "This account does not have admin privileges.",
         "failed": "Login failed."
       }
+    }
+  },
+  "blog": {
+    "list": {
+      "title": "Blog Management",
+      "subtitle": "Create and manage your blog content",
+      "btnStats": "Statistics",
+      "btnCategories": "Categories",
+      "btnCreate": "Create Post",
+      "searchPlaceholder": "Search posts...",
+      "btnFilter": "Filter",
+      "filterStatus": "Status",
+      "filterType": "Post Type",
+      "loading": "Loading posts...",
+      "errorTitle": "Could not load posts",
+      "btnRetry": "Retry",
+      "emptyTitle": "No posts yet",
+      "emptySubtitle": "Start creating your first post today!",
+      "btnCreateFirst": "Create first post",
+      "noResultTitle": "No results found",
+      "noResultSubtitle": "Try changing your search or filters",
+      "btnClearFilter": "Clear filters",
+      "btnView": "View",
+      "btnEdit": "Edit",
+      "btnSubmit": "Submit for review",
+      "btnDelete": "Delete",
+      "rejectReason": "Rejection reason:",
+      "deleteTitle": "Confirm delete",
+      "deleteMessage": "Are you sure you want to delete this post? This action cannot be undone.",
+      "btnCancel": "Cancel",
+      "btnConfirmDelete": "Delete post",
+      "toastDeleted": "Post deleted successfully",
+      "toastDeleteError": "Could not delete post",
+      "toastSubmitted": "Post submitted for review",
+      "toastSubmitError": "Could not submit post",
+      "toastLoadError": "Could not load posts"
+    },
+    "detail": {
+      "loading": "Loading post...",
+      "notFound": "Post not found",
+      "btnBack": "Back to list",
+      "breadcrumb": "Posts",
+      "btnSubmit": "Submit for review",
+      "btnEdit": "Edit",
+      "btnDelete": "Delete",
+      "author": "Author",
+      "words": "words",
+      "views": "views",
+      "likes": "likes",
+      "rejectReason": "Rejection reason:",
+      "deleteTitle": "Confirm delete",
+      "deleteMessage": "Are you sure you want to delete this post? This action cannot be undone.",
+      "btnCancel": "Cancel",
+      "btnConfirmDelete": "Delete post",
+      "toastDeleted": "Post deleted successfully",
+      "toastDeleteError": "Could not delete post",
+      "toastSubmitted": "Post submitted for review",
+      "toastSubmitError": "Could not submit post"
+    },
+    "create": {
+      "breadcrumb": "Posts",
+      "breadcrumbCreate": "Create",
+      "breadcrumbEdit": "Edit",
+      "titleCreate": "Create New Post",
+      "titleEdit": "Edit Post",
+      "btnBack": "Back",
+      "inputTitlePlaceholder": "Enter post title...",
+      "contentPlaceholder": "Start writing your content...",
+      "words": "words",
+      "characters": "characters",
+      "btnSaveDraft": "Save Draft",
+      "btnPreview": "Preview",
+      "btnSubmitReview": "Submit for Review",
+      "btnSubmitting": "Submitting...",
+      "categoryGeneral": "General",
+      "sectionPostType": "Post Type",
+      "sectionSettings": "Settings",
+      "labelCategory": "Category",
+      "labelSlug": "URL Slug",
+      "slugPlaceholder": "url-slug-post",
+      "sectionThumbnail": "Thumbnail Image",
+      "thumbnailDesc": "Featured image for the post (1200x630px)",
+      "btnChangeImage": "Change Image",
+      "btnRemove": "Remove",
+      "uploadPrompt": "Click to select image",
+      "uploadHint": "JPG, PNG, GIF, WebP (max 5MB)",
+      "labelMetaDesc": "Meta Description",
+      "metaDescPlaceholder": "Brief description of the post...",
+      "labelKeywords": "Keywords",
+      "keywordsPlaceholder": "grammar, english, tips...",
+      "infoDraftTitle": "Save Draft",
+      "infoDraftDesc": "Post will be saved and can be edited later",
+      "infoSubmitTitle": "Submit for Review",
+      "infoSubmitDesc": "Post will be sent to Admin for approval",
+      "infoNotification": "You will be notified when the post is approved or rejected",
+      "previewTitle": "Preview Post",
+      "closePreview": "Close Preview",
+      "titlePlaceholder": "Post Title",
+      "contentPreview": "Post content will be displayed here...",
+      "errorImageType": "Please select an image file (JPG, PNG, GIF, WebP)",
+      "errorImageSize": "Image size must not exceed 5MB",
+      "successImageUpload": "Image uploaded successfully",
+      "errorImageRead": "Could not read image file",
+      "errorTitleRequired": "Please enter post title",
+      "errorContentRequired": "Please enter post content",
+      "successDraft": "Draft saved successfully",
+      "successSubmit": "Post submitted for review successfully",
+      "errorSave": "Could not save post",
+      "btnAddType": "Add Type",
+      "addTypeTitle": "Add New Post Type",
+      "labelTypeName": "Type Name",
+      "typeNamePlaceholder": "e.g., Pronunciation, Listening...",
+      "typeAutoSlugHint": "Type code will be auto-generated from name (e.g., Pronunciation → pronunciation)",
+      "btnCancel": "Cancel",
+      "btnAddTypeConfirm": "Add Type",
+      "errorTypeRequired": "Please enter all post type information",
+      "errorTypeExists": "This post type already exists",
+      "successTypeAdded": "New post type added successfully",
+      "errorLoadTypes": "Could not load post types",
+      "errorTypeCreate": "Could not create new post type"
+    },
+    "stats": {
+      "total": "Total",
+      "draft": "Draft",
+      "pending": "Pending",
+      "active": "Published",
+      "inactive": "Rejected"
+    },
+    "status": {
+      "draft": "Draft",
+      "pending": "Pending",
+      "active": "Published",
+      "inactive": "Rejected"
+    },
+    "type": {
+      "grammar": "Grammar",
+      "tips": "Tips",
+      "vocabulary": "Vocabulary",
+      "teaching": "Teaching",
+      "news": "News",
+      "all": "All"
+    },
+    "filter": {
+      "all": "All",
+      "draft": "Draft",
+      "pending": "Pending",
+      "active": "Published",
+      "inactive": "Rejected"
     }
   }
 }

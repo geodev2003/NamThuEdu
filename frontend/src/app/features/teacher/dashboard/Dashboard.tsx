@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
+import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
+import { api } from "../../../../services/api";
 import { Header } from "../../../components/shared/Header";
 import {
   BookOpen,
@@ -138,6 +140,7 @@ const mapActivityColor = (color: string) => {
 };
 
 export function Dashboard() {
+  usePageTitle(PAGE_TITLES.TEACHER_DASHBOARD);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
@@ -157,21 +160,9 @@ export function Dashboard() {
   useEffect(() => {
     const fetchDashboardStats = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
-        if (!token) return;
-
-        const response = await fetch('http://localhost:8000/api/teacher/dashboard/overview', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success') {
-            setDashboardStats(result.data);
-          }
+        const { data: result } = await api.get('/teacher/dashboard/overview');
+        if (result.status === 'success') {
+          setDashboardStats(result.data);
         }
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
@@ -189,21 +180,9 @@ export function Dashboard() {
   useEffect(() => {
     const fetchPerformanceData = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
-        if (!token) return;
-
-        const response = await fetch('http://localhost:8000/api/teacher/dashboard/performance-data', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success' && result.data && result.data.length > 0) {
-            setPerformanceData(result.data);
-          }
+        const { data: result } = await api.get('/teacher/dashboard/performance-data');
+        if (result.status === 'success' && result.data && result.data.length > 0) {
+          setPerformanceData(result.data);
         }
       } catch (error) {
         console.error('Error fetching performance data:', error);
@@ -219,21 +198,9 @@ export function Dashboard() {
   useEffect(() => {
     const fetchRecentActivities = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
-        if (!token) return;
-
-        const response = await fetch('http://localhost:8000/api/teacher/dashboard/recent-activities', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success' && result.data && result.data.length > 0) {
-            setRecentActivities(result.data);
-          }
+        const { data: result } = await api.get('/teacher/dashboard/recent-activities');
+        if (result.status === 'success' && result.data && result.data.length > 0) {
+          setRecentActivities(result.data);
         }
       } catch (error) {
         console.error('Error fetching recent activities:', error);

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
+import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
 import {
   GraduationCap,
   Users,
@@ -20,6 +21,7 @@ import { adminApi } from "@/services/adminApi";
 type RoleStats = Record<string, { active: number; inactive: number; total: number }>;
 
 export function AdminDashboard() {
+  usePageTitle(PAGE_TITLES.ADMIN_DASHBOARD);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<Record<string, unknown> | null>(null);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BarChart3, BookOpen, Target, Clock, TrendingUp, Award, Users, Calendar } from 'lucide-react';
-import axios from 'axios';
+import { api } from '../../../../services/api';
 
 interface GamificationData {
   coins: {
@@ -114,14 +114,7 @@ export function AdultsDashboard() {
   useEffect(() => {
     const fetchGamificationData = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
-        const response = await axios.get('http://localhost:8000/api/student/gamification/overview', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
+        const response = await api.get('/student/gamification/overview');
         if (response.data.status === 'success') {
           setGamificationData(response.data.data);
         }

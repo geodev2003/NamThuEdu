@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
+import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
 import {
   Users,
   School,
@@ -46,6 +47,7 @@ interface ClassItem {
 }
 
 export function ClassList() {
+  usePageTitle(PAGE_TITLES.TEACHER_CLASSES);
   const { t } = useTranslation();
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loading, setLoading] = useState(true);
