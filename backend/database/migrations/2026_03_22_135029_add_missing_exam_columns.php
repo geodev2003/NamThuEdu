@@ -13,7 +13,8 @@ class AddMissingExamColumns extends Migration
      */
     public function up()
     {
-        Schema::table('exams', function (Blueprint $table) {
+        if (Schema::hasTable('exams')) {
+            Schema::table('exams', function (Blueprint $table) {
             // Add missing columns that are in the Exam model fillable array
             // Note: template_id already exists from previous migration
             if (!Schema::hasColumn('exams', 'exam_type_id')) {
@@ -62,9 +63,11 @@ class AddMissingExamColumns extends Migration
                 $table->unsignedBigInteger('eParent_exam_id')->nullable()->after('eDifficulty');
             }
         });
+        }
         
         // Add foreign key constraints after all columns are added
-        Schema::table('exams', function (Blueprint $table) {
+        if (Schema::hasTable('exams')) {
+            Schema::table('exams', function (Blueprint $table) {
             if (Schema::hasColumn('exams', 'exam_type_id') && !$this->foreignKeyExists('exams', 'exams_exam_type_id_foreign')) {
                 $table->foreign('exam_type_id')->references('etId')->on('exam_types')->onDelete('set null');
             }
@@ -75,6 +78,7 @@ class AddMissingExamColumns extends Migration
                 $table->foreign('eParent_exam_id')->references('eId')->on('exams')->onDelete('set null');
             }
         });
+        }
     }
     
     private function foreignKeyExists($table, $name)
@@ -92,7 +96,8 @@ class AddMissingExamColumns extends Migration
      */
     public function down()
     {
-        Schema::table('exams', function (Blueprint $table) {
+        if (Schema::hasTable('exams')) {
+            Schema::table('exams', function (Blueprint $table) {
             // Drop foreign keys first (only if they exist)
             if ($this->foreignKeyExists('exams', 'exams_exam_type_id_foreign')) {
                 $table->dropForeign(['exam_type_id']);
@@ -123,5 +128,6 @@ class AddMissingExamColumns extends Migration
                 $table->dropColumn($columnsToDrop);
             }
         });
+        }
     }
 }

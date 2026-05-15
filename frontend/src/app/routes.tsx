@@ -17,12 +17,29 @@
  *  - Admin     → chỉnh /routes/adminRoutes.tsx
  *  - Auth      → chỉnh /routes/authRoutes.tsx
  */
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import { authRoutes } from "./routes/authRoutes";
 import { teacherRoutes } from "./routes/teacherRoutes";
 import { studentLegacyRoutes, studentRoutes, kidsRoutes, teensRoutes, adultsRoutes } from "./routes/studentRoutes";
 import { adminRoutes } from "./routes/adminRoutes";
 import { MockTestPage } from "./features/test/MockTestPage";
+import { PublicBlogList } from "./features/public/PublicBlogList";
+import { PublicBlogDetail } from "./features/public/PublicBlogDetail";
+
+function SmartRedirect() {
+  try {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      const raw = localStorage.getItem('user');
+      const user = raw ? JSON.parse(raw) : null;
+      const role: string | null = user?.role || user?.uRole || null;
+      if (role === 'teacher') return <Navigate to="/giao-vien" replace />;
+      if (role === 'admin')   return <Navigate to="/admin"     replace />;
+      if (role === 'student') return <Navigate to="/hoc-vien"  replace />;
+    }
+  } catch { /* ignore */ }
+  return <Navigate to="/" replace />;
+}
 
 export const router = createBrowserRouter([
   // ─── Auth (no layout) ────────────────────────────────────────────────────
@@ -45,9 +62,16 @@ export const router = createBrowserRouter([
   // ─── Admin Console   ("/admin") ──────────────────────────────────────────
   adminRoutes,
 
+  // ─── Public Blog ("/bai-viet") ───────────────────────────────────────────
+  { path: "/bai-viet",        element: <PublicBlogList /> },
+  { path: "/bai-viet/:slug",  element: <PublicBlogDetail /> },
+
   // ─── Test Pages (no auth required - DEVELOPMENT ONLY) ───────────────────
   {
     path: "/test-vstep-demo",
     element: <MockTestPage />,
   },
+
+  // ─── Catch-all: unknown URL → smart redirect based on auth state ─────────
+  { path: "*", element: <SmartRedirect /> },
 ]);

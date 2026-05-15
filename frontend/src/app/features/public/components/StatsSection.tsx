@@ -1,38 +1,56 @@
-// THEME: Orange & White - Modern Educational Design
-/**
- * Stats Section - Orange theme
- */
-
-import { Users, GraduationCap, BookOpen, Star } from 'lucide-react';
+import { BookOpen, User, MessageCircle, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+
+const FEATURES = [
+  { key: 'curriculum', Icon: BookOpen,      iconBg: 'bg-orange-100',  iconColor: 'text-orange-600'  },
+  { key: 'personalized', Icon: User,         iconBg: 'bg-blue-100',    iconColor: 'text-blue-600'    },
+  { key: 'community',  Icon: MessageCircle,  iconBg: 'bg-green-100',   iconColor: 'text-green-600'   },
+  { key: 'practice',   Icon: FileText,       iconBg: 'bg-purple-100',  iconColor: 'text-purple-600'  },
+] as const;
 
 export function StatsSection() {
   const { t } = useTranslation();
-  
-  const stats = [
-    { label: t('landing.stats.students'), value: '50,000+', icon: Users, gradient: 'from-[#FF8C42] to-[#FF6B35]' },
-    { label: t('landing.stats.teachers'), value: '500+', icon: GraduationCap, gradient: 'from-[#FFA726] to-[#FF8C42]' },
-    { label: t('landing.stats.courses'), value: '10,000+', icon: BookOpen, gradient: 'from-[#FF8C42] to-[#FF6B35]' },
-    { label: t('landing.stats.satisfaction'), value: '98%', icon: Star, gradient: 'from-[#FFA726] to-[#FF8C42]' },
-  ];
 
   return (
-    <section className="container mx-auto px-4 py-16">
-      <div className="bg-gradient-to-r from-[#FF8C42] via-[#FF6B35] to-[#FFA726] rounded-3xl p-10 md:p-16 shadow-2xl relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-        
-        <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-8">
-          {stats.map((stat) => (
-            <div key={stat.label} className="text-center text-white group">
-              <div className={`w-16 h-16 mx-auto mb-4 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg`}>
-                <stat.icon className="w-8 h-8" />
-              </div>
-              <div className="text-4xl md:text-5xl font-bold mb-2 drop-shadow-lg">{stat.value}</div>
-              <div className="text-sm md:text-base font-semibold opacity-95">{stat.label}</div>
+    <section className="container mx-auto px-4 py-8">
+      <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-xl">
+        <div className="flex flex-col lg:flex-row">
+
+          {/* ── LEFT — Title + feature grid ─────────────────────────────── */}
+          <div className="flex-1 p-6 lg:py-10 lg:pl-12 lg:pr-8">
+            <h3 className="mb-8 text-xl font-bold leading-snug text-slate-900 lg:text-2xl">
+              {t('landing.why.title')}
+            </h3>
+
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {FEATURES.map(({ key, Icon, iconBg, iconColor }) => (
+                <div key={key} className="flex items-start gap-4 lg:flex-col">
+                  <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl ${iconBg} lg:h-12 lg:w-12`}>
+                    <Icon className={`h-5 w-5 lg:h-6 lg:w-6 ${iconColor}`} />
+                  </div>
+                  <div className="flex-1">
+                    <strong className="mb-1 block text-base font-bold text-slate-900 lg:text-lg">
+                      {t(`landing.why.items.${key}.title`)}
+                    </strong>
+                    <p className="text-sm leading-snug text-slate-500">
+                      {t(`landing.why.items.${key}.desc`)}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+
+          {/* ── RIGHT — Image ───────────────────────────────────────────── */}
+          <div className="relative hidden flex-shrink-0 lg:block lg:w-[380px]">
+            <img
+              src="/images/Why1.webp"
+              alt={t('landing.why.title')}
+              loading="lazy"
+              className="h-full w-full object-contain"
+            />
+          </div>
+
         </div>
       </div>
     </section>

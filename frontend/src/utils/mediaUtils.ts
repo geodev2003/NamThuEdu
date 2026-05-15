@@ -14,14 +14,14 @@ export const getApiBaseUrl = (): string => {
   }
   
   // Fallback: extract from API URL
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+  const apiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
   return apiUrl.replace(/\/api\/?$/, '');
 };
 
 /**
  * Convert a relative media URL to a full URL
  * @param url - Relative URL (e.g., /storage/kids-exams/images/xxx.png) or full URL
- * @returns Full URL (e.g., http://localhost:8000/storage/kids-exams/images/xxx.png)
+ * @returns Full URL (e.g., http://example.com/storage/kids-exams/images/xxx.png)
  */
 export const getFullMediaUrl = (url: string | null | undefined): string | null => {
   if (!url) return null;

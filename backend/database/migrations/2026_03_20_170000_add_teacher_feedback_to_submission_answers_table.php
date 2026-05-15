@@ -13,9 +13,11 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('submission_answers', function (Blueprint $table) {
+        if (Schema::hasTable('submission_answers')) {
+            Schema::table('submission_answers', function (Blueprint $table) {
             $table->text('saTeacher_feedback')->nullable()->after('saPoints_awarded');
         });
+        }
     }
 
     /**
@@ -25,8 +27,10 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('submission_answers', function (Blueprint $table) {
+        if (Schema::hasTable('submission_answers')) {
+            Schema::table('submission_answers', function (Blueprint $table) {
             $table->dropColumn('saTeacher_feedback');
         });
+        }
     }
 };

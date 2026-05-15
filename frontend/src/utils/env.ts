@@ -4,7 +4,7 @@
 
 export const env = {
   // API
-  apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+  apiUrl: import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL,
   apiTimeout: Number(import.meta.env.VITE_API_TIMEOUT) || 30000,
 
   // App

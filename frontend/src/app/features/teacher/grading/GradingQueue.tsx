@@ -1,376 +1,426 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
+import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
 import {
   Search,
   Eye,
-  Zap,
-  Edit3,
   CheckCircle2,
   Clock,
   AlertCircle,
   Award,
   TrendingUp,
   ChevronDown,
+  UserCheck,
+  Bot,
+  Inbox,
+  RefreshCw,
 } from "lucide-react";
 import { Header } from "../../../components/shared/Header";
+import { api } from "../../../../services/api";
+import { TeacherReviewModal } from "./TeacherReviewModal";
 
+// ─── Types ──────────────────────────────────────────────────────────────────
 interface Submission {
   id: string;
   studentName: string;
   studentAvatar: string;
   examTitle: string;
   examType: string;
+  examId: string;
   submissionTime: Date;
-  status: "submitted" | "graded" | "partially_graded";
+  status: "submitted" | "graded" | "partially_graded" | "grading_subjective";
   score?: number;
   maxScore: number;
   attemptNumber: number;
+  sGemini_feedback?: string;
+  sTeacher_feedback?: string;
+  teacher_reviewed_at?: string;
 }
 
+type ReviewTab = "all" | "pending" | "reviewed";
+
+const STATUS_COLORS: Record<string, { color: string; dot: string }> = {
+  submitted:           { color: "bg-orange-100 text-orange-700 border-orange-200",  dot: "#F97316" },
+  graded:              { color: "bg-emerald-100 text-emerald-700 border-emerald-200", dot: "#10B981" },
+  partially_graded:    { color: "bg-sky-100 text-sky-700 border-sky-200",           dot: "#0EA5E9" },
+  grading_subjective:  { color: "bg-amber-100 text-amber-700 border-amber-200",     dot: "#F59E0B" },
+  in_progress:         { color: "bg-slate-100 text-slate-500 border-slate-200",    dot: "#94A3B8" },
+};
+
+const formatTime = (date: Date) =>
+  date.toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+// ─── Animated dots ─────────────────────────────────────────────────────────────
+function AnimatedDots() {
+  return (
+    <span className="inline-flex gap-[2px] ml-0.5">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="w-[3px] h-[3px] rounded-full bg-amber-500 inline-block"
+          style={{ animation: `dotBounce 1.2s ease-in-out ${i * 0.2}s infinite` }}
+        />
+      ))}
+      <style>{`
+        @keyframes dotBounce {
+          0%, 80%, 100% { opacity: 0.2; transform: translateY(0); }
+          40% { opacity: 1; transform: translateY(-3px); }
+        }
+      `}</style>
+    </span>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
 export function GradingQueue() {
+  usePageTitle(PAGE_TITLES.TEACHER_GRADING);
   const { t } = useTranslation();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterExam, setFilterExam] = useState("");
+
+  const STATUS_CONFIG = useMemo<Record<string, { label: string; color: string; dot: string }>>(() => ({
+    submitted:           { label: t("teacher.grading.status.submitted"),        ...STATUS_COLORS.submitted },
+    graded:              { label: t("teacher.grading.status.graded"),            ...STATUS_COLORS.graded },
+    partially_graded:    { label: t("teacher.grading.status.partiallyGraded"),   ...STATUS_COLORS.partially_graded },
+    grading_subjective:  { label: t("teacher.grading.status.gradingSubjective"), ...STATUS_COLORS.grading_subjective },
+    in_progress:         { label: t("teacher.grading.status.inProgress"),        ...STATUS_COLORS.in_progress },
+  }), [t]);
+
+  const [searchQuery, setSearchQuery]   = useState("");
   const [filterStatus, setFilterStatus] = useState("");
-  const [selectedSubmissions, setSelectedSubmissions] = useState<string[]>([]);
-  
-  // API state
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [reviewTab, setReviewTab]       = useState<ReviewTab>("all");
+  const [submissions, setSubmissions]   = useState<Submission[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState<string | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<Submission | null>(null);
+  const [lastUpdated, setLastUpdated]   = useState<Date | null>(null);
+  const [changedIds, setChangedIds]     = useState<Set<string>>(new Set());
+  const [isPolling, setIsPolling]       = useState(false);
+  const pollingRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevDataRef    = useRef<Submission[]>([]);
 
-  // Fetch submissions from API
-  useEffect(() => {
-    const fetchSubmissions = async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem('auth_token');
-        if (!token) {
-          setError('Vui lòng đăng nhập');
-          setLoading(false);
-          return;
+  const mapRaw = (sub: any): Submission => ({
+    id: String(sub.sId),
+    studentName: sub.user?.uName || "Unknown",
+    studentAvatar: (sub.user?.uName ?? "?").split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase(),
+    examTitle: sub.exam?.eTitle || "—",
+    examType: sub.exam?.eType || "General",
+    examId: String(sub.exam?.eId ?? sub.sExam_id ?? ""),
+    submissionTime: new Date(sub.sSubmit_time ?? sub.sStart_time ?? Date.now()),
+    status: sub.sStatus,
+    score: sub.sScore !== undefined && sub.sScore !== null ? Number(sub.sScore) : undefined,
+    maxScore: sub.exam?.eTotal_score ?? 100,
+    attemptNumber: sub.sAttempt ?? 1,
+    sGemini_feedback: sub.sGemini_feedback,
+    sTeacher_feedback: sub.sTeacher_feedback,
+    teacher_reviewed_at: sub.teacher_reviewed_at,
+  });
+
+  const fetchSubmissions = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    else setIsPolling(true);
+    if (!silent) setError(null);
+    try {
+      const params: Record<string, string> = {};
+      if (filterStatus) params.status = filterStatus;
+      const { data: result } = await api.get("/teacher/submissions", { params });
+      if (result.status === "success") {
+        const raw: any[] = Array.isArray(result.data) ? result.data : result.data?.data ?? [];
+        const mapped = raw.map(mapRaw);
+
+        if (silent && prevDataRef.current.length > 0) {
+          const updated = new Set<string>();
+          mapped.forEach((ns) => {
+            const prev = prevDataRef.current.find((ps) => ps.id === ns.id);
+            if (!prev || prev.status !== ns.status) updated.add(ns.id);
+          });
+          // new submissions not in prev
+          mapped.forEach((ns) => {
+            if (!prevDataRef.current.find((ps) => ps.id === ns.id)) updated.add(ns.id);
+          });
+          if (updated.size > 0) {
+            setChangedIds(updated);
+            setTimeout(() => setChangedIds(new Set()), 4000);
+          }
         }
 
-        // Build query params
-        const params = new URLSearchParams();
-        if (filterExam) params.append('exam_id', filterExam);
-        if (filterStatus) params.append('status', filterStatus);
-
-        const response = await fetch(
-          `http://localhost:8000/api/teacher/submissions?${params}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success') {
-            // Transform backend data to frontend format
-            const transformedSubmissions = result.data.map((sub: any) => ({
-              id: sub.sId.toString(),
-              studentName: sub.user?.uName || 'Unknown',
-              studentAvatar: sub.user?.uName?.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || 'NA',
-              examTitle: sub.exam?.eTitle || 'Unknown Exam',
-              examType: sub.exam?.eType || 'General',
-              submissionTime: new Date(sub.sSubmit_time),
-              status: sub.sStatus as "submitted" | "graded" | "partially_graded",
-              score: sub.sScore,
-              maxScore: sub.exam?.eTotal_score || 100,
-              attemptNumber: sub.sAttempt || 1,
-            }));
-            setSubmissions(transformedSubmissions);
-          }
-        } else {
-          setError('Không thể tải danh sách bài nộp');
-        }
-      } catch (err) {
-        console.error('Error fetching submissions:', err);
-        setError('Đã xảy ra lỗi khi tải dữ liệu');
-      } finally {
-        setLoading(false);
+        prevDataRef.current = mapped;
+        setSubmissions(mapped);
+        setLastUpdated(new Date());
+      } else {
+        if (!silent) setError(t("teacher.grading.queuePage.loadError"));
       }
-    };
+    } catch {
+      if (!silent) setError(t("teacher.grading.queuePage.dataError"));
+    } finally {
+      if (!silent) setLoading(false);
+      else setIsPolling(false);
+    }
+  }, [filterStatus]);
 
-    fetchSubmissions();
-  }, [filterExam, filterStatus]); // Re-fetch when filters change
+  useEffect(() => {
+    fetchSubmissions(false);
+    pollingRef.current = setInterval(() => fetchSubmissions(true), 20_000);
+    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
+  }, [fetchSubmissions]);
+
+  // ─── Derived stats & filtered list ────────────────────────────────────────
+  const pendingReview  = submissions.filter((s) => !s.teacher_reviewed_at);
+  const reviewedList   = submissions.filter((s) => !!s.teacher_reviewed_at);
 
   const stats = {
-    total: submissions.length,
-    graded: submissions.filter(s => s.status === 'graded').length,
-    pending: submissions.filter(s => s.status === 'submitted' || s.status === 'partially_graded').length,
-    completionRate: submissions.length > 0 
-      ? Math.round((submissions.filter(s => s.status === 'graded').length / submissions.length) * 100)
-      : 0,
+    total:        submissions.length,
+    pending:      pendingReview.length,
+    reviewed:     reviewedList.length,
+    reviewRate:   submissions.length ? Math.round((reviewedList.length / submissions.length) * 100) : 0,
   };
 
-  const getStatusBadge = (status: Submission["status"]) => {
-    const badges = {
-      submitted: { text: t('teacher.grading.status.submitted'), color: "bg-orange-100 text-orange-700 border-orange-200" },
-      graded: { text: t('teacher.grading.status.graded'), color: "bg-green-100 text-green-700 border-green-200" },
-      partially_graded: { text: t('teacher.grading.status.partiallyGraded'), color: "bg-blue-100 text-blue-700 border-blue-200" },
-    };
-    return badges[status];
-  };
+  const baseList = reviewTab === "pending" ? pendingReview : reviewTab === "reviewed" ? reviewedList : submissions;
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  const filtered = useMemo(() => baseList.filter((s) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return s.studentName.toLowerCase().includes(q) || s.examTitle.toLowerCase().includes(q);
+  }), [baseList, searchQuery]);
 
-  const filteredSubmissions = submissions.filter((sub) => {
-    const matchSearch =
-      searchQuery === "" ||
-      sub.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sub.examTitle.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchExam = filterExam === "" || sub.examType === filterExam;
-    const matchStatus = filterStatus === "" || sub.status === filterStatus;
-    return matchSearch && matchExam && matchStatus;
-  });
+  const TABS: { key: ReviewTab; label: string; count: number; icon: typeof Clock }[] = [
+    { key: "all",      label: t("teacher.grading.queuePage.tabs.all"),      count: submissions.length, icon: Inbox },
+    { key: "pending",  label: t("teacher.grading.queuePage.tabs.pending"),   count: stats.pending,     icon: Clock },
+    { key: "reviewed", label: t("teacher.grading.queuePage.tabs.reviewed"),  count: stats.reviewed,    icon: CheckCircle2 },
+  ];
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <Header breadcrumb={[t("breadcrumb.dashboard"), t("breadcrumb.grading")]} />
 
       <div className="flex-1 overflow-y-auto" style={{ background: "#EEEEF3" }}>
-        <div className="px-8 py-6 space-y-6">
-          {/* Loading State */}
-          {loading && (
-            <div className="flex items-center justify-center py-16">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-          )}
+        <div className="px-8 py-6 space-y-5">
 
-          {/* Error State */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              <p className="text-red-700">{error}</p>
-            </div>
-          )}
-
-          {/* Stats Cards */}
-          {!loading && !error && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Total Submissions */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all">
+          {/* ── Stats ── */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: t("teacher.grading.queuePage.statsCards.total"),      showBar: false, value: stats.total,              icon: Inbox,       color: "#6366F1", bg: "#EEF2FF" },
+              { label: t("teacher.grading.queuePage.statsCards.pending"),    showBar: false, value: stats.pending,            icon: Clock,       color: "#F59E0B", bg: "#FEF3C7" },
+              { label: t("teacher.grading.queuePage.statsCards.reviewed"),   showBar: false, value: stats.reviewed,           icon: UserCheck,   color: "#10B981", bg: "#D1FAE5" },
+              { label: t("teacher.grading.queuePage.statsCards.reviewRate"), showBar: true,  value: `${stats.reviewRate}%`,   icon: Award,       color: "#8B5CF6", bg: "#EDE9FE" },
+            ].map(({ label, value, showBar, icon: Icon, color, bg }) => (
+              <div key={label} className="bg-white rounded-2xl border border-slate-100 p-5 hover:shadow-md transition-all">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                    <Edit3 className="w-6 h-6 text-blue-600" />
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: bg }}>
+                    <Icon className="w-5 h-5" style={{ color }} />
                   </div>
-                  <TrendingUp className="w-5 h-5 text-green-500" />
+                  <TrendingUp className="w-4 h-4 text-slate-300" />
                 </div>
-                <p className="text-gray-600 text-sm mb-1">Tổng số bài nộp</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-              </div>
-
-            {/* Graded */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                  <CheckCircle2 className="w-6 h-6 text-green-600" />
-                </div>
-                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">
-                  {stats.graded}
-                </span>
-              </div>
-              <p className="text-gray-600 text-sm mb-1">Đã chấm</p>
-              <p className="text-3xl font-bold text-gray-900">{stats.graded}</p>
-            </div>
-
-            {/* Pending */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-orange-600" />
-                </div>
-                <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-bold">
-                  {stats.pending}
-                </span>
-              </div>
-              <p className="text-gray-600 text-sm mb-1">Chờ chấm</p>
-              <p className="text-3xl font-bold text-gray-900">{stats.pending}</p>
-            </div>
-
-            {/* Completion Rate */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                  <Award className="w-6 h-6 text-purple-600" />
-                </div>
-              </div>
-              <p className="text-gray-600 text-sm mb-1">Tỷ lệ hoàn thành</p>
-              <div className="flex items-end gap-3">
-                <p className="text-3xl font-bold text-gray-900">{stats.completionRate}%</p>
-                <div className="flex-1">
-                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all"
-                      style={{ width: `${stats.completionRate}%` }}
-                    />
+                <p className="text-slate-500 text-xs mb-1">{label}</p>
+                <p className="text-2xl font-black text-slate-800">{value}</p>
+                {showBar && (
+                  <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-violet-500 transition-all" style={{ width: `${stats.reviewRate}%` }} />
                   </div>
-                </div>
+                )}
               </div>
-            </div>
+            ))}
           </div>
-          )}
 
-          {/* Filter Bar */}
-          {!loading && !error && (
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          {/* ── Toolbar: tabs + search + filter ── */}
+          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+            {/* Tab bar */}
+            <div className="flex items-center gap-1 px-5 pt-4 border-b border-slate-100">
+              {TABS.map(({ key, label, count, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setReviewTab(key)}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 rounded-t-lg text-sm font-semibold transition-all border-b-2 ${
+                    reviewTab === key
+                      ? "border-violet-600 text-violet-700 bg-violet-50"
+                      : "border-transparent text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                  <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
+                    reviewTab === key ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-500"
+                  }`}>{count}</span>
+                </button>
+              ))}
+              <div className="ml-auto pb-2 flex items-center gap-3">
+                {lastUpdated && (
+                  <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                    {isPolling && <RefreshCw className="w-3 h-3 animate-spin text-violet-400" />}
+                    {t("teacher.grading.queuePage.updatedAt")} {lastUpdated.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                  </span>
+                )}
+                <button
+                  onClick={() => fetchSubmissions(false)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-slate-100 transition-colors"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> {t("teacher.grading.queuePage.refresh")}
+                </button>
+              </div>
+            </div>
+
+            {/* Search + filter */}
+            <div className="flex items-center gap-3 px-5 py-3">
+              <div className="relative flex-1 max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder={t('teacher.grading.searchPlaceholder')}
+                  placeholder={t("teacher.grading.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
                 />
               </div>
-
-              {/* Filter Exam */}
-              <div className="relative">
-                <select
-                  value={filterExam}
-                  onChange={(e) => setFilterExam(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-                >
-                  <option value="">{t('teacher.grading.allExams')}</option>
-                  <option value="Cambridge KET">Cambridge KET</option>
-                  <option value="IELTS">IELTS</option>
-                  <option value="TOEFL">TOEFL</option>
-                  <option value="PET">PET</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-              </div>
-
-              {/* Filter Status */}
               <div className="relative">
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                  className="pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 appearance-none"
                 >
-                  <option value="">{t('teacher.grading.allStatuses')}</option>
-                  <option value="submitted">{t('teacher.grading.status.submitted')}</option>
-                  <option value="graded">{t('teacher.grading.status.graded')}</option>
-                  <option value="partially_graded">Chấm 1 phần</option>
+                  <option value="">{t("teacher.grading.allStatuses")}</option>
+                  <option value="submitted">{t("teacher.grading.status.submitted")}</option>
+                  <option value="graded">{t("teacher.grading.status.graded")}</option>
+                  <option value="partially_graded">{t("teacher.grading.status.partiallyGraded")}</option>
+                  <option value="grading_subjective">{t("teacher.grading.status.gradingSubjective")}</option>
                 </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               </div>
-
-              {/* Bulk Action */}
-              <button className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
-                <Zap className="w-4 h-4" />
-                <span className="text-sm font-semibold">Chấm tự động hàng loạt</span>
-              </button>
             </div>
           </div>
+
+          {/* ── Loading / Error ── */}
+          {loading && (
+            <div className="flex items-center justify-center py-20">
+              <div className="w-10 h-10 rounded-full border-3 border-violet-200 border-t-violet-600 animate-spin" />
+            </div>
+          )}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
           )}
 
-          {/* Data Table */}
+          {/* ── Table ── */}
           {!loading && !error && (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Học sinh
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Đề thi
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Thời gian nộp
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Trạng thái
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Điểm
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Lần thi
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Hành động
-                    </th>
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    {[t("teacher.grading.table.student"), t("teacher.grading.table.exam"), t("teacher.grading.table.submissionTime"), t("teacher.grading.table.status"), t("teacher.grading.table.aiScore"), t("teacher.grading.table.review"), t("teacher.grading.table.actions")].map((h) => (
+                      <th key={h} className="px-5 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">{h}</th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {filteredSubmissions.map((submission) => {
-                    const badge = getStatusBadge(submission.status);
+                <tbody className="divide-y divide-slate-50">
+                  {filtered.map((sub) => {
+                    const cfg = STATUS_CONFIG[sub.status] ?? STATUS_CONFIG.submitted;
+                    const isReviewed = !!sub.teacher_reviewed_at;
+                    const isChanged = changedIds.has(sub.id);
                     return (
-                      <tr key={submission.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap">
+                      <tr
+                        key={sub.id}
+                        className={`transition-all duration-700 group ${
+                          isChanged
+                            ? "bg-amber-50 ring-1 ring-inset ring-amber-200"
+                            : "hover:bg-slate-50/70"
+                        }`}
+                      >
+                        {/* Student */}
+                        <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                              {submission.studentAvatar}
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                              {sub.studentAvatar}
                             </div>
-                            <p className="font-semibold text-gray-900">{submission.studentName}</p>
+                            <div>
+                              <p className="text-sm font-semibold text-slate-800">{sub.studentName}</p>
+                              <p className="text-xs text-slate-400">{t("teacher.grading.queuePage.attempt")} {sub.attemptNumber}</p>
+                            </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <p className="font-semibold text-gray-900 mb-1">{submission.examTitle}</p>
-                          <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
-                            {submission.examType}
-                          </span>
+                        {/* Exam */}
+                        <td className="px-5 py-4 max-w-[200px]">
+                          <p className="text-sm font-semibold text-slate-800 truncate">{sub.examTitle}</p>
+                          <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-700">{sub.examType}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <p className="text-sm text-gray-700">{formatTime(submission.submissionTime)}</p>
+                        {/* Time */}
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          <p className="text-sm text-slate-600">{formatTime(sub.submissionTime)}</p>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${badge.color}`}>
-                            {badge.text}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {submission.score !== undefined ? (
-                            <span className="text-lg font-bold text-gray-900">
-                              {submission.score}/{submission.maxScore}
+                        {/* Status */}
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                                sub.status === "submitted" ? "animate-pulse" : ""
+                              }`}
+                              style={{ background: cfg.dot }}
+                            />
+                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${cfg.color}`}>
+                              {cfg.label}
                             </span>
-                          ) : (
-                            <span className="text-gray-400">-</span>
+                            {isChanged && (
+                              <span className="px-1.5 py-0.5 rounded-full bg-amber-400 text-white text-[9px] font-bold uppercase tracking-wide">
+                                {t("teacher.grading.table.new")}
+                              </span>
+                            )}
+                          </div>
+                          {sub.status === "grading_subjective" && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Bot className="w-3 h-3 text-amber-500" />
+                              <span className="text-[10px] text-amber-600 flex items-center animate-pulse">
+                                {t("teacher.grading.queuePage.aiProcessing")}
+                              </span>
+                            </div>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm font-semibold">
-                            Lần {submission.attemptNumber}
-                          </span>
+                        {/* AI score */}
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          {sub.score !== undefined ? (
+                            <span className="text-sm font-bold text-slate-800">
+                              {(sub.score / (sub.maxScore / 10)).toFixed(2)}<span className="text-slate-400 font-normal text-xs">/10</span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 text-sm">—</span>
+                          )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        {/* Review status */}
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          {isReviewed ? (
+                            <div className="flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                              <span className="text-xs font-semibold text-emerald-600">{t("teacher.grading.queuePage.reviewed")}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="w-4 h-4 text-amber-400" />
+                              <span className="text-xs font-semibold text-amber-600">{t("teacher.grading.queuePage.pendingReview")}</span>
+                            </div>
+                          )}
+                        </td>
+                        {/* Actions */}
+                        <td className="px-5 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             <Link
-                              to={`/giao-vien/cham-diem/${submission.id}`}
-                              className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all"
-                              title={t('teacher.common.viewDetail')}
+                              to={
+                                sub.examType?.toLowerCase().includes("vstep") && sub.examId
+                                  ? `/giao-vien/xem-vstep/${sub.examId}?review=${sub.id}&teacher=1`
+                                  : `/giao-vien/cham-diem/${sub.id}`
+                              }
+                              className="p-2 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100 transition-colors"
+                              title={t("teacher.grading.viewDetail")}
                             >
                               <Eye className="w-4 h-4" />
                             </Link>
                             <button
-                              className="p-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-all"
-                              title="Chấm tự động"
+                              onClick={() => setReviewTarget(sub)}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                isReviewed
+                                  ? "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                  : "bg-violet-600 text-white hover:bg-violet-700 shadow-sm shadow-violet-200"
+                              }`}
                             >
-                              <Zap className="w-4 h-4" />
-                            </button>
-                            <button
-                              className="p-2 bg-purple-100 text-purple-600 rounded-lg hover:bg-purple-200 transition-all"
-                              title="Chấm thủ công"
-                            >
-                              <Edit3 className="w-4 h-4" />
+                              <UserCheck className="w-3.5 h-3.5" />
+                              {isReviewed ? t("teacher.grading.queuePage.reviewAgain") : t("teacher.grading.queuePage.review")}
                             </button>
                           </div>
                         </td>
@@ -379,22 +429,34 @@ export function GradingQueue() {
                   })}
                 </tbody>
               </table>
-            </div>
 
-            {/* Empty State */}
-            {filteredSubmissions.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                  <AlertCircle className="w-10 h-10 text-gray-400" />
+              {/* Empty state */}
+              {filtered.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 gap-3">
+                  <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center">
+                    <Inbox className="w-8 h-8 text-slate-300" />
+                  </div>
+                  <p className="text-slate-500 font-semibold">{t("teacher.grading.queuePage.empty.title")}</p>
+                  <p className="text-slate-400 text-sm">{t("teacher.grading.queuePage.empty.subtitle")}</p>
                 </div>
-                <p className="text-gray-600 font-semibold mb-2">Không tìm thấy bài nộp nào</p>
-                <p className="text-sm text-gray-500">Thử điều chỉnh bộ lọc của bạn</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
           )}
         </div>
       </div>
+
+      {/* Review Modal */}
+      <TeacherReviewModal
+        submission={reviewTarget}
+        open={!!reviewTarget}
+        onClose={() => setReviewTarget(null)}
+        onReviewed={(id) => {
+          setSubmissions((prev) =>
+            prev.map((s) => s.id === id ? { ...s, teacher_reviewed_at: new Date().toISOString() } : s)
+          );
+          setReviewTarget(null);
+        }}
+      />
     </div>
   );
 }

@@ -15,7 +15,8 @@ return new class extends Migration
     public function up(): void
     {
         // Thêm các trường cần thiết vào bảng exams
-        Schema::table('exams', function (Blueprint $table) {
+        if (Schema::hasTable('exams')) {
+            Schema::table('exams', function (Blueprint $table) {
             // Kids exam metadata - lưu dạng JSON để linh hoạt
             $table->json('kids_exam_config')->nullable()->after('ui_config');
             // Structure:
@@ -29,9 +30,11 @@ return new class extends Migration
             //   "instructions": "..."
             // }
         });
+        }
 
         // Thêm các trường cần thiết vào bảng questions
-        Schema::table('questions', function (Blueprint $table) {
+        if (Schema::hasTable('questions')) {
+            Schema::table('questions', function (Blueprint $table) {
             // Kids task type và data - lưu dạng JSON
             $table->json('kids_task_config')->nullable()->after('feedback_config');
             // Structure:
@@ -50,6 +53,7 @@ return new class extends Migration
             //   "scoring": {...}
             // }
         });
+        }
     }
 
     /**
@@ -57,12 +61,16 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('questions', function (Blueprint $table) {
+        if (Schema::hasTable('questions')) {
+            Schema::table('questions', function (Blueprint $table) {
             $table->dropColumn('kids_task_config');
         });
+        }
 
-        Schema::table('exams', function (Blueprint $table) {
+        if (Schema::hasTable('exams')) {
+            Schema::table('exams', function (Blueprint $table) {
             $table->dropColumn('kids_exam_config');
         });
+        }
     }
 };

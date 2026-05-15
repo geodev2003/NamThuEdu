@@ -99,67 +99,66 @@ export function NotificationList() {
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: "#EEEEF3" }}>
-      <Header breadcrumb={[t('breadcrumb.dashboard'), t('student.notifications.title')]} />
+    <div className="min-h-screen" style={{ background: "#F8F7FF" }}>
 
-      <div className="p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 style={{ fontSize: 26, fontWeight: 800, color: "#1F1344", letterSpacing: "-0.03em" }}>
-                {t('student.notifications.title')}
-              </h1>
-              {unreadCount > 0 && (
-                <span
-                  className="px-3 py-1 rounded-full"
-                  style={{
-                    background: "#EF4444",
-                    color: "white",
-                    fontSize: 13,
-                    fontWeight: 700,
-                  }}
-                >
-                  {t('student.notifications.unreadCount', { count: unreadCount })}
-                </span>
-              )}
-            </div>
-            <p style={{ fontSize: 14, color: "#9CA3AF", marginTop: 4 }}>
-              Theo dõi các thông báo và cập nhật mới nhất
-            </p>
-          </div>
-
-          {unreadCount > 0 && (
-            <button
-              onClick={() => markAllReadMutation.mutate()}
-              disabled={markAllReadMutation.isPending}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all hover:bg-blue-50"
-              style={{
-                border: "1px solid #2563EB",
-                color: "#2563EB",
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
-              <Check className="w-4 h-4" />
-              {t('student.notifications.markAllRead')}
-            </button>
-          )}
+      {/* Hero */}
+      <div className="relative overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #4C1D95 0%, #6D28D9 45%, #7C3AED 100%)" }}>
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/3 w-72 h-72 rounded-full opacity-20"
+            style={{ background: "radial-gradient(circle, #C4B5FD, transparent)", transform: "translateY(-50%)" }} />
+          <div className="absolute bottom-0 right-1/4 w-52 h-52 rounded-full opacity-15"
+            style={{ background: "radial-gradient(circle, #A5B4FC, transparent)", transform: "translateY(40%)" }} />
         </div>
+        <div className="relative z-10 px-8 lg:px-16 py-10">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg"
+                style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.25)" }}>
+                <Bell className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <p className="text-purple-200 text-sm font-semibold tracking-widest uppercase mb-1">Hệ thống</p>
+                <h1 className="text-3xl font-extrabold text-white tracking-tight leading-tight">
+                  {t('student.notifications.title')}
+                </h1>
+                <p className="text-purple-200 text-sm mt-1 font-medium">Theo dõi các thông báo và cập nhật mới nhất</p>
+              </div>
+            </div>
+            {unreadCount > 0 && (
+              <div className="flex items-center gap-3">
+                <div className="px-3 py-1.5 rounded-full text-sm font-bold"
+                  style={{ background: "rgba(255,255,255,0.15)", color: "#FCD34D", border: "1px solid rgba(255,255,255,0.2)" }}>
+                  {unreadCount} chưa đọc
+                </div>
+                <button
+                  onClick={() => markAllReadMutation.mutate()}
+                  disabled={markAllReadMutation.isPending}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+                  style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.25)" }}
+                >
+                  <Check className="w-4 h-4" />
+                  {t('student.notifications.markAllRead')}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
+      <div className="px-8 lg:px-16 py-8 space-y-5">
         {/* Tabs */}
-        <div className="flex items-center gap-2 mb-6 overflow-x-auto">
+        <div className="flex items-center gap-2 overflow-x-auto">
           {tabs.map(tab => (
             <button
               key={tab.key}
               onClick={() => setFilter(tab.key as NotificationType)}
-              className="px-4 py-2 rounded-lg transition-all whitespace-nowrap"
+              className="px-4 py-2 rounded-xl transition-all whitespace-nowrap text-sm font-semibold"
               style={{
-                background: filter === tab.key ? "#2563EB" : "white",
+                background: filter === tab.key ? "#7C3AED" : "white",
                 color: filter === tab.key ? "white" : "#6B7280",
-                border: `1px solid ${filter === tab.key ? "#2563EB" : "#E5E7EB"}`,
-                fontWeight: filter === tab.key ? 600 : 500,
-                fontSize: 13,
+                border: `1.5px solid ${filter === tab.key ? "#7C3AED" : "#F0F0F8"}`,
+                boxShadow: filter === tab.key ? "0 2px 8px rgba(124,58,237,0.3)" : "none",
               }}
             >
               {tab.label}
@@ -170,11 +169,12 @@ export function NotificationList() {
         {/* Notifications List */}
         {isLoading ? (
           <div className="text-center py-12">
-            <div className="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <div className="inline-block w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
+              style={{ borderColor: "#EDE9FE", borderTopColor: "#7C3AED" }} />
             <p className="mt-3 text-gray-500">{t('common.loading')}</p>
           </div>
         ) : filteredNotifications.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+          <div className="text-center py-12 bg-white rounded-2xl" style={{ border: "1.5px solid #F0F0F8" }}>
             <Bell className="w-16 h-16 mx-auto mb-4" style={{ color: "#D1D5DB" }} />
             <h3 style={{ fontSize: 16, fontWeight: 600, color: "#374151" }}>
               {t('student.notifications.empty.title')}
@@ -192,11 +192,12 @@ export function NotificationList() {
               return (
                 <div
                   key={notif.id}
-                  className="bg-white rounded-xl p-4 transition-all hover:shadow-md relative"
+                  className="bg-white rounded-2xl p-4 transition-all hover:-translate-y-0.5 relative"
                   style={{
-                    border: isUnread ? "1px solid #2563EB" : "1px solid #E5E7EB",
-                    borderLeft: isUnread ? "4px solid #2563EB" : "4px solid #E5E7EB",
-                    background: isUnread ? "#F0F9FF" : "white",
+                    border: isUnread ? "1.5px solid #A78BFA" : "1.5px solid #F0F0F8",
+                    borderLeft: isUnread ? "4px solid #7C3AED" : "4px solid #F0F0F8",
+                    background: isUnread ? "#FAF8FF" : "white",
+                    boxShadow: isUnread ? "0 2px 12px rgba(124,58,237,0.08)" : "0 1px 4px rgba(124,58,237,0.04)",
                   }}
                 >
                   <div className="flex items-start gap-4">
@@ -224,7 +225,7 @@ export function NotificationList() {
                           {isUnread && (
                             <div
                               className="w-2 h-2 rounded-full"
-                              style={{ background: "#2563EB" }}
+                              style={{ background: "#7C3AED" }}
                             />
                           )}
                           <button

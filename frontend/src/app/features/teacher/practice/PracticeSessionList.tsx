@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router";
+import { useState, useMemo } from "react";
+import { Link, useNavigate } from "react-router";
+import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
 import {
   Plus,
   Search,
@@ -26,33 +27,18 @@ import {
   CheckCircle,
   Calendar,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
+import { usePracticeSessions } from "@/hooks/usePracticeSessions";
 
-type PracticeType = "topic" | "template" | "random";
+type PracticeType = "topic_based" | "template_based" | "random" | "skill_based" | "custom";
 type Skill = "listening" | "reading" | "writing" | "speaking";
 type Difficulty = "easy" | "medium" | "hard" | "mixed";
 type Purpose = "review" | "practice" | "drill" | "mock_test" | "homework";
 
-interface PracticeSession {
-  id: string;
-  title: string;
-  type: PracticeType;
-  skill: Skill;
-  difficulty: Difficulty;
-  purpose: Purpose;
-  duration: number;
-  questionCount: number;
-  createdAt: string;
-  timesAssigned: number;
-  completionRate?: number;
-  avgScore?: number;
-  isPrivate: boolean;
-}
-
 export function PracticeSessionList() {
-  const [sessions, setSessions] = useState<PracticeSession[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  usePageTitle(PAGE_TITLES.TEACHER_PRACTICE);
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
@@ -60,45 +46,23 @@ export function PracticeSessionList() {
   const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
   const [filterPurpose, setFilterPurpose] = useState<string>("all");
 
-  useEffect(() => {
-    const fetchSessions = async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem('auth_token');
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/practice-sessions`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success') {
-            setSessions(result.data || []);
-          } else {
-            setError('Không thể tải danh sách bài luyện tập');
-          }
-        } else {
-          setError('Lỗi khi tải dữ liệu');
-        }
-      } catch (err) {
-        setError('Lỗi kết nối đến server');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSessions();
-  }, []);
+  // Use custom hook
+  const { sessions, statistics, loading, error, refetch } = usePracticeSessions({
+    type: filterType,
+    skill: filterSkill,
+    purpose: filterPurpose,
+    difficulty: filterDifficulty,
+  });
 
   const getTypeConfig = (type: PracticeType) => {
     const configs = {
-      topic: { label: "Theo chủ đề", color: "purple", icon: BookOpen, badgeClass: "bg-purple-100 text-purple-700" },
-      template: { label: "Template", color: "blue", icon: FileText, badgeClass: "bg-blue-100 text-blue-700" },
+      topic_based: { label: "Theo chủ đề", color: "purple", icon: BookOpen, badgeClass: "bg-purple-100 text-purple-700" },
+      template_based: { label: "Template", color: "blue", icon: FileText, badgeClass: "bg-blue-100 text-blue-700" },
       random: { label: "Ngẫu nhiên", color: "orange", icon: Shuffle, badgeClass: "bg-orange-100 text-orange-700" },
+      skill_based: { label: "Theo kỹ năng", color: "green", icon: BarChart3, badgeClass: "bg-green-100 text-green-700" },
+      custom: { label: "Tùy chỉnh", color: "gray", icon: Edit, badgeClass: "bg-gray-100 text-gray-700" },
     };
-    return configs[type];
+    return configs[type] || configs.custom;
   };
 
   const getSkillConfig = (skill: Skill) => {
@@ -132,14 +96,13 @@ export function PracticeSessionList() {
     return labels[purpose];
   };
 
-  const filteredSessions = sessions.filter((session) => {
-    const matchesSearch = session.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === "all" || session.type === filterType;
-    const matchesSkill = filterSkill === "all" || session.skill === filterSkill;
-    const matchesDifficulty = filterDifficulty === "all" || session.difficulty === filterDifficulty;
-    const matchesPurpose = filterPurpose === "all" || session.purpose === filterPurpose;
-    return matchesSearch && matchesType && matchesSkill && matchesDifficulty && matchesPurpose;
-  });
+  // Client-side search filtering
+  const filteredSessions = useMemo(() => {
+    return sessions.filter((session) => {
+      const matchesSearch = session.ps_title.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesSearch;
+    });
+  }, [sessions, searchTerm]);
 
   if (loading) {
     return (
@@ -197,7 +160,7 @@ export function PracticeSessionList() {
                 Tổng số
               </span>
             </div>
-            <p className="text-3xl font-bold text-gray-900 mb-1">{sessions.length}</p>
+            <p className="text-3xl font-bold text-gray-900 mb-1">{statistics?.total || sessions.length}</p>
             <p className="text-sm text-gray-600">Bài luyện tập</p>
           </div>
 
@@ -210,8 +173,8 @@ export function PracticeSessionList() {
                 Hoạt động
               </span>
             </div>
-            <p className="text-3xl font-bold text-gray-900 mb-1">4</p>
-            <p className="text-sm text-gray-600">Đang được giao</p>
+            <p className="text-3xl font-bold text-gray-900 mb-1">{statistics?.active_count || 0}</p>
+            <p className="text-sm text-gray-600">Đang hoạt động</p>
           </div>
 
           <div className="bg-white rounded-2xl p-6 border border-purple-100 shadow-sm">
@@ -220,10 +183,10 @@ export function PracticeSessionList() {
                 <Calendar className="w-5 h-5 text-purple-600" />
               </div>
               <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
-                Tuần này
+                Gần đây
               </span>
             </div>
-            <p className="text-3xl font-bold text-gray-900 mb-1">3</p>
+            <p className="text-3xl font-bold text-gray-900 mb-1">{statistics?.recent_count || 0}</p>
             <p className="text-sm text-gray-600">Bài mới tạo</p>
           </div>
 
@@ -233,11 +196,13 @@ export function PracticeSessionList() {
                 <TrendingUp className="w-5 h-5 text-orange-600" />
               </div>
               <span className="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded-full">
-                TB hoàn thành
+                Loại
               </span>
             </div>
-            <p className="text-3xl font-bold text-gray-900 mb-1">81%</p>
-            <p className="text-sm text-gray-600">Tỷ lệ hoàn thành</p>
+            <p className="text-3xl font-bold text-gray-900 mb-1">
+              {statistics?.by_type ? Object.keys(statistics.by_type).length : 0}
+            </p>
+            <p className="text-sm text-gray-600">Loại khác nhau</p>
           </div>
         </div>
 
@@ -266,9 +231,10 @@ export function PracticeSessionList() {
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">Tất cả loại</option>
-                <option value="topic">Theo chủ đề</option>
-                <option value="template">Template</option>
+                <option value="topic_based">Theo chủ đề</option>
+                <option value="template_based">Template</option>
                 <option value="random">Ngẫu nhiên</option>
+                <option value="skill_based">Theo kỹ năng</option>
               </select>
             </div>
 
@@ -347,15 +313,15 @@ export function PracticeSessionList() {
         {/* Sessions Grid */}
         <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
           {filteredSessions.map((session) => {
-            const typeConfig = getTypeConfig(session.type);
-            const skillConfig = getSkillConfig(session.skill);
-            const difficultyConfig = getDifficultyConfig(session.difficulty);
+            const typeConfig = getTypeConfig(session.ps_type as PracticeType);
+            const skillConfig = session.ps_target_skill ? getSkillConfig(session.ps_target_skill as Skill) : null;
+            const difficultyConfig = session.ps_difficulty ? getDifficultyConfig(session.ps_difficulty as Difficulty) : null;
             const TypeIcon = typeConfig.icon;
-            const SkillIcon = skillConfig.icon;
+            const SkillIcon = skillConfig?.icon;
 
             return (
               <div
-                key={session.id}
+                key={session.ps_id}
                 className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 group"
               >
                 <div className="p-6 space-y-4">
@@ -367,15 +333,18 @@ export function PracticeSessionList() {
                           <TypeIcon className="w-3.5 h-3.5" />
                           {typeConfig.label}
                         </span>
-                        {session.isPrivate && (
+                        {!session.ps_is_active && (
                           <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg">
-                            Riêng tư
+                            Không hoạt động
                           </span>
                         )}
                       </div>
                       <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2 mb-2">
-                        {session.title}
+                        {session.ps_title}
                       </h3>
+                      {session.ps_description && (
+                        <p className="text-sm text-gray-600 line-clamp-2">{session.ps_description}</p>
+                      )}
                     </div>
                     <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                       <MoreVertical className="w-5 h-5 text-gray-400" />
@@ -383,60 +352,58 @@ export function PracticeSessionList() {
                   </div>
 
                   {/* Meta Info */}
-                  <div className="flex items-center gap-4 text-sm">
-                    <div className={`flex items-center gap-1.5 ${skillConfig.textClass}`}>
-                      <SkillIcon className="w-4 h-4" />
-                      <span className="font-medium">{skillConfig.label}</span>
-                    </div>
-                    <div className={`px-2 py-1 ${difficultyConfig.badgeClass} text-xs font-semibold rounded-lg`}>
-                      {difficultyConfig.label}
-                    </div>
-                    <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg">
-                      {getPurposeLabel(session.purpose)}
-                    </span>
+                  <div className="flex items-center gap-4 text-sm flex-wrap">
+                    {skillConfig && SkillIcon && (
+                      <div className={`flex items-center gap-1.5 ${skillConfig.textClass}`}>
+                        <SkillIcon className="w-4 h-4" />
+                        <span className="font-medium">{skillConfig.label}</span>
+                      </div>
+                    )}
+                    {difficultyConfig && (
+                      <div className={`px-2 py-1 ${difficultyConfig.badgeClass} text-xs font-semibold rounded-lg`}>
+                        {difficultyConfig.label}
+                      </div>
+                    )}
+                    {session.ps_purpose && (
+                      <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg">
+                        {getPurposeLabel(session.ps_purpose as Purpose)}
+                      </span>
+                    )}
                   </div>
 
                   {/* Details */}
                   <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      <span>{session.duration} phút</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <FileText className="w-4 h-4" />
-                      <span>{session.questionCount} câu</span>
-                    </div>
+                    {session.ps_duration_minutes && (
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        <span>{session.ps_duration_minutes} phút</span>
+                      </div>
+                    )}
+                    {session.ps_question_count && (
+                      <div className="flex items-center gap-1">
+                        <FileText className="w-4 h-4" />
+                        <span>{session.ps_question_count} câu</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      <span>{new Date(session.createdAt).toLocaleDateString("vi-VN")}</span>
+                      <span>{new Date(session.ps_created_at).toLocaleDateString("vi-VN")}</span>
                     </div>
                   </div>
 
-                  {/* Stats (if assigned) */}
-                  {session.timesAssigned > 0 && (
-                    <div className="pt-4 border-t border-gray-100 space-y-2">
+                  {/* Exam Info */}
+                  {session.exam && (
+                    <div className="pt-4 border-t border-gray-100">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Đã giao</span>
-                        <span className="font-semibold text-gray-900">{session.timesAssigned} lần</span>
+                        <span className="text-gray-600">Đề thi liên kết</span>
+                        <span className="font-semibold text-blue-600">{session.exam.eTitle}</span>
                       </div>
-                      {session.completionRate !== undefined && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Hoàn thành</span>
-                          <span className="font-semibold text-green-600">{session.completionRate}%</span>
-                        </div>
-                      )}
-                      {session.avgScore !== undefined && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Điểm TB</span>
-                          <span className="font-semibold text-blue-600">{session.avgScore}</span>
-                        </div>
-                      )}
                     </div>
                   )}
 
                   {/* Actions */}
                   <div className="grid grid-cols-4 gap-2 pt-4">
-                    <button className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors flex items-center justify-center" title="Xem">
+                    <button onClick={() => navigate(`/giao-vien/luyen-tap/${session.ps_id}`)} className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors flex items-center justify-center" title="Xem">
                       <Eye className="w-4 h-4" />
                     </button>
                     <button className="p-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg transition-colors flex items-center justify-center" title="Giao bài">
@@ -467,7 +434,9 @@ export function PracticeSessionList() {
             <p className="text-gray-600 mb-6">
               Thử thay đổi bộ lọc hoặc tạo bài luyện tập mới
             </p>
-            <button className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl transition-all">
+            <button
+              onClick={() => navigate("/giao-vien/de-thi/tao-moi")}
+              className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl transition-all">
               Tạo bài luyện tập đầu tiên
             </button>
           </div>

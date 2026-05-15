@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
+import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
+import { api } from "../../../../services/api";
 import { Header } from "../../../components/shared/Header";
 import {
   BookOpen,
@@ -124,20 +126,10 @@ const activityIcon = (type: string) => {
   return Sparkles;
 };
 
-// Map backend colors to frontend theme
-const mapActivityColor = (color: string) => {
-  // Backend returns colors like #2563EB, #10B981, #F59E0B
-  // Map to orange theme
-  const colorMap: Record<string, { color: string; bg: string }> = {
-    '#2563EB': { color: '#EA580C', bg: '#FFF7ED' }, // Blue -> Orange
-    '#10B981': { color: '#F97316', bg: '#FFEDD5' }, // Green -> Orange-500
-    '#F59E0B': { color: '#FB923C', bg: '#FED7AA' }, // Amber -> Orange-400
-  };
-  
-  return colorMap[color] || { color: '#EA580C', bg: '#FFF7ED' };
-};
+const mapActivityColor = (_color: string) => ({ color: '#6B7280', bg: '#F9FAFB' });
 
 export function Dashboard() {
+  usePageTitle(PAGE_TITLES.TEACHER_DASHBOARD);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
@@ -157,21 +149,9 @@ export function Dashboard() {
   useEffect(() => {
     const fetchDashboardStats = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
-        if (!token) return;
-
-        const response = await fetch('http://localhost:8000/api/teacher/dashboard/overview', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success') {
-            setDashboardStats(result.data);
-          }
+        const { data: result } = await api.get('/teacher/dashboard/overview');
+        if (result.status === 'success') {
+          setDashboardStats(result.data);
         }
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
@@ -189,21 +169,9 @@ export function Dashboard() {
   useEffect(() => {
     const fetchPerformanceData = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
-        if (!token) return;
-
-        const response = await fetch('http://localhost:8000/api/teacher/dashboard/performance-data', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success' && result.data && result.data.length > 0) {
-            setPerformanceData(result.data);
-          }
+        const { data: result } = await api.get('/teacher/dashboard/performance-data');
+        if (result.status === 'success' && result.data && result.data.length > 0) {
+          setPerformanceData(result.data);
         }
       } catch (error) {
         console.error('Error fetching performance data:', error);
@@ -219,21 +187,9 @@ export function Dashboard() {
   useEffect(() => {
     const fetchRecentActivities = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
-        if (!token) return;
-
-        const response = await fetch('http://localhost:8000/api/teacher/dashboard/recent-activities', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success' && result.data && result.data.length > 0) {
-            setRecentActivities(result.data);
-          }
+        const { data: result } = await api.get('/teacher/dashboard/recent-activities');
+        if (result.status === 'success' && result.data && result.data.length > 0) {
+          setRecentActivities(result.data);
         }
       } catch (error) {
         console.error('Error fetching recent activities:', error);
@@ -261,9 +217,6 @@ export function Dashboard() {
       key: "courses",
       value: statsLoading ? "..." : (dashboardStats?.total_courses?.toString() || "0"),
       change: statsLoading ? "" : `+${dashboardStats?.new_courses_this_month || 0}`,
-      iconColor: "#EA580C",
-      iconBg: "#FFF7ED",
-      accent: "#EA580C",
       delay: "0ms",
     },
     {
@@ -271,9 +224,6 @@ export function Dashboard() {
       key: "classes",
       value: statsLoading ? "..." : (dashboardStats?.total_classes?.toString() || "0"),
       change: statsLoading ? "" : `+${dashboardStats?.new_classes_this_month || 0}`,
-      iconColor: "#F97316",
-      iconBg: "#FFEDD5",
-      accent: "#F97316",
       delay: "80ms",
     },
     {
@@ -281,9 +231,6 @@ export function Dashboard() {
       key: "students",
       value: statsLoading ? "..." : (dashboardStats?.total_students?.toString() || "0"),
       change: statsLoading ? "" : `+${dashboardStats?.new_students_this_month || 0}`,
-      iconColor: "#FB923C",
-      iconBg: "#FED7AA",
-      accent: "#FB923C",
       delay: "160ms",
     },
     {
@@ -291,9 +238,6 @@ export function Dashboard() {
       key: "exams",
       value: statsLoading ? "..." : (dashboardStats?.total_exams?.toString() || "0"),
       change: statsLoading ? "" : `+${dashboardStats?.new_exams_this_month || 0}`,
-      iconColor: "#C2410C",
-      iconBg: "#FFEDD5",
-      accent: "#C2410C",
       delay: "240ms",
     },
   ];
@@ -304,32 +248,28 @@ export function Dashboard() {
       titleKey: "dashboard.quickActions.createExam",
       descKey: "dashboard.quickActions.createExamDesc",
       href: "/giao-vien/de-thi/tao-moi",
-      color: "#EA580C",
-      bg: "from-[#FFF7ED] to-[#FFEDD5]",
+      primary: true,
     },
     {
       icon: GraduationCap,
       titleKey: "dashboard.quickActions.cambridgeTemplate",
       descKey: "dashboard.quickActions.cambridgeTemplateDesc",
       href: "/mau-de-cambridge",
-      color: "#F97316",
-      bg: "from-[#FFEDD5] to-[#FED7AA]",
+      primary: false,
     },
     {
       icon: Send,
       titleKey: "dashboard.quickActions.assignTest",
       descKey: "dashboard.quickActions.assignTestDesc",
       href: "/bai-tap",
-      color: "#FB923C",
-      bg: "from-[#FFF7ED] via-[#FFEDD5] to-[#FED7AA]",
+      primary: false,
     },
     {
       icon: BarChart2,
       titleKey: "dashboard.quickActions.viewReports",
       descKey: "dashboard.quickActions.viewReportsDesc",
       href: "/cham-diem",
-      color: "#C2410C",
-      bg: "from-white to-[#FFF7ED]",
+      primary: false,
     },
   ];
 
@@ -340,159 +280,78 @@ export function Dashboard() {
         action={{ label: t("header.new"), onClick: () => navigate("/giao-vien/de-thi/tao-moi") }}
       />
 
-      <div className="flex-1 overflow-y-auto" style={{ background: "#F9FAFB" }}>
+      <div className="flex-1 overflow-y-auto bg-[#F9FAFB]">
         {/* ── Hero Banner ── */}
-        <div
-          className="relative overflow-hidden"
-          style={{
-            background: "linear-gradient(135deg, #FB923C 0%, #FED7AA 50%, #FFEDD5 100%)",
-          }}
-        >
-          {/* SVG Topography Pattern */}
-          <div className="absolute inset-0 opacity-[0.06]">
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <pattern id="topography" x="0" y="0" width="400" height="400" patternUnits="userSpaceOnUse">
-                  <path d="M0 200 Q 50 150, 100 200 T 200 200 T 300 200 T 400 200" stroke="white" strokeWidth="1.5" fill="none" opacity="0.3"/>
-                  <path d="M0 220 Q 50 170, 100 220 T 200 220 T 300 220 T 400 220" stroke="white" strokeWidth="1.5" fill="none" opacity="0.25"/>
-                  <path d="M0 240 Q 50 190, 100 240 T 200 240 T 300 240 T 400 240" stroke="white" strokeWidth="1.5" fill="none" opacity="0.2"/>
-                  <path d="M0 180 Q 50 130, 100 180 T 200 180 T 300 180 T 400 180" stroke="white" strokeWidth="1.5" fill="none" opacity="0.25"/>
-                  <path d="M0 160 Q 50 110, 100 160 T 200 160 T 300 160 T 400 160" stroke="white" strokeWidth="1.5" fill="none" opacity="0.2"/>
-                  
-                  <circle cx="100" cy="200" r="3" fill="white" opacity="0.4"/>
-                  <circle cx="200" cy="200" r="3" fill="white" opacity="0.4"/>
-                  <circle cx="300" cy="200" r="3" fill="white" opacity="0.4"/>
-                  <circle cx="150" cy="180" r="2" fill="white" opacity="0.3"/>
-                  <circle cx="250" cy="220" r="2" fill="white" opacity="0.3"/>
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#topography)"/>
-            </svg>
-          </div>
-          
-          {/* Floating geometric shapes */}
-          <div className="absolute top-10 right-20 w-32 h-32 opacity-[0.08]">
-            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-              <polygon points="50,10 90,30 90,70 50,90 10,70 10,30" fill="white" opacity="0.6"/>
-              <polygon points="50,25 75,37.5 75,62.5 50,75 25,62.5 25,37.5" fill="none" stroke="white" strokeWidth="2"/>
-            </svg>
-          </div>
-          
-          <div className="absolute bottom-16 left-32 w-24 h-24 opacity-[0.08]">
-            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="50" cy="50" r="40" fill="none" stroke="white" strokeWidth="2"/>
-              <circle cx="50" cy="50" r="30" fill="none" stroke="white" strokeWidth="2"/>
-              <circle cx="50" cy="50" r="20" fill="none" stroke="white" strokeWidth="2"/>
-            </svg>
-          </div>
-          
-          <div className="absolute top-1/2 right-1/3 w-20 h-20 opacity-[0.08]">
-            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-              <rect x="10" y="10" width="80" height="80" fill="none" stroke="white" strokeWidth="2" transform="rotate(45 50 50)"/>
-              <rect x="25" y="25" width="50" height="50" fill="white" opacity="0.4" transform="rotate(45 50 50)"/>
-            </svg>
-          </div>
-
-          <div className="relative px-8 pt-8 pb-20">
-            <div className="flex items-start justify-between relative z-10">
-              {/* Left: greeting */}
-              <div
-                style={{
-                  opacity: mounted ? 1 : 0,
-                  transform: mounted ? "translateY(0)" : "translateY(12px)",
-                  transition: "opacity 500ms ease, transform 500ms ease",
-                }}
-              >
-                <p className="text-orange-800/70 text-sm mb-1">
-                  {greetingEmoji} {greeting}, thứ Tư, 18/03/2026
-                </p>
-                <h1
-                  className="text-orange-900 mb-5"
-                  style={{ fontSize: "28px", fontWeight: 700, letterSpacing: "-0.5px" }}
-                >
-                  {userName}! 👋
-                </h1>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="flex items-center gap-1.5 bg-orange-600/10 text-orange-800 text-xs px-3 py-1.5 rounded-full border border-orange-300/30">
-                    <Clock className="w-3.5 h-3.5" />
-                    {statsLoading ? "..." : (dashboardStats?.classes_today || 0)} {t('teacher.dashboard.todayClasses')}
-                  </span>
-                  <span className="flex items-center gap-1.5 bg-amber-400/15 text-amber-800 text-xs px-3 py-1.5 rounded-full border border-amber-400/30">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    {statsLoading ? "..." : (dashboardStats?.pending_grading || 0)} {t('teacher.dashboard.pendingGrading')}
-                  </span>
-                  <span className="flex items-center gap-1.5 bg-emerald-400/15 text-emerald-800 text-xs px-3 py-1.5 rounded-full border border-emerald-400/30">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    {statsLoading ? "..." : (dashboardStats?.deadlines_this_week || 0)} {t('teacher.dashboard.deadlinesThisWeek')}
-                  </span>
-                </div>
+        <div className="border-b border-gray-200 bg-white px-8 py-7">
+          <div
+            className="flex items-center justify-between"
+            style={{
+              opacity: mounted ? 1 : 0,
+              transform: mounted ? "translateY(0)" : "translateY(10px)",
+              transition: "opacity 400ms ease, transform 400ms ease",
+            }}
+          >
+            <div>
+              <p className="text-xs text-slate-400 mb-1">
+                {greetingEmoji} {greeting} · {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
+              </p>
+              <h1 className="text-slate-900 text-2xl font-bold tracking-tight">
+                {userName}
+              </h1>
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                <span className="flex items-center gap-1.5 bg-slate-100 text-slate-600 text-xs px-3 py-1.5 rounded-full">
+                  <Clock className="w-3 h-3" />
+                  {statsLoading ? "..." : (dashboardStats?.classes_today || 0)} {t('teacher.dashboard.todayClasses')}
+                </span>
+                <span className="flex items-center gap-1.5 bg-slate-100 text-slate-600 text-xs px-3 py-1.5 rounded-full">
+                  <AlertCircle className="w-3 h-3" />
+                  {statsLoading ? "..." : (dashboardStats?.pending_grading || 0)} {t('teacher.dashboard.pendingGrading')}
+                </span>
+                <span className="flex items-center gap-1.5 bg-slate-100 text-slate-600 text-xs px-3 py-1.5 rounded-full">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {statsLoading ? "..." : (dashboardStats?.deadlines_this_week || 0)} {t('teacher.dashboard.deadlinesThisWeek')}
+                </span>
               </div>
-
-              {/* Right: CTA */}
-              <button
-                onClick={() => navigate("/giao-vien/de-thi/tao-moi")}
-                className="flex items-center gap-2 bg-orange-600 text-white rounded-xl px-5 py-2.5 shadow-lg hover:bg-orange-700 hover:shadow-xl transition-all hover:scale-105 active:scale-95 mr-8"
-                style={{ fontSize: "14px", fontWeight: 600 }}
-              >
-                <Zap className="w-4 h-4" />
-                {t('teacher.dashboard.quickActions.createExam')}
-              </button>
             </div>
+            <button
+              onClick={() => navigate("/giao-vien/de-thi/tao-moi")}
+              className="flex items-center gap-2 bg-orange-500 text-white rounded-xl px-5 py-2.5 hover:bg-orange-600 transition-colors"
+              style={{ fontSize: "14px", fontWeight: 600 }}
+            >
+              <Zap className="w-4 h-4" />
+              {t('teacher.dashboard.quickActions.createExam')}
+            </button>
           </div>
         </div>
 
-        {/* ── Stats Cards (overlap hero) ── */}
-        <div className="px-8 -mt-10 mb-6">
+        {/* ── Stats Cards ── */}
+        <div className="px-8 pt-6 mb-6">
           <div className="grid grid-cols-4 gap-4 max-lg:grid-cols-2">
             {stats.map((stat) => {
               const Icon = stat.icon;
               return (
                 <div
                   key={stat.key}
-                  className="bg-white rounded-2xl p-5 shadow-md cursor-pointer group"
+                  className="bg-white rounded-xl p-5 border border-gray-200 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
                   style={{
                     opacity: mounted ? 1 : 0,
                     transform: mounted ? "translateY(0)" : "translateY(12px)",
                     transition: `opacity 400ms ease ${stat.delay}, transform 400ms ease ${stat.delay}`,
-                    borderTop: `3px solid ${stat.accent}`,
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
-                    (e.currentTarget as HTMLDivElement).style.boxShadow =
-                      "0 8px 24px rgba(0,0,0,0.12)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-                    (e.currentTarget as HTMLDivElement).style.boxShadow =
-                      "0 4px 6px rgba(0,0,0,0.07)";
                   }}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{ backgroundColor: stat.iconBg }}
-                    >
-                      <Icon className="w-5 h-5" style={{ color: stat.iconColor }} />
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center">
+                      <Icon className="w-4 h-4 text-slate-500" />
                     </div>
-                    <span
-                      className="flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs"
-                      style={{
-                        color: stat.iconColor,
-                        backgroundColor: stat.iconBg,
-                        fontWeight: 600,
-                      }}
-                    >
+                    <span className="flex items-center gap-0.5 text-xs text-slate-400" style={{ fontWeight: 500 }}>
                       <TrendingUp className="w-3 h-3" />
                       {stat.change}
                     </span>
                   </div>
-                  <p
-                    className="text-[#111827]"
-                    style={{ fontSize: "32px", fontWeight: 800, lineHeight: "1", letterSpacing: "-1px" }}
-                  >
+                  <p className="text-slate-900" style={{ fontSize: "30px", fontWeight: 800, lineHeight: "1", letterSpacing: "-1px" }}>
                     {stat.value}
                   </p>
-                  <p className="text-[#9CA3AF] mt-1" style={{ fontSize: "13px" }}>
+                  <p className="text-slate-400 mt-1" style={{ fontSize: "13px" }}>
                     {t(`dashboard.stats.${stat.key}`)}
                   </p>
                 </div>
@@ -555,16 +414,16 @@ export function Dashboard() {
                         <stop offset="95%" stopColor="#EA580C" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="colorListening" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#F97316" stopOpacity={0.15} />
-                        <stop offset="95%" stopColor="#F97316" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#64748B" stopOpacity={0.12} />
+                        <stop offset="95%" stopColor="#64748B" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="colorReading" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#FB923C" stopOpacity={0.15} />
-                        <stop offset="95%" stopColor="#FB923C" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#94A3B8" stopOpacity={0.12} />
+                        <stop offset="95%" stopColor="#94A3B8" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="colorWriting" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#FDBA74" stopOpacity={0.15} />
-                        <stop offset="95%" stopColor="#FDBA74" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#CBD5E1" stopOpacity={0.12} />
+                        <stop offset="95%" stopColor="#CBD5E1" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid
@@ -612,10 +471,10 @@ export function Dashboard() {
                       type="monotone"
                       dataKey="listening"
                       name={t("dashboard.charts.listening")}
-                      stroke="#F97316"
-                      strokeWidth={2}
+                      stroke="#64748B"
+                      strokeWidth={1.5}
                       fill="url(#colorListening)"
-                      dot={{ fill: "#F97316", r: 3, strokeWidth: 0 }}
+                      dot={{ fill: "#64748B", r: 3, strokeWidth: 0 }}
                       activeDot={{ r: 5, strokeWidth: 0 }}
                     />
                     <Area
@@ -623,10 +482,10 @@ export function Dashboard() {
                       type="monotone"
                       dataKey="reading"
                       name={t("dashboard.charts.reading")}
-                      stroke="#FB923C"
-                      strokeWidth={2}
+                      stroke="#94A3B8"
+                      strokeWidth={1.5}
                       fill="url(#colorReading)"
-                      dot={{ fill: "#FB923C", r: 3, strokeWidth: 0 }}
+                      dot={{ fill: "#94A3B8", r: 3, strokeWidth: 0 }}
                       activeDot={{ r: 5, strokeWidth: 0 }}
                     />
                     <Area
@@ -634,10 +493,10 @@ export function Dashboard() {
                       type="monotone"
                       dataKey="writing"
                       name={t("dashboard.charts.writing")}
-                      stroke="#FDBA74"
-                      strokeWidth={2}
+                      stroke="#CBD5E1"
+                      strokeWidth={1.5}
                       fill="url(#colorWriting)"
-                      dot={{ fill: "#FDBA74", r: 3, strokeWidth: 0 }}
+                      dot={{ fill: "#CBD5E1", r: 3, strokeWidth: 0 }}
                       activeDot={{ r: 5, strokeWidth: 0 }}
                     />
                   </AreaChart>
@@ -662,7 +521,7 @@ export function Dashboard() {
                   {t("dashboard.recentActivity.title")}
                 </h3>
                 <button
-                  className="text-xs flex items-center gap-0.5 text-orange-600 hover:text-orange-700 transition-colors"
+                  className="text-xs flex items-center gap-0.5 text-slate-400 hover:text-slate-600 transition-colors"
                   style={{ fontWeight: 500 }}
                 >
                   {t("dashboard.recentActivity.viewAll")}
@@ -714,8 +573,8 @@ export function Dashboard() {
                   {t('teacher.dashboard.thisWeek')}
                 </span>
                 <span
-                  className="flex items-center gap-1 text-orange-600"
-                  style={{ fontSize: "12px", fontWeight: 600 }}
+                  className="flex items-center gap-1 text-slate-400"
+                  style={{ fontSize: "12px", fontWeight: 500 }}
                 >
                   <TrendingUp className="w-3 h-3" />
                   {t('teacher.dashboard.goodActivity')}
@@ -732,38 +591,23 @@ export function Dashboard() {
                 <button
                   key={action.titleKey}
                   onClick={() => navigate(action.href)}
-                  className={`relative group text-left bg-gradient-to-br ${action.bg} rounded-2xl p-5 border border-white/80 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden`}
+                  className="relative group text-left bg-white rounded-xl p-5 border border-gray-200 hover:border-orange-200 hover:shadow-sm transition-all duration-200"
                   style={{
                     opacity: mounted ? 1 : 0,
                     transform: mounted ? "translateY(0)" : "translateY(12px)",
                     transition: `opacity 400ms ease ${i * 80 + 400}ms, transform 400ms ease ${i * 80 + 400}ms`,
                   }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px) scale(1.01)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0) scale(1)";
-                  }}
                 >
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 shadow-sm"
-                    style={{ backgroundColor: action.color }}
-                  >
-                    <Icon className="w-5 h-5 text-white" />
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-4 ${action.primary ? 'bg-orange-500' : 'bg-slate-100'}`}>
+                    <Icon className={`w-4 h-4 ${action.primary ? 'text-white' : 'text-slate-500'}`} />
                   </div>
-                  <p
-                    className="text-[#111827] mb-1"
-                    style={{ fontSize: "14px", fontWeight: 700 }}
-                  >
+                  <p className="text-slate-800 mb-1" style={{ fontSize: "14px", fontWeight: 600 }}>
                     {t(action.titleKey)}
                   </p>
-                  <p className="text-[#6B7280]" style={{ fontSize: "12px" }}>
+                  <p className="text-slate-400" style={{ fontSize: "12px" }}>
                     {t(action.descKey)}
                   </p>
-                  <ArrowUpRight
-                    className="absolute top-4 right-4 w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"
-                    style={{ color: action.color }}
-                  />
+                  <ArrowUpRight className="absolute top-4 right-4 w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </button>
               );
             })}

@@ -1,4 +1,5 @@
 import { X, AlertTriangle, Send, Users, Clock, FileText } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ReminderModalProps {
   isOpen: boolean;
@@ -19,10 +20,11 @@ export function ReminderModal({
   deadline,
   isBulk = false,
 }: ReminderModalProps) {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   const formatDeadline = (date?: Date) => {
-    if (!date) return "Không có hạn";
+    if (!date) return t("teacher.assignments.reminder.noDeadline");
     return date.toLocaleString("vi-VN", {
       weekday: "long",
       year: "numeric",
@@ -44,9 +46,9 @@ export function ReminderModal({
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold">Gửi nhắc nhở</h2>
+                <h2 className="text-2xl font-bold">{t("teacher.assignments.reminder.title")}</h2>
                 <p className="text-orange-100 text-sm">
-                  {isBulk ? "Nhắc nhở hàng loạt" : "Nhắc nhở học sinh"}
+                  {isBulk ? t("teacher.assignments.reminder.bulkSubtitle") : t("teacher.assignments.reminder.studentSubtitle")}
                 </p>
               </div>
             </div>
@@ -65,20 +67,20 @@ export function ReminderModal({
           <div className="bg-orange-50 border-l-4 border-orange-500 rounded-lg p-4">
             <p className="text-gray-900 font-semibold mb-2">
               {isBulk
-                ? `Bạn có chắc muốn gửi nhắc nhở đến ${studentCount} học sinh chưa hoàn thành bài thi?`
-                : `Bạn có chắc muốn gửi nhắc nhở đến học sinh này?`}
+                ? t("teacher.assignments.reminder.bulkConfirm", { count: studentCount })
+                : t("teacher.assignments.reminder.singleConfirm")}
             </p>
             <p className="text-sm text-gray-700">
               {isBulk
-                ? "Tất cả học sinh chưa hoàn thành sẽ nhận được thông báo qua email và SMS."
-                : "Học sinh sẽ nhận được thông báo qua email và SMS."}
+                ? t("teacher.assignments.reminder.bulkDesc")
+                : t("teacher.assignments.reminder.singleDesc")}
             </p>
           </div>
 
           {/* Assignment Details */}
           <div className="space-y-3">
             <h3 className="font-bold text-gray-900 text-sm uppercase text-gray-500">
-              Chi tiết bài thi
+              {t("teacher.assignments.reminder.examDetails")}
             </h3>
 
             <div className="bg-gray-50 rounded-xl p-4 space-y-3">
@@ -88,7 +90,7 @@ export function ReminderModal({
                   <FileText className="w-5 h-5 text-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-gray-500 mb-1">Đề thi</p>
+                  <p className="text-xs text-gray-500 mb-1">{t("teacher.assignments.reminder.examLabel")}</p>
                   <p className="font-semibold text-gray-900">{assignmentTitle}</p>
                 </div>
               </div>
@@ -99,9 +101,9 @@ export function ReminderModal({
                   <Users className="w-5 h-5 text-orange-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-gray-500 mb-1">Số lượng học sinh</p>
+                  <p className="text-xs text-gray-500 mb-1">{t("teacher.assignments.reminder.studentCount")}</p>
                   <p className="font-semibold text-gray-900">
-                    {studentCount} học sinh chưa hoàn thành
+                    {t("teacher.assignments.reminder.studentsNotDone", { count: studentCount })}
                   </p>
                 </div>
               </div>
@@ -113,7 +115,7 @@ export function ReminderModal({
                     <Clock className="w-5 h-5 text-red-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-xs text-gray-500 mb-1">Hạn nộp</p>
+                    <p className="text-xs text-gray-500 mb-1">{t("teacher.assignments.reminder.deadlineLabel")}</p>
                     <p className="font-semibold text-gray-900">{formatDeadline(deadline)}</p>
                   </div>
                 </div>
@@ -124,26 +126,26 @@ export function ReminderModal({
           {/* Reminder Message Preview */}
           <div className="space-y-2">
             <h3 className="font-bold text-gray-900 text-sm uppercase text-gray-500">
-              Nội dung nhắc nhở
+              {t("teacher.assignments.reminder.reminderContent")}
             </h3>
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
               <p className="text-sm text-gray-700 leading-relaxed">
-                📢 <strong>Nhắc nhở hoàn thành bài thi</strong>
+                📢 <strong>{t("teacher.assignments.reminder.emailTitle")}</strong>
                 <br />
                 <br />
-                Xin chào! Bạn chưa hoàn thành bài thi "<strong>{assignmentTitle}</strong>".
+                {t("teacher.assignments.reminder.emailGreeting")} "<strong>{assignmentTitle}</strong>".
                 <br />
                 {deadline && (
                   <>
-                    Hạn nộp: <strong>{formatDeadline(deadline)}</strong>
+                    {t("teacher.assignments.reminder.emailDeadlineLabel")} <strong>{formatDeadline(deadline)}</strong>
                     <br />
                   </>
                 )}
                 <br />
-                Vui lòng hoàn thành bài thi trước hạn để không bị trừ điểm.
+                {t("teacher.assignments.reminder.emailNote")}
                 <br />
                 <br />
-                Trân trọng,
+                {t("teacher.assignments.reminder.emailSalutation")}
                 <br />
                 NamThu Education Team
               </p>
@@ -156,8 +158,7 @@ export function ReminderModal({
               <span className="text-white text-xs font-bold">i</span>
             </div>
             <p className="text-sm text-gray-700">
-              Học sinh sẽ nhận được thông báo qua <strong>Email</strong> và <strong>SMS</strong>{" "}
-              trong vòng 5 phút
+              {t("teacher.assignments.reminder.noticeText")}
             </p>
           </div>
         </div>
@@ -168,7 +169,7 @@ export function ReminderModal({
             onClick={onClose}
             className="flex-1 px-6 py-3 bg-white border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all"
           >
-            Hủy
+            {t("teacher.assignments.reminder.cancel")}
           </button>
           <button
             onClick={() => {
@@ -178,7 +179,7 @@ export function ReminderModal({
             className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-500/30"
           >
             <Send className="w-5 h-5" />
-            Gửi nhắc nhở
+            {t("teacher.assignments.reminder.send")}
           </button>
         </div>
       </div>

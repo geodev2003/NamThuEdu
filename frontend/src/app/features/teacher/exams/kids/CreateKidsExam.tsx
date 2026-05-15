@@ -220,79 +220,83 @@ const CreateKidsExam: React.FC = () => {
 
   return (
     <ToastProvider>
-      <div className="flex h-screen flex-col bg-gradient-to-br from-indigo-50 via-white to-orange-50">
-        {/* Header */}
-        <div className="border-b border-gray-200 bg-white shadow-sm">
-        <div className="px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate('/giao-vien/de-thi')}
-                className="flex items-center space-x-2 text-gray-600 transition-colors hover:text-indigo-600"
-              >
-                <ArrowLeft className="h-5 w-5" />
-                <span>Quay lại</span>
-              </button>
-              <div className="h-6 w-px bg-gray-300"></div>
-              <h1 className="font-baloo text-2xl font-bold text-indigo-600">
-                Tạo Đề Thi Kids
-              </h1>
-            </div>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => handleSave('draft')}
-                className="flex items-center space-x-2 rounded-lg border border-gray-300 px-4 py-2 transition-colors hover:bg-gray-50"
-              >
-                <Save className="h-4 w-4" />
-                <span>Lưu nháp</span>
-              </button>
-              {currentStep === 3 && (
+      <div className="flex h-screen flex-col bg-[#F8FAFC]">
+        {/* Header - Flat Design */}
+        <div className="border-b border-gray-200 bg-white">
+          <div className="px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
                 <button
-                  onClick={() => handleSave('published')}
-                  className="flex items-center space-x-2 rounded-lg bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700"
+                  onClick={() => navigate('/giao-vien/de-thi')}
+                  className="flex items-center gap-2 text-gray-600 hover:text-[#2563EB] transition-colors duration-200"
                 >
-                  <span>Xuất bản</span>
+                  <ArrowLeft className="h-5 w-5" />
+                  <span className="font-medium">Quay lại</span>
                 </button>
+                <div className="h-6 w-px bg-gray-300"></div>
+                <h1 className="text-xl font-semibold text-[#1E293B]">
+                  Tạo đề thi mới
+                </h1>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => handleSave('draft')}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="h-4 w-4" />
+                  <span>Lưu nháp</span>
+                </button>
+                {currentStep === 3 && (
+                  <button
+                    onClick={() => handleSave('published')}
+                    disabled={isSaving}
+                    className="flex items-center gap-2 px-5 py-2 bg-[#F97316] text-white rounded-lg hover:bg-[#EA580C] transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span>Xuất bản</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-4 py-6">
+            {/* Step Indicator */}
+            <div className="mb-8">
+              <StepIndicator currentStep={currentStep} />
+            </div>
+
+            {/* Step Content - Clean Card */}
+            <div className="bg-white rounded-lg border-2 border-gray-200 p-8">
+              {currentStep === 1 && (
+                <Step1ExamType
+                  examData={examData}
+                  setExamData={setExamData}
+                  onNext={handleNext}
+                />
+              )}
+              {currentStep === 2 && (
+                <Step2AddQuestions
+                  examData={examData}
+                  setExamData={setExamData}
+                  onNext={handleNext}
+                  onBack={handleBack}
+                  examId={currentExamId}
+                />
+              )}
+              {currentStep === 3 && (
+                <Step3Preview
+                  examData={examData}
+                  onBack={handleBack}
+                  onPublish={() => handleSave('published')}
+                />
               )}
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Content */}
-      <div className="mx-auto flex h-full w-full flex-col px-2 py-6 sm:px-4 lg:px-6">
-        {/* Step Indicator */}
-        <div className="mb-6 flex-shrink-0">
-          <StepIndicator currentStep={currentStep} />
-        </div>
-
-        {/* Step Content */}
-        <div className="flex-1 overflow-y-auto rounded-2xl bg-white p-8 shadow-lg">
-          {currentStep === 1 && (
-            <Step1ExamType
-              examData={examData}
-              setExamData={setExamData}
-              onNext={handleNext}
-            />
-          )}
-          {currentStep === 2 && (
-            <Step2AddQuestions
-              examData={examData}
-              setExamData={setExamData}
-              onNext={handleNext}
-              onBack={handleBack}
-              examId={currentExamId}
-            />
-          )}
-          {currentStep === 3 && (
-            <Step3Preview
-              examData={examData}
-              onBack={handleBack}
-              onPublish={() => handleSave('published')}
-            />
-          )}
-        </div>
-      </div>
       </div>
     </ToastProvider>
   );

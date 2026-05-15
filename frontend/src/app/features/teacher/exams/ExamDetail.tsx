@@ -2,6 +2,7 @@ import { Link, useParams, useNavigate } from "react-router";
 import { ArrowLeft, Edit, Copy, Send, Download, Archive, Trash2, Clock, Target, FileText, BarChart3 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { getKidsExam } from "../../../../services/kidsExamApi";
+import { api } from "../../../../services/api";
 import { useToast } from "../../../../hooks/useToast";
 import { ToastContainer } from "../../../../components/ui/ToastContainer";
 
@@ -48,10 +49,27 @@ export function ExamDetail() {
 
     try {
       setLoading(true);
-      const response = await getKidsExam(parseInt(examId));
-      console.log('📥 Loaded exam data:', response);
-      // API returns exam directly, not wrapped in { exam: ... }
-      setExamData(response);
+      // Thử kids-exams trước
+      try {
+        const response = await getKidsExam(parseInt(examId));
+        console.log('📥 Loaded kids exam data:', response);
+        setExamData(response);
+        return;
+      } catch (kidsErr: any) {
+        if (kidsErr?.response?.status !== 404) throw kidsErr;
+      }
+
+      // Fallback: đề thường (VSTEP / IELTS / General)
+      const res = await api.get(`/teacher/exams/${examId}`);
+      const exam = res.data?.data || res.data;
+      console.log('📥 Loaded exam data:', exam);
+
+      // VSTEP → chuyển thẳng sang trang preview chuyên dụng
+      if (exam?.eType === 'VSTEP') {
+        navigate(`/giao-vien/de-thi/${examId}/vstep`, { replace: true });
+        return;
+      }
+      setExamData(exam);
     } catch (error: any) {
       console.error('❌ Failed to load exam:', error);
       toast.error('Không thể tải thông tin đề thi!');

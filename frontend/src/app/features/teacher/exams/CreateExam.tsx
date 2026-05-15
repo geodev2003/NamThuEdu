@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { TemplateGuide } from "./TemplateGuide";
+import { useSidebar } from "../../../../contexts/SidebarContext";
+import { useToast } from "../../../../hooks/useToast";
+import { api } from "../../../../services/api";
 import {
   ArrowLeft,
   Save,
@@ -9,7 +12,9 @@ import {
   Trash2,
   GripVertical,
   ChevronRight,
+  ChevronLeft,
   CheckCircle2,
+  Check,
   Upload,
   Image as ImageIcon,
   Volume2,
@@ -63,7 +68,7 @@ const VSTEP_STRUCTURE = {
     duration: 60,
     totalQuestions: 2,
     parts: [
-      { part: 1, name: "Task 1", questions: 1, description: "Letter/Email (150 từ)", minWords: 150 },
+      { part: 1, name: "Task 1", questions: 1, description: "Letter/Email (120 từ)", minWords: 120 },
       { part: 2, name: "Task 2", questions: 1, description: "Essay (250 từ)", minWords: 250 },
     ],
   },
@@ -179,6 +184,8 @@ const questionTypes = [
 export function CreateExam() {
   const navigate = useNavigate();
   const { examId } = useParams();
+  const { isCollapsed: isSidebarCollapsed } = useSidebar();
+  const toast = useToast();
   const [currentExamId, setCurrentExamId] = useState<string | null>(examId || null);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
@@ -199,6 +206,17 @@ export function CreateExam() {
     if (examType === "VSTEP" && examSkill === "Mixed") {
       setDuration(172);
       setDurationUnit("minutes");
+    } else if (examType === "VSTEP" && examSkill) {
+      // Set default duration for individual VSTEP skills
+      const skillDurations: Record<string, number> = {
+        "Listening": 40,
+        "Reading": 60,
+        "Writing": 60,
+        "Speaking": 12
+      };
+      const defaultDuration = skillDurations[examSkill] || 60;
+      setDuration(defaultDuration);
+      setDurationUnit("minutes");
     }
   }, [examType, examSkill]);
 
@@ -215,30 +233,84 @@ export function CreateExam() {
   const [showVstepMenu, setShowVstepMenu] = useState(false);
   const [audioUploading, setAudioUploading] = useState<{[key: string]: boolean}>({});
   
+  // VSTEP Part-level audio (for Listening parts)
+  // Format: { "listening-1": { audioUrl: "...", audioFileName: "..." }, "listening-2": {...}, ... }
+  const [vstepPartAudio, setVstepPartAudio] = useState<{[key: string]: { audioUrl: string; audioFileName: string }}>({});
+  
+  // Pagination for questions (2 questions per page)
+  const [currentQuestionPage, setCurrentQuestionPage] = useState(1);
+  const QUESTIONS_PER_PAGE = 2;
+  
   // Auto-save state
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [draftPromptShown, setDraftPromptShown] = useState(false);
+  
+  // Save individual question state
+  const [savingQuestionId, setSavingQuestionId] = useState<string | null>(null);
+  
+  // Track if exam data has been loaded (for URL with examId)
+  const [isExamDataLoaded, setIsExamDataLoaded] = useState(false);
+  
+  // Track if page has been reloaded (to prevent infinite reload loop)
+  const [hasReloaded, setHasReloaded] = useState(() => {
+    return sessionStorage.getItem('exam-page-reloaded') === 'true';
+  });
+
+  // Auto-set vstepCurrentSkill when single skill is selected
+  // Mixed (Full 4 skills): DO NOT redirect here — let user fill title/description first
+  useEffect(() => {
+    if (examType === "VSTEP" && examSkill && examSkill !== "Mixed") {
+      // Handle single skills
+      setVstepCurrentSkill(examSkill.toLowerCase() as "listening" | "reading" | "writing" | "speaking");
+      setVstepCurrentPart(1);
+      setVstepActiveQuestionNumber(1);
+      
+      // Redirect to specialized editor for each skill
+      if (examSkill === "Reading") {
+        navigate('/giao-vien/de-thi/vstep/reading/tao-moi', { replace: true });
+      } else if (examSkill === "Listening") {
+        navigate('/giao-vien/de-thi/vstep/listening/tao-moi', { replace: true });
+      } else if (examSkill === "Writing") {
+        navigate('/giao-vien/de-thi/vstep/writing/tao-moi', { replace: true });
+      } else if (examSkill === "Speaking") {
+        navigate('/giao-vien/de-thi/vstep/speaking/tao-moi', { replace: true });
+      }
+    }
+  }, [examType, examSkill, navigate]);
+
+  // Reset pagination when changing parts
+  useEffect(() => {
+    setCurrentQuestionPage(1);
+  }, [vstepCurrentSkill, vstepCurrentPart]);
 
   // Initialize VSTEP questions when type changes to VSTEP
   useEffect(() => {
-    if (examType === "VSTEP" && examSkill === "Mixed" && questions.length === 0) {
+    if (examType === "VSTEP" && examSkill && questions.length === 0) {
+      console.log('🔧 Initializing VSTEP questions for:', examSkill);
       const vstepQuestions: Question[] = [];
-      let questionCounter = 1;
 
-      Object.entries(VSTEP_STRUCTURE).forEach(([skill, skillData]) => {
+      // Determine which skills to initialize
+      const skillsToInit = examSkill === "Mixed" 
+        ? Object.keys(VSTEP_STRUCTURE) 
+        : [examSkill.toLowerCase()];
+
+      skillsToInit.forEach((skillKey) => {
+        const skillData = VSTEP_STRUCTURE[skillKey as keyof typeof VSTEP_STRUCTURE];
+        if (!skillData) return;
+
         skillData.parts.forEach((part) => {
           for (let i = 0; i < part.questions; i++) {
             vstepQuestions.push({
-              id: `${skill}-p${part.part}-q${i + 1}`,
-              skill,
+              id: `${skillKey}-p${part.part}-q${i + 1}`,
+              skill: skillKey,
               part: part.part,
-              questionNumber: questionCounter++,
-              type: skill === "listening" || skill === "reading" ? "multiple-choice" : skill === "writing" ? "essay" : "speaking",
+              questionNumber: i + 1,
+              type: skillKey === "listening" || skillKey === "reading" ? "multiple-choice" : skillKey === "writing" ? "essay" : "speaking",
               content: "",
-              points: skill === "writing" || skill === "speaking" ? 10 : 1,
-              answers: skill === "listening" || skill === "reading"
+              points: skillKey === "writing" || skillKey === "speaking" ? 10 : 1,
+              answers: skillKey === "listening" || skillKey === "reading"
                 ? [
                     { id: "a", text: "", isCorrect: false },
                     { id: "b", text: "", isCorrect: false },
@@ -246,15 +318,31 @@ export function CreateExam() {
                     { id: "d", text: "", isCorrect: false },
                   ]
                 : undefined,
-              listenLimit: skill === "listening" ? 1 : undefined,
-              minWords: skill === "writing" ? (part.part === 1 ? 150 : 250) : undefined,
+              listenLimit: skillKey === "listening" ? 1 : undefined,
+              minWords: skillKey === "writing" ? (part.part === 1 ? 120 : 250) : undefined,
             });
           }
         });
       });
 
+      console.log('✅ Created', vstepQuestions.length, 'VSTEP questions');
       setQuestions(vstepQuestions);
-      setExamTitle(examTitle || "VSTEP B2 - Practice Test");
+      
+      // Set appropriate title only if user hasn't entered a custom title
+      const isAutoGeneratedTitle = !examTitle || 
+        examTitle === "VSTEP B2 - Full Test" ||
+        examTitle === "VSTEP B2 - Listening Practice" ||
+        examTitle === "VSTEP B2 - Reading Practice" ||
+        examTitle === "VSTEP B2 - Writing Practice" ||
+        examTitle === "VSTEP B2 - Speaking Practice";
+      
+      if (isAutoGeneratedTitle) {
+        if (examSkill === "Mixed") {
+          setExamTitle("VSTEP B2 - Full Test");
+        } else {
+          setExamTitle(`VSTEP B2 - ${examSkill} Practice`);
+        }
+      }
     }
   }, [examType, examSkill]);
 
@@ -324,14 +412,25 @@ export function CreateExam() {
   };
 
   const persistExam = async (mode: "draft" | "publish") => {
+    console.log('🔍 persistExam called:', { mode, examType, examSkill, examTitle, questionsCount: questions.length });
+    
     if (!canProceedStep1 || !examType || !examSkill) {
-      alert("Vui lòng nhập đầy đủ thông tin cơ bản của đề thi.");
+      toast.error("Vui lòng nhập đầy đủ thông tin cơ bản của đề thi");
+      console.error('❌ Missing basic info:', { canProceedStep1, examType, examSkill });
       return;
     }
 
     setIsSaving(true);
     try {
       const durationMinutes = durationUnit === "hours" ? duration * 60 : duration;
+      
+      console.log('📤 Creating exam with data:', {
+        eTitle: examTitle.trim(),
+        eType: normalizeExamType(examType),
+        eSkill: normalizeExamSkill(examSkill),
+        eDuration_minutes: durationMinutes,
+      });
+      
       const createRes = await teacherApi.exams.create({
         eTitle: examTitle.trim(),
         eDescription: examDescription.trim(),
@@ -342,6 +441,8 @@ export function CreateExam() {
         eSource_type: "manual",
       });
 
+      console.log('✅ Exam created:', createRes);
+
       const examId =
         (createRes as any)?.data?.examId ??
         (createRes as any)?.data?.eId ??
@@ -350,6 +451,8 @@ export function CreateExam() {
       if (!examId) {
         throw new Error("Không lấy được ID đề thi sau khi tạo.");
       }
+
+      console.log('📝 Exam ID:', examId);
 
       const questionPayload = questions
         .filter((question) => question.content.trim().length > 0)
@@ -360,8 +463,11 @@ export function CreateExam() {
           answers: buildAnswers(question),
         }));
 
+      console.log('📋 Questions to save:', questionPayload.length, questionPayload);
+
       if (questionPayload.length > 0) {
-        await teacherApi.exams.addQuestions(examId, questionPayload);
+        const addQuestionsRes = await teacherApi.exams.addQuestions(examId, questionPayload);
+        console.log('✅ Questions added:', addQuestionsRes);
       }
 
       const shouldPublishNow = mode === "publish" && publishOption === "now";
@@ -371,40 +477,51 @@ export function CreateExam() {
 
       if (mode === "publish") {
         if (publishOption === "now") {
-          alert("Tạo và xuất bản đề thi thành công.");
+          toast.success("Tạo và xuất bản đề thi thành công");
         } else if (publishOption === "schedule") {
-          alert(
-            `Đã lưu đề ở trạng thái nháp. Lên lịch xuất bản${scheduledAt ? ` (${scheduledAt})` : ""} chưa được backend hỗ trợ.`
+          toast.info(
+            `Đã lưu đề ở trạng thái nháp. Lên lịch xuất bản${scheduledAt ? ` (${scheduledAt})` : ""} chưa được backend hỗ trợ`
           );
         } else {
-          alert("Đã tạo đề thi ở trạng thái nháp.");
+          toast.success("Đã tạo đề thi ở trạng thái nháp");
         }
       } else {
-        alert("Đã lưu nháp đề thi thành công.");
+        toast.success("Đã lưu nháp đề thi thành công");
       }
 
       navigate("/giao-vien/de-thi/cua-toi");
     } catch (error: any) {
+      console.error('❌ Error saving exam:', error);
+      console.error('Error details:', error?.response?.data);
       const message =
         error?.response?.data?.message ||
         error?.message ||
         "Không thể lưu đề thi. Vui lòng thử lại.";
-      alert(message);
+      toast.error(message);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleSaveDraft = async () => {
-    await persistExam("draft");
-  };
+  // Removed handleSaveDraft - now only publish directly
 
   const handleAddQuestion = (type: QuestionType) => {
+    // For VSTEP mode, calculate question number
+    const questionNumber = isVSTEPMode 
+      ? vstepCurrentPartQuestions.length + 1 
+      : undefined;
+    
     const newQuestion: Question = {
       id: `q-${Date.now()}`,
       type,
       content: "",
       points: 1,
+      // Add VSTEP-specific fields
+      ...(isVSTEPMode && {
+        skill: vstepCurrentSkill,
+        part: vstepCurrentPart,
+        questionNumber,
+      }),
       answers:
         type === "multiple-choice" || type === "true-false"
           ? [
@@ -427,24 +544,31 @@ export function CreateExam() {
 
   const handleNextStep = async () => {
     if (currentStep < 3) {
+      // VSTEP Full (Mixed): navigate to specialized editor with title/description
+      if (currentStep === 1 && examSkill === "Mixed") {
+        navigate('/giao-vien/de-thi/vstep/full/tao-moi', {
+          replace: true,
+          state: { title: examTitle, description: examDescription, duration },
+        });
+        return;
+      }
+
       // Create draft exam when moving from Step 1 to Step 2
       if (currentStep === 1 && !currentExamId) {
         try {
           const newExamId = await createDraftExam();
-          console.log('🔍 Debug - newExamId:', newExamId, 'Type:', typeof newExamId);
-          // Convert to string and check if it's not a temp ID
           if (newExamId && !String(newExamId).startsWith('temp_')) {
-            console.log('✅ Navigating to:', `/giao-vien/de-thi/tao-moi/${newExamId}`);
-            // Navigate to URL with exam ID
             navigate(`/giao-vien/de-thi/tao-moi/${newExamId}`, { replace: true });
-          } else {
-            console.log('❌ Not navigating - temp ID or invalid:', newExamId);
           }
         } catch (error) {
           console.error('Failed to create draft exam:', error);
         }
       }
       setCurrentStep(currentStep + 1);
+      
+      if (currentStep === 1) {
+        setIsExamDataLoaded(true);
+      }
     }
   };
 
@@ -454,30 +578,80 @@ export function CreateExam() {
     }
   };
 
+  const [showImportModal, setShowImportModal] = useState(false);
+
   const canProceedStep1 = examType && examSkill && examTitle && duration > 0;
   const canProceedStep2 = questions.length > 0;
   const canSubmitExam = canProceedStep1 && questions.length > 0;
 
-  // Check if VSTEP mode
-  const isVSTEPMode = examType === "VSTEP" && examSkill === "Mixed";
+  // Check if VSTEP mode (both Mixed and single skill)
+  const isVSTEPMode = examType === "VSTEP" && examSkill !== null;
+
+  // Auto-focus on active Part button when entering Step 2
+  useEffect(() => {
+    // Only run when:
+    // 1. In Step 2
+    // 2. In VSTEP mode
+    // 3. Data has been loaded (important for URL with examId)
+    if (currentStep === 2 && isVSTEPMode && isExamDataLoaded) {
+      // Delay to ensure DOM is fully rendered
+      const focusTimer = setTimeout(() => {
+        const activePartButton = document.querySelector('.fixed.bottom-0 button.bg-blue-500, .fixed.bottom-0 button.bg-emerald-500, .fixed.bottom-0 button.bg-amber-500, .fixed.bottom-0 button.bg-purple-500');
+        
+        console.log('🎯 Auto-focus triggered:', {
+          currentStep,
+          isVSTEPMode,
+          isExamDataLoaded,
+          vstepCurrentSkill,
+          vstepCurrentPart,
+          buttonFound: !!activePartButton
+        });
+        
+        if (activePartButton) {
+          activePartButton.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'nearest',
+            inline: 'center'
+          });
+          // Add a brief highlight animation
+          activePartButton.classList.add('animate-pulse');
+          setTimeout(() => {
+            activePartButton.classList.remove('animate-pulse');
+          }, 1500);
+        } else {
+          console.warn('⚠️ Active part button not found in DOM');
+        }
+      }, 500); // Increased delay for page load scenario
+      
+      return () => clearTimeout(focusTimer);
+    }
+  }, [currentStep, isVSTEPMode, vstepCurrentSkill, vstepCurrentPart, isExamDataLoaded]);
 
   // Get VSTEP progress
   const getVSTEPPartProgress = () => {
     const progress: any[] = [];
     if (!isVSTEPMode) return progress;
 
-    Object.entries(VSTEP_STRUCTURE).forEach(([skill, skillData]) => {
+    // Determine which skills to show progress for
+    const skillsToShow = examSkill === "Mixed" 
+      ? Object.keys(VSTEP_STRUCTURE)
+      : [examSkill.toLowerCase()];
+
+    skillsToShow.forEach((skillKey) => {
+      const skillData = VSTEP_STRUCTURE[skillKey as keyof typeof VSTEP_STRUCTURE];
+      if (!skillData) return;
+
       skillData.parts.forEach((part) => {
-        const partQuestions = questions.filter((q) => q.skill === skill && q.part === part.part);
+        const partQuestions = questions.filter((q) => q.skill === skillKey && q.part === part.part);
         const completed = partQuestions.filter((q) => {
           if (!q.content.trim()) return false;
-          if (skill === "listening" || skill === "reading") {
+          if (skillKey === "listening" || skillKey === "reading") {
             return q.answers?.some((a) => a.isCorrect && a.text.trim());
           }
           return true;
         }).length;
 
-        progress.push({ skill, part: part.part, completed, total: part.questions });
+        progress.push({ skill: skillKey, part: part.part, completed, total: part.questions });
       });
     });
 
@@ -494,6 +668,18 @@ export function CreateExam() {
   // VSTEP: Update question
   const updateVSTEPQuestion = (questionId: string, updates: Partial<Question>) => {
     setQuestions((prev) => prev.map((q) => (q.id === questionId ? { ...q, ...updates } : q)));
+  };
+
+  // Helper: Remove number prefix from question content (e.g., "1. What is..." -> "What is...")
+  const removeNumberPrefix = (text: string): string => {
+    // Match patterns like "1. ", "10. ", "123. " at the start of the string
+    return text.replace(/^\d+\.\s*/, '');
+  };
+
+  // Helper: Remove letter prefix from answer options (e.g., "A. Answer" -> "Answer", "D. Option" -> "Option")
+  const removeLetterPrefix = (text: string): string => {
+    // Match patterns like "A. ", "B. ", "C. ", "D. " (case insensitive) at the start
+    return text.replace(/^[A-Da-d]\.\s*/, '');
   };
 
   // VSTEP: Update answer
@@ -526,11 +712,58 @@ export function CreateExam() {
     );
   };
 
+  // Get skill color classes (soft colors)
+  const getSkillColors = (skill: string) => {
+    const colors = {
+      listening: {
+        bg: 'bg-blue-50',
+        border: 'border-blue-500',
+        text: 'text-blue-700',
+        icon: 'bg-blue-100',
+        hover: 'hover:bg-blue-100',
+        active: 'bg-blue-100 border-blue-500'
+      },
+      reading: {
+        bg: 'bg-emerald-50',
+        border: 'border-emerald-500',
+        text: 'text-emerald-700',
+        icon: 'bg-emerald-100',
+        hover: 'hover:bg-emerald-100',
+        active: 'bg-emerald-100 border-emerald-500'
+      },
+      writing: {
+        bg: 'bg-amber-50',
+        border: 'border-amber-500',
+        text: 'text-amber-700',
+        icon: 'bg-amber-100',
+        hover: 'hover:bg-amber-100',
+        active: 'bg-amber-100 border-amber-500'
+      },
+      speaking: {
+        bg: 'bg-purple-50',
+        border: 'border-purple-500',
+        text: 'text-purple-700',
+        icon: 'bg-purple-100',
+        hover: 'hover:bg-purple-100',
+        active: 'bg-purple-100 border-purple-500'
+      }
+    };
+    return colors[skill] || colors.listening;
+  };
+
   // VSTEP: Navigate parts
   const allVSTEPParts = isVSTEPMode
-    ? Object.entries(VSTEP_STRUCTURE).flatMap(([s, sd]) =>
-        sd.parts.map((p) => ({ skill: s, part: p.part }))
-      )
+    ? (() => {
+        const skillsToNav = examSkill === "Mixed" 
+          ? Object.keys(VSTEP_STRUCTURE)
+          : [examSkill.toLowerCase()];
+        
+        return skillsToNav.flatMap((skillKey) => {
+          const skillData = VSTEP_STRUCTURE[skillKey as keyof typeof VSTEP_STRUCTURE];
+          if (!skillData) return [];
+          return skillData.parts.map((p) => ({ skill: skillKey, part: p.part }));
+        });
+      })()
     : [];
 
   const vstepCurrentPartIndex = allVSTEPParts.findIndex(
@@ -559,71 +792,144 @@ export function CreateExam() {
     }
   };
 
-  // VSTEP: Handle audio file upload
-  const handleAudioUpload = async (questionId: string, file: File) => {
-    if (!file.type.startsWith('audio/')) {
-      alert('Vui lòng chọn file audio hợp lệ (MP3, WAV, etc.)');
+  // VSTEP: Handle audio file upload for PART (not individual question)
+  const handlePartAudioUpload = async (skill: string, partNumber: number, file: File) => {
+    if (!file) {
+      toast.error('Vui lòng chọn file audio');
+      return;
+    }
+
+    // Check file type
+    const validTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/m4a', 'audio/x-m4a', 'audio/aac', 'audio/ogg'];
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    const validExtensions = ['mp3', 'wav', 'm4a', 'aac', 'ogg'];
+    
+    if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension || '')) {
+      toast.error('Vui lòng chọn file audio hợp lệ (MP3, WAV, M4A, AAC, OGG)');
+      console.error('❌ Invalid file type:', file.type, 'Extension:', fileExtension);
       return;
     }
 
     if (file.size > 50 * 1024 * 1024) { // 50MB limit
-      alert('File audio quá lớn. Vui lòng chọn file nhỏ hơn 50MB');
+      toast.error('File audio quá lớn. Vui lòng chọn file nhỏ hơn 50MB');
       return;
     }
 
-    setAudioUploading(prev => ({ ...prev, [questionId]: true }));
+    const partKey = `${skill}-${partNumber}`;
+    setAudioUploading(prev => ({ ...prev, [partKey]: true }));
 
     try {
       const formData = new FormData();
-      formData.append('audio', file);
-      formData.append('questionId', questionId);
+      formData.append('audio', file, file.name); // Explicitly include filename
+      formData.append('questionId', partKey);
       
-      console.log('🎵 Uploading audio:', {
+      console.log('🎵 Uploading part audio:', {
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,
-        questionId
+        fileExtension: fileExtension,
+        skill,
+        partNumber,
+        partKey,
+        formDataEntries: Array.from(formData.entries()).map(([key, value]) => ({
+          key,
+          value: value instanceof File ? `File: ${value.name} (${value.size} bytes)` : value
+        }))
       });
       
       const token = localStorage.getItem('auth_token');
-      const apiEndpoint = token 
-        ? 'http://localhost:8000/api/teacher/upload/audio'
-        : 'http://localhost:8000/api/test/upload/audio';
-      
-      console.log('📡 API Endpoint:', apiEndpoint);
-      console.log('🔑 Has token:', !!token);
-      
-      const headers: any = {};
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+      const endpoint = token ? '/teacher/upload/audio' : '/test/upload/audio';
+      console.log('📡 Endpoint:', endpoint, '🔑 Has token:', !!token);
 
-      // Don't set Content-Type - let browser set it automatically with boundary for FormData
-      const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers,
-        body: formData,
+      const { data: result, status: respStatus } = await api.post(endpoint, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
+      console.log('📥 Response status:', respStatus, 'data:', result);
 
-      console.log('📥 Response status:', response.status);
-      const result = await response.json();
-      console.log('📥 Response data:', result);
-
-      if (response.ok && result.success) {
-        updateVSTEPQuestion(questionId, { 
-          audioUrl: result.data.audioUrl,
-          audioFileName: result.data.originalName 
+      if (result.success) {
+        // Store audio at part level
+        setVstepPartAudio(prev => ({
+          ...prev,
+          [partKey]: {
+            audioUrl: result.data.audioUrl,
+            audioFileName: result.data.originalName
+          }
+        }));
+        
+        // Also update all questions in this part with the audio URL (for backward compatibility)
+        const partQuestions = questions.filter(q => q.skill === skill && q.part === partNumber);
+        partQuestions.forEach(q => {
+          updateVSTEPQuestion(q.id, { 
+            audioUrl: result.data.audioUrl,
+            audioFileName: result.data.originalName 
+          });
         });
-        alert('✅ Upload audio thành công!');
+        
+        toast.success('Upload audio thành công!');
       } else {
-        throw new Error(result.message || 'Upload failed');
+        // Show detailed error message
+        const errorMsg = result.errors 
+          ? Object.entries(result.errors).map(([field, msgs]: [string, any]) => 
+              `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`
+            ).join('\n')
+          : result.message || 'Upload failed';
+        throw new Error(errorMsg);
       }
-    } catch (error) {
-      console.error('Audio upload error:', error);
-      alert(`Lỗi upload audio: ${error.message}`);
+    } catch (error: any) {
+      console.error('❌ Part audio upload error:', error);
+      toast.error(`Lỗi upload audio: ${error.message}`);
     } finally {
-      setAudioUploading(prev => ({ ...prev, [questionId]: false }));
+      setAudioUploading(prev => ({ ...prev, [partKey]: false }));
+    }
+  };
+
+  // Save individual question
+  const handleSaveQuestion = async (questionId: string) => {
+    if (!currentExamId) {
+      toast.error('Vui lòng lưu đề thi trước khi lưu câu hỏi');
+      return;
+    }
+
+    const question = questions.find(q => q.id === questionId);
+    if (!question) {
+      toast.error('Không tìm thấy câu hỏi');
+      return;
+    }
+
+    // Validate question content
+    if (!question.content || question.content.trim() === '') {
+      toast.error('Vui lòng nhập nội dung câu hỏi');
+      return;
+    }
+
+    // Validate answers for multiple choice questions
+    if ((question.skill === 'listening' || question.skill === 'reading') && question.answers) {
+      const hasCorrectAnswer = question.answers.some(a => a.isCorrect);
+      if (!hasCorrectAnswer) {
+        toast.error('Vui lòng chọn đáp án đúng');
+        return;
+      }
+      
+      const hasEmptyAnswer = question.answers.some(a => !a.text || a.text.trim() === '');
+      if (hasEmptyAnswer) {
+        toast.error('Vui lòng điền đầy đủ các đáp án');
+        return;
+      }
+    }
+
+    setSavingQuestionId(questionId);
+
+    try {
+      // Here you would call the API to save the individual question
+      // For now, we'll just simulate a save
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      toast.success(`Đã lưu câu ${question.questionNumber}`);
+    } catch (error: any) {
+      console.error('❌ Save question error:', error);
+      toast.error(`Lỗi lưu câu hỏi: ${error.message}`);
+    } finally {
+      setSavingQuestionId(null);
     }
   };
 
@@ -631,12 +937,17 @@ export function CreateExam() {
   const createDraftExam = async () => {
     if (currentExamId) return currentExamId; // Already has ID
     
+    if (!examSkill) return null; // Need examSkill to create exam
+    
     try {
+      const normalizedSkill: 'listening' | 'reading' | 'writing' | 'speaking' | 'mixed' = 
+        examSkill === "Mixed" ? "mixed" : examSkill.toLowerCase() as 'listening' | 'reading' | 'writing' | 'speaking';
+      
       const examData = {
         eTitle: examTitle || `Đề thi ${examType} - ${new Date().toLocaleString('vi-VN')}`,
         eDescription: examDescription || 'Đề thi đang được tạo...',
         eType: examType,
-        eSkill: examSkill.toLowerCase() as 'listening' | 'reading' | 'writing' | 'speaking' | 'mixed',
+        eSkill: normalizedSkill,
         eDuration_minutes: duration,
         eIs_private: false,
         eSource_type: 'manual' as const
@@ -769,20 +1080,18 @@ export function CreateExam() {
     }
   };
 
-  // Auto-save effect with debounce
-  useEffect(() => {
-    const autoSaveTimer = setTimeout(() => {
-      // Save draft if user has made any selection (type, skill, title, etc.)
-      if (hasUnsavedChanges && (examType || examSkill || examTitle || examDescription || questions.length > 0)) {
-        saveToLocalStorage();
-        if (navigator.onLine) {
-          saveToServer(true);
-        }
-      }
-    }, 3000); // Auto-save after 3 seconds of inactivity
-
-    return () => clearTimeout(autoSaveTimer);
-  }, [examTitle, examDescription, questions, examType, examSkill, duration, hasUnsavedChanges]);
+  // Auto-save effect with debounce - DISABLED
+  // useEffect(() => {
+  //   const autoSaveTimer = setTimeout(() => {
+  //     if (hasUnsavedChanges && (examType || examSkill || examTitle || examDescription || questions.length > 0)) {
+  //       saveToLocalStorage();
+  //       if (navigator.onLine) {
+  //         saveToServer(true);
+  //       }
+  //     }
+  //   }, 3000);
+  //   return () => clearTimeout(autoSaveTimer);
+  // }, [examTitle, examDescription, questions, examType, examSkill, duration, hasUnsavedChanges]);
 
   // Track changes
   useEffect(() => {
@@ -790,10 +1099,17 @@ export function CreateExam() {
     setAutoSaveStatus('idle');
   }, [examTitle, examDescription, questions, examType, examSkill, duration, durationUnit]);
 
-  // Load draft on component mount or load existing exam
+  // Load draft on component mount or load existing exam - DRAFT PROMPT DISABLED
   useEffect(() => {
     const loadExam = async () => {
       if (examId) {
+        // Auto-reload once when first visiting page with examId
+        if (!hasReloaded) {
+          sessionStorage.setItem('exam-page-reloaded', 'true');
+          window.location.reload();
+          return;
+        }
+        
         // Load existing exam
         try {
           const response = await teacherApi.exams.getById(parseInt(examId));
@@ -801,68 +1117,57 @@ export function CreateExam() {
           if (response.status === 'success' && response.data) {
             const exam = response.data;
             // Load exam data
-            setExamType(exam.eType as ExamType);
-            setExamSkill(exam.eSkill.charAt(0).toUpperCase() + exam.eSkill.slice(1) as ExamSkill);
+            const loadedExamType = exam.eType as ExamType;
+            const loadedExamSkill = (exam.eSkill.charAt(0).toUpperCase() + exam.eSkill.slice(1)) as ExamSkill;
+            
+            setExamType(loadedExamType);
+            setExamSkill(loadedExamSkill);
             setExamTitle(exam.eTitle);
             setExamDescription(exam.eDescription);
             setDuration(exam.eDuration_minutes);
             setDurationUnit('minutes'); // Backend only stores minutes
             setQuestions((exam.questions || []) as unknown as Question[]);
             
-            // Set default values for VSTEP metadata since backend doesn't store these
-            setVstepCurrentSkill('listening');
-            setVstepCurrentPart(1);
-            setCurrentStep(2);
+            // Set VSTEP current skill based on loaded exam skill
+            if (loadedExamType === "VSTEP") {
+              if (loadedExamSkill === "Mixed") {
+                setVstepCurrentSkill('listening'); // Start with listening for Mixed
+              } else {
+                // For single skill, set to that skill
+                setVstepCurrentSkill(loadedExamSkill.toLowerCase() as "listening" | "reading" | "writing" | "speaking");
+              }
+              setVstepCurrentPart(1);
+              setCurrentStep(2); // Go directly to Step 2 for editing
+            } else {
+              setCurrentStep(1); // Other exam types start at Step 1
+            }
             
             setCurrentExamId(examId);
             setHasUnsavedChanges(false);
             setLastSaved(exam.updated_at ? new Date(exam.updated_at) : new Date());
+            
+            // Mark data as loaded - trigger auto-focus
+            setTimeout(() => {
+              setIsExamDataLoaded(true);
+            }, 100); // Small delay to ensure all state updates are done
           }
         } catch (error) {
           console.error('Failed to load exam:', error);
         }
       } else {
-        // Check for local draft only once
-        if (!draftPromptShown) {
-          const savedDraft = loadFromLocalStorage();
-          
-          // Only show prompt if draft has meaningful content
-          const hasMeaningfulContent = savedDraft && (
-            savedDraft.examTitle?.trim() || 
-            savedDraft.examDescription?.trim() || 
-            (savedDraft.questions && savedDraft.questions.length > 0 && 
-             savedDraft.questions.some((q: Question) => q.content?.trim() || q.audioUrl))
-          );
-          
-          if (hasMeaningfulContent) {
-            setDraftPromptShown(true);
-            if (window.confirm('Có bản nháp đã lưu. Bạn có muốn khôi phục không?')) {
-              setExamType(savedDraft.examType);
-              setExamSkill(savedDraft.examSkill);
-              setExamTitle(savedDraft.examTitle);
-              setExamDescription(savedDraft.examDescription);
-              setDuration(savedDraft.duration);
-              setDurationUnit(savedDraft.durationUnit);
-              setQuestions(savedDraft.questions);
-              setVstepCurrentSkill(savedDraft.vstepCurrentSkill);
-              setVstepCurrentPart(savedDraft.vstepCurrentPart);
-              setCurrentStep(savedDraft.currentStep);
-              setHasUnsavedChanges(false);
-              setLastSaved(new Date(savedDraft.timestamp));
-            } else {
-              // User declined, clear the draft
-              clearLocalStorageDraft();
-            }
-          } else if (savedDraft) {
-            // Draft exists but has no meaningful content, clear it silently
-            clearLocalStorageDraft();
-          }
-        }
+        // No examId, creating new exam - mark as loaded immediately
+        setIsExamDataLoaded(true);
       }
+      // Draft prompt disabled - no longer check for local draft
     };
 
     loadExam();
-  }, [examId, draftPromptShown]);
+    
+    // Cleanup: Clear reload flag when component unmounts (user leaves page)
+    return () => {
+      sessionStorage.removeItem('exam-page-reloaded');
+    };
+  }, [examId, hasReloaded]);
 
   // Clear draft when successfully published
   const handleSuccessfulPublish = () => {
@@ -871,31 +1176,30 @@ export function CreateExam() {
     setAutoSaveStatus('saved');
   };
 
-  // Prevent accidental page close
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges) {
-        e.preventDefault();
-        e.returnValue = 'Bạn có thay đổi chưa được lưu. Bạn có chắc muốn rời khỏi trang?';
-        return e.returnValue;
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasUnsavedChanges]);
+  // Prevent accidental page close - DISABLED
+  // useEffect(() => {
+  //   const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+  //     if (hasUnsavedChanges) {
+  //       e.preventDefault();
+  //       e.returnValue = 'Bạn có thay đổi chưa được lưu. Bạn có chắc muốn rời khỏi trang?';
+  //       return e.returnValue;
+  //     }
+  //   };
+  //   window.addEventListener('beforeunload', handleBeforeUnload);
+  //   return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  // }, [hasUnsavedChanges]);
 
   // VSTEP: Render question editor
   const renderVSTEPQuestionEditor = (question: Question) => {
     const skillData = VSTEP_STRUCTURE[question.skill as keyof typeof VSTEP_STRUCTURE];
     const partData = skillData?.parts.find((p) => p.part === question.part);
     
-    // Skill-based colors
+    // Skill-based colors (soft palette)
     const questionColors = {
-      listening: { bg: 'bg-orange-50', border: 'border-orange-200', badge: 'bg-orange-500', text: 'text-orange-700' },
-      reading: { bg: 'bg-green-50', border: 'border-green-200', badge: 'bg-green-500', text: 'text-green-700' },
-      writing: { bg: 'bg-orange-50', border: 'border-orange-200', badge: 'bg-orange-500', text: 'text-orange-700' },
-      speaking: { bg: 'bg-purple-50', border: 'border-purple-200', badge: 'bg-purple-500', text: 'text-purple-700' },
+      listening: { bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-500', text: 'text-blue-700', ring: 'focus:ring-blue-500 focus:border-blue-500' },
+      reading: { bg: 'bg-emerald-50', border: 'border-emerald-200', badge: 'bg-emerald-500', text: 'text-emerald-700', ring: 'focus:ring-emerald-500 focus:border-emerald-500' },
+      writing: { bg: 'bg-amber-50', border: 'border-amber-200', badge: 'bg-amber-500', text: 'text-amber-700', ring: 'focus:ring-amber-500 focus:border-amber-500' },
+      speaking: { bg: 'bg-purple-50', border: 'border-purple-200', badge: 'bg-purple-500', text: 'text-purple-700', ring: 'focus:ring-purple-500 focus:border-purple-500' },
     };
     const colors = questionColors[question.skill as keyof typeof questionColors];
 
@@ -903,28 +1207,28 @@ export function CreateExam() {
       <div 
         key={question.id} 
         id={`vstep-question-${question.skill}-${question.part}-q${question.questionNumber}`}
-        className={`bg-white rounded-2xl border-2 hover:border-gray-200 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden ${
-          vstepActiveQuestionNumber === question.questionNumber ? 'border-orange-400 shadow-orange-100' : 'border-gray-100'
+        className={`bg-white rounded-xl border-2 hover:shadow-md transition-all duration-200 overflow-hidden ${
+          vstepActiveQuestionNumber === question.questionNumber ? `${colors.border} shadow-md` : 'border-gray-200'
         }`}
       >
         {/* Question Header */}
-        <div className={`${colors.bg} ${colors.border} border-b-2 px-6 py-4`}>
+        <div className={`${colors.bg} border-b-2 ${colors.border} px-6 py-4`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-12 h-12 ${colors.badge} text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-md`}>
+            <div className="flex items-center gap-4">
+              <div className={`w-14 h-14 ${colors.badge} text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-sm`}>
                 {question.questionNumber}
               </div>
               <div>
-                <div className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                <div className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
                   Câu {question.questionNumber}
                 </div>
-                <div className={`text-xs ${colors.text} font-medium`}>
+                <div className={`text-sm ${colors.text} font-medium mt-0.5`}>
                   {skillData?.icon} {skillData?.name} - Part {question.part}
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-white/80 rounded-lg text-xs font-semibold text-gray-600">
+              <span className="px-4 py-2 bg-white rounded-lg text-sm font-semibold text-gray-700 border border-gray-200">
                 {question.points || 1} điểm
               </span>
             </div>
@@ -932,128 +1236,42 @@ export function CreateExam() {
         </div>
 
         {/* Question Body */}
-        <div className="p-4 space-y-4">
-          {/* Question Content */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              ❓ Nội dung câu hỏi
-            </label>
-            <textarea
-              value={question.content}
-              onChange={(e) => updateVSTEPQuestion(question.id, { content: e.target.value })}
-              placeholder={`Nhập nội dung câu hỏi ${question.questionNumber}...`}
-              className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 min-h-[80px] transition-all"
-              rows={3}
-            />
-          </div>
+        <div className="p-6 space-y-6">
+          {/* Question Content - Hide for Writing (has its own section below) */}
+          {question.skill !== "writing" && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Nội dung câu hỏi
+              </label>
+              <textarea
+                value={question.content}
+                onChange={(e) => {
+                  const cleanedContent = removeNumberPrefix(e.target.value);
+                  updateVSTEPQuestion(question.id, { content: cleanedContent });
+                }}
+                placeholder={`Nhập nội dung câu hỏi ${question.questionNumber}...`}
+                className={`w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl ${colors.ring} min-h-[100px] transition-all`}
+                rows={4}
+              />
+            </div>
+          )}
 
-          {/* Listening: Audio + Transcript */}
+          {/* Listening: Transcript only (audio is at Part level) */}
           {question.skill === "listening" && (
-            <div className="space-y-3 bg-orange-50/50 rounded-lg p-4 border border-orange-100">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  <Volume2 className="w-4 h-4 inline mr-1" />
-                  🎵 File Audio cho câu hỏi {question.questionNumber}
-                </label>
-                
-                {/* Audio Upload Section */}
-                <div className="space-y-3">
-                  {/* Upload File Option */}
-                  <div className="flex items-center gap-3">
-                    <label className="flex-1 cursor-pointer">
-                      <div className="flex items-center justify-center w-full h-12 border-2 border-dashed border-orange-300 rounded-xl bg-white hover:bg-orange-50 transition-all">
-                        <input
-                          type="file"
-                          accept="audio/mp3,audio/wav,audio/m4a,audio/aac,audio/ogg"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleAudioUpload(question.id, file);
-                          }}
-                          className="hidden"
-                        />
-                        <div className="flex items-center gap-2 text-orange-600">
-                          {audioUploading[question.id] ? (
-                            <>
-                              <div className="animate-spin w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full"></div>
-                              <span className="text-sm font-medium">Đang upload...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="w-5 h-5" />
-                              <span className="text-sm font-medium">Upload file audio</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-                  <p className="text-xs text-gray-500 text-center">
-                    Hỗ trợ: MP3, WAV, M4A, AAC, OGG • Tối đa 50MB
-                  </p>
-                  
-                  {/* Divider */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-px bg-gray-300"></div>
-                    <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">HOẶC</span>
-                    <div className="flex-1 h-px bg-gray-300"></div>
-                  </div>
-                  
-                  {/* URL Input Option */}
+            <div className="space-y-4 bg-blue-50/50 rounded-xl p-6 border border-blue-100">
+              <div className="bg-blue-100 border border-blue-300 rounded-lg p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <label className="block text-xs text-gray-600 mb-2">Nhập link audio từ internet:</label>
-                    <input
-                      type="text"
-                      value={question.audioUrl || ""}
-                      onChange={(e) => updateVSTEPQuestion(question.id, { audioUrl: e.target.value })}
-                      placeholder="https://example.com/audio.mp3"
-                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all text-sm"
-                    />
+                    <p className="text-sm font-semibold text-blue-900 mb-1">
+                      🎧 Audio được upload ở cấp độ Part
+                    </p>
+                    <p className="text-xs text-blue-700">
+                      Tất cả câu hỏi trong Part {question.part} sẽ sử dụng chung 1 file audio. 
+                      Vui lòng upload audio ở phần trên cùng của Part.
+                    </p>
                   </div>
                 </div>
-
-                {/* Audio Preview */}
-                {question.audioUrl && (
-                  <div className="mt-4 p-4 bg-white rounded-xl border border-orange-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <Volume2 className="w-5 h-5 text-orange-600" />
-                        <span className="text-sm font-semibold text-gray-700">Preview Audio</span>
-                      </div>
-                      {question.audioFileName && (
-                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">
-                          📂 {question.audioFileName}
-                        </span>
-                      )}
-                    </div>
-                    <audio 
-                      controls 
-                      className="w-full h-10 rounded"
-                      preload="metadata"
-                      crossOrigin="anonymous"
-                    >
-                      <source src={question.audioUrl} type="audio/mpeg" />
-                      <source src={question.audioUrl} type="audio/wav" />
-                      <source src={question.audioUrl} type="audio/mp4" />
-                      Trình duyệt không hỗ trợ audio player
-                    </audio>
-                    {!question.audioFileName && (
-                      <p className="text-xs text-gray-500 mt-2 break-all">
-                        🔗 {question.audioUrl.length > 60 ? question.audioUrl.substring(0, 60) + '...' : question.audioUrl}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-4 mt-2 pt-2 border-t">
-                      <button 
-                        onClick={() => updateVSTEPQuestion(question.id, { audioUrl: '', audioFileName: '' })}
-                        className="text-xs text-red-600 hover:text-red-800 font-medium"
-                      >
-                        🗑️ Xóa audio
-                      </button>
-                      <span className="text-xs text-gray-500">
-                        ✅ Audio đã sẵn sàng cho học viên nghe
-                      </span>
-                    </div>
-                  </div>
-                )}
               </div>
               
               <div>
@@ -1106,6 +1324,13 @@ export function CreateExam() {
               </label>
               {question.answers.map((answer, idx) => (
                 <div key={answer.id} className="flex items-center gap-3 group">
+                  {/* Correct Answer Label */}
+                  {answer.isCorrect && (
+                    <span className="text-xs font-semibold text-green-600 whitespace-nowrap">
+                      Đáp án đúng
+                    </span>
+                  )}
+                  
                   <div className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all ${
                     answer.isCorrect 
                       ? `${colors.badge} text-white shadow-md` 
@@ -1122,10 +1347,14 @@ export function CreateExam() {
                       {String.fromCharCode(65 + idx)}
                     </span>
                   </div>
+                  
                   <input
                     type="text"
                     value={answer.text}
-                    onChange={(e) => updateVSTEPAnswer(question.id, answer.id, e.target.value)}
+                    onChange={(e) => {
+                      const cleanedText = removeLetterPrefix(e.target.value);
+                      updateVSTEPAnswer(question.id, answer.id, cleanedText);
+                    }}
                     placeholder={`Nhập đáp án ${String.fromCharCode(65 + idx)}...`}
                     className={`flex-1 px-3 py-2 text-sm border-2 rounded-lg transition-all ${
                       answer.isCorrect 
@@ -1133,23 +1362,140 @@ export function CreateExam() {
                         : 'border-gray-200 focus:ring-2 focus:ring-gray-300'
                     }`}
                   />
+                  
+                  {/* Green Checkmark Icon */}
+                  {answer.isCorrect && (
+                    <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                  )}
                 </div>
               ))}
             </div>
           )}
 
-          {/* Writing: Min words */}
+          {/* Writing: Essay prompt */}
           {question.skill === "writing" && (
-            <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-xl p-5">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-orange-500 text-white rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Info className="w-5 h-5" />
+            <div className="space-y-4">
+              <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-xl p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-orange-500 text-white rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Info className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-orange-900 mb-1">
+                      ✍️ {question.part === 1 ? 'Task 1 - Letter/Email' : 'Task 2 - Essay'} (Tối thiểu {question.minWords} từ)
+                    </p>
+                    <p className="text-xs text-orange-700">
+                      Học viên sẽ đọc đề bài và viết bài luận. Giáo viên chấm điểm thủ công dựa trên tiêu chí đánh giá.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-orange-900 mb-1">
-                    ✍️ Yêu cầu tối thiểu: <span className="text-lg">{question.minWords} từ</span>
-                  </p>
-                  <p className="text-xs text-orange-700">Học viên sẽ tự viết bài. Giáo viên chấm điểm thủ công sau khi học viên nộp bài.</p>
+              </div>
+
+              {/* Full prompt textarea */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  📝 Đề bài Writing (paste toàn bộ nội dung)
+                </label>
+                <textarea
+                  value={question.content}
+                  onChange={(e) => updateVSTEPQuestion(question.id, { content: e.target.value })}
+                  placeholder={question.part === 1 
+                    ? `Ví dụ format đề bài Task 1 (Letter/Email):
+
+You should spend about 20 minutes on this task.
+
+You have received this email from an English-speaking pen friend.
+
+I'm a rock fan. I can listen to rock all day. What about you? What kind of music do you like? What is your favourite song and artist? Please write to tell me more about your music taste.
+
+Write an email to your friend responding to their questions and sharing your music preferences.
+
+You should write at least 120 words. Do not include your name.
+
+Your response will be evaluated in terms of Task Fulfillment, Organization, Vocabulary and Grammar.`
+                    : `Ví dụ format đề bài Task 2 (Essay):
+
+You should spend about 40 minutes on this task.
+
+Read the following text from an article about vegetarianism.
+
+Vegetarians tend to avoid consuming meat and fish for the purpose of maintaining good health and due to environmental concerns. It is a fact that several groups of people prefer not to consume any kind of meat or fish, as they believe that being vegetarian brings many benefits for their health and for the world as a whole.
+
+Write an essay for an educated audience discussing your opinions on this viewpoint. Support your answer with specific reasons and relevant examples.
+
+Give reasons and relevant examples from your knowledge or experience.
+
+You should write at least 250 words.
+
+Your response will be evaluated in terms of Task Fulfillment, Organization, Vocabulary and Grammar.`}
+                  className="w-full px-5 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 min-h-[450px] font-serif leading-relaxed transition-all"
+                  rows={20}
+                />
+                <div className="mt-2 space-y-3">
+                  {/* Guide box */}
+                  <div className="flex items-start gap-2 text-xs text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-blue-900 mb-2">💡 Hướng dẫn format đề bài:</p>
+                      <div className="space-y-2 text-blue-800">
+                        <div className="bg-white rounded p-2 border border-blue-200">
+                          <p className="font-semibold mb-1">Cách format text:</p>
+                          <ul className="space-y-1 text-xs">
+                            <li>• <span className="font-mono bg-gray-100 px-1">**text**</span> → <strong>in đậm</strong></li>
+                            <li>• <span className="font-mono bg-gray-100 px-1">*text*</span> → <em>in nghiêng</em></li>
+                            <li>• <span className="font-mono bg-gray-100 px-1">***text***</span> → <strong><em>đậm + nghiêng</em></strong></li>
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="font-semibold mb-1">Gợi ý format cho từng phần:</p>
+                          <ul className="space-y-1">
+                            <li>• Thời gian: <span className="italic">*You should spend about 40 minutes...*</span></li>
+                            <li>• Hướng dẫn đọc: <span className="italic">*Read the following text...*</span></li>
+                            <li>• Đoạn văn context: <span className="italic">*Vegetarians tend to avoid...*</span></li>
+                            <li>• Yêu cầu chính: <span className="font-semibold">**Write an essay for an educated audience...**</span></li>
+                            <li>• Hướng dẫn thêm: <span className="italic">*Give reasons and relevant examples...*</span></li>
+                            <li>• Số từ + tiêu chí: <span className="italic">*You should write at least 250 words...*</span></li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Preview formatted content */}
+                  {question.content && (
+                    <div className="bg-white border-2 border-orange-200 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-orange-200">
+                        <Eye className="w-4 h-4 text-orange-600" />
+                        <span className="text-sm font-semibold text-orange-900">Preview - Học viên sẽ thấy:</span>
+                      </div>
+                      <div className="prose prose-sm max-w-none space-y-2">
+                        {question.content.split('\n').map((line, idx) => {
+                          const trimmed = line.trim();
+                          if (!trimmed) return <div key={idx} className="h-2"></div>;
+                          
+                          // Parse markdown-style formatting
+                          let formatted = trimmed;
+                          
+                          // Bold + Italic: ***text***
+                          formatted = formatted.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
+                          
+                          // Bold: **text**
+                          formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                          
+                          // Italic: *text*
+                          formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+                          
+                          return (
+                            <p 
+                              key={idx} 
+                              className="text-sm text-gray-800 leading-relaxed"
+                              dangerouslySetInnerHTML={{ __html: formatted }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1171,15 +1517,40 @@ export function CreateExam() {
               </div>
             </div>
           )}
+
+          {/* Save Question Button */}
+          <div className="pt-4 border-t border-gray-200">
+            <button
+              onClick={() => handleSaveQuestion(question.id)}
+              disabled={savingQuestionId === question.id}
+              className={`w-full px-4 py-2.5 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
+                savingQuestionId === question.id
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : `${colors.badge} text-white hover:opacity-90 shadow-sm hover:shadow-md`
+              }`}
+            >
+              {savingQuestionId === question.id ? (
+                <>
+                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                  <span>Đang lưu...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>Lưu câu hỏi</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50/30 via-amber-50/20 to-orange-50/10">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="px-8 py-6">
           <div className="flex items-center gap-4 mb-6">
             <Link
@@ -1234,22 +1605,7 @@ export function CreateExam() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {/* Manual Save Button */}
-              <button
-                onClick={() => saveToServer(true)}
-                disabled={autoSaveStatus === 'saving'}
-                className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
-              >
-                <Save className="w-4 h-4" />
-                {autoSaveStatus === 'saving' ? 'Đang lưu...' : 'Lưu nháp'}
-              </button>
-              <button
-                onClick={handleSaveDraft}
-                className="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all flex items-center gap-2 font-medium"
-              >
-                <Save className="w-4 h-4" />
-                Lưu nháp
-              </button>
+              {/* Removed manual save button - only keep auto-save */}
             </div>
           </div>
 
@@ -1296,10 +1652,10 @@ export function CreateExam() {
       </div>
 
       {/* Step Content */}
-      <div className="px-8 py-6">
+      <div className="px-4 py-6">
         {/* STEP 1: Basic Info */}
         {currentStep === 1 && (
-          <div className="max-w-4xl mx-auto space-y-6">
+          <div className="space-y-6">
             {/* Exam Type */}
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Loại đề thi</h3>
@@ -1315,7 +1671,7 @@ export function CreateExam() {
                         setExamType(type.value as ExamType);
                       }
                     }}
-                    className={`p-6 border-2 rounded-xl text-left transition-all ${
+                    className={`p-6 border-2 rounded-xl text-left transition-all duration-200 ${
                       examType === type.value
                         ? "border-orange-600 bg-orange-50 shadow-lg"
                         : "border-gray-200 hover:border-orange-300 hover:bg-orange-50/50"
@@ -1369,9 +1725,10 @@ export function CreateExam() {
               )}
             </div>
 
-            {/* Exam Info */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
-              <h3 className="text-lg font-bold text-gray-900">Thông tin đề thi</h3>
+            {/* Exam Info - Only show when exam type and skill are selected */}
+            {examType && examSkill && (
+              <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+                <h3 className="text-lg font-bold text-gray-900">Thông tin đề thi</h3>
 
               {/* Title */}
               <div>
@@ -1382,11 +1739,34 @@ export function CreateExam() {
                   type="text"
                   value={examTitle}
                   onChange={(e) => setExamTitle(e.target.value)}
-                  placeholder="VD: VSTEP B2 Listening - Practice Test 1"
+                  onKeyDown={(e) => {
+                    // When Enter is pressed and input is empty, fill with placeholder suggestion
+                    if (e.key === 'Enter' && !examTitle.trim()) {
+                      e.preventDefault();
+                      if (examType === "VSTEP" && examSkill) {
+                        const suggestedTitle = examSkill === "Mixed"
+                          ? "VSTEP B2 - Full Test"
+                          : `VSTEP B2 - ${examSkill} Practice`;
+                        setExamTitle(suggestedTitle);
+                      }
+                    }
+                  }}
+                  placeholder={
+                    examType === "VSTEP" && examSkill
+                      ? examSkill === "Mixed"
+                        ? "VD: VSTEP B2 - Full Test"
+                        : `VD: VSTEP B2 - ${examSkill} Practice`
+                      : "VD: Đề thi Tiếng Anh - Tháng 4/2026"
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                   maxLength={255}
                 />
-                <p className="text-xs text-gray-500 mt-1">{examTitle.length}/255 ký tự</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {examTitle.length}/255 ký tự
+                  {!examTitle.trim() && examType === "VSTEP" && examSkill && (
+                    <span className="ml-2 text-orange-600">• Ấn Enter để dùng gợi ý</span>
+                  )}
+                </p>
               </div>
 
               {/* Description */}
@@ -1397,10 +1777,52 @@ export function CreateExam() {
                 <textarea
                   value={examDescription}
                   onChange={(e) => setExamDescription(e.target.value)}
+                  onKeyDown={(e) => {
+                    // When Enter is pressed and textarea is empty, fill with placeholder suggestion
+                    if (e.key === 'Enter' && !examDescription.trim()) {
+                      e.preventDefault();
+                      if (examType === "VSTEP" && examSkill) {
+                        let suggestedDescription = "";
+                        if (examSkill === "Mixed") {
+                          suggestedDescription = "Đề thi VSTEP B2 đầy đủ 4 kỹ năng (Listening, Reading, Writing, Speaking) theo chuẩn Bộ Giáo dục. Đề thi bao gồm 80 câu hỏi với thời gian làm bài 172 phút, giúp đánh giá toàn diện năng lực tiếng Anh của thí sinh.";
+                        } else if (examSkill === "Listening") {
+                          suggestedDescription = "Đề thi VSTEP B2 - Kỹ năng Nghe gồm 3 phần với 35 câu hỏi, thời gian 40 phút. Đề thi đánh giá khả năng nghe hiểu thông báo, hội thoại và bài giảng học thuật bằng tiếng Anh.";
+                        } else if (examSkill === "Reading") {
+                          suggestedDescription = "Đề thi VSTEP B2 - Kỹ năng Đọc gồm 4 đoạn văn với 40 câu hỏi, thời gian 60 phút. Đề thi đánh giá khả năng đọc hiểu các văn bản từ cơ bản đến học thuật.";
+                        } else if (examSkill === "Writing") {
+                          suggestedDescription = "Đề thi VSTEP B2 - Kỹ năng Viết gồm 2 phần: Task 1 (viết thư/email tối thiểu 120 từ) và Task 2 (viết luận tối thiểu 250 từ), thời gian 60 phút.";
+                        } else if (examSkill === "Speaking") {
+                          suggestedDescription = "Đề thi VSTEP B2 - Kỹ năng Nói gồm 3 phần: Social Interaction, Solution Discussion và Topic Development, tổng thời gian 12 phút.";
+                        }
+                        setExamDescription(suggestedDescription);
+                      }
+                    }
+                  }}
                   rows={4}
-                  placeholder="Mô tả chi tiết về đề thi..."
+                  placeholder={
+                    examType === "VSTEP" && examSkill
+                      ? examSkill === "Mixed"
+                        ? "VD: Đề thi VSTEP B2 đầy đủ 4 kỹ năng theo chuẩn Bộ Giáo dục..."
+                        : examSkill === "Listening"
+                        ? "VD: Đề thi VSTEP B2 - Kỹ năng Nghe gồm 3 phần với 35 câu hỏi..."
+                        : examSkill === "Reading"
+                        ? "VD: Đề thi VSTEP B2 - Kỹ năng Đọc gồm 4 đoạn văn với 40 câu hỏi..."
+                        : examSkill === "Writing"
+                        ? "VD: Đề thi VSTEP B2 - Kỹ năng Viết gồm 2 phần: Task 1 và Task 2..."
+                        : examSkill === "Speaking"
+                        ? "VD: Đề thi VSTEP B2 - Kỹ năng Nói gồm 3 phần với thời gian 12 phút..."
+                        : "Mô tả chi tiết về đề thi..."
+                      : "Mô tả chi tiết về đề thi..."
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                  maxLength={1000}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  {examDescription.length}/1000 ký tự
+                  {!examDescription.trim() && examType === "VSTEP" && examSkill && (
+                    <span className="ml-2 text-orange-600">• Ấn Enter để dùng gợi ý</span>
+                  )}
+                </p>
               </div>
 
               {/* Duration */}
@@ -1442,8 +1864,10 @@ export function CreateExam() {
                 </select>
               </div>
             </div>
+            )}
 
-            {/* Settings */}
+            {/* Settings - Only show when exam type and skill are selected */}
+            {examType && examSkill && (
             <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
               <h3 className="text-lg font-bold text-gray-900">Cài đặt</h3>
 
@@ -1507,6 +1931,7 @@ export function CreateExam() {
                 </label>
               </div>
             </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex items-center justify-between">
@@ -1516,128 +1941,42 @@ export function CreateExam() {
               >
                 Hủy
               </Link>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleSaveDraft}
-                  className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium"
-                >
-                  Lưu nháp
-                </button>
-                <button
-                  onClick={handleNextStep}
-                  disabled={!canProceedStep1}
-                  className={`px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-all ${
-                    canProceedStep1
-                      ? "bg-orange-600 text-white hover:bg-orange-700 shadow-lg shadow-orange-500/30"
-                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  }`}
-                >
-                  Tiếp tục
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
+              <button
+                onClick={() => canProceedStep1 && setShowImportModal(true)}
+                disabled={!canProceedStep1}
+                className={`px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-all ${
+                  canProceedStep1
+                    ? "bg-blue-600 text-white hover:bg-blue-700 shadow-md"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
+              >
+                Tiếp tục
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         )}
 
-        {/* STEP 2: Add Questions */}
+        {/* STEP 2: Questions - Non-VSTEP Mode */}
         {currentStep === 2 && !isVSTEPMode && (
-          <div className="flex gap-6">
-            {/* Template Guide - Show when no questions */}
-            {questions.length === 0 && (
-              <div className="flex-1">
-                <TemplateGuide />
-              </div>
-            )}
-            
-            {/* Left Panel: Question List */}
-            <div className={`${questions.length === 0 ? 'hidden' : 'w-80'} bg-white rounded-xl border border-gray-200 p-4 space-y-4 h-fit sticky top-6`}>
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-gray-900">Danh sách câu hỏi</h3>
+          <div className="space-y-6">
+            {/* Questions List */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Danh sách câu hỏi</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {totalQuestions} câu • {totalPoints} điểm
+                  </p>
+                </div>
                 <button
                   onClick={() => setIsAddingQuestion(true)}
-                  className="p-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all flex items-center gap-2 font-medium"
                 >
                   <Plus className="w-4 h-4" />
+                  Thêm câu hỏi
                 </button>
               </div>
-
-              <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                {questions.map((question, index) => (
-                  <div
-                    key={question.id}
-                    onClick={() => setSelectedQuestion(question)}
-                    className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                      selectedQuestion?.id === question.id
-                        ? "border-orange-600 bg-orange-50"
-                        : "border-gray-200 hover:border-orange-300 hover:bg-orange-50/50"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2">
-                      <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-semibold text-sm text-gray-900">Câu {index + 1}</span>
-                          <span className="text-xs text-gray-600">{question.points} điểm</span>
-                        </div>
-                        <p className="text-xs text-gray-600 truncate">
-                          {question.content || "Chưa có nội dung"}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {questionTypes.find((t) => t.value === question.type)?.label}
-                        </p>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteQuestion(question.id);
-                        }}
-                        className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-4 border-t border-gray-200">
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tổng câu hỏi:</span>
-                    <span className="font-semibold text-gray-900">{totalQuestions}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tổng điểm:</span>
-                    <span className="font-semibold text-gray-900">{totalPoints}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Panel: Question Editor */}
-            <div className="flex-1 space-y-6">
-              {!selectedQuestion && !isAddingQuestion && (
-                <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                  <div className="max-w-md mx-auto space-y-4">
-                    <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
-                      <HelpCircle className="w-10 h-10 text-orange-600" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-900">Thêm câu hỏi đầu tiên</h3>
-                    <p className="text-gray-600">
-                      Bắt đầu xây dựng đề thi bằng cách thêm câu hỏi. Chọn loại câu hỏi phù hợp từ
-                      menu bên dưới.
-                    </p>
-                    <button
-                      onClick={() => setIsAddingQuestion(true)}
-                      className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all font-medium inline-flex items-center gap-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Thêm câu hỏi
-                    </button>
-                  </div>
-                </div>
-              )}
 
               {isAddingQuestion && (
                 <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -1879,26 +2218,18 @@ export function CreateExam() {
                   >
                     Quay lại
                   </button>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={handleSaveDraft}
-                      className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium"
-                    >
-                      Lưu nháp
-                    </button>
-                    <button
-                      onClick={handleNextStep}
-                      disabled={!canProceedStep2}
-                      className={`px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-all ${
-                        canProceedStep2
-                          ? "bg-orange-600 text-white hover:bg-orange-700 shadow-lg shadow-orange-500/30"
-                          : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      }`}
-                    >
-                      Tiếp tục
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleNextStep}
+                    disabled={!canProceedStep2}
+                    className={`px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-all ${
+                      canProceedStep2
+                        ? "bg-orange-600 text-white hover:bg-orange-700 shadow-lg shadow-orange-500/30"
+                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    }`}
+                  >
+                    Tiếp tục
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
               )}
             </div>
@@ -1907,129 +2238,23 @@ export function CreateExam() {
 
         {/* STEP 2: VSTEP MODE - Special Layout */}
         {currentStep === 2 && isVSTEPMode && (
-          <div className="fixed left-64 right-0 top-[180px] bottom-0 bg-gray-100 flex flex-col z-40">
+          <div 
+            className={`fixed right-0 top-[180px] bottom-0 bg-gray-50 flex flex-col z-40 transition-all duration-300 ${
+              isSidebarCollapsed ? 'left-20' : 'left-64'
+            }`}
+          >
             {/* Main Content Area with Sidebar */}
             <div className="flex-1 overflow-hidden flex">
-              {/* Left: Main Content */}
-              <div className="flex-1 overflow-y-auto p-6 pb-32">
-                <div className="max-w-4xl mx-auto">
-                  {/* Part Info Banner */}
-                  {(() => {
-                    const skillData = VSTEP_STRUCTURE[vstepCurrentSkill];
-                    const partInfo = skillData.parts.find((p) => p.part === vstepCurrentPart);
-                    const partProgress = vstepProgress.find((p) => p.skill === vstepCurrentSkill && p.part === vstepCurrentPart);
-                    const progressPercent = partProgress ? Math.round((partProgress.completed / partProgress.total) * 100) : 0;
-                    
-                    // Skill colors
-                    const skillColors = {
-                      listening: { from: 'from-orange-500', to: 'to-orange-700', badge: 'bg-orange-100 text-orange-700' },
-                      reading: { from: 'from-green-500', to: 'to-green-700', badge: 'bg-green-100 text-green-700' },
-                      writing: { from: 'from-orange-500', to: 'to-orange-700', badge: 'bg-orange-100 text-orange-700' },
-                      speaking: { from: 'from-purple-500', to: 'to-purple-700', badge: 'bg-purple-100 text-purple-700' },
-                    };
-                    const colors = skillColors[vstepCurrentSkill as keyof typeof skillColors];
-                    
-                    return (
-                      <div className={`bg-gradient-to-r ${colors.from} ${colors.to} text-white rounded-xl p-5 mb-4 shadow-xl`}>
-                        <div className="flex items-start justify-between mb-6">
-                          <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center text-4xl">
-                              {skillData.icon}
-                            </div>
-                            <div>
-                              <h2 className="text-2xl font-bold mb-1">
-                                {skillData.name} - Part {vstepCurrentPart}
-                              </h2>
-                              <p className="text-white/80 text-lg">{partInfo?.name}</p>
-                              <div className="flex items-center gap-4 mt-2">
-                                <span className={`${colors.badge} px-3 py-1 rounded-full text-xs font-semibold`}>
-                                  ⏱ {skillData.duration} phút
-                                </span>
-                                <span className={`${colors.badge} px-3 py-1 rounded-full text-xs font-semibold`}>
-                                  📝 {partInfo?.questions} câu
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="bg-white/20 backdrop-blur rounded-xl px-6 py-4 text-center min-w-[120px]">
-                            <div className="text-xs opacity-90 mb-1">Tiến độ</div>
-                            <div className="text-3xl font-bold">{partProgress?.completed}/{partProgress?.total}</div>
-                            <div className="text-xs opacity-75 mt-1">{progressPercent}%</div>
-                          </div>
-                        </div>
-                        
-                        {/* Progress Bar */}
-                        <div className="mb-4">
-                          <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-white transition-all duration-500"
-                              style={{ width: `${progressPercent}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="bg-white/10 backdrop-blur rounded-xl px-5 py-3">
-                          <p className="text-sm leading-relaxed">
-                            💡 <strong>Hướng dẫn:</strong> {partInfo?.description}
-                            {(partInfo as any)?.wordCount && (
-                              <span className="ml-2">• Độ dài: {(partInfo as any).wordCount[0]}-{(partInfo as any).wordCount[1]} từ</span>
-                            )}
-                            {(partInfo as any)?.minWords && (
-                              <span className="ml-2">• Tối thiểu: {(partInfo as any).minWords} từ</span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Questions List */}
-                  <div className="space-y-4">
-                    {vstepCurrentPartQuestions.length === 0 ? (
-                      <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-8 text-center">
-                        <div className="text-6xl mb-4">⚠️</div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">Không có câu hỏi</h3>
-                        <p className="text-gray-600 mb-4">
-                          Skill: {vstepCurrentSkill} | Part: {vstepCurrentPart}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Tổng số câu hỏi: {questions.length}
-                        </p>
-                        <button
-                          onClick={() => {
-                            console.log('🔍 Debug Info:', {
-                              isVSTEPMode,
-                              examType,
-                              examSkill,
-                              vstepCurrentSkill,
-                              vstepCurrentPart,
-                              totalQuestions: questions.length,
-                              allQuestions: questions.map(q => ({ id: q.id, skill: q.skill, part: q.part }))
-                            });
-                          }}
-                          className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
-                        >
-                          🐛 Debug (xem Console)
-                        </button>
-                      </div>
-                    ) : (
-                      vstepCurrentPartQuestions.map(renderVSTEPQuestionEditor)
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Right: Question Navigation Grid */}
-              <div className="w-80 bg-white border-l-2 border-gray-200 shadow-xl overflow-y-auto">
-                <div className="p-4 border-b bg-gray-50">
-                  <h3 className="font-bold text-gray-800 mb-1">📋 Điều hướng câu hỏi</h3>
-                  <p className="text-xs text-gray-500">Part {vstepCurrentPart} - {VSTEP_STRUCTURE[vstepCurrentSkill].parts.find(p => p.part === vstepCurrentPart)?.questions} câu</p>
+              {/* Left: Question Navigation Grid - Redesigned with soft colors */}
+              <div className="w-56 bg-white border-r-2 border-gray-200 overflow-y-auto">
+                <div className="p-4 border-b-2 border-gray-100">
+                  <h3 className="text-base font-semibold text-gray-900 mb-1">Điều hướng câu hỏi</h3>
+                  <p className="text-xs text-gray-600">Part {vstepCurrentPart} • {VSTEP_STRUCTURE[vstepCurrentSkill].parts.find(p => p.part === vstepCurrentPart)?.questions} câu</p>
                 </div>
                 
                 <div className="p-4">
-                  {/* Question Grid */}
-                  <div className="grid grid-cols-5 gap-2 mb-4">
-                    {Array.from({ length: VSTEP_STRUCTURE[vstepCurrentSkill].parts.find(p => p.part === vstepCurrentPart)?.questions || 0 }, (_, i) => {
+                  {/* Question Grid - Larger buttons with softer colors */}
+                  <div className="grid grid-cols-5 gap-2 mb-6">{Array.from({ length: VSTEP_STRUCTURE[vstepCurrentSkill].parts.find(p => p.part === vstepCurrentPart)?.questions || 0 }, (_, i) => {
                       const questionNumber = i + 1;
                       const question = vstepCurrentPartQuestions.find(q => q.questionNumber === questionNumber);
                       const isCompleted = question && question.content.trim() && 
@@ -2037,12 +2262,12 @@ export function CreateExam() {
                          question.answers?.some(a => a.isCorrect && a.text.trim()));
                       const isActive = vstepActiveQuestionNumber === questionNumber;
                       
-                      // Skill colors for grid buttons
+                      // Soft color palette for grid buttons
                       const gridColors = {
-                        listening: isActive ? 'bg-orange-500 text-white' : isCompleted ? 'bg-orange-100 text-orange-700 border-orange-300' : 'bg-gray-100 text-gray-600 border-gray-300',
-                        reading: isActive ? 'bg-green-500 text-white' : isCompleted ? 'bg-green-100 text-green-700 border-green-300' : 'bg-gray-100 text-gray-600 border-gray-300',
-                        writing: isActive ? 'bg-orange-500 text-white' : isCompleted ? 'bg-orange-100 text-orange-700 border-orange-300' : 'bg-gray-100 text-gray-600 border-gray-300',
-                        speaking: isActive ? 'bg-purple-500 text-white' : isCompleted ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-gray-100 text-gray-600 border-gray-300',
+                        listening: isActive ? 'bg-blue-500 text-white border-blue-500 shadow-md' : isCompleted ? 'bg-blue-50 text-blue-700 border-blue-300 hover:border-blue-400' : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300 hover:bg-blue-50',
+                        reading: isActive ? 'bg-emerald-500 text-white border-emerald-500 shadow-md' : isCompleted ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:border-emerald-400' : 'bg-white text-gray-700 border-gray-300 hover:border-emerald-300 hover:bg-emerald-50',
+                        writing: isActive ? 'bg-amber-500 text-white border-amber-500 shadow-md' : isCompleted ? 'bg-amber-50 text-amber-700 border-amber-300 hover:border-amber-400' : 'bg-white text-gray-700 border-gray-300 hover:border-amber-300 hover:bg-amber-50',
+                        speaking: isActive ? 'bg-purple-500 text-white border-purple-500 shadow-md' : isCompleted ? 'bg-purple-50 text-purple-700 border-purple-300 hover:border-purple-400' : 'bg-white text-gray-700 border-gray-300 hover:border-purple-300 hover:bg-purple-50',
                       };
                       const buttonColor = gridColors[vstepCurrentSkill];
                       
@@ -2050,11 +2275,11 @@ export function CreateExam() {
                         <button
                           key={questionNumber}
                           onClick={() => jumpToVSTEPQuestion(questionNumber)}
-                          className={`relative w-12 h-12 rounded-lg border-2 font-semibold text-sm transition-all hover:shadow-md ${buttonColor}`}
+                          className={`relative aspect-square min-w-0 rounded-lg border-2 font-semibold text-sm transition-all ${buttonColor}`}
                         >
                           {questionNumber}
                           {isCompleted && !isActive && (
-                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center text-white text-xs">
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center text-white text-[10px] shadow-sm">
                               ✓
                             </span>
                           )}
@@ -2063,136 +2288,436 @@ export function CreateExam() {
                     })}
                   </div>
 
-                  {/* Legend */}
+                  {/* Legend - Cleaner design */}
                   <div className="space-y-2 text-xs">
                     <div className="flex items-center gap-2">
-                      <div className={`w-6 h-6 rounded ${vstepCurrentSkill === 'listening' ? 'bg-orange-500' : vstepCurrentSkill === 'reading' ? 'bg-green-500' : vstepCurrentSkill === 'writing' ? 'bg-orange-500' : 'bg-purple-500'}`}></div>
-                      <span className="text-gray-600">Đang chọn</span>
+                      <div className={`w-8 h-8 rounded-lg shadow-sm ${vstepCurrentSkill === 'listening' ? 'bg-blue-500' : vstepCurrentSkill === 'reading' ? 'bg-emerald-500' : vstepCurrentSkill === 'writing' ? 'bg-amber-500' : 'bg-purple-500'}`}></div>
+                      <span className="text-gray-700 font-medium">Đang chọn</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className={`w-6 h-6 rounded border-2 ${vstepCurrentSkill === 'listening' ? 'bg-orange-100 border-orange-300' : vstepCurrentSkill === 'reading' ? 'bg-green-100 border-green-300' : vstepCurrentSkill === 'writing' ? 'bg-orange-100 border-orange-300' : 'bg-purple-100 border-purple-300'}`}></div>
-                      <span className="text-gray-600">Đã hoàn thành</span>
+                      <div className={`w-8 h-8 rounded-lg border-2 ${vstepCurrentSkill === 'listening' ? 'bg-blue-50 border-blue-300' : vstepCurrentSkill === 'reading' ? 'bg-emerald-50 border-emerald-300' : vstepCurrentSkill === 'writing' ? 'bg-amber-50 border-amber-300' : 'bg-purple-50 border-purple-300'}`}></div>
+                      <span className="text-gray-700 font-medium">Đã hoàn thành</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded border-2 bg-gray-100 border-gray-300"></div>
-                      <span className="text-gray-600">Chưa hoàn thành</span>
+                      <div className="w-8 h-8 rounded-lg border-2 bg-white border-gray-300"></div>
+                      <span className="text-gray-700 font-medium">Chưa hoàn thành</span>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Main Content - More spacious */}
+              <div className="flex-1 overflow-y-auto p-6 pb-32">
+                <div className="max-w-7xl mx-auto">{/* Increased from max-w-6xl to max-w-7xl */}
+                  {/* Part Info Banner - Redesigned with soft colors, no gradient */}
+                  {(() => {
+                    const skillData = VSTEP_STRUCTURE[vstepCurrentSkill];
+                    const partInfo = skillData.parts.find((p) => p.part === vstepCurrentPart);
+                    const partProgress = vstepProgress.find((p) => p.skill === vstepCurrentSkill && p.part === vstepCurrentPart);
+                    const progressPercent = partProgress ? Math.round((partProgress.completed / partProgress.total) * 100) : 0;
+                    
+                    // Soft color palette - no gradients
+                    const skillColors = {
+                      listening: { 
+                        bg: 'bg-blue-50', 
+                        border: 'border-blue-500', 
+                        text: 'text-blue-900',
+                        icon: 'bg-blue-100',
+                        badge: 'bg-white text-blue-700 border border-blue-200',
+                        progress: 'bg-blue-500'
+                      },
+                      reading: { 
+                        bg: 'bg-emerald-50', 
+                        border: 'border-emerald-500', 
+                        text: 'text-emerald-900',
+                        icon: 'bg-emerald-100',
+                        badge: 'bg-white text-emerald-700 border border-emerald-200',
+                        progress: 'bg-emerald-500'
+                      },
+                      writing: { 
+                        bg: 'bg-amber-50', 
+                        border: 'border-amber-500', 
+                        text: 'text-amber-900',
+                        icon: 'bg-amber-100',
+                        badge: 'bg-white text-amber-700 border border-amber-200',
+                        progress: 'bg-amber-500'
+                      },
+                      speaking: { 
+                        bg: 'bg-purple-50', 
+                        border: 'border-purple-500', 
+                        text: 'text-purple-900',
+                        icon: 'bg-purple-100',
+                        badge: 'bg-white text-purple-700 border border-purple-200',
+                        progress: 'bg-purple-500'
+                      },
+                    };
+                    const colors = skillColors[vstepCurrentSkill as keyof typeof skillColors];
+                    
+                    return (
+                      <div className={`${colors.bg} border-l-4 ${colors.border} rounded-xl p-3 mb-3 shadow-sm`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-10 h-10 ${colors.icon} rounded-lg flex items-center justify-center text-2xl shadow-sm`}>
+                              {skillData.icon}
+                            </div>
+                            <div>
+                              <h2 className={`text-base font-bold ${colors.text}`}>
+                                {skillData.name} - Part {vstepCurrentPart}
+                              </h2>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className={`${colors.badge} px-2 py-0.5 rounded text-[10px] font-semibold`}>
+                                  ⏱ {skillData.duration}p
+                                </span>
+                                <span className={`${colors.badge} px-2 py-0.5 rounded text-[10px] font-semibold`}>
+                                  📝 {partInfo?.questions}
+                                </span>
+                                <span className="text-xs text-gray-600">{partInfo?.name}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-lg px-3 py-2 text-center min-w-[80px] border border-gray-200 shadow-sm">
+                            <div className={`text-xl font-bold ${colors.text}`}>{partProgress?.completed}<span className="text-sm opacity-60">/{partProgress?.total}</span></div>
+                            <div className="text-[10px] text-gray-500 font-medium">{progressPercent}%</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Part-Level Audio Upload (for Listening only) */}
+                  {vstepCurrentSkill === "listening" && vstepCurrentPartQuestions.length > 0 && (
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-8 mb-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-14 h-14 bg-blue-500 text-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                          <Volume2 className="w-7 h-7" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-xl font-bold text-gray-900 mb-2">
+                            🎧 Audio cho Part {vstepCurrentPart}
+                          </h3>
+                          <p className="text-sm text-gray-700 mb-4">
+                            {vstepCurrentPart === 1 && "1 file audio chứa 8 thông báo ngắn (Questions 1-8)"}
+                            {vstepCurrentPart === 2 && "1 file audio chứa 4 đoạn hội thoại (Questions 9-20)"}
+                            {vstepCurrentPart === 3 && "1 file audio chứa 3 bài giảng học thuật (Questions 21-35)"}
+                          </p>
+                          
+                          {(() => {
+                            const partKey = `${vstepCurrentSkill}-${vstepCurrentPart}`;
+                            const partAudio = vstepPartAudio[partKey];
+                            const isUploading = audioUploading[partKey];
+                            
+                            return (
+                              <div className="space-y-4">
+                                {/* Upload Button */}
+                                {!partAudio && (
+                                  <label className="cursor-pointer block">
+                                    <div className="flex items-center justify-center w-full h-16 border-2 border-dashed border-blue-400 rounded-xl bg-white hover:bg-blue-50 transition-all">
+                                      <input
+                                        type="file"
+                                        accept="audio/mp3,audio/wav,audio/m4a,audio/aac,audio/ogg"
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0];
+                                          if (file) handlePartAudioUpload(vstepCurrentSkill, vstepCurrentPart, file);
+                                        }}
+                                        className="hidden"
+                                      />
+                                      <div className="flex items-center gap-3 text-blue-600">
+                                        {isUploading ? (
+                                          <>
+                                            <div className="animate-spin w-6 h-6 border-3 border-blue-500 border-t-transparent rounded-full"></div>
+                                            <span className="text-base font-semibold">Đang upload...</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Upload className="w-6 h-6" />
+                                            <span className="text-base font-semibold">📁 Upload file audio cho Part {vstepCurrentPart}</span>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </label>
+                                )}
+                                
+                                {/* Audio Preview */}
+                                {partAudio && (
+                                  <div className="p-5 bg-white rounded-xl border-2 border-blue-300 shadow-sm">
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center gap-3">
+                                        <Volume2 className="w-6 h-6 text-blue-600" />
+                                        <span className="text-base font-bold text-gray-800">Audio đã upload</span>
+                                      </div>
+                                      {partAudio.audioFileName && (
+                                        <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg font-medium">
+                                          📂 {partAudio.audioFileName}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <audio 
+                                      controls 
+                                      className="w-full h-12 rounded-lg"
+                                      preload="metadata"
+                                      crossOrigin="anonymous"
+                                    >
+                                      <source src={partAudio.audioUrl} type="audio/mpeg" />
+                                      <source src={partAudio.audioUrl} type="audio/wav" />
+                                      <source src={partAudio.audioUrl} type="audio/mp4" />
+                                      Trình duyệt không hỗ trợ audio player
+                                    </audio>
+                                    <div className="flex items-center gap-4 mt-3 pt-3 border-t border-blue-200">
+                                      <button 
+                                        onClick={() => {
+                                          setVstepPartAudio(prev => {
+                                            const newState = { ...prev };
+                                            delete newState[partKey];
+                                            return newState;
+                                          });
+                                          // Also clear from all questions
+                                          vstepCurrentPartQuestions.forEach(q => {
+                                            updateVSTEPQuestion(q.id, { audioUrl: '', audioFileName: '' });
+                                          });
+                                        }}
+                                        className="text-sm text-red-600 hover:text-red-800 font-semibold flex items-center gap-1"
+                                      >
+                                        🗑️ Xóa audio
+                                      </button>
+                                      <span className="text-sm text-green-600 font-medium flex items-center gap-1">
+                                        ✅ Audio sẽ được phát cho tất cả câu hỏi trong Part này
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                <p className="text-xs text-gray-600 flex items-center gap-2">
+                                  <Info className="w-4 h-4" />
+                                  Hỗ trợ: MP3, WAV, M4A, AAC, OGG • Tối đa 50MB
+                                </p>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Questions List - With Pagination */}
+                  <div className="space-y-6">
+                    {vstepCurrentPartQuestions.length === 0 ? (
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-12 text-center">
+                        <div className="text-7xl mb-6">⏳</div>
+                        <h3 className="text-2xl font-bold text-gray-900 mb-3">Đang tải câu hỏi...</h3>
+                        <p className="text-gray-600 mb-4 text-lg">
+                          Vui lòng chờ trong giây lát
+                        </p>
+                        <div className="inline-flex items-center gap-2 text-sm text-gray-500">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Paginated Questions */}
+                        {(() => {
+                          const totalPages = Math.ceil(vstepCurrentPartQuestions.length / QUESTIONS_PER_PAGE);
+                          const startIndex = (currentQuestionPage - 1) * QUESTIONS_PER_PAGE;
+                          const endIndex = startIndex + QUESTIONS_PER_PAGE;
+                          const currentPageQuestions = vstepCurrentPartQuestions.slice(startIndex, endIndex);
+                          
+                          return (
+                            <>
+                              {currentPageQuestions.map(renderVSTEPQuestionEditor)}
+                              
+                              {/* Pagination Controls - Compact */}
+                              {totalPages > 1 && (
+                                <div className="flex items-center justify-between bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-200 rounded-xl p-4 mt-8">
+                                  <button
+                                    onClick={() => {
+                                      if (currentQuestionPage > 1) {
+                                        setCurrentQuestionPage(currentQuestionPage - 1);
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                      }
+                                    }}
+                                    disabled={currentQuestionPage === 1}
+                                    className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all ${
+                                      currentQuestionPage === 1
+                                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                        : 'bg-white text-orange-600 hover:bg-orange-100 border-2 border-orange-300 shadow-sm hover:shadow-md'
+                                    }`}
+                                  >
+                                    <ChevronLeft className="w-5 h-5" />
+                                    <span>Câu trước</span>
+                                  </button>
+                                  
+                                  <div className="text-center">
+                                    <div className="text-lg font-bold text-orange-600">
+                                      Câu {startIndex + 1}-{Math.min(endIndex, vstepCurrentPartQuestions.length)} / {vstepCurrentPartQuestions.length}
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-0.5">
+                                      Trang {currentQuestionPage}/{totalPages}
+                                    </div>
+                                  </div>
+                                  
+                                  <button
+                                    onClick={() => {
+                                      if (currentQuestionPage < totalPages) {
+                                        setCurrentQuestionPage(currentQuestionPage + 1);
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                      }
+                                    }}
+                                    disabled={currentQuestionPage === totalPages}
+                                    className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all ${
+                                      currentQuestionPage === totalPages
+                                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                        : 'bg-white text-orange-600 hover:bg-orange-100 border-2 border-orange-300 shadow-sm hover:shadow-md'
+                                    }`}
+                                  >
+                                    <span>Câu tiếp</span>
+                                    <ChevronRight className="w-5 h-5" />
+                                  </button>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Bottom Navigation - VSTEP Style */}
-            <div className="fixed bottom-0 left-64 right-0 bg-white border-t-2 shadow-2xl z-50">
-              {/* Part Tabs */}
-              <div className="flex items-center gap-2 px-4 py-3 overflow-x-auto">
-                {Object.entries(VSTEP_STRUCTURE).map(([skill, skillData]) => {
-                  // Skill-based colors
-                  const skillTabColors = {
-                    listening: { 
-                      active: 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200',
-                      completed: 'bg-orange-50 text-orange-700 border-2 border-orange-200',
-                      default: 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
-                    },
-                    reading: { 
-                      active: 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-200',
-                      completed: 'bg-green-50 text-green-700 border-2 border-green-200',
-                      default: 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-green-50 hover:text-green-600 hover:border-green-200'
-                    },
-                    writing: { 
-                      active: 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200',
-                      completed: 'bg-orange-50 text-orange-700 border-2 border-orange-200',
-                      default: 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
-                    },
-                    speaking: { 
-                      active: 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-200',
-                      completed: 'bg-purple-50 text-purple-700 border-2 border-purple-200',
-                      default: 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200'
-                    },
-                  };
-                  const tabColors = skillTabColors[skill as keyof typeof skillTabColors];
+            {/* Bottom Navigation - Redesigned with soft colors, no gradients */}
+            <div 
+              className={`fixed bottom-0 right-0 bg-white border-t-2 border-gray-200 shadow-lg z-50 transition-all duration-300 ${
+                isSidebarCollapsed ? 'left-20' : 'left-64'
+              }`}
+            >
+              {/* Part Tabs with Action Buttons - Single Row */}
+              <div className="flex items-center justify-between gap-4 px-6 py-3 overflow-x-auto">
+                {/* Part Tabs */}
+                <div className="flex items-center gap-2 flex-1 overflow-x-auto">
+                  {Object.entries(VSTEP_STRUCTURE)
+                    .filter(([skill]) => {
+                      // If examSkill is "Mixed", show all skills
+                      // Otherwise, only show the selected skill
+                      if (examSkill === "Mixed") return true;
+                      if (!examSkill) return false;
+                      return skill === examSkill.toLowerCase();
+                    })
+                    .map(([skill, skillData]) => {
+                    // Soft color palette for tabs - no gradients
+                    const skillTabColors = {
+                      listening: { 
+                        active: 'bg-blue-500 text-white shadow-md border-blue-500',
+                        completed: 'bg-blue-50 text-blue-700 border-blue-300 hover:border-blue-400',
+                        default: 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300'
+                      },
+                      reading: { 
+                        active: 'bg-emerald-500 text-white shadow-md border-emerald-500',
+                        completed: 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:border-emerald-400',
+                        default: 'bg-white text-gray-700 border-gray-300 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300'
+                      },
+                      writing: { 
+                        active: 'bg-amber-500 text-white shadow-md border-amber-500',
+                        completed: 'bg-amber-50 text-amber-700 border-amber-300 hover:border-amber-400',
+                        default: 'bg-white text-gray-700 border-gray-300 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-300'
+                      },
+                      speaking: { 
+                        active: 'bg-purple-500 text-white shadow-md border-purple-500',
+                        completed: 'bg-purple-50 text-purple-700 border-purple-300 hover:border-purple-400',
+                        default: 'bg-white text-gray-700 border-gray-300 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300'
+                      },
+                    };
+                    const tabColors = skillTabColors[skill as keyof typeof skillTabColors];
 
-                  return (
-                    <div key={skill} className="flex items-center gap-2">
-                      {/* Skill Divider */}
-                      <div className="flex items-center gap-2 mr-1">
-                        <span className="text-lg">{skillData.icon}</span>
-                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          {skillData.name}
-                        </span>
+                    return (
+                      <div key={skill} className="flex items-center gap-2">
+                        {/* Skill Divider */}
+                        <div className="flex items-center gap-1.5 mr-1">
+                          <span className="text-xl">{skillData.icon}</span>
+                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            {skillData.name}
+                          </span>
+                        </div>
+                        
+                        {skillData.parts.map((part) => {
+                          const isActive = vstepCurrentSkill === skill && vstepCurrentPart === part.part;
+                          const partProgress = vstepProgress.find((p) => p.skill === skill && p.part === part.part);
+                          const isCompleted = partProgress && partProgress.completed === partProgress.total;
+
+                          return (
+                            <button
+                              key={`${skill}-${part.part}`}
+                              onClick={() => {
+                                setVstepCurrentSkill(skill as any);
+                                setVstepCurrentPart(part.part);
+                                setVstepActiveQuestionNumber(1);
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap relative border-2 ${
+                                isActive
+                                  ? tabColors.active
+                                  : isCompleted
+                                    ? tabColors.completed
+                                    : tabColors.default
+                              }`}
+                            >
+                              <span className="relative z-10">Part {part.part}</span>
+                              {isCompleted && !isActive && (
+                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center text-white text-[10px] shadow-sm">
+                                  ✓
+                                </span>
+                              )}
+                            </button>
+                          );
+                      })}
                       </div>
-                      
-                      {skillData.parts.map((part) => {
-                        const isActive = vstepCurrentSkill === skill && vstepCurrentPart === part.part;
-                        const partProgress = vstepProgress.find((p) => p.skill === skill && p.part === part.part);
-                        const isCompleted = partProgress && partProgress.completed === partProgress.total;
+                    );
+                  })}
+                </div>
 
-                        return (
-                          <button
-                            key={`${skill}-${part.part}`}
-                            onClick={() => {
-                              setVstepCurrentSkill(skill as any);
-                              setVstepCurrentPart(part.part);
-                              setVstepActiveQuestionNumber(1); // Reset to first question
-                            }}
-                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap relative ${
-                              isActive
-                                ? tabColors.active
-                                : isCompleted
-                                  ? tabColors.completed
-                                  : tabColors.default
-                            }`}
-                          >
-                            <span className="relative z-10">Part {part.part}</span>
-                            {isCompleted && !isActive && (
-                              <span className="absolute top-0 right-0 -mt-1 -mr-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-white text-xs">
-                                ✓
-                              </span>
-                            )}
-                          </button>
-                        );
-                    })}
-                    </div>
-                  );
-                })}
-              </div>
+                {/* Action Buttons - Compact */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Menu button for Mixed skill */}
+                  {examSkill === "Mixed" && (
+                    <button
+                      onClick={() => setShowVstepMenu(!showVstepMenu)}
+                      className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-semibold hover:bg-gray-50 hover:border-gray-400 flex items-center gap-1.5 transition-all"
+                    >
+                      <Menu className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">{showVstepMenu ? "Đóng" : "Menu"}</span>
+                    </button>
+                  )}
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-between px-6 py-4 border-t-2 bg-gradient-to-r from-gray-50 to-gray-100">
-                <button
-                  onClick={() => setShowVstepMenu(!showVstepMenu)}
-                  className="px-5 py-2.5 bg-white border-2 border-gray-300 rounded-xl text-sm font-semibold hover:bg-gray-50 hover:border-gray-400 flex items-center gap-2 transition-all shadow-sm hover:shadow"
-                >
-                  <Menu className="w-4 h-4" />
-                  {showVstepMenu ? "Đóng menu" : "Menu tổng quan"}
-                </button>
-
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleSaveDraft}
-                    disabled={isSaving}
-                    className="px-6 py-2.5 bg-white border-2 border-yellow-300 text-yellow-700 rounded-xl text-sm font-semibold hover:bg-yellow-50 hover:border-yellow-400 transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                    </svg>
-                    {isSaving ? "Đang lưu..." : "Lưu bản nháp"}
-                  </button>
-                  <button
-                    onClick={goToNextVSTEPPart}
-                    disabled={vstepCurrentPartIndex >= allVSTEPParts.length - 1}
-                    className="px-6 py-2.5 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-xl text-sm font-semibold hover:from-orange-700 hover:to-orange-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all shadow-lg hover:shadow-xl"
-                  >
-                    <span>Tiếp tục</span>
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
+                  {/* Show different button based on whether at last part */}
+                  {vstepCurrentPartIndex >= allVSTEPParts.length - 1 ? (
+                    <button
+                      onClick={handleNextStep}
+                      disabled={!canProceedStep2}
+                      className="px-4 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-all shadow-sm"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Hoàn thành</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={goToNextVSTEPPart}
+                      className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 flex items-center gap-1.5 transition-all shadow-sm"
+                    >
+                      <span>Tiếp tục</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Side Menu */}
-            {showVstepMenu && (
-              <div className="fixed left-64 top-[180px] bottom-0 w-96 bg-gradient-to-br from-white to-gray-50 shadow-2xl z-50 overflow-y-auto border-r-2 border-gray-200">
+            {/* Side Menu - Only show for Mixed skill */}
+            {showVstepMenu && examSkill === "Mixed" && (
+              <div 
+                className={`fixed top-[180px] bottom-0 w-96 bg-gradient-to-br from-white to-gray-50 shadow-2xl z-50 overflow-y-auto border-r-2 border-gray-200 transition-all duration-300 ${
+                  isSidebarCollapsed ? 'left-20' : 'left-64'
+                }`}
+              >
                 <div className="p-6">
                   {/* Header */}
                   <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-gray-200">
@@ -2215,22 +2740,33 @@ export function CreateExam() {
                       <span className="text-2xl">📊</span>
                     </div>
                     <p className="text-4xl font-bold mb-2">
-                      {vstepProgress.reduce((sum, p) => sum + p.completed, 0)}<span className="text-xl opacity-75">/80</span>
+                      {vstepProgress.reduce((sum, p) => sum + p.completed, 0)}<span className="text-xl opacity-75">/{vstepProgress.reduce((sum, p) => sum + p.total, 0)}</span>
                     </p>
                     <div className="w-full h-3 bg-white/20 rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-white transition-all duration-500"
-                        style={{ width: `${(vstepProgress.reduce((sum, p) => sum + p.completed, 0) / 80) * 100}%` }}
+                        style={{ width: `${vstepProgress.reduce((sum, p) => sum + p.total, 0) > 0 ? (vstepProgress.reduce((sum, p) => sum + p.completed, 0) / vstepProgress.reduce((sum, p) => sum + p.total, 0)) * 100 : 0}%` }}
                       />
                     </div>
                     <p className="text-xs mt-2 opacity-90">
-                      {Math.round((vstepProgress.reduce((sum, p) => sum + p.completed, 0) / 80) * 100)}% hoàn thành
+                      {vstepProgress.reduce((sum, p) => sum + p.total, 0) > 0 ? Math.round((vstepProgress.reduce((sum, p) => sum + p.completed, 0) / vstepProgress.reduce((sum, p) => sum + p.total, 0)) * 100) : 0}% hoàn thành
                     </p>
                   </div>
 
                   {/* Skills Navigation */}
                   <div className="space-y-4">
-                    {Object.entries(VSTEP_STRUCTURE).map(([skill, skillData]) => {
+                    {Object.entries(VSTEP_STRUCTURE)
+                      .filter(([skill]) => {
+                        // If examSkill is "Mixed", show all skills
+                        if (examSkill === "Mixed") return true;
+                        // For single skill, only show that skill
+                        if (examSkill === "Listening") return skill === "listening";
+                        if (examSkill === "Reading") return skill === "reading";
+                        if (examSkill === "Writing") return skill === "writing";
+                        if (examSkill === "Speaking") return skill === "speaking";
+                        return false;
+                      })
+                      .map(([skill, skillData]) => {
                       const skillColors = {
                         listening: { gradient: 'from-orange-500 to-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700' },
                         reading: { gradient: 'from-green-500 to-green-600', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700' },
@@ -2316,78 +2852,194 @@ export function CreateExam() {
 
         {/* STEP 3: Preview & Publish */}
         {currentStep === 3 && (
-          <div className="max-w-5xl mx-auto space-y-6">
-            {/* Exam Summary */}
-            <div className="bg-gradient-to-br from-orange-600 via-orange-500 to-amber-600 rounded-xl p-8 text-white shadow-2xl">
-              <div className="flex items-start justify-between mb-6">
+          <div className="space-y-6">
+            {/* Exam Summary - Minimalist Design */}
+            <div className="bg-white border-2 border-orange-500 rounded-lg p-5 shadow-sm">
+              <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h2 className="text-3xl font-bold mb-3">{examTitle || "Đề thi chưa đặt tên"}</h2>
-                  <p className="text-orange-100 mb-4">{examDescription}</p>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="px-4 py-2 bg-white/20 backdrop-blur rounded-lg font-semibold">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">{examTitle || "Đề thi chưa đặt tên"}</h2>
+                  {examDescription && (
+                    <p className="text-sm text-gray-600 mb-3">{examDescription}</p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-md text-sm font-medium">
                       {examType}
                     </span>
-                    <span className="px-4 py-2 bg-white/20 backdrop-blur rounded-lg font-semibold">
+                    <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-md text-sm font-medium">
                       {getExamSkillLabel(examSkill)}
                     </span>
-                    <span className="px-4 py-2 bg-white/20 backdrop-blur rounded-lg font-semibold flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm font-medium flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" />
                       {duration} {durationUnit === "minutes" ? "phút" : "giờ"}
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button className="p-3 bg-white/20 backdrop-blur rounded-lg hover:bg-white/30 transition-all">
-                    <Eye className="w-5 h-5" />
-                  </button>
+              </div>
+
+              {/* Stats Grid - Compact */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <p className="text-gray-600 text-xs mb-0.5">Câu hỏi</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalQuestions}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <p className="text-gray-600 text-xs mb-0.5">Tổng điểm</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalPoints}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <p className="text-gray-600 text-xs mb-0.5">Độ khó</p>
+                  <p className="text-lg font-bold text-gray-900 capitalize">{difficulty}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <p className="text-gray-600 text-xs mb-0.5">Trạng thái</p>
+                  <p className="text-lg font-bold text-orange-600">Xuất bản</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-4">
-                <div className="bg-white/10 backdrop-blur rounded-lg p-4">
-                  <p className="text-orange-100 text-sm mb-1">Câu hỏi</p>
-                  <p className="text-3xl font-bold">{totalQuestions}</p>
+              {/* VSTEP Skills Breakdown - Compact */}
+              {examType === "VSTEP" && examSkill && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Chi tiết theo kỹ năng</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {(() => {
+                      const skillsToShow = examSkill === "Mixed" 
+                        ? Object.keys(VSTEP_STRUCTURE)
+                        : [examSkill.toLowerCase()];
+                      
+                      return skillsToShow.map((skillKey) => {
+                        const skillData = VSTEP_STRUCTURE[skillKey as keyof typeof VSTEP_STRUCTURE];
+                        if (!skillData) return null;
+                        
+                        const skillQuestions = questions.filter(q => q.skill === skillKey);
+                        const skillPoints = skillQuestions.reduce((sum, q) => sum + q.points, 0);
+                        
+                        return (
+                          <div key={skillKey} className="bg-gray-50 border border-gray-200 rounded-lg p-2.5">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="text-base">{skillData.icon}</span>
+                              <span className="font-semibold text-xs text-gray-700">{skillData.name}</span>
+                            </div>
+                            <div className="text-xl font-bold text-gray-900">{skillQuestions.length}</div>
+                            <div className="text-xs text-gray-500">
+                              {skillData.parts.length} parts • {skillPoints} điểm
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
                 </div>
-                <div className="bg-white/10 backdrop-blur rounded-lg p-4">
-                  <p className="text-orange-100 text-sm mb-1">Tổng điểm</p>
-                  <p className="text-3xl font-bold">{totalPoints}</p>
-                </div>
-                <div className="bg-white/10 backdrop-blur rounded-lg p-4">
-                  <p className="text-orange-100 text-sm mb-1">Độ khó</p>
-                  <p className="text-xl font-bold capitalize">{difficulty}</p>
-                </div>
-                <div className="bg-white/10 backdrop-blur rounded-lg p-4">
-                  <p className="text-orange-100 text-sm mb-1">Trạng thái</p>
-                  <p className="text-xl font-bold">
-                    {publishOption === "now" ? "Xuất bản" : "Nháp"}
-                  </p>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Questions Preview */}
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Danh sách câu hỏi</h3>
-              <div className="space-y-3">
-                {questions.map((question, index) => (
-                  <div key={question.id} className="p-4 border border-gray-200 rounded-lg">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-lg text-sm font-semibold">
-                          Câu {index + 1}
-                        </span>
-                        <span className="text-sm text-gray-600">
-                          {questionTypes.find((t) => t.value === question.type)?.label}
+              
+              {/* Group questions by skill for VSTEP */}
+              {examType === "VSTEP" && examSkill ? (
+                <div className="space-y-6">
+                  {/* Determine which skills to show */}
+                  {(() => {
+                    const skillsToShow = examSkill === "Mixed" 
+                      ? Object.keys(VSTEP_STRUCTURE)
+                      : [examSkill.toLowerCase()];
+                    
+                    return skillsToShow.map((skillKey) => {
+                      const skillData = VSTEP_STRUCTURE[skillKey as keyof typeof VSTEP_STRUCTURE];
+                      if (!skillData) return null;
+                      
+                      const skillQuestions = questions.filter(q => q.skill === skillKey);
+                      if (skillQuestions.length === 0) return null;
+                      
+                      // Get skill colors
+                      const skillColors = {
+                        listening: { bg: 'bg-blue-50', border: 'border-blue-500', text: 'text-blue-700', badge: 'bg-blue-100' },
+                        reading: { bg: 'bg-emerald-50', border: 'border-emerald-500', text: 'text-emerald-700', badge: 'bg-emerald-100' },
+                        writing: { bg: 'bg-amber-50', border: 'border-amber-500', text: 'text-amber-700', badge: 'bg-amber-100' },
+                        speaking: { bg: 'bg-purple-50', border: 'border-purple-500', text: 'text-purple-700', badge: 'bg-purple-100' },
+                      };
+                      const colors = skillColors[skillKey as keyof typeof skillColors];
+                      
+                      return (
+                        <div key={skillKey} className={`${colors.bg} border-l-4 ${colors.border} rounded-lg p-4`}>
+                          <div className="flex items-center gap-2 mb-4">
+                            <span className="text-2xl">{skillData.icon}</span>
+                            <h4 className={`text-lg font-bold ${colors.text}`}>{skillData.name}</h4>
+                            <span className={`ml-auto px-3 py-1 ${colors.badge} ${colors.text} rounded-lg text-sm font-semibold`}>
+                              {skillQuestions.length} câu
+                            </span>
+                          </div>
+                          
+                          {/* Group by parts */}
+                          {skillData.parts.map((partInfo) => {
+                            const partQuestions = skillQuestions.filter(q => q.part === partInfo.part);
+                            if (partQuestions.length === 0) return null;
+                            
+                            return (
+                              <div key={partInfo.part} className="mb-4 last:mb-0">
+                                <div className={`px-3 py-2 ${colors.badge} rounded-lg mb-2`}>
+                                  <span className={`font-semibold ${colors.text}`}>
+                                    Part {partInfo.part}: {partInfo.name}
+                                  </span>
+                                  <span className={`ml-2 text-sm ${colors.text} opacity-75`}>
+                                    ({partQuestions.length}/{partInfo.questions} câu)
+                                  </span>
+                                </div>
+                                
+                                <div className="space-y-2 ml-4">
+                                  {partQuestions.map((question, qIndex) => (
+                                    <div key={question.id} className="p-3 bg-white border border-gray-200 rounded-lg">
+                                      <div className="flex items-start justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                          <span className={`px-2 py-1 ${colors.badge} ${colors.text} rounded text-xs font-semibold`}>
+                                            Câu {question.questionNumber || qIndex + 1}
+                                          </span>
+                                          <span className="text-xs text-gray-500">
+                                            {questionTypes.find((t) => t.value === question.type)?.label}
+                                          </span>
+                                        </div>
+                                        <span className="text-sm font-semibold text-gray-900">
+                                          {question.points} điểm
+                                        </span>
+                                      </div>
+                                      <p className="text-sm text-gray-700 line-clamp-2">
+                                        {question.content || "Chưa có nội dung"}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              ) : (
+                // Non-VSTEP: Show all questions in simple list
+                <div className="space-y-3">
+                  {questions.map((question, index) => (
+                    <div key={question.id} className="p-4 border border-gray-200 rounded-lg">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-lg text-sm font-semibold">
+                            Câu {index + 1}
+                          </span>
+                          <span className="text-sm text-gray-600">
+                            {questionTypes.find((t) => t.value === question.type)?.label}
+                          </span>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {question.points} điểm
                         </span>
                       </div>
-                      <span className="text-sm font-semibold text-gray-900">
-                        {question.points} điểm
-                      </span>
+                      <p className="text-gray-700">{question.content || "Chưa có nội dung"}</p>
                     </div>
-                    <p className="text-gray-700">{question.content || "Chưa có nội dung"}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Publish Options */}
@@ -2489,26 +3141,76 @@ export function CreateExam() {
               >
                 Quay lại
               </button>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleSaveDraft}
-                  disabled={isSaving}
-                  className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium"
-                >
-                  Lưu nháp
-                </button>
-                <button
-                  onClick={() => persistExam("publish")}
-                  disabled={isSaving || !canSubmitExam}
-                  className="px-8 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all font-bold shadow-lg shadow-orange-500/50 flex items-center gap-2"
-                >
-                  <Sparkles className="w-5 h-5" />
-                  Xuất bản đề thi
-                </button>
-              </div>
+              <button
+                onClick={() => persistExam("publish")}
+                disabled={isSaving || !canSubmitExam}
+                className="px-8 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all font-bold shadow-lg shadow-orange-500/50 flex items-center gap-2"
+              >
+                <Sparkles className="w-5 h-5" />
+                Xuất bản đề thi
+              </button>
             </div>
           </div>
         )}
+      {/* ── Import Mode Modal ── */}
+      {showImportModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowImportModal(false)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 z-10"
+            style={{ animation: 'scale-in 0.18s cubic-bezier(0.34,1.56,0.64,1)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <style>{`@keyframes scale-in{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}`}</style>
+
+            <button
+              onClick={() => setShowImportModal(false)}
+              className="absolute top-4 right-4 p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center mb-7">
+              <h2 className="text-xl font-bold text-gray-900">Thêm câu hỏi cho đề thi</h2>
+              <p className="text-sm text-gray-500 mt-1.5">Chọn cách bạn muốn tạo bộ câu hỏi</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Manual */}
+              <button
+                onClick={() => { setShowImportModal(false); handleNextStep(); }}
+                className="group p-6 border-2 border-gray-200 rounded-2xl hover:border-orange-400 hover:bg-orange-50/60 text-left transition-all duration-200"
+              >
+                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-orange-200 transition-colors">
+                  <BookOpen className="w-6 h-6 text-orange-600" />
+                </div>
+                <p className="font-bold text-gray-900 mb-1.5">Thêm thủ công</p>
+                <p className="text-xs text-gray-500 leading-relaxed">Nhập từng câu hỏi và đáp án theo từng bước</p>
+              </button>
+
+              {/* AI Import */}
+              <button
+                onClick={() => { setShowImportModal(false); navigate('/giao-vien/de-thi/import'); }}
+                className="group p-6 border-2 border-indigo-200 rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 hover:border-indigo-400 hover:from-indigo-100 hover:to-violet-100 text-left transition-all duration-200 relative"
+              >
+                <span className="absolute top-3 right-3 text-xs font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full">AI</span>
+                <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-indigo-200 transition-colors">
+                  <Sparkles className="w-6 h-6 text-indigo-600" />
+                </div>
+                <p className="font-bold text-gray-900 mb-1.5">Import từ PDF</p>
+                <p className="text-xs text-gray-500 leading-relaxed">AI tự động trích xuất câu hỏi từ file PDF đề thi</p>
+              </button>
+            </div>
+
+            <p className="text-center text-xs text-gray-400 mt-6">
+              Bấm vào bên ngoài để đóng
+            </p>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

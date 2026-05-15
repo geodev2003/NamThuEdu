@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('achievements', function (Blueprint $table) {
+        if (Schema::hasTable('achievements')) {
+            Schema::table('achievements', function (Blueprint $table) {
             // Add missing columns for gamification
             $table->string('slug')->nullable()->after('name');
             $table->enum('age_group', ['kids', 'teens', 'adults', 'all'])->default('all')->after('category');
@@ -20,6 +21,7 @@ return new class extends Migration
             $table->renameColumn('points', 'old_points');
             $table->renameColumn('criteria', 'old_criteria');
         });
+        }
         
         // Update existing data
         DB::table('achievements')->update([
@@ -30,10 +32,12 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('achievements', function (Blueprint $table) {
+        if (Schema::hasTable('achievements')) {
+            Schema::table('achievements', function (Blueprint $table) {
             $table->dropColumn(['slug', 'age_group', 'target_value', 'target_type', 'coin_reward']);
             $table->renameColumn('old_points', 'points');
             $table->renameColumn('old_criteria', 'criteria');
         });
+        }
     }
 };

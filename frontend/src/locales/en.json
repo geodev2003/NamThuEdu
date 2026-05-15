@@ -163,6 +163,96 @@
         "graded": "Graded",
         "pending": "Pending",
         "completionRate": "Completion Rate"
+      },
+      "table": {
+        "student": "Student",
+        "exam": "Exam",
+        "submittedAt": "Submitted At",
+        "score": "Score",
+        "status": "Status",
+        "actions": "Actions",
+        "new": "New",
+        "updatedAt": "Updated At"
+      },
+      "refreshing": "Refreshing...",
+      "detail": {
+        "title": "Grading Detail",
+        "back": "Back",
+        "breadcrumb": "Grading",
+        "student": "Student",
+        "exam": "Exam",
+        "attempt": "Attempt",
+        "submittedAt": "Submitted At",
+        "totalScore": "Total Score",
+        "outOf": "out of",
+        "saveGrades": "Save Grades",
+        "saving": "Saving...",
+        "saveDone": "Grades Saved",
+        "skills": {
+          "listening": "Listening",
+          "reading": "Reading",
+          "writing": "Writing",
+          "speaking": "Speaking"
+        },
+        "questionTypes": {
+          "multiple_choice": "Multiple Choice",
+          "essay": "Essay",
+          "fill_blank": "Fill in the Blank",
+          "true_false": "True/False"
+        },
+        "correct": "Correct",
+        "incorrect": "Incorrect",
+        "studentAnswer": "Student Answer",
+        "correctAnswer": "Correct Answer",
+        "points": "pts",
+        "feedback": "Feedback",
+        "feedbackPlaceholder": "Enter feedback...",
+        "aiScore": "AI Suggested Score",
+        "autoGraded": "Auto Graded",
+        "manual": "Manual",
+        "showAiSuggestion": "Show AI Suggestion",
+        "hideAiSuggestion": "Hide Suggestion",
+        "question": "Question",
+        "all": "All",
+        "subjective": "Essay",
+        "objective": "Objective",
+        "scoreBreakdown": "Score by Skill",
+        "generalInfo": "General Info"
+      },
+      "classReport": {
+        "title": "Class Report",
+        "export": "Export Report",
+        "selectClass": "Select Class",
+        "selectExam": "Select Exam",
+        "allClasses": "All Classes",
+        "allExams": "All Exams",
+        "avgScore": "Avg Score",
+        "highScore": "Highest",
+        "lowScore": "Lowest",
+        "passRate": "Pass Rate",
+        "table": {
+          "student": "Student",
+          "score": "Score",
+          "status": "Status",
+          "submittedAt": "Submitted At",
+          "actions": "Actions"
+        }
+      },
+      "statsPage": {
+        "title": "Grading Statistics",
+        "totalGraded": "Total Graded",
+        "pendingGrading": "Pending Grading",
+        "avgTime": "Avg Grading Time",
+        "trend": "Grading Trend",
+        "byExam": "By Exam",
+        "byClass": "By Class"
+      },
+      "reviewModal": {
+        "title": "Review Submission",
+        "close": "Close",
+        "feedback": "Teacher Feedback",
+        "score": "Score",
+        "status": "Review Status"
       }
     },
     "courses": {
@@ -183,6 +273,57 @@
         "activeCourses": "Active",
         "totalStudents": "Total Students",
         "completionRate": "Completion Rate"
+      },
+      "table": {
+        "course": "Course",
+        "students": "Students",
+        "classes": "Classes",
+        "status": "Status",
+        "startDate": "Start Date",
+        "actions": "Actions"
+      },
+      "create": {
+        "title": "Create New Course",
+        "back": "Back",
+        "name": "Course Name",
+        "namePlaceholder": "Enter course name...",
+        "description": "Description",
+        "level": "Level",
+        "category": "Category",
+        "duration": "Duration",
+        "submit": "Create Course",
+        "submitting": "Creating...",
+        "success": "Course created successfully",
+        "error": "Could not create course"
+      },
+      "edit": {
+        "title": "Edit Course",
+        "submit": "Save Changes",
+        "success": "Course updated",
+        "error": "Could not update course"
+      },
+      "detail": {
+        "title": "Course Details",
+        "back": "Back",
+        "edit": "Edit",
+        "tabs": {
+          "overview": "Overview",
+          "students": "Students",
+          "exams": "Exams",
+          "stats": "Statistics"
+        }
+      },
+      "manageStudents": {
+        "title": "Manage Course Students",
+        "add": "Add Student",
+        "remove": "Remove from Course",
+        "searchPlaceholder": "Search students..."
+      },
+      "courseStats": {
+        "title": "Course Statistics",
+        "avgScore": "Average Score",
+        "completionRate": "Completion Rate",
+        "totalSubmissions": "Total Submissions"
       }
     },
     "classes": {
@@ -190,8 +331,8 @@
       "allCourses": "All Courses",
       "allStatuses": "All Statuses",
       "searchPlaceholder": "Search classes...",
-      "createClass": "Create New Class",
-      "editClass": "Edit Class",
+      "btnCreateClass": "Create New Class",
+      "btnEditClass": "Edit Class",
       "status": {
         "active": "Active",
         "inactive": "Inactive"
@@ -200,6 +341,45 @@
         "totalClasses": "Total Classes",
         "activeClasses": "Active Classes",
         "totalStudents": "Total Students"
+      },
+      "table": {
+        "class": "Class",
+        "course": "Course",
+        "students": "Students",
+        "schedule": "Schedule",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "createClass": {
+        "title": "Create New Class",
+        "back": "Back",
+        "name": "Class Name",
+        "namePlaceholder": "Enter class name...",
+        "course": "Course",
+        "selectCourse": "Select Course",
+        "maxStudents": "Max Students",
+        "description": "Description",
+        "submit": "Create Class",
+        "submitting": "Creating...",
+        "success": "Class created successfully",
+        "error": "Could not create class"
+      },
+      "classStats": {
+        "title": "Class Statistics",
+        "avgScore": "Average Score",
+        "completionRate": "Completion Rate",
+        "activeStudents": "Active Students",
+        "totalAssignments": "Total Assignments"
+      },
+      "transferClass": {
+        "title": "Transfer Class",
+        "selectStudent": "Select Student",
+        "fromClass": "Current Class",
+        "toClass": "New Class",
+        "submit": "Transfer",
+        "submitting": "Transferring...",
+        "success": "Class transferred successfully",
+        "error": "Could not transfer class"
       }
     },
     "assignments": {
@@ -210,6 +390,76 @@
       "targetType": {
         "class": "Class",
         "student": "Student"
+      },
+      "table": {
+        "exam": "Exam",
+        "target": "Target",
+        "dueDate": "Due Date",
+        "attempts": "Attempts",
+        "completed": "Completed",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "expired": "Expired",
+        "draft": "Draft"
+      },
+      "create": {
+        "title": "New Assignment",
+        "back": "Back",
+        "selectExam": "Select Exam",
+        "selectTarget": "Select Target",
+        "dueDate": "Due Date",
+        "maxAttempts": "Max Attempts",
+        "instructions": "Instructions",
+        "instructionsPlaceholder": "Enter instructions for students...",
+        "submit": "Assign",
+        "submitting": "Assigning...",
+        "success": "Assignment created successfully!",
+        "error": "Could not create assignment"
+      },
+      "progress": {
+        "title": "Assignment Progress",
+        "back": "Back",
+        "dueDate": "Due Date",
+        "stats": {
+          "completed": "Completed",
+          "pending": "Not Submitted",
+          "overdue": "Overdue",
+          "graded": "Graded"
+        },
+        "table": {
+          "student": "Student",
+          "status": "Status",
+          "score": "Score",
+          "submittedAt": "Submitted At",
+          "attempts": "Attempts",
+          "actions": "Actions"
+        },
+        "sendReminder": "Send Reminder",
+        "viewDetail": "View Detail"
+      },
+      "assignmentStats": {
+        "title": "Assignment Statistics",
+        "totalAssigned": "Total Assigned",
+        "completionRate": "Completion Rate",
+        "avgScore": "Average Score",
+        "overdueRate": "Overdue Rate"
+      },
+      "bulk": {
+        "title": "Bulk Assignment",
+        "selectedCount": "{{count}} students selected",
+        "submit": "Assign to {{count}} students"
+      },
+      "reminder": {
+        "title": "Send Reminder",
+        "message": "Message",
+        "messagePlaceholder": "Enter reminder message...",
+        "send": "Send",
+        "cancel": "Cancel",
+        "success": "Reminder sent",
+        "error": "Could not send reminder"
       }
     },
     "common": {
@@ -228,6 +478,364 @@
       "autoSave": "Auto Save",
       "saveChanges": "Save Changes",
       "cancelAction": "Cancel"
+    },
+    "students": {
+      "management": {
+        "title": "Student Management",
+        "subtitle": "Manage your students",
+        "createStudent": "Add Student",
+        "importStudents": "Import",
+        "searchPlaceholder": "Search by name or phone...",
+        "filter": {
+          "all": "All",
+          "ageGroup": "Age Group",
+          "course": "Course",
+          "status": "Status"
+        },
+        "table": {
+          "name": "Name",
+          "phone": "Phone",
+          "ageGroup": "Age Group",
+          "course": "Course",
+          "status": "Status",
+          "lastActive": "Last Active",
+          "actions": "Actions"
+        },
+        "ageGroups": {
+          "kids": "Kids (6-12)",
+          "teens": "Teens (13-17)",
+          "adults": "Adults (18+)"
+        },
+        "status": {
+          "active": "Active",
+          "inactive": "Inactive",
+          "suspended": "Suspended"
+        },
+        "actions": {
+          "view": "View",
+          "edit": "Edit",
+          "delete": "Delete",
+          "restore": "Restore"
+        },
+        "loading": "Loading students...",
+        "empty": "No students found",
+        "error": "Could not load students",
+        "stats": {
+          "total": "Total",
+          "active": "Active",
+          "inactive": "Inactive",
+          "new": "New this month"
+        },
+        "deleteTitle": "Delete Student",
+        "deleteMessage": "Are you sure you want to delete \"{{name}}\"?",
+        "confirmDelete": "Delete",
+        "cancel": "Cancel",
+        "toast": {
+          "deleteSuccess": "Student deleted successfully",
+          "deleteError": "Could not delete student",
+          "filtersCleared": "Filters cleared"
+        }
+      },
+      "addStudent": {
+        "title": "Add New Student",
+        "back": "Back",
+        "name": "Full Name",
+        "namePlaceholder": "Enter full name...",
+        "phone": "Phone Number",
+        "phonePlaceholder": "Enter phone...",
+        "password": "Password",
+        "ageGroup": "Age Group",
+        "selectAgeGroup": "Select age group",
+        "course": "Course",
+        "selectCourse": "Select course",
+        "submit": "Add Student",
+        "submitting": "Adding...",
+        "success": "Student added successfully",
+        "error": "Could not add student"
+      },
+      "importStudents": {
+        "title": "Import Students",
+        "back": "Back",
+        "downloadTemplate": "Download Template",
+        "uploadFile": "Upload File",
+        "uploadHint": "Excel file (.xlsx) max 20MB",
+        "preview": "Preview",
+        "import": "Import",
+        "importing": "Importing...",
+        "success": "{{count}} students imported successfully",
+        "error": "Could not import",
+        "dragDrop": "Drag and drop file here or",
+        "browse": "browse"
+      }
+    },
+    "monitoring": {
+      "title": "Live Monitoring",
+      "live": "LIVE",
+      "lastUpdated": "Updated {{seconds}}s ago",
+      "timeExpired": "Time Up",
+      "secondsAgo": "{{seconds}}s ago",
+      "minutesAgo": "{{minutes}}m ago",
+      "stats": {
+        "activeStudents": "Active Students",
+        "totalSessions": "Total Sessions Today",
+        "avgCompletion": "Avg Completion",
+        "connectionIssues": "Connection Issues"
+      },
+      "filters": {
+        "searchPlaceholder": "Search students...",
+        "allExams": "All Exams",
+        "allClasses": "All Classes",
+        "activeOnly": "Active only",
+        "showAll": "Show all"
+      },
+      "session": {
+        "exam": "Exam",
+        "progress": "Progress",
+        "timeLeft": "Time Left",
+        "timeElapsed": "Elapsed",
+        "answers": "Answered",
+        "connection": "Connection",
+        "lastSeen": "Last Activity",
+        "disconnectCount": "Disconnections",
+        "viewDetail": "View Detail",
+        "sendMessage": "Send Message"
+      },
+      "connection": {
+        "connected": "Connected",
+        "disconnected": "Disconnected"
+      },
+      "viewMode": {
+        "grid": "Grid",
+        "list": "List"
+      },
+      "empty": {
+        "title": "No active sessions",
+        "subtitle": "No students are currently taking an exam"
+      },
+      "loading": "Loading...",
+      "errorTitle": "Could not load data",
+      "toast": {
+        "messageSent": "Message sent successfully"
+      },
+      "studentDetail": {
+        "title": "Session Detail",
+        "back": "Back",
+        "connectionLog": "Connection Log",
+        "answers": "Answers",
+        "performance": "Performance"
+      },
+      "connectionHistory": {
+        "title": "Connection History",
+        "event": "Event",
+        "timestamp": "Timestamp",
+        "duration": "Duration",
+        "connected": "Connected",
+        "disconnected": "Disconnected"
+      },
+      "realtimeStats": {
+        "title": "Realtime Statistics",
+        "activeSessions": "Active Sessions",
+        "completedToday": "Completed Today",
+        "avgScore": "Average Score"
+      }
+    },
+    "reports": {
+      "title": "Reports",
+      "overview": {
+        "title": "Reports Overview",
+        "subtitle": "Teaching performance statistics",
+        "dateRange": {
+          "7days": "Last 7 days",
+          "30days": "Last 30 days",
+          "90days": "Last 90 days",
+          "thisYear": "This year"
+        },
+        "stats": {
+          "totalStudents": "Total Students",
+          "totalExams": "Total Exams",
+          "gradedSubmissions": "Graded Submissions",
+          "avgScore": "Average Score"
+        },
+        "loading": "Loading reports...",
+        "error": "Could not load reports",
+        "loadError": "Error loading data",
+        "connectionError": "Connection error"
+      },
+      "studentProgress": {
+        "title": "Student Progress",
+        "selectStudent": "Select Student",
+        "selectClass": "Select Class",
+        "period": "Period",
+        "skillProgress": "Skill Progress",
+        "testHistory": "Test History"
+      },
+      "analysis": {
+        "title": "Results Analysis",
+        "filterExam": "Filter by Exam",
+        "filterClass": "Filter by Class",
+        "scoreDistribution": "Score Distribution",
+        "skillBreakdown": "Skill Breakdown",
+        "timeAnalysis": "Time Analysis"
+      },
+      "export": {
+        "title": "Export Reports",
+        "format": "Format",
+        "dateRange": "Date Range",
+        "includeCharts": "Include Charts",
+        "exportExcel": "Export Excel",
+        "exportPDF": "Export PDF",
+        "exporting": "Exporting...",
+        "success": "Report exported successfully",
+        "error": "Could not export report"
+      }
+    },
+    "exams": {
+      "title": "Exam Bank",
+      "allExams": {
+        "title": "All Exams",
+        "searchPlaceholder": "Search exams...",
+        "filterType": "Exam Type",
+        "filterStatus": "Status",
+        "allTypes": "All Types",
+        "allStatuses": "All Statuses",
+        "loading": "Loading exams...",
+        "empty": "No exams yet",
+        "createFirst": "Create your first exam",
+        "questions": "questions",
+        "minutes": "minutes",
+        "preview": "Preview",
+        "edit": "Edit",
+        "delete": "Delete",
+        "duplicate": "Duplicate",
+        "assign": "Assign"
+      },
+      "myExams": {
+        "title": "My Exams",
+        "searchPlaceholder": "Search my exams..."
+      },
+      "detail": {
+        "title": "Exam Details",
+        "back": "Back",
+        "edit": "Edit",
+        "preview": "Preview",
+        "assign": "Assign",
+        "delete": "Delete",
+        "questions": "Questions",
+        "settings": "Settings",
+        "stats": "Statistics"
+      },
+      "create": {
+        "title": "Create New Exam",
+        "titlePlaceholder": "Enter exam title...",
+        "descPlaceholder": "Exam description...",
+        "duration": "Duration (minutes)",
+        "totalPoints": "Total Points",
+        "save": "Save Exam",
+        "publish": "Publish",
+        "addQuestion": "Add Question",
+        "importQuestion": "Import Questions"
+      },
+      "status": {
+        "draft": "Draft",
+        "published": "Published",
+        "archived": "Archived"
+      },
+      "type": {
+        "general": "General",
+        "vstep": "VSTEP",
+        "kids": "Kids",
+        "ielts": "IELTS",
+        "toeic": "TOEIC"
+      }
+    },
+    "settingsPage": {
+      "title": "Settings",
+      "subtitle": "Manage your profile and system preferences",
+      "tabs": {
+        "profile": "Profile",
+        "account": "Account",
+        "notifications": "Notifications",
+        "appearance": "Appearance",
+        "language": "Language",
+        "pdfCutter": "PDF Cutter"
+      },
+      "profile": {
+        "title": "Personal Information",
+        "changeAvatar": "Change Photo",
+        "name": "Full Name",
+        "email": "Email",
+        "phone": "Phone Number",
+        "address": "Address",
+        "bio": "About Me",
+        "namePlaceholder": "Enter full name...",
+        "bioPlaceholder": "Write a few lines about yourself...",
+        "save": "Save Changes",
+        "saving": "Saving...",
+        "saveSuccess": "Profile updated successfully!",
+        "saveError": "Could not update profile",
+        "loadError": "Could not load user info"
+      },
+      "account": {
+        "title": "Account Settings",
+        "changePassword": "Change Password",
+        "currentPassword": "Current Password",
+        "newPassword": "New Password",
+        "confirmPassword": "Confirm Password",
+        "save": "Change Password",
+        "success": "Password changed successfully",
+        "error": "Could not change password"
+      },
+      "notifications": {
+        "title": "Notification Settings",
+        "newSubmission": "New submissions",
+        "gradingReminder": "Grading reminders",
+        "systemNotifications": "System notifications",
+        "save": "Save Settings"
+      },
+      "appearance": {
+        "title": "Appearance",
+        "theme": "Color Theme",
+        "density": "Display Density"
+      },
+      "language": {
+        "title": "Language & Region",
+        "displayLanguage": "Display Language",
+        "timezone": "Timezone",
+        "dateFormat": "Date Format",
+        "save": "Save Settings"
+      },
+      "logout": {
+        "label": "Logout",
+        "confirm": "Are you sure you want to logout?",
+        "yes": "Logout",
+        "no": "Cancel"
+      },
+      "loading": "Loading..."
+    },
+    "practice": {
+      "title": "Practice",
+      "subtitle": "Manage practice sessions for students",
+      "tabs": {
+        "all": "All",
+        "byTopic": "By Topic",
+        "byTemplate": "By Template",
+        "random": "Random"
+      },
+      "createSession": "Create Session",
+      "sessionList": "Session List",
+      "comingSoon": "Feature coming soon",
+      "empty": {
+        "title": "No practice sessions",
+        "subtitle": "Create the first practice session for your students"
+      },
+      "loading": "Loading...",
+      "session": {
+        "students": "students",
+        "questions": "questions",
+        "duration": "minutes",
+        "start": "Start",
+        "viewResult": "View Results"
+      }
     }
   },
   "assignments": {
@@ -857,6 +1465,212 @@
       }
     }
   },
+  "vstep": {
+    "full": {
+      "title": "VSTEP Full Test",
+      "subtitle": "Create full 4-skill test: Reading • Listening • Writing • Speaking",
+      "skills": {
+        "reading": "Reading",
+        "listening": "Listening",
+        "writing": "Writing",
+        "speaking": "Speaking"
+      },
+      "progress": {
+        "skills": "skills",
+        "completed": "completed",
+        "remaining": "{{count}} skills remaining"
+      },
+      "actions": {
+        "back": "Back",
+        "publish": "Publish Full Test",
+        "publishSuccess": "VSTEP Full Test published successfully!",
+        "publishError": "Error publishing test",
+        "completeAll": "Please complete all 4 skills before publishing ({{completed}}/4)",
+        "skillCompleted": "{{skill}} completed!"
+      },
+      "examId": "Exam ID"
+    },
+    "reading": {
+      "title": "New VSTEP Reading Test",
+      "subtitle": "4 Parts - 40 questions - 60 minutes",
+      "examIdLabel": "ID",
+      "parts": {
+        "1": { "description": "Short Text" },
+        "2": { "description": "Descriptive Text" },
+        "3": { "description": "Argumentative Text" },
+        "4": { "description": "Academic Text" }
+      },
+      "partTab": {
+        "words": "words",
+        "questions": "questions"
+      },
+      "passage": {
+        "title": "Passage",
+        "placeholder": "Enter passage here...",
+        "wordCount": "words",
+        "wordRange": "({{min}}-{{max}} words)"
+      },
+      "questions": {
+        "title": "Questions",
+        "count": "({{completed}}/10 questions)",
+        "label": "Question",
+        "placeholder": "Enter question...",
+        "answerPlaceholder": "Option {{option}}",
+        "tip": "💡 Tip:",
+        "tipText": "Double-click an answer field to set it as the correct answer",
+        "doubleClickTitle": "Double-click to set as correct answer"
+      },
+      "actions": {
+        "savePart": "Save Part",
+        "saving": "Saving...",
+        "publish": "Publish",
+        "publishing": "Publishing...",
+        "needQuestion": "Please complete at least 1 question"
+      },
+      "loading": "Loading exam...",
+      "toast": {
+        "loadSuccess": "Exam loaded successfully",
+        "savePartSuccess": "Part {{part}} saved ({{count}} questions){{warning}}",
+        "savePartError": "Cannot save Part {{part}}",
+        "publishSuccess": "Exam published successfully!",
+        "publishError": "Cannot publish exam. Please try again.",
+        "noQuestion": "Part {{part}}: Please complete at least 1 question",
+        "invalidWordCount": "Part {{part}}: Invalid word count ({{current}}/{{min}}-{{max}})",
+        "missingQuestion": "Part {{part}}, Question {{num}}: Question text is missing",
+        "missingOptions": "Part {{part}}, Question {{num}}: Please fill in all 4 options",
+        "wordCountLow": " ⚠️ Passage is {{count}} words short ({{current}}/{{min}}-{{max}})",
+        "wordCountHigh": " ⚠️ Passage is {{count}} words over limit ({{current}}/{{min}}-{{max}})",
+        "noPassage": " ⚠️ No passage entered"
+      }
+    },
+    "listening": {
+      "title": "New VSTEP Listening Test",
+      "subtitle": "3 Parts - 35 questions - 40 minutes",
+      "examIdLabel": "ID",
+      "parts": {
+        "1": { "description": "Announcements" },
+        "2": { "description": "Dialogues" },
+        "3": { "description": "Lectures" }
+      },
+      "partTab": {
+        "questions": "questions"
+      },
+      "audio": {
+        "title": "Audio",
+        "uploadLabel": "Upload Audio File",
+        "uploadClick": "Click to select audio file",
+        "uploadHint": "MP3, WAV, or other audio formats",
+        "duration": "✓ Duration: {{duration}}",
+        "transcriptLabel": "Transcript (Optional)",
+        "transcriptPlaceholder": "Enter audio transcript (optional)..."
+      },
+      "questions": {
+        "title": "Questions",
+        "count": "({{completed}}/{{total}} questions)",
+        "label": "Question",
+        "placeholder": "Enter question...",
+        "answerPlaceholder": "Option {{option}}",
+        "tip": "💡 Tip:",
+        "tipText": "Double-click an answer field to set it as the correct answer"
+      },
+      "actions": {
+        "savePart": "Save Part",
+        "saving": "Saving...",
+        "publish": "Publish",
+        "publishing": "Publishing..."
+      },
+      "loading": "Loading exam...",
+      "toast": {
+        "loadSuccess": "Exam loaded successfully",
+        "audioError": "Please select an audio file",
+        "audioSuccess": "Audio loaded ({{duration}})",
+        "savePartSuccess": "Part {{part}} saved ({{count}} questions)",
+        "savePartError": "Cannot save Part {{part}}",
+        "noQuestion": "Part {{part}}: Please complete at least 1 question",
+        "noAudio": "Part {{part}}: Please upload an audio file",
+        "missingAudio": "Part {{part}}: No audio uploaded",
+        "missingQuestion": "Part {{part}}, Question {{num}}: Question text is missing",
+        "missingOptions": "Part {{part}}, Question {{num}}: Please fill in all 4 options",
+        "publishSuccess": "Exam published successfully!",
+        "publishError": "Cannot publish exam. Please try again."
+      }
+    },
+    "writing": {
+      "title": "New VSTEP Writing Test",
+      "subtitle": "2 Tasks - 60 minutes",
+      "examIdLabel": "ID",
+      "tasks": {
+        "1": { "description": "Email/Letter" },
+        "2": { "description": "Essay" }
+      },
+      "taskTab": {
+        "words": "words",
+        "minutes": "minutes"
+      },
+      "prompt": {
+        "title": "Prompt",
+        "placeholder": "Enter the writing prompt here...",
+        "requirement": "Required: {{words}} words",
+        "time": "Time: {{minutes}} minutes"
+      },
+      "actions": {
+        "saveTask": "Save Task",
+        "saving": "Saving...",
+        "publish": "Publish",
+        "publishing": "Publishing..."
+      },
+      "loading": "Loading exam...",
+      "toast": {
+        "loadSuccess": "Exam loaded successfully",
+        "saveTaskSuccess": "Task {{task}} saved",
+        "saveTaskError": "Cannot save Task {{task}}",
+        "noPrompt": "Task {{task}}: Please enter the prompt",
+        "missingPrompt": "Task {{task}}: Prompt is missing",
+        "publishSuccess": "Exam published successfully!",
+        "publishError": "Cannot publish exam. Please try again."
+      }
+    },
+    "speaking": {
+      "title": "New VSTEP Speaking Test",
+      "subtitle": "3 Parts - 12 minutes",
+      "examIdLabel": "ID",
+      "parts": {
+        "1": { "description": "Interview" },
+        "2": { "description": "Long Turn" },
+        "3": { "description": "Discussion" }
+      },
+      "partTab": {
+        "minutes": "minutes"
+      },
+      "questions": {
+        "title": "Questions",
+        "count": "({{completed}}/{{total}} questions)",
+        "label": "Question",
+        "placeholder": "Enter question...",
+        "prepTime": "Preparation time (seconds)",
+        "responseTime": "Response time (seconds)",
+        "addQuestion": "Add question",
+        "deleteTitle": "Delete question",
+        "timeLabel": "Time: {{minutes}} minutes"
+      },
+      "actions": {
+        "savePart": "Save Part",
+        "saving": "Saving...",
+        "publish": "Publish",
+        "publishing": "Publishing..."
+      },
+      "loading": "Loading exam...",
+      "toast": {
+        "loadSuccess": "Exam loaded successfully",
+        "savePartSuccess": "Part {{part}} saved ({{count}} questions)",
+        "savePartError": "Cannot save Part {{part}}",
+        "noQuestion": "Part {{part}}: Please add at least 1 question",
+        "missingQuestion": "Part {{part}}: No questions added",
+        "publishSuccess": "Exam published successfully!",
+        "publishError": "Cannot publish exam. Please try again."
+      }
+    }
+  },
   "auth": {
     "login": {
       "title": "Welcome back! 👋",
@@ -960,6 +1774,154 @@
         "notAdmin": "This account does not have admin privileges.",
         "failed": "Login failed."
       }
+    }
+  },
+  "blog": {
+    "list": {
+      "title": "Blog Management",
+      "subtitle": "Create and manage your blog content",
+      "btnStats": "Statistics",
+      "btnCategories": "Categories",
+      "btnCreate": "Create Post",
+      "searchPlaceholder": "Search posts...",
+      "btnFilter": "Filter",
+      "filterStatus": "Status",
+      "filterType": "Post Type",
+      "loading": "Loading posts...",
+      "errorTitle": "Could not load posts",
+      "btnRetry": "Retry",
+      "emptyTitle": "No posts yet",
+      "emptySubtitle": "Start creating your first post today!",
+      "btnCreateFirst": "Create first post",
+      "noResultTitle": "No results found",
+      "noResultSubtitle": "Try changing your search or filters",
+      "btnClearFilter": "Clear filters",
+      "btnView": "View",
+      "btnEdit": "Edit",
+      "btnSubmit": "Submit for review",
+      "btnDelete": "Delete",
+      "rejectReason": "Rejection reason:",
+      "deleteTitle": "Confirm delete",
+      "deleteMessage": "Are you sure you want to delete this post? This action cannot be undone.",
+      "btnCancel": "Cancel",
+      "btnConfirmDelete": "Delete post",
+      "toastDeleted": "Post deleted successfully",
+      "toastDeleteError": "Could not delete post",
+      "toastSubmitted": "Post submitted for review",
+      "toastSubmitError": "Could not submit post",
+      "toastLoadError": "Could not load posts"
+    },
+    "detail": {
+      "loading": "Loading post...",
+      "notFound": "Post not found",
+      "btnBack": "Back to list",
+      "breadcrumb": "Posts",
+      "btnSubmit": "Submit for review",
+      "btnEdit": "Edit",
+      "btnDelete": "Delete",
+      "author": "Author",
+      "words": "words",
+      "views": "views",
+      "likes": "likes",
+      "rejectReason": "Rejection reason:",
+      "deleteTitle": "Confirm delete",
+      "deleteMessage": "Are you sure you want to delete this post? This action cannot be undone.",
+      "btnCancel": "Cancel",
+      "btnConfirmDelete": "Delete post",
+      "toastDeleted": "Post deleted successfully",
+      "toastDeleteError": "Could not delete post",
+      "toastSubmitted": "Post submitted for review",
+      "toastSubmitError": "Could not submit post"
+    },
+    "create": {
+      "breadcrumb": "Posts",
+      "breadcrumbCreate": "Create",
+      "breadcrumbEdit": "Edit",
+      "titleCreate": "Create New Post",
+      "titleEdit": "Edit Post",
+      "btnBack": "Back",
+      "inputTitlePlaceholder": "Enter post title...",
+      "contentPlaceholder": "Start writing your content...",
+      "words": "words",
+      "characters": "characters",
+      "btnSaveDraft": "Save Draft",
+      "btnPreview": "Preview",
+      "btnSubmitReview": "Submit for Review",
+      "btnSubmitting": "Submitting...",
+      "categoryGeneral": "General",
+      "sectionPostType": "Post Type",
+      "sectionSettings": "Settings",
+      "labelCategory": "Category",
+      "labelSlug": "URL Slug",
+      "slugPlaceholder": "url-slug-post",
+      "sectionThumbnail": "Thumbnail Image",
+      "thumbnailDesc": "Featured image for the post (1200x630px)",
+      "btnChangeImage": "Change Image",
+      "btnRemove": "Remove",
+      "uploadPrompt": "Click to select image",
+      "uploadHint": "JPG, PNG, GIF, WebP (max 20MB)",
+      "labelMetaDesc": "Meta Description",
+      "metaDescPlaceholder": "Brief description of the post...",
+      "labelKeywords": "Keywords",
+      "keywordsPlaceholder": "grammar, english, tips...",
+      "infoDraftTitle": "Save Draft",
+      "infoDraftDesc": "Post will be saved and can be edited later",
+      "infoSubmitTitle": "Submit for Review",
+      "infoSubmitDesc": "Post will be sent to Admin for approval",
+      "infoNotification": "You will be notified when the post is approved or rejected",
+      "previewTitle": "Preview Post",
+      "closePreview": "Close Preview",
+      "titlePlaceholder": "Post Title",
+      "contentPreview": "Post content will be displayed here...",
+      "errorImageType": "Please select an image file (JPG, PNG, GIF, WebP)",
+      "errorImageSize": "Image size must not exceed 20MB",
+      "successImageUpload": "Image uploaded successfully",
+      "errorImageRead": "Could not read image file",
+      "errorTitleRequired": "Please enter post title",
+      "errorContentRequired": "Please enter post content",
+      "successDraft": "Draft saved successfully",
+      "successSubmit": "Post submitted for review successfully",
+      "errorSave": "Could not save post",
+      "btnAddType": "Add Type",
+      "addTypeTitle": "Add New Post Type",
+      "labelTypeName": "Type Name",
+      "typeNamePlaceholder": "e.g., Pronunciation, Listening...",
+      "typeAutoSlugHint": "Type code will be auto-generated from name (e.g., Pronunciation → pronunciation)",
+      "btnCancel": "Cancel",
+      "btnAddTypeConfirm": "Add Type",
+      "errorTypeRequired": "Please enter all post type information",
+      "errorTypeExists": "This post type already exists",
+      "successTypeAdded": "New post type added successfully",
+      "errorLoadTypes": "Could not load post types",
+      "errorTypeCreate": "Could not create new post type"
+    },
+    "stats": {
+      "total": "Total",
+      "draft": "Draft",
+      "pending": "Pending",
+      "active": "Published",
+      "inactive": "Rejected"
+    },
+    "status": {
+      "draft": "Draft",
+      "pending": "Pending",
+      "active": "Published",
+      "inactive": "Rejected"
+    },
+    "type": {
+      "grammar": "Grammar",
+      "tips": "Tips",
+      "vocabulary": "Vocabulary",
+      "teaching": "Teaching",
+      "news": "News",
+      "all": "All"
+    },
+    "filter": {
+      "all": "All",
+      "draft": "Draft",
+      "pending": "Pending",
+      "active": "Published",
+      "inactive": "Rejected"
     }
   }
 }

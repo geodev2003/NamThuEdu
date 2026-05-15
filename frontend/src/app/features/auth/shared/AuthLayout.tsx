@@ -1,15 +1,13 @@
 import { Outlet } from "react-router";
 import { Header } from "../../public/components/Header";
-import { Footer } from "../../public/components/Footer";
 
 export function AuthLayout() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-orange-50 to-amber-50">
+    <div className="flex h-screen flex-col overflow-hidden bg-white">
       <Header />
-      <main className="mx-auto flex w-full max-w-7xl flex-1 items-center justify-center px-4 py-8 md:py-12">
+      <main className="flex flex-1 items-center justify-center overflow-hidden px-4">
         <Outlet />
       </main>
-      <Footer />
     </div>
   );
 }

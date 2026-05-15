@@ -24,7 +24,12 @@ class CreateNamthueduPostsTable extends Migration
             $table->text('pThumbnail')->nullable();
             $table->integer('pView')->default(0);
             $table->integer('pLike')->default(0);
-            $table->enum('pStatus', ['active', 'inactive', 'draft'])->default('draft');
+            $table->enum('pStatus', ['active', 'inactive', 'draft', 'pending'])->default('draft');
+            $table->unsignedBigInteger('pApproved_by')->nullable();
+            $table->timestamp('pApproved_at')->nullable();
+            $table->unsignedBigInteger('pRejected_by')->nullable();
+            $table->timestamp('pRejected_at')->nullable();
+            $table->text('pReject_reason')->nullable();
             $table->timestamp('pCreated_at')->useCurrent();
             $table->timestamp('pDeleted_at')->nullable();
             $table->timestamp('pUpdated_at')->nullable();

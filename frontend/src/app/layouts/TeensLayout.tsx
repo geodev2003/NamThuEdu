@@ -10,6 +10,8 @@
 
 import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
+import { usePushNotification } from '../../hooks/usePushNotification';
+import { NotificationPermissionBanner } from '../../components/NotificationPermissionBanner';
 import { 
   Home, 
   BookOpen, 
@@ -61,6 +63,7 @@ const TeensNavItem = ({
 };
 
 export function TeensLayout() {
+  const push = usePushNotification();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -87,6 +90,7 @@ export function TeensLayout() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+      <NotificationPermissionBanner push={push} />
       {/* Mobile Header */}
       <div className="lg:hidden bg-white shadow-lg p-4 border-b border-indigo-200">
         <div className="flex items-center justify-between">

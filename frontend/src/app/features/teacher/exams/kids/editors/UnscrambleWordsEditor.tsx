@@ -67,8 +67,8 @@ const UnscrambleWordsEditor: React.FC<UnscrambleWordsEditorProps> = ({
       return;
     }
 
-    if (blob.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    if (blob.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -373,7 +373,7 @@ const UnscrambleWordsEditor: React.FC<UnscrambleWordsEditorProps> = ({
                             Nhấn để tải ảnh hoặc Ctrl+V
                           </p>
                           <p className="mt-1 text-xs text-gray-500">
-                            PNG, JPG (tối đa 5MB)
+                            PNG, JPG (tối đa 20MB)
                           </p>
                           {focusedItemIndex === index && (
                             <p className="mt-2 text-xs font-bold text-purple-600 animate-pulse">

@@ -98,8 +98,8 @@ const ListenTickEditor: React.FC<ListenTickEditorProps> = ({
       return;
     }
 
-    if (blob.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    if (blob.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -126,8 +126,8 @@ const ListenTickEditor: React.FC<ListenTickEditorProps> = ({
       return;
     }
 
-    if (blob.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    if (blob.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -191,8 +191,8 @@ const ListenTickEditor: React.FC<ListenTickEditorProps> = ({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -218,8 +218,8 @@ const ListenTickEditor: React.FC<ListenTickEditorProps> = ({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -371,7 +371,7 @@ const ListenTickEditor: React.FC<ListenTickEditorProps> = ({
                 <p className="mb-2 text-sm text-gray-500">
                   <span className="font-semibold">{isUploading ? '⏳ Đang tải lên...' : 'Nhấn để tải hình ảnh lên'}</span>
                 </p>
-                <p className="text-xs text-gray-500">PNG, JPG (tối đa 5MB)</p>
+                <p className="text-xs text-gray-500">PNG, JPG (tối đa 20MB)</p>
                 <p className="text-xs text-indigo-600 font-bold mt-2 animate-pulse">
                   💡 Hoặc Ctrl+V để dán ảnh từ clipboard
                 </p>

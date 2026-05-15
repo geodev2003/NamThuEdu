@@ -4,33 +4,22 @@ import { studentApi } from "../../../../services/studentApi";
 
 const PURPLE = "#7C3AED";
 
-type Reward = {
-  id: string;
-  title: string;
-  desc: string;
-  needXp: number;
-  unlocked: boolean;
-};
-
-function rewardList(currentXp: number): Reward[] {
-  const items = [
-    { id: "badge-1", title: "Huy hiệu Khởi động", desc: "Hoàn thành 3 bài đầu tiên", needXp: 200 },
-    { id: "badge-2", title: "Huy hiệu Chuyên cần", desc: "Streak 7 ngày liên tiếp", needXp: 700 },
-    { id: "theme-1", title: "Giao diện Galaxy", desc: "Mở khóa theme đặc biệt", needXp: 1200 },
-    { id: "avatar-1", title: "Avatar Premium", desc: "Bộ avatar giới hạn", needXp: 1800 },
-    { id: "coupon-1", title: "Voucher 20%", desc: "Giảm giá khóa học nâng cao", needXp: 2500 },
-  ];
-  return items.map((it) => ({ ...it, unlocked: currentXp >= it.needXp }));
-}
-
 export function StudentRewards() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["student", "progress", "rewards"],
-    queryFn: () => studentApi.getProgress(),
+  const { data: gamiData, isLoading: gamiLoading } = useQuery({
+    queryKey: ["student", "gamification", "overview"],
+    queryFn: () => studentApi.getGamificationOverview(),
   });
 
-  const xp = Number((data as any)?.data?.data?.gamification?.xp ?? 1240);
-  const rewards = rewardList(xp);
+  const { data: achieveData, isLoading: achieveLoading } = useQuery({
+    queryKey: ["student", "gamification", "achievements"],
+    queryFn: () => studentApi.getAchievements(),
+  });
+
+  const isLoading = gamiLoading || achieveLoading;
+  const xp = Number((gamiData as any)?.data?.data?.stats?.total_points ?? 0);
+  const achievementsRaw: any[] = (achieveData as any)?.data?.data?.achievements ?? [];
+  const completedCount = (achieveData as any)?.data?.data?.completed ?? 0;
+  const totalCount = (achieveData as any)?.data?.data?.total ?? 0;
 
   if (isLoading) {
     return (
@@ -56,55 +45,89 @@ export function StudentRewards() {
           <h1 className="text-2xl font-extrabold text-slate-800">Phần thưởng học tập</h1>
         </div>
         <p className="text-sm text-slate-500 mt-2">Tích lũy XP để mở khóa badge, giao diện và ưu đãi học tập.</p>
-        <div className="mt-4 rounded-2xl bg-white p-4 border border-purple-100">
-          <p className="text-xs text-slate-500">XP hiện tại</p>
-          <p className="text-3xl font-black text-slate-800">{xp} XP</p>
+        <div className="mt-4 rounded-2xl bg-white p-4 border border-purple-100 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-slate-500">XP hiện tại</p>
+            <p className="text-3xl font-black text-slate-800">{xp.toLocaleString()} XP</p>
+          </div>
+          {totalCount > 0 && (
+            <div className="text-right">
+              <p className="text-xs text-slate-500">Thành tựu</p>
+              <p className="text-xl font-black text-purple-600">{completedCount}/{totalCount}</p>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {rewards.map((reward) => (
-          <div
-            key={reward.id}
-            className="rounded-2xl p-4 bg-white"
-            style={{
-              border: reward.unlocked ? `1.5px solid ${PURPLE}55` : "1.5px solid #E5E7EB",
-              boxShadow: reward.unlocked ? "0 8px 24px rgba(124,58,237,0.10)" : "none",
-            }}
-          >
-            <div className="flex items-start gap-3">
+      {achievementsRaw.length === 0 ? (
+        <div className="rounded-2xl bg-white p-8 text-center border border-gray-100">
+          <Award className="w-10 h-10 mx-auto text-gray-300 mb-2" />
+          <p className="text-sm text-slate-500">Chưa có thành tựu nào. Hãy bắt đầu học!</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {achievementsRaw.map((achievement: any) => {
+            const unlocked = Boolean(achievement.is_completed);
+            const pct = Number(achievement.progress_percentage ?? 0);
+            return (
               <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center"
-                style={{ background: reward.unlocked ? "#EDE9FE" : "#F3F4F6" }}
+                key={achievement.id}
+                className="rounded-2xl p-4 bg-white"
+                style={{
+                  border: unlocked ? `1.5px solid ${PURPLE}55` : "1.5px solid #E5E7EB",
+                  boxShadow: unlocked ? "0 8px 24px rgba(124,58,237,0.10)" : "none",
+                }}
               >
-                {reward.unlocked ? (
-                  <Award className="w-5 h-5 text-purple-600" />
-                ) : (
-                  <Lock className="w-5 h-5 text-gray-500" />
-                )}
-              </div>
-              <div className="flex-1">
-                <p className="font-bold text-slate-800">{reward.title}</p>
-                <p className="text-sm text-slate-500 mt-0.5">{reward.desc}</p>
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="text-xs font-semibold px-2 py-1 rounded-md bg-slate-100 text-slate-700">
-                    Cần {reward.needXp} XP
-                  </span>
-                  {reward.unlocked ? (
-                    <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Đã mở khóa
-                    </span>
-                  ) : (
-                    <span className="text-xs font-bold text-amber-600 flex items-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5" /> Chưa mở khóa
-                    </span>
-                  )}
+                <div className="flex items-start gap-3">
+                  <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center text-xl"
+                    style={{ background: unlocked ? "#EDE9FE" : "#F3F4F6" }}
+                  >
+                    {achievement.icon ? (
+                      <span>{achievement.icon}</span>
+                    ) : unlocked ? (
+                      <Award className="w-5 h-5 text-purple-600" />
+                    ) : (
+                      <Lock className="w-5 h-5 text-gray-500" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-slate-800">{achievement.name}</p>
+                    <p className="text-sm text-slate-500 mt-0.5">{achievement.description}</p>
+                    {!unlocked && (
+                      <div className="mt-2">
+                        <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{ width: `${pct}%`, background: PURPLE }}
+                          />
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1">{Math.round(pct)}% hoàn thành</p>
+                      </div>
+                    )}
+                    <div className="mt-2 flex items-center justify-between">
+                      {achievement.coin_reward > 0 && (
+                        <span className="text-xs font-semibold px-2 py-1 rounded-md bg-amber-50 text-amber-700">
+                          +{achievement.coin_reward} coins
+                        </span>
+                      )}
+                      {unlocked ? (
+                        <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Đã đạt
+                        </span>
+                      ) : (
+                        <span className="text-xs font-bold text-amber-600 flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5" /> Chưa đạt
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        ))}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

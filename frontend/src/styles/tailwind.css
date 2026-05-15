@@ -5,7 +5,36 @@
   --animate-fadeInUp: fadeInUp 0.5s ease-out;
   --animate-loading-bar: loadingBar 1.5s ease-in-out;
   --animate-shake: shake 0.5s ease-in-out;
+
+  /* Kids font tokens (Baloo 2 + Nunito) */
+  --font-kids-display: 'Baloo 2', 'Nunito', system-ui, sans-serif;
+  --font-kids-body: 'Nunito', system-ui, sans-serif;
 }
+
+/* ─── Kids scope — friendlier typography for ages 6-12 ──────────────────────
+   Apply `.kids-scope` on the kids layout root to cascade these styles. */
+.kids-scope {
+  font-family: var(--font-kids-body);
+  font-feature-settings: "ss01", "cv01";
+  letter-spacing: -0.005em;
+}
+
+.kids-scope h1,
+.kids-scope h2,
+.kids-scope h3,
+.kids-scope h4 {
+  font-family: var(--font-kids-display);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+/* Slightly larger base for kids readability */
+.kids-scope {
+  font-size: 15px;
+}
+.kids-scope .text-xs  { font-size: 0.8125rem; line-height: 1.25rem; }   /* 13px */
+.kids-scope .text-sm  { font-size: 0.9375rem; line-height: 1.375rem; }  /* 15px */
+.kids-scope .text-base{ font-size: 1.0625rem; line-height: 1.5rem; }    /* 17px */
 
 @keyframes fadeInUp {
   0% {

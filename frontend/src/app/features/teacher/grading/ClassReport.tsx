@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams } from "react-router";
 import {
   Users,
@@ -16,54 +17,23 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { useClassReport } from "@/hooks/useClassReport";
 
 export function ClassReport() {
+  const { t } = useTranslation();
   const { classId } = useParams();
   const [selectedExam, setSelectedExam] = useState("all");
-  const [classStats, setClassStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
+  // Use custom hook
+  const { data: reportData, loading, error } = useClassReport(classId || '');
 
-  useEffect(() => {
-    const fetchClassReport = async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem('auth_token');
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/class/${classId}/report`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success') {
-            setClassStats(result.data);
-          } else {
-            setError('Không thể tải báo cáo lớp học');
-          }
-        } else {
-          setError('Lỗi khi tải dữ liệu');
-        }
-      } catch (err) {
-        setError('Lỗi kết nối đến server');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (classId) {
-      fetchClassReport();
-    }
-  }, [classId]);
-
-  const scoreDistribution = [
-    { range: "90-100", count: 5, color: "#10B981" },
-    { range: "80-89", count: 8, color: "#3B82F6" },
-    { range: "70-79", count: 6, color: "#F59E0B" },
-    { range: "60-69", count: 3, color: "#EF4444" },
-    { range: "0-59", count: 1, color: "#6B7280" },
+  // Mock data for charts (will be replaced with real data when available)
+  const scoreDistribution = reportData?.stats?.score_distribution || [
+    { range: "90-100", count: 0, color: "#10B981" },
+    { range: "80-89", count: 0, color: "#3B82F6" },
+    { range: "70-79", count: 0, color: "#F59E0B" },
+    { range: "60-69", count: 0, color: "#EF4444" },
+    { range: "0-59", count: 0, color: "#6B7280" },
   ];
 
   const examPerformance = [
@@ -162,9 +132,9 @@ export function ClassReport() {
 
   const getDifficultyBadge = (difficulty: "easy" | "medium" | "hard") => {
     const badges = {
-      easy: { text: "Dễ", color: "bg-green-100 text-green-700" },
-      medium: { text: "Trung bình", color: "bg-orange-100 text-orange-700" },
-      hard: { text: "Khó", color: "bg-red-100 text-red-700" },
+      easy: { text: t("teacher.grading.classReport.difficulty_easy"), color: "bg-green-100 text-green-700" },
+      medium: { text: t("teacher.grading.classReport.difficulty_medium"), color: "bg-orange-100 text-orange-700" },
+      hard: { text: t("teacher.grading.classReport.difficulty_hard"), color: "bg-red-100 text-red-700" },
     };
     return badges[difficulty];
   };
@@ -180,30 +150,35 @@ export function ClassReport() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 font-semibold">Đang tải báo cáo lớp học...</p>
+          <p className="text-gray-600 font-semibold">{t("teacher.grading.classReport.loading")}</p>
         </div>
       </div>
     );
   }
 
-  if (error || !classStats) {
+  if (error || !reportData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
         <div className="text-center bg-white rounded-2xl p-8 border border-red-200">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-8 h-8 text-red-600" />
           </div>
-          <p className="text-red-600 font-semibold mb-2">{error || 'Không tìm thấy dữ liệu'}</p>
+          <p className="text-red-600 font-semibold mb-2">{error || t("teacher.grading.classReport.notFound")}</p>
           <button
             onClick={() => window.location.reload()}
             className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
           >
-            Thử lại
+            {t("teacher.grading.classReport.retry")}
           </button>
         </div>
       </div>
     );
   }
+
+  // Extract data from reportData
+  const classInfo = reportData.class;
+  const students = reportData.students;
+  const stats = reportData.stats;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">
@@ -211,14 +186,14 @@ export function ClassReport() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-3xl font-bold text-gray-900">
-            Báo cáo lớp: Lớp KET Morning A1 📊
+            {t("teacher.grading.classReport.heading", { className: classInfo.cName })} 📊
           </h1>
           <button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all flex items-center gap-2 shadow-lg shadow-blue-500/30">
             <Download className="w-5 h-5" />
-            Xuất báo cáo PDF
+            {t("teacher.grading.classReport.exportPdf")}
           </button>
         </div>
-        <p className="text-gray-600">Thống kê chi tiết về hiệu suất học tập của lớp</p>
+        <p className="text-gray-600">{t("teacher.grading.classReport.subtitle")}</p>
       </div>
 
       {/* Exam Filter */}
@@ -229,7 +204,7 @@ export function ClassReport() {
             onChange={(e) => setSelectedExam(e.target.value)}
             className="px-6 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-12 font-semibold"
           >
-            <option value="all">Tất cả đề thi</option>
+            <option value="all">{t("teacher.grading.classReport.allExams")}</option>
             <option value="ket">Cambridge KET</option>
             <option value="ielts">IELTS</option>
             <option value="toefl">TOEFL</option>
@@ -246,8 +221,8 @@ export function ClassReport() {
               <Users className="w-6 h-6 text-blue-600" />
             </div>
           </div>
-          <p className="text-gray-600 text-sm mb-1">Tổng số học sinh</p>
-          <p className="text-3xl font-bold text-gray-900">{classStats.totalStudents}</p>
+          <p className="text-gray-600 text-sm mb-1">{t("teacher.grading.classReport.totalStudents")}</p>
+          <p className="text-3xl font-bold text-gray-900">{stats.total_students || 0}</p>
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
@@ -256,8 +231,8 @@ export function ClassReport() {
               <FileText className="w-6 h-6 text-green-600" />
             </div>
           </div>
-          <p className="text-gray-600 text-sm mb-1">Đã nộp bài</p>
-          <p className="text-3xl font-bold text-gray-900">{classStats.submitted}</p>
+          <p className="text-gray-600 text-sm mb-1">{t("teacher.grading.classReport.submissions")}</p>
+          <p className="text-3xl font-bold text-gray-900">{stats.total_submissions || 0}</p>
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
@@ -266,8 +241,8 @@ export function ClassReport() {
               <TrendingUp className="w-6 h-6 text-purple-600" />
             </div>
           </div>
-          <p className="text-gray-600 text-sm mb-1">Tỷ lệ tham gia</p>
-          <p className="text-3xl font-bold text-gray-900">{classStats.participationRate}%</p>
+          <p className="text-gray-600 text-sm mb-1">{t("teacher.grading.classReport.participationRate")}</p>
+          <p className="text-3xl font-bold text-gray-900">{stats.completion_rate || 0}%</p>
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
@@ -276,8 +251,8 @@ export function ClassReport() {
               <Award className="w-6 h-6 text-orange-600" />
             </div>
           </div>
-          <p className="text-gray-600 text-sm mb-1">Điểm trung bình</p>
-          <p className="text-3xl font-bold text-gray-900">{classStats.averageScore}</p>
+          <p className="text-gray-600 text-sm mb-1">{t("teacher.grading.classReport.avgScore")}</p>
+          <p className="text-3xl font-bold text-gray-900">{stats.average_score?.toFixed(1) || 0}</p>
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
@@ -286,14 +261,14 @@ export function ClassReport() {
               <Trophy className="w-6 h-6 text-red-600" />
             </div>
           </div>
-          <p className="text-gray-600 text-sm mb-1">Tỷ lệ đạt</p>
-          <p className="text-3xl font-bold text-gray-900">{classStats.passRate}%</p>
+          <p className="text-gray-600 text-sm mb-1">{t("teacher.grading.classReport.passRate")}</p>
+          <p className="text-3xl font-bold text-gray-900">{stats.pass_rate?.toFixed(1) || 0}%</p>
         </div>
       </div>
 
       {/* Score Distribution Chart */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6 mb-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-6">Phân bố điểm số</h3>
+        <h3 className="text-lg font-bold text-gray-900 mb-6">{t("teacher.grading.classReport.scoreDistribution")}</h3>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={scoreDistribution}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -319,29 +294,29 @@ export function ClassReport() {
       {/* Exam Performance Table */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 overflow-hidden mb-6">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-bold text-gray-900">Hiệu suất theo đề thi</h3>
+          <h3 className="text-lg font-bold text-gray-900">{t("teacher.grading.classReport.examPerformance")}</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Đề thi
+                  {t("teacher.grading.classReport.examTitle")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Số bài nộp
+                  {t("teacher.grading.classReport.submissionsCount")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Điểm TB
+                  {t("teacher.grading.classReport.avgScore")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Tỷ lệ đạt
+                  {t("teacher.grading.classReport.passRate")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Cao nhất
+                  {t("teacher.grading.classReport.highScore")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Thấp nhất
+                  {t("teacher.grading.classReport.lowScore")}
                 </th>
               </tr>
             </thead>
@@ -380,32 +355,32 @@ export function ClassReport() {
       {/* Student Rankings Table */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 overflow-hidden mb-6">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-bold text-gray-900">Xếp hạng học sinh</h3>
+          <h3 className="text-lg font-bold text-gray-900">{t("teacher.grading.classReport.studentRankings")}</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Hạng
+                  {t("teacher.grading.classReport.rank")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Học sinh
+                  {t("teacher.grading.classReport.table.student")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Số bài
+                  {t("teacher.grading.classReport.submissionsCount")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Điểm TB
+                  {t("teacher.grading.classReport.avgScore")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Cao nhất
+                  {t("teacher.grading.classReport.highScore")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Tổng điểm
+                  {t("teacher.grading.classReport.totalScore")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Xu hướng
+                  {t("teacher.grading.classReport.trend")}
                 </th>
               </tr>
             </thead>
@@ -461,29 +436,29 @@ export function ClassReport() {
       {/* Question Analysis */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-bold text-gray-900">Phân tích câu hỏi khó</h3>
+          <h3 className="text-lg font-bold text-gray-900">{t("teacher.grading.classReport.questionAnalysis")}</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Câu hỏi
+                  {t("teacher.grading.classReport.questionText")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Loại
+                  {t("teacher.grading.classReport.type")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Tỷ lệ đúng
+                  {t("teacher.grading.classReport.successRate")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Điểm TB
+                  {t("teacher.grading.classReport.avgScore")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Số lượt thi
+                  {t("teacher.grading.classReport.attempts")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Độ khó
+                  {t("teacher.grading.classReport.difficulty")}
                 </th>
               </tr>
             </thead>

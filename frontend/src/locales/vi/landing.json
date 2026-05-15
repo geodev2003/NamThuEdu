@@ -1,0 +1,438 @@
+{
+  "landing": {
+    "header": {
+      "logo": "Nam Thu EDU",
+      "tagline": "Học tiếng Anh thông minh",
+      "searchPlaceholder": "Tìm kiếm khóa học, bài học, từ vựng, ngữ pháp...",
+      "login": "Đăng nhập",
+      "register": "Đăng ký",
+      "registerNow": "Đăng ký ngay",
+      "home": "Trang chủ",
+      "courses": "Khóa học",
+      "exams": "Luyện thi",
+      "schedule": "Lịch học",
+      "contact": "Liên hệ",
+      "coursesKids": "Trẻ em (6-12 tuổi)",
+      "coursesTeens": "Thiếu niên (13-17 tuổi)",
+      "coursesAdults": "Người lớn (18+)",
+      "coursesCommunication": "Giao tiếp",
+      "examsIELTS": "IELTS",
+      "examsTOEIC": "TOEIC",
+      "examsCambridge": "Cambridge",
+      "examsVSTEP": "VSTEP",
+      "examsVSAT": "V-SAT",
+      "hotline": "Hotline",
+      "promotions": "Ưu đãi hấp dẫn:",
+      "promotionGroup": "Nhóm từ 3 học viên",
+      "promotionDisadvantaged": "Học viên khó khăn",
+      "promotionMaterials": "Miễn phí tài liệu"
+    },
+    "hero": {
+      "badge": "Top 1 nền tảng học tiếng Anh online tại Việt Nam",
+      "title": "Học tiếng Anh thông minh",
+      "titleHighlight": "cùng công nghệ AI",
+      "subtitle": "Giao diện thích ứng theo độ tuổi, AI đánh giá phát âm chính xác, luyện thi IELTS/VSTEP hiệu quả. Phù hợp cho mọi lứa tuổi từ 6-45 tuổi.",
+      "featureCommunication": "Giao tiếp thực tế",
+      "featureCommunicationDesc": "Luyện nói tự tin",
+      "featureGrades": "Lớp 1-12",
+      "featureGradesDesc": "Mọi cấp độ",
+      "featureExams": "IELTS/VSTEP",
+      "featureExamsDesc": "Chứng chỉ quốc tế",
+      "featureAI": "AI",
+      "featureAIDesc": "Thông minh",
+      "ctaRegister": "Đăng ký học ngay",
+      "ctaDemo": "Xem demo",
+      "trustStudents": "học viên",
+      "trustRating": "đánh giá",
+      "students": "Học viên",
+      "rating": "Đánh giá"
+    },
+    "stats": {
+      "students": "Học viên",
+      "studentsSub": "Đang học tích cực",
+      "teachers": "Giáo viên",
+      "teachersSub": "Giáo viên có chứng chỉ",
+      "courses": "Khóa học",
+      "coursesSub": "Khóa học đang mở",
+      "exams": "Đề thi",
+      "examsSub": "Đề thi đã xuất bản",
+      "satisfaction": "Hài lòng"
+    },
+    "why": {
+      "title": "Học tập chủ động, hiệu quả hơn",
+      "items": {
+        "curriculum": {
+          "title": "Bám sát chương trình",
+          "desc": "Kho bài giảng & bài tập phong phú, bám sát chuẩn VSTEP, IELTS và Cambridge"
+        },
+        "personalized": {
+          "title": "Cá nhân hóa",
+          "desc": "Nội dung phù hợp trình độ, giúp học đúng chỗ còn yếu"
+        },
+        "community": {
+          "title": "Cộng đồng kết nối",
+          "desc": "Tham gia cộng đồng hỏi đáp với giáo viên & bạn bè"
+        },
+        "practice": {
+          "title": "Luyện đề mọi lúc",
+          "desc": "Làm bài kiểm tra, đề thi thử, tự đánh giá năng lực"
+        }
+      }
+    },
+    "learningPaths": {
+      "title": "Chọn lộ trình học phù hợp với bạn",
+      "subtitle": "Giao diện và nội dung tự động thích ứng theo độ tuổi và trình độ",
+      "kids": {
+        "name": "Trẻ em (6-12 tuổi)",
+        "description": "Học tiếng Anh qua trò chơi, hình ảnh sinh động và bài hát vui nhộn",
+        "feature1": "Trò chơi tương tác",
+        "feature2": "Hình ảnh sinh động",
+        "feature3": "Bài hát vui nhộn",
+        "feature4": "Phát âm chuẩn"
+      },
+      "teens": {
+        "name": "Thiếu niên (13-17 tuổi)",
+        "description": "Luyện thi Cambridge, giao tiếp thực tế và học qua video hiện đại",
+        "feature1": "Cambridge YLE/KET/PET",
+        "feature2": "Video lessons",
+        "feature3": "Speaking practice",
+        "feature4": "Gamification"
+      },
+      "adults": {
+        "name": "Người lớn (18+ tuổi)",
+        "description": "IELTS, TOEIC, VSTEP và tiếng Anh giao tiếp công sở chuyên nghiệp",
+        "feature1": "IELTS/TOEIC/VSTEP",
+        "feature2": "Business English",
+        "feature3": "Interview skills",
+        "feature4": "Professional"
+      },
+      "coursesCount": "khóa học",
+      "startNow": "Bắt đầu ngay"
+    },
+    "proficiency": {
+      "title": "Trình độ tiếng Anh",
+      "beginner": "Sơ cấp",
+      "beginnerDesc": "A1-A2: Bắt đầu với nền tảng",
+      "intermediate": "Trung cấp",
+      "intermediateDesc": "B1-B2: Giao tiếp tự tin",
+      "advanced": "Cao cấp",
+      "advancedDesc": "C1-C2: Thành thạo như người bản xứ",
+      "examPrep": "Luyện thi",
+      "examPrepDesc": "IELTS, TOEIC, Cambridge, VSTEP"
+    },
+    "examPrep": {
+      "title": "Luyện thi chứng chỉ quốc tế",
+      "subtitle": "Đạt điểm cao với phương pháp học hiệu quả và đề thi chuẩn quốc tế",
+      "viewCourses": "Xem khóa học"
+    },
+    "features": {
+      "title": "Tính năng nổi bật",
+      "adaptive": "Học tập thích ứng",
+      "adaptiveDesc": "Giao diện và nội dung tự động điều chỉnh theo độ tuổi",
+      "listening": "Luyện nghe - nói",
+      "listeningDesc": "AI đánh giá phát âm và giao tiếp thực tế",
+      "competition": "Thi đấu & Xếp hạng",
+      "competitionDesc": "Cạnh tranh với bạn bè, nhận huy chương",
+      "video": "Video bài giảng",
+      "videoDesc": "Học qua video tương tác với giáo viên bản xứ",
+      "preview": "Preview"
+    },
+    "cta": {
+      "title": "Bắt đầu hành trình chinh phục tiếng Anh",
+      "subtitle": "Đăng ký ngay để nhận 7 ngày học thử miễn phí với giao diện thích ứng theo độ tuổi",
+      "button": "Học thử miễn phí 7 ngày",
+      "noCard": "Không cần thẻ tín dụng",
+      "cancelAnytime": "Hủy bất cứ lúc nào"
+    },
+    "footer": {
+      "description": "NamThu là nền tảng học tiếng Anh thông minh với giao diện tự động thích ứng theo độ tuổi. Với phương pháp giảng dạy hiện đại và giáo khoa từ các chuyên gia hàng đầu, NamThu đáp ứng nhu cầu của mọi người học.",
+      "followUs": "Theo dõi NamThu trên:",
+      "weRecommend": "Chúng tôi đề xuất",
+      "aboutUs": "Về NamThu",
+      "forStudents": "Dành cho HS & PHHS",
+      "forTeachers": "Dành cho GV và Nhà trường",
+      "parentApp": "APP Phụ huynh",
+      "resources": "Tài nguyên",
+      "helpCenter": "Trung tâm trợ giúp",
+      "userGuide": "Hướng dẫn sử dụng",
+      "feedback": "Phản hồi về NamThu",
+      "askChannel": "Kênh hỏi về NamThu",
+      "mobileApp": "Ứng dụng mobile",
+      "downloadOn": "Download on the",
+      "appStore": "App Store",
+      "getItOn": "GET IT ON",
+      "googlePlay": "Google Play",
+      "copyright": "© 2013 - 2026 NAMTHU.VN",
+      "email": "Email:",
+      "contactUs": "Liên hệ"
+    },
+    "testimonials": {
+      "title": "Học viên nói gì về chúng tôi",
+      "subtitle": "Hàng ngàn học viên đã đạt mục tiêu tiếng Anh của mình",
+      "kids": "Trẻ em",
+      "teens": "Thiếu niên",
+      "adults": "Người lớn",
+      "result": "Kết quả"
+    },
+    "demo": {
+      "title": "Thử ngay một bài học mẫu",
+      "subtitle": "Click vào thẻ để lật và xem nghĩa tiếng Việt",
+      "clickToFlip": "Click to flip",
+      "reset": "Lật lại",
+      "note": "Đây chỉ là 1 trong 10,000+ từ vựng và bài học tương tác",
+      "example": "Ví dụ:"
+    },
+    "page": {
+      "learningPathsTitle": "Chọn lộ trình học phù hợp với bạn",
+      "learningPathsSubtitle": "Giao diện và nội dung tự động thích ứng theo độ tuổi và trình độ",
+      "proficiencyTitle": "Trình độ tiếng Anh",
+      "examPrepTitle": "Luyện thi chứng chỉ quốc tế",
+      "examPrepSubtitle": "Đạt điểm cao với phương pháp học hiệu quả và đề thi chuẩn quốc tế",
+      "featuresTitle": "Tính năng nổi bật",
+      "ctaTitle": "Bắt đầu hành trình chinh phục tiếng Anh",
+      "ctaSubtitle": "Đăng ký ngay để nhận 7 ngày học thử miễn phí với giao diện thích ứng theo độ tuổi"
+    },
+    "guest": {
+      "header": {
+        "logo": "NamThuEdu",
+        "menu": {
+          "features": "Tính năng",
+          "paths": "Lộ trình",
+          "testimonials": "Đánh giá",
+          "faq": "FAQ"
+        },
+        "login": "Đăng nhập",
+        "trial": "Học thử ngay"
+      },
+      "hero": {
+        "badge": "Nền tảng học tiếng Anh hàng đầu Cần Thơ",
+        "title": "Học tiếng Anh hiệu quả hơn với",
+        "titleHighlight": "AI cá nhân hoá",
+        "subtitle": "NamThuEdu giúp bạn học đúng trọng tâm, theo dõi tiến bộ rõ ràng và đạt mục tiêu nhanh hơn.",
+        "ctaTrial": "Bắt đầu học thử",
+        "ctaDemo": "Xem demo",
+        "headline": "Học tiếng Anh",
+        "headlineHighlight": "đúng chuẩn,",
+        "headlineLine2": "đúng lộ trình",
+        "subheadline": "Luyện thi VSTEP, IELTS, Cambridge — có giáo viên theo dõi tiến độ, chấm điểm tự động và phản hồi chi tiết sau mỗi bài thi.",
+        "ctaStart": "Bắt đầu học ngay",
+        "ctaTests": "Xem đề thi miễn phí",
+        "trust": {
+          "students": "50,000+ học viên",
+          "duration": "15 phút/buổi học",
+          "rating": "4.9 / 5",
+          "ratingLabel": "Đánh giá"
+        },
+        "slogan": {
+          "p1": "Đúng phương pháp",
+          "p2": "Đúng lộ trình",
+          "p3": "Đúng kết quả"
+        }
+      },
+      "roles": {
+        "title": "Một nơi cho mọi vai trò",
+        "subtitle": "Chọn đúng cổng để bắt đầu nhanh và đúng nhu cầu.",
+        "items": {
+          "student": {
+            "title": "Học sinh",
+            "desc": "Lộ trình cá nhân hoá, luyện tập mỗi ngày, theo dõi tiến bộ rõ ràng.",
+            "cta": "Bắt đầu học thử"
+          },
+          "teacher": {
+            "title": "Giáo viên",
+            "desc": "Quản lý lớp, tạo đề, theo dõi học viên và chấm điểm hiệu quả.",
+            "cta": "Vào cổng giáo viên"
+          },
+          "admin": {
+            "title": "Quản trị viên",
+            "desc": "Điều hành hệ thống, kiểm soát dữ liệu và phân quyền bảo mật.",
+            "cta": "Vào cổng admin"
+          }
+        }
+      },
+      "stats": {
+        "students": "Học viên đang học",
+        "rating": "Đánh giá trung bình",
+        "goal": "Hoàn thành mục tiêu học tập"
+      },
+      "courses": {
+        "title": "Các khóa học tại trung tâm",
+        "subtitle": "Danh sách khóa học đang mở từ hệ thống trung tâm.",
+        "loading": "Đang tải danh sách khóa học...",
+        "empty": "Hiện chưa có khóa học mở.",
+        "emptyFiltered": "Không có khóa học phù hợp với bộ lọc đã chọn.",
+        "error": "Không tải được danh sách khóa học.",
+        "general": "Tổng quát",
+        "noDescription": "Chưa có mô tả cho khóa học này.",
+        "time": "Thời lượng",
+        "schedule": "Lịch học",
+        "seats": "Số lượng học viên",
+        "updating": "Đang cập nhật",
+        "filters": {
+          "all": "Tất cả",
+          "ielts": "IELTS",
+          "toeic": "TOEIC",
+          "communication": "Giao tiếp",
+          "kids": "Thiếu nhi"
+        }
+      },
+      "teachers": {
+        "title": "Đội ngũ giáo viên tiêu biểu",
+        "subtitle": "Giảng viên giàu kinh nghiệm, chuyên môn vững và đồng hành sát sao cùng học viên.",
+        "items": {
+          "1": {
+            "name": "Cô Minh Anh",
+            "role": "IELTS Instructor",
+            "cert": "Chứng chỉ: IELTS 8.0",
+            "exp": "Kinh nghiệm: 7+ năm luyện thi"
+          },
+          "2": {
+            "name": "Thầy Quang Hải",
+            "role": "TOEIC & Communication Coach",
+            "cert": "Chứng chỉ: TESOL",
+            "exp": "Kinh nghiệm: 10+ năm giảng dạy"
+          },
+          "3": {
+            "name": "Cô Thuỳ Linh",
+            "role": "Kids English Specialist",
+            "cert": "Chứng chỉ: Cambridge TKT",
+            "exp": "Kinh nghiệm: 6+ năm dạy thiếu nhi"
+          }
+        }
+      },
+      "stickyContact": {
+        "hotline": "Hotline 0776.818.160",
+        "call": "Gọi",
+        "zalo": "Zalo",
+        "register": "Đăng ký tư vấn"
+      },
+      "previewCard": {
+        "subtitle": "Bảng tiến độ học tập",
+        "recentScore": "Điểm bài thi gần nhất",
+        "studentTitle": "Học viên",
+        "studentDesc": "Thiếu nhi · Thiếu niên · Người lớn",
+        "teacherTitle": "Giáo viên",
+        "teacherDesc": "Quản lý lớp học & học viên",
+        "badgeStudentsLabel": "Học viên",
+        "badgeRatingLabel": "Đánh giá"
+      },
+      "tests": {
+        "title": "Thử sức với đề thi — Không cần đăng ký",
+        "subtitle": "Xem trước nội dung đề VSTEP, IELTS được cập nhật liên tục.",
+        "loading": "Đang tải danh sách đề thi...",
+        "cta": "Xem đề thi",
+        "defaultDesc": "Bài thi đánh giá năng lực tiêu chuẩn."
+      },
+      "paths": {
+        "title": "Lộ trình theo mục tiêu",
+        "subtitle": "Chọn đúng mục tiêu để hệ thống đề xuất nội dung phù hợp.",
+        "tabs": {
+          "ielts": "IELTS",
+          "toeic": "TOEIC",
+          "communication": "Giao tiếp",
+          "cambridge": "Cambridge",
+          "kids": "Kids"
+        },
+        "ielts": "Roadmap từ band 4.5 lên 6.5+ với mock test và chữa bài AI.",
+        "toeic": "Lộ trình 450 → 750+ tập trung Listening/Reading trọng tâm.",
+        "communication": "Thực hành hội thoại mỗi ngày với kịch bản thực tế công việc.",
+        "cambridge": "Chuẩn bị KET/PET/FCE với hệ thống đề phân cấp rõ ràng.",
+        "kids": "Học qua trò chơi, âm thanh và hình ảnh để tăng hứng thú cho trẻ."
+      },
+      "features": {
+        "title": "Tính năng nổi bật",
+        "subtitle": "Trải nghiệm học tập toàn diện với công nghệ hiện đại",
+        "items": {
+          "ai": {
+            "title": "AI chấm bài tức thì",
+            "desc": "Nhận phản hồi nhanh cho Writing/Speaking để cải thiện ngay trong ngày."
+          },
+          "report": {
+            "title": "Báo cáo tiến độ trực quan",
+            "desc": "Theo dõi điểm mạnh/yếu và mức tăng trưởng theo tuần, tháng."
+          },
+          "path": {
+            "title": "Lộ trình theo mục tiêu",
+            "desc": "Tập trung vào IELTS, TOEIC, giao tiếp hoặc tiếng Anh học thuật."
+          },
+          "community": {
+            "title": "Hỏi đáp cộng đồng",
+            "desc": "Đặt câu hỏi và nhận hỗ trợ từ giáo viên, cộng đồng học viên."
+          },
+          "competition": {
+            "title": "Đấu trường tri thức",
+            "desc": "Thi đua hàng tuần, tăng động lực học tập với bảng xếp hạng."
+          },
+          "quiz": {
+            "title": "Cuộc thi vui",
+            "desc": "Nhiệm vụ nhanh, phần thưởng hấp dẫn, học mà vui."
+          },
+          "exam": {
+            "title": "Luyện thi chuẩn quốc tế",
+            "desc": "Đề thi VSTEP, IELTS, Cambridge cập nhật liên tục theo chuẩn mới nhất."
+          },
+          "progress": {
+            "title": "Theo dõi tiến độ",
+            "desc": "Biểu đồ tiến độ trực quan, thống kê điểm mạnh & điểm yếu từng kỹ năng."
+          },
+          "grading": {
+            "title": "Chấm điểm tức thì",
+            "desc": "Kết quả tự động ngay sau khi nộp bài, phản hồi chi tiết từng câu hỏi."
+          }
+        }
+      },
+      "testimonials": {
+        "title": "Học viên nói gì",
+        "items": {
+          "1": {
+            "name": "Linh Anh",
+            "role": "Học viên IELTS",
+            "text": "Mình tăng 1.0 band sau 8 tuần nhờ lộ trình rất rõ."
+          },
+          "2": {
+            "name": "Thầy Quang",
+            "role": "Giáo viên",
+            "text": "Dashboard lớp học giúp mình tiết kiệm rất nhiều thời gian."
+          },
+          "3": {
+            "name": "Phụ huynh An",
+            "role": "Phụ huynh",
+            "text": "Theo dõi tiến độ con dễ hơn trước rất nhiều."
+          }
+        }
+      },
+      "faq": {
+        "title": "Câu hỏi thường gặp",
+        "items": {
+          "1": {
+            "q": "Mình có thể học thử trước không?",
+            "a": "Có. Bạn có thể bắt đầu bằng tài khoản học thử để trải nghiệm giao diện và lộ trình."
+          },
+          "2": {
+            "q": "Nền tảng phù hợp cho độ tuổi nào?",
+            "a": "NamThuEdu hỗ trợ từ học sinh, sinh viên đến người đi làm, có lộ trình theo từng nhóm."
+          },
+          "3": {
+            "q": "Giáo viên có dashboard riêng không?",
+            "a": "Có. Cổng giáo viên hỗ trợ quản lý lớp, tạo bài kiểm tra và theo dõi tiến độ học viên."
+          }
+        }
+      },
+      "ctaBanner": {
+        "title": "Tham gia NamThuEdu ngay hôm nay!",
+        "subtitle": "Bắt đầu học thông minh hơn với hệ sinh thái giáo dục số toàn diện.",
+        "cta": "Trải nghiệm ngay",
+        "ctaContact": "Liên hệ tư vấn"
+      },
+      "cta": {
+        "title": "Sẵn sàng bắt đầu hành trình học tập?",
+        "subtitle": "Tạo tài khoản học thử để trải nghiệm ngay hôm nay.",
+        "button": "Học thử miễn phí"
+      },
+      "footer": {
+        "copyright": "© 2026 NamThuEdu. Nền tảng kiến trúc tri thức hiện đại.",
+        "contact": "Hotline: 1900 6868 • support@namthuedu.vn"
+      }
+    }
+  }
+}

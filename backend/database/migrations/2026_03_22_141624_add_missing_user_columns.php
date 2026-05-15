@@ -13,11 +13,13 @@ class AddMissingUserColumns extends Migration
      */
     public function up()
     {
-        Schema::table('users', function (Blueprint $table) {
+        if (Schema::hasTable('users')) {
+            Schema::table('users', function (Blueprint $table) {
             if (!Schema::hasColumn('users', 'uLast_login')) {
                 $table->timestamp('uLast_login')->nullable()->after('uCreated_at');
             }
         });
+        }
     }
 
     /**
@@ -27,10 +29,12 @@ class AddMissingUserColumns extends Migration
      */
     public function down()
     {
-        Schema::table('users', function (Blueprint $table) {
+        if (Schema::hasTable('users')) {
+            Schema::table('users', function (Blueprint $table) {
             if (Schema::hasColumn('users', 'uLast_login')) {
                 $table->dropColumn('uLast_login');
             }
         });
+        }
     }
 }

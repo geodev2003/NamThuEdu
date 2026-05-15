@@ -139,9 +139,9 @@ const ListenDrawLinesEditor: React.FC<ListenDrawLinesEditorProps> = ({
           return;
         }
 
-        // Check file size (max 5MB)
-        if (blob.size > 5 * 1024 * 1024) {
-          toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+        // Check file size (max 20MB)
+        if (blob.size > 20 * 1024 * 1024) {
+          toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
           return;
         }
 
@@ -193,9 +193,9 @@ const ListenDrawLinesEditor: React.FC<ListenDrawLinesEditorProps> = ({
       return;
     }
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    // Check file size (max 20MB)
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -597,7 +597,7 @@ const ListenDrawLinesEditor: React.FC<ListenDrawLinesEditorProps> = ({
                 <p className="mb-2 text-sm text-gray-500">
                   <span className="font-semibold">Nhấn để tải lên</span> hoặc kéo thả
                 </p>
-                <p className="text-xs text-gray-500">PNG, JPG (tối đa 5MB)</p>
+                <p className="text-xs text-gray-500">PNG, JPG (tối đa 20MB)</p>
                 <p className="text-xs text-indigo-600 font-bold mt-2 animate-pulse">
                   💡 Hoặc Ctrl+V để dán ảnh từ clipboard
                 </p>

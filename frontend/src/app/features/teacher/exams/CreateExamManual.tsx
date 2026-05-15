@@ -128,9 +128,9 @@ export const CreateExamManual: React.FC = () => {
   const totalPoints = exam.questions.reduce((sum, q) => sum + q.qPoints, 0);
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-bold mb-6">Tạo Đề Thi Thủ Công</h1>
+    <div className="px-4">
+      <div className="bg-white rounded-lg border-2 border-gray-200 p-8">
+        <h1 className="text-2xl font-semibold mb-6 text-[#1E293B]">Tạo đề thi thủ công</h1>
         
         {error && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">

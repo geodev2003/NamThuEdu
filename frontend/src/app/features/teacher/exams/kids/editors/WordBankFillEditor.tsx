@@ -145,8 +145,8 @@ const WordBankFillEditor: React.FC<WordBankFillEditorProps> = ({
       return;
     }
 
-    if (blob.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    if (blob.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -174,8 +174,8 @@ const WordBankFillEditor: React.FC<WordBankFillEditorProps> = ({
       return;
     }
 
-    if (blob.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    if (blob.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -206,8 +206,8 @@ const WordBankFillEditor: React.FC<WordBankFillEditorProps> = ({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -234,8 +234,8 @@ const WordBankFillEditor: React.FC<WordBankFillEditorProps> = ({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -517,7 +517,7 @@ const WordBankFillEditor: React.FC<WordBankFillEditorProps> = ({
               <span className="mb-2 text-lg font-bold text-purple-700">
                 {uploadingMainImage ? '⏳ Đang tải lên...' : 'Nhấn để tải ảnh hoặc Ctrl+V'}
               </span>
-              <span className="text-sm text-purple-600">PNG, JPG (tối đa 5MB)</span>
+              <span className="text-sm text-purple-600">PNG, JPG (tối đa 20MB)</span>
               {focusedImageArea === 'main' && (
                 <p className="mt-3 text-sm font-bold text-purple-700 animate-pulse">
                   💡 Bạn có thể Ctrl+V để dán ảnh từ clipboard

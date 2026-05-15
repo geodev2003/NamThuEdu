@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Camera, Mic, Volume2, CheckCircle2, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -10,6 +10,7 @@ const STUDENT_BASE_PATH = "/hoc-vien";
 type ExamLobbyInfo = {
   title: string;
   durationMinutes: number | null;
+  examType: string | null;
 };
 
 export function ExamLobby() {
@@ -28,9 +29,11 @@ export function ExamLobby() {
   const [loadingExam, setLoadingExam] = useState(true);
   const [startingExam, setStartingExam] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+  const [examId, setExamId] = useState<number | null>(null);
   const [examInfo, setExamInfo] = useState<ExamLobbyInfo>({
     title: t("student.examLobby.defaultTitle"),
     durationMinutes: null,
+    examType: null,
   });
 
   const applyStreamToPreview = (stream: MediaStream) => {
@@ -133,9 +136,14 @@ export function ExamLobby() {
           0
       );
 
+      const examType = String(
+        exam?.eType ?? assignment?.exam_type ?? data?.exam_type ?? ""
+      ) || null;
+      setExamId(Number(exam?.eId ?? assignment?.exam_id ?? data?.exam_id ?? 0) || null);
       setExamInfo({
         title: String(title),
         durationMinutes: duration > 0 ? duration : null,
+        examType,
       });
     } catch {
       setStatusMessage(t("student.examLobby.loadExamFailed"));
@@ -235,7 +243,15 @@ export function ExamLobby() {
         await studentApi.reconnectTestWebsocket(sid);
       }
       setStatusMessage(t("student.examLobby.sessionConnected"));
-      navigate(`${STUDENT_BASE_PATH}/lam-bai/${assignmentId}?autostart=1&submissionId=${sid}`);
+      const isVstep =
+        String(examInfo.examType ?? "").toUpperCase() === "VSTEP" ||
+        examInfo.title.toLowerCase().includes("vstep");
+      const routeId = isVstep && examId ? examId : assignmentId;
+      navigate(
+        isVstep
+          ? `${STUDENT_BASE_PATH}/lam-bai-vstep/${routeId}?submissionId=${sid}`
+          : `${STUDENT_BASE_PATH}/lam-bai/${assignmentId}?autostart=1&submissionId=${sid}`
+      );
     } catch {
       setStatusMessage(t("student.examLobby.sessionFailed"));
       alert(t("student.examLobby.alertSessionFailed"));

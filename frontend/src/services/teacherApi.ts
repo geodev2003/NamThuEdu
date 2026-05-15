@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 
 // API Base URL from environment
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 30000;
 
 /**
@@ -1130,11 +1130,11 @@ export const teacherApi = {
       student_id?: number;
       status?: 'submitted' | 'graded' | 'partially_graded' | 'in_progress';
     }): Promise<ApiResponse<Submission[]>> {
-      const cacheKey = generateCacheKey('/teacher/grading/submissions', params);
+      const cacheKey = generateCacheKey('/teacher/submissions', params);
       
       return withCache(cacheKey, async () => {
         const response = await apiClient.get<ApiResponse<Submission[]>>(
-          '/teacher/grading/submissions',
+          '/teacher/submissions',
           { params }
         );
         return response.data;
@@ -1147,11 +1147,11 @@ export const teacherApi = {
      * @returns Submission details with answers
      */
     async getSubmissionById(id: number): Promise<ApiResponse<Submission>> {
-      const cacheKey = generateCacheKey(`/teacher/grading/submissions/${id}`);
+      const cacheKey = generateCacheKey(`/teacher/submissions/${id}`);
       
       return withCache(cacheKey, async () => {
         const response = await apiClient.get<ApiResponse<Submission>>(
-          `/teacher/grading/submissions/${id}`
+          `/teacher/submissions/${id}`
         );
         return response.data;
       });
@@ -1168,23 +1168,23 @@ export const teacherApi = {
      */
     async gradeSubmission(
       id: number,
-      score: number,
+      score?: number,
       feedback?: string,
       teacherFeedback?: string,
-      questionScores?: Record<number, number>
+      questionScores?: Array<{ question_id: number; saPoints_awarded: number }>
     ): Promise<ApiResponse<void>> {
       const response = await apiClient.post<ApiResponse<void>>(
-        `/teacher/grading/submissions/${id}/grade`,
+        `/teacher/submissions/${id}/grade`,
         {
           score,
           feedback,
-          teacher_feedback: teacherFeedback,
-          question_scores: questionScores,
+          sTeacher_feedback: teacherFeedback,
+          questionScores,
         }
       );
       
       // Invalidate grading cache
-      cacheManager.invalidate('/teacher/grading');
+      cacheManager.invalidate('/teacher/submissions');
       
       return response.data;
     },
@@ -1196,11 +1196,11 @@ export const teacherApi = {
      */
     async autoGrade(id: number): Promise<ApiResponse<void>> {
       const response = await apiClient.post<ApiResponse<void>>(
-        `/teacher/grading/submissions/${id}/auto-grade`
+        `/teacher/submissions/${id}/auto-grade`
       );
       
       // Invalidate grading cache
-      cacheManager.invalidate('/teacher/grading');
+      cacheManager.invalidate('/teacher/submissions');
       
       return response.data;
     },
@@ -1216,13 +1216,13 @@ export const teacherApi = {
      */
     async detailedGrade(
       id: number,
-      questionGrades: Array<{ question_id: number; score: number; feedback: string }>,
+      questionGrades: Array<{ question_id: number; points_awarded: number; feedback?: string; is_correct?: boolean }>,
       overallFeedback: string,
       strengths?: string[],
       improvements?: string[]
     ): Promise<ApiResponse<void>> {
       const response = await apiClient.post<ApiResponse<void>>(
-        `/teacher/grading/submissions/${id}/detailed-grade`,
+        `/teacher/submissions/${id}/detailed-grade`,
         {
           question_grades: questionGrades,
           overall_feedback: overallFeedback,
@@ -1232,7 +1232,7 @@ export const teacherApi = {
       );
       
       // Invalidate grading cache
-      cacheManager.invalidate('/teacher/grading');
+      cacheManager.invalidate('/teacher/submissions');
       
       return response.data;
     },
@@ -1244,11 +1244,11 @@ export const teacherApi = {
      * @returns Class report
      */
     async getClassReport(classId: number, examId?: number): Promise<ApiResponse<ClassReport>> {
-      const cacheKey = generateCacheKey(`/teacher/grading/class-report/${classId}`, { exam_id: examId });
+      const cacheKey = generateCacheKey(`/teacher/classes/${classId}/report`, { exam_id: examId });
       
       return withCache(cacheKey, async () => {
         const response = await apiClient.get<ApiResponse<ClassReport>>(
-          `/teacher/grading/class-report/${classId}`,
+          `/teacher/classes/${classId}/report`,
           { params: { exam_id: examId } }
         );
         return response.data;
@@ -1270,10 +1270,125 @@ export const teacherApi = {
       });
     },
   },
-  monitoring: {},
-  practiceSessions: {},
-  blogs: {},
-  categories: {},
+
+  monitoring: {
+    async getActiveSessions(): Promise<ApiResponse<ActiveSession[]>> {
+      const response = await apiClient.get<ApiResponse<ActiveSession[]>>(
+        '/teacher/dashboard/active-sessions'
+      );
+      return response.data;
+    },
+
+    async getConnectionLogs(submissionId: number): Promise<ApiResponse<ConnectionLog[]>> {
+      const response = await apiClient.get<ApiResponse<ConnectionLog[]>>(
+        `/teacher/dashboard/connection-logs/${submissionId}`
+      );
+      return response.data;
+    },
+
+    async sendMessage(submissionId: number, message: string): Promise<ApiResponse<void>> {
+      const response = await apiClient.post<ApiResponse<void>>(
+        '/teacher/dashboard/send-message',
+        { submission_id: submissionId, message }
+      );
+      return response.data;
+    },
+  },
+
+  practiceSessions: {
+    async getAll(params?: { type?: string; skill?: string; purpose?: string }): Promise<ApiResponse<any[]>> {
+      const response = await apiClient.get<ApiResponse<any[]>>('/teacher/practice-sessions', { params });
+      return response.data;
+    },
+
+    async getStatistics(): Promise<ApiResponse<any>> {
+      const response = await apiClient.get<ApiResponse<any>>('/teacher/practice-sessions/statistics');
+      return response.data;
+    },
+
+    async getById(id: number): Promise<ApiResponse<any>> {
+      const response = await apiClient.get<ApiResponse<any>>(`/teacher/practice-sessions/${id}`);
+      return response.data;
+    },
+
+    async createTopicBased(data: any): Promise<ApiResponse<any>> {
+      const response = await apiClient.post<ApiResponse<any>>('/teacher/practice-sessions/topic-based', data);
+      cacheManager.invalidate('/teacher/practice-sessions');
+      return response.data;
+    },
+
+    async createTemplateBased(data: any): Promise<ApiResponse<any>> {
+      const response = await apiClient.post<ApiResponse<any>>('/teacher/practice-sessions/template-based', data);
+      cacheManager.invalidate('/teacher/practice-sessions');
+      return response.data;
+    },
+
+    async createRandom(data: any): Promise<ApiResponse<any>> {
+      const response = await apiClient.post<ApiResponse<any>>('/teacher/practice-sessions/random', data);
+      cacheManager.invalidate('/teacher/practice-sessions');
+      return response.data;
+    },
+
+    async update(id: number, data: any): Promise<ApiResponse<any>> {
+      const response = await apiClient.put<ApiResponse<any>>(`/teacher/practice-sessions/${id}`, data);
+      cacheManager.invalidate('/teacher/practice-sessions');
+      return response.data;
+    },
+
+    async delete(id: number): Promise<ApiResponse<void>> {
+      const response = await apiClient.delete<ApiResponse<void>>(`/teacher/practice-sessions/${id}`);
+      cacheManager.invalidate('/teacher/practice-sessions');
+      return response.data;
+    },
+
+    async getTemplates(): Promise<ApiResponse<any[]>> {
+      const response = await apiClient.get<ApiResponse<any[]>>('/teacher/templates');
+      return response.data;
+    },
+  },
+
+  blogs: {
+    async getAll(): Promise<ApiResponse<any[]>> {
+      const response = await apiClient.get<ApiResponse<any[]>>('/teacher/blogs');
+      return response.data;
+    },
+
+    async getById(id: number): Promise<ApiResponse<any>> {
+      const response = await apiClient.get<ApiResponse<any>>(`/teacher/blogs/${id}`);
+      return response.data;
+    },
+
+    async create(data: any): Promise<ApiResponse<any>> {
+      const response = await apiClient.post<ApiResponse<any>>('/teacher/blogs', data);
+      cacheManager.invalidate('/teacher/blogs');
+      return response.data;
+    },
+
+    async update(id: number, data: any): Promise<ApiResponse<any>> {
+      const response = await apiClient.put<ApiResponse<any>>(`/teacher/blogs/${id}`, data);
+      cacheManager.invalidate('/teacher/blogs');
+      return response.data;
+    },
+
+    async delete(id: number): Promise<ApiResponse<void>> {
+      const response = await apiClient.delete<ApiResponse<void>>(`/teacher/blogs/${id}`);
+      cacheManager.invalidate('/teacher/blogs');
+      return response.data;
+    },
+
+    async getBlogTypes(): Promise<ApiResponse<any[]>> {
+      const response = await apiClient.get<ApiResponse<any[]>>('/teacher/blog-types');
+      return response.data;
+    },
+  },
+
+  categories: {
+    async getAll(): Promise<ApiResponse<any[]>> {
+      const response = await apiClient.get<ApiResponse<any[]>>('/teacher/categories');
+      return response.data;
+    },
+  },
+
   reports: {},
   
   /**

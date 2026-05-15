@@ -6,6 +6,9 @@ export default defineConfig({
   plugins: [
     react(),
   ],
+  optimizeDeps: {
+    exclude: ['pdfjs-dist'],
+  },
   build: {
     chunkSizeWarningLimit: 2500,
   },

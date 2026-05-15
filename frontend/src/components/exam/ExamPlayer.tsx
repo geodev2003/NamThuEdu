@@ -75,10 +75,55 @@ export function ExamPlayer({
 
   if (!examData.questions || examData.questions.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-pink-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl mb-4">😕</div>
-          <p className="text-xl text-gray-600 mb-4 font-medium">No questions found</p>
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-pink-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          {/* Animated Icon */}
+          <div className="text-center mb-6">
+            <div className="inline-block animate-bounce">
+              <div className="w-24 h-24 bg-gradient-to-br from-orange-400 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-5xl">📝</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card */}
+          <div className="bg-white rounded-2xl shadow-xl p-8 text-center border-2 border-orange-100">
+            {/* Title */}
+            <h2 className="text-2xl font-bold text-gray-800 mb-3">
+              Chưa Có Câu Hỏi
+            </h2>
+            
+            {/* Description */}
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              Đề thi này chưa có câu hỏi nào. Vui lòng liên hệ giáo viên để được hỗ trợ.
+            </p>
+
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                <div className="text-2xl mb-1">🎧</div>
+                <div className="text-xs text-gray-600">Listening</div>
+                <div className="text-sm font-bold text-gray-800">0</div>
+              </div>
+              <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
+                <div className="text-2xl mb-1">📖</div>
+                <div className="text-xs text-gray-600">Reading</div>
+                <div className="text-sm font-bold text-gray-800">0</div>
+              </div>
+              <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
+                <div className="text-2xl mb-1">🗣️</div>
+                <div className="text-xs text-gray-600">Speaking</div>
+                <div className="text-sm font-bold text-gray-800">0</div>
+              </div>
+            </div>
+
+            {/* Help Text */}
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+              <p className="text-sm text-blue-800">
+                💡 <span className="font-medium">Lưu ý:</span> Đề thi đang được cập nhật. Vui lòng quay lại sau!
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );

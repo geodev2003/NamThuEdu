@@ -1,64 +1,129 @@
 /**
- * Adults Layout - Giao diện dành cho người lớn (18+ tuổi)
- * 
- * Đặc điểm:
- * - Thiết kế chuyên nghiệp, tối giản
- * - Focus vào productivity và analytics
- * - Màu sắc trung tính, dễ nhìn
- * - Tối ưu cho công việc
+ * Adults Layout — Sidebar dành cho người đi làm (18+)
+ *
+ * Nguyên tắc UI/UX:
+ *  - Restrained accent: cam chỉ dùng cho active indicator (thanh trái + soft bg + text)
+ *  - Hierarchy rõ: brand → sections (Khám phá / Phát triển / Hệ thống) → user card pinned bottom
+ *  - Nhóm nav theo nhóm chức năng, có label uppercase tracking-wider
+ *  - Active state: 3px accent left border + bg-orange-50/80 + text-orange-700
+ *  - Hover state: bg-slate-50 (không giật mắt)
+ *  - User card pinned bottom với avatar, role/class chip, và logout icon-only
+ *  - Mobile: drawer trượt, backdrop có blur nhẹ
+ *  - Body cuộn an toàn (overflow-y-auto), pinned card không bị che
  */
 
 import { useState } from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router';
-import { 
-  Home, 
-  BookOpen, 
-  BarChart3, 
-  Target, 
+import { Outlet, useNavigate, useLocation, NavLink } from 'react-router';
+import { usePushNotification } from '../../hooks/usePushNotification';
+import { NotificationPermissionBanner } from '../../components/NotificationPermissionBanner';
+import {
+  Home,
+  BookOpen,
+  BarChart3,
+  Target,
   Calendar,
-  Settings, 
+  Settings,
   LogOut,
   Menu,
   X,
   Award,
-  Clock
+  GraduationCap,
 } from 'lucide-react';
 
-const AdultsNavItem = ({ 
-  icon: Icon, 
-  label, 
-  path, 
-  isActive, 
-  onClick 
-}: {
-  icon: any;
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type NavItem = {
+  icon: typeof Home;
   label: string;
   path: string;
-  isActive: boolean;
-  onClick: () => void;
-}) => {
-  return (
-    <button
-      onClick={onClick}
-      className={`
-        w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-200
-        ${isActive 
-          ? 'bg-orange-500 text-white shadow-md' 
-          : 'text-gray-700 hover:bg-orange-50 hover:text-orange-600'
-        }
-      `}
-    >
-      <Icon className="w-5 h-5" />
-      <span className="font-medium">{label}</span>
-    </button>
-  );
 };
 
+type NavGroup = {
+  title: string;
+  items: NavItem[];
+};
+
+// ─── Nav config ───────────────────────────────────────────────────────────────
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    title: 'Khám phá',
+    items: [
+      { icon: Home,      label: 'Trang chủ',  path: '/hoc-vien/adults' },
+      { icon: BookOpen,  label: 'Khóa học',   path: '/hoc-vien/adults/courses' },
+      { icon: BarChart3, label: 'Thống kê',   path: '/hoc-vien/adults/analytics' },
+      { icon: Target,    label: 'Mục tiêu',   path: '/hoc-vien/adults/goals' },
+    ],
+  },
+  {
+    title: 'Phát triển',
+    items: [
+      { icon: Award,    label: 'Chứng chỉ', path: '/hoc-vien/adults/certifications' },
+      { icon: Calendar, label: 'Lịch học',  path: '/hoc-vien/adults/schedule' },
+    ],
+  },
+  {
+    title: 'Hệ thống',
+    items: [
+      { icon: Settings, label: 'Cài đặt', path: '/hoc-vien/adults/settings' },
+    ],
+  },
+];
+
+// ─── Sidebar item ─────────────────────────────────────────────────────────────
+
+function SidebarItem({
+  item,
+  isActive,
+  onNavigate,
+}: {
+  item: NavItem;
+  isActive: boolean;
+  onNavigate: () => void;
+}) {
+  const Icon = item.icon;
+  return (
+    <NavLink
+      to={item.path}
+      onClick={onNavigate}
+      className={`
+        relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
+        transition-colors duration-150 outline-none
+        focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-1
+        ${isActive
+          ? 'bg-orange-50/80 text-orange-700'
+          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}
+      `}
+      aria-current={isActive ? 'page' : undefined}
+    >
+      {/* Active indicator bar */}
+      <span
+        aria-hidden
+        className={`
+          absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-orange-500
+          transition-opacity duration-150
+          ${isActive ? 'opacity-100' : 'opacity-0'}
+        `}
+      />
+      <Icon
+        className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${
+          isActive ? 'text-orange-600' : 'text-slate-400 group-hover:text-slate-600'
+        }`}
+        strokeWidth={isActive ? 2.25 : 2}
+      />
+      <span className="truncate">{item.label}</span>
+    </NavLink>
+  );
+}
+
+// ─── Layout ───────────────────────────────────────────────────────────────────
+
 export function AdultsLayout() {
+  const push = usePushNotification();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
 
@@ -69,123 +134,124 @@ export function AdultsLayout() {
     navigate('/dang-nhap');
   };
 
-  const navItems = [
-    { icon: Home, label: 'Dashboard', path: '/hoc-vien/adults' },
-    { icon: BookOpen, label: 'Courses', path: '/hoc-vien/adults/courses' },
-    { icon: BarChart3, label: 'Analytics', path: '/hoc-vien/adults/analytics' },
-    { icon: Target, label: 'Goals', path: '/hoc-vien/adults/goals' },
-    { icon: Award, label: 'Certifications', path: '/hoc-vien/adults/certifications' },
-    { icon: Calendar, label: 'Schedule', path: '/hoc-vien/adults/schedule' },
-    { icon: Settings, label: 'Settings', path: '/hoc-vien/adults/settings' },
-  ];
+  const closeMobileSidebar = () => setSidebarOpen(false);
+
+  const initial = (user?.uName || 'H')[0]?.toUpperCase() || 'H';
+  const className = user?.class?.cName || user?.class?.name || 'Lớp Adults';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile Header */}
-      <div className="lg:hidden bg-white shadow-sm p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">{user?.uName?.charAt(0) || 'P'}</span>
+    <div className="min-h-screen bg-slate-50">
+      <NotificationPermissionBanner push={push} />
+      {/* ─── Mobile Top Bar ──────────────────────────────────────── */}
+      <header className="lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
+        <div className="flex items-center justify-between px-4 h-14">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-md bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-sm">
+              <GraduationCap className="w-4 h-4 text-white" strokeWidth={2.5} />
             </div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-900">
-                Welcome, {user?.uName}
-              </h1>
-            </div>
+            <span className="text-sm font-bold text-slate-900 tracking-tight">NamThu Edu</span>
           </div>
           <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+            onClick={() => setSidebarOpen(v => !v)}
+            className="w-9 h-9 rounded-lg text-slate-600 hover:bg-slate-100 active:bg-slate-200 transition-colors flex items-center justify-center"
+            aria-label={sidebarOpen ? 'Đóng menu' : 'Mở menu'}
           >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
-      </div>
+      </header>
 
       <div className="flex">
-        {/* Sidebar */}
-        <div className={`
-          fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-lg border-r border-gray-200
-          transform transition-transform duration-300 ease-in-out
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}>
-          {/* Header */}
-          <div className="p-6 bg-gradient-to-r from-orange-500 to-red-600 text-white">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                <Target className="w-6 h-6 text-white" />
+        {/* ─── Sidebar ─────────────────────────────────────────── */}
+        <aside
+          className={`
+            fixed lg:sticky lg:top-0 inset-y-0 left-0 z-50
+            w-72 lg:w-64 h-screen
+            bg-white border-r border-slate-200
+            flex flex-col
+            transform transition-transform duration-300 ease-out
+            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          `}
+        >
+          {/* Brand header */}
+          <div className="px-5 h-16 flex items-center border-b border-slate-100 flex-shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-sm shadow-orange-500/20">
+                <GraduationCap className="w-[18px] h-[18px] text-white" strokeWidth={2.5} />
               </div>
-              <div>
-                <h2 className="text-lg font-bold">
-                  {user?.uName || 'Professional'}
-                </h2>
-                <p className="text-orange-100 text-sm">Learning Platform</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="p-4 bg-gray-50 border-b">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Clock className="w-4 h-4 text-orange-500" />
-                  <span className="text-lg font-bold text-gray-900">0h</span>
-                </div>
-                <p className="text-xs text-gray-500">Study Time</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Award className="w-4 h-4 text-orange-500" />
-                  <span className="text-lg font-bold text-gray-900">0</span>
-                </div>
-                <p className="text-xs text-gray-500">Completed</p>
+              <div className="leading-tight">
+                <p className="text-[13px] font-bold text-slate-900 tracking-tight">NamThu Edu</p>
+                <p className="text-[11px] text-slate-500">Học viên · Người đi làm</p>
               </div>
             </div>
           </div>
 
-          {/* Navigation */}
-          <div className="p-4 space-y-1">
-            {navItems.map((item) => (
-              <AdultsNavItem
-                key={item.path}
-                icon={item.icon}
-                label={item.label}
-                path={item.path}
-                isActive={location.pathname === item.path}
-                onClick={() => {
-                  navigate(item.path);
-                  setSidebarOpen(false);
-                }}
-              />
+          {/* Nav (scrollable) */}
+          <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+            {NAV_GROUPS.map(group => (
+              <div key={group.title}>
+                <p className="px-3 mb-1.5 text-[10.5px] font-semibold tracking-[0.08em] uppercase text-slate-400">
+                  {group.title}
+                </p>
+                <ul className="space-y-0.5">
+                  {group.items.map(item => (
+                    <li key={item.path}>
+                      <SidebarItem
+                        item={item}
+                        isActive={location.pathname === item.path}
+                        onNavigate={closeMobileSidebar}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </div>
+          </nav>
 
-          {/* Logout Button */}
-          <div className="absolute bottom-4 left-4 right-4">
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 p-3 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-all duration-200"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="font-medium">Logout</span>
-            </button>
-          </div>
-        </div>
+          {/* User card pinned bottom */}
+          <div className="border-t border-slate-100 p-3 flex-shrink-0">
+            <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors group">
+              {/* Avatar */}
+              <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center flex-shrink-0 shadow-sm">
+                <span className="text-white text-sm font-bold">{initial}</span>
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white" />
+              </div>
 
-        {/* Overlay for mobile */}
+              {/* Info */}
+              <div className="flex-1 min-w-0 leading-tight">
+                <p className="text-sm font-semibold text-slate-900 truncate">
+                  {user?.uName || 'Học viên'}
+                </p>
+                <p className="text-xs text-slate-500 truncate">{className}</p>
+              </div>
+
+              {/* Logout */}
+              <button
+                onClick={handleLogout}
+                className="w-8 h-8 rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600 active:bg-rose-100 transition-colors flex items-center justify-center flex-shrink-0"
+                aria-label="Đăng xuất"
+                title="Đăng xuất"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        {/* ─── Mobile backdrop ─────────────────────────────────── */}
         {sidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
+          <button
+            type="button"
+            aria-label="Đóng menu"
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden animate-in fade-in duration-200"
+            onClick={closeMobileSidebar}
           />
         )}
 
-        {/* Main Content */}
-        <div className="flex-1 lg:ml-0">
+        {/* ─── Main content ────────────────────────────────────── */}
+        <main className="flex-1 min-w-0">
           <Outlet />
-        </div>
+        </main>
       </div>
     </div>
   );

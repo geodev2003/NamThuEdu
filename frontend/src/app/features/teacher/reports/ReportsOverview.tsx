@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
+import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
 import {
   Users,
   BookOpen,
@@ -36,6 +38,8 @@ import {
 } from "recharts";
 
 export function ReportsOverview() {
+  usePageTitle(PAGE_TITLES.TEACHER_REPORTS);
+  const { t } = useTranslation();
   const [dateRange, setDateRange] = useState("30days");
   const [reportsData, setReportsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -58,13 +62,13 @@ export function ReportsOverview() {
           if (result.status === 'success') {
             setReportsData(result.data);
           } else {
-            setError('Không thể tải báo cáo tổng quan');
+            setError(t('teacher.reports.overview.error'));
           }
         } else {
-          setError('Lỗi khi tải dữ liệu');
+          setError(t('teacher.reports.overview.loadError'));
         }
       } catch (err) {
-        setError('Lỗi kết nối đến server');
+        setError(t('teacher.reports.overview.connectionError'));
       } finally {
         setLoading(false);
       }
@@ -78,7 +82,7 @@ export function ReportsOverview() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 font-semibold">Đang tải báo cáo tổng quan...</p>
+          <p className="text-gray-600 font-semibold">{t('teacher.reports.overview.loading')}</p>
         </div>
       </div>
     );
@@ -91,12 +95,12 @@ export function ReportsOverview() {
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-8 h-8 text-red-600" />
           </div>
-          <p className="text-red-600 font-semibold mb-2">{error || 'Không tìm thấy dữ liệu'}</p>
+          <p className="text-red-600 font-semibold mb-2">{error || t('teacher.reports.overview.notFound')}</p>
           <button
             onClick={() => window.location.reload()}
             className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
           >
-            Thử lại
+            {t('teacher.reports.overview.retry')}
           </button>
         </div>
       </div>
@@ -114,9 +118,9 @@ export function ReportsOverview() {
   ];
   
   const submissionStatus = reportsData.submissionStatus || [
-    { name: "Đã chấm", value: 245, color: "#10B981" },
-    { name: "Đang chờ", value: 38, color: "#F59E0B" },
-    { name: "Đang làm", value: 15, color: "#3B82F6" },
+    { name: t('teacher.reports.overview.charts.submissionStatus.items.graded'), value: 245, color: "#10B981" },
+    { name: t('teacher.reports.overview.charts.submissionStatus.items.pending'), value: 38, color: "#F59E0B" },
+    { name: t('teacher.reports.overview.charts.submissionStatus.items.inProgress'), value: 15, color: "#3B82F6" },
   ];
   
   const recentActivities = reportsData.recentActivities || [
@@ -170,8 +174,8 @@ export function ReportsOverview() {
       <div className="mb-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Báo cáo & Thống kê 📊</h1>
-            <p className="text-gray-600">Theo dõi hiệu suất giảng dạy và tiến độ học sinh</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('teacher.reports.overview.header')}</h1>
+            <p className="text-gray-600">{t('teacher.reports.overview.subheader')}</p>
           </div>
 
           {/* Date Range Selector */}
@@ -180,10 +184,10 @@ export function ReportsOverview() {
             onChange={(e) => setDateRange(e.target.value)}
             className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="7days">7 ngày qua</option>
-            <option value="30days">30 ngày qua</option>
-            <option value="90days">90 ngày qua</option>
-            <option value="year">Năm nay</option>
+            <option value="7days">{t('teacher.reports.overview.dateRange.7days')}</option>
+            <option value="30days">{t('teacher.reports.overview.dateRange.30days')}</option>
+            <option value="90days">{t('teacher.reports.overview.dateRange.90days')}</option>
+            <option value="year">{t('teacher.reports.overview.dateRange.thisYear')}</option>
           </select>
         </div>
 
@@ -193,25 +197,25 @@ export function ReportsOverview() {
             to="/giao-vien/bao-cao"
             className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg whitespace-nowrap"
           >
-            Tổng quan
+            {t('teacher.reports.overview.tabs.overview')}
           </Link>
           <Link
             to="/giao-vien/bao-cao/tien-do-students"
             className="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg hover:bg-gray-50 whitespace-nowrap"
           >
-            Tiến độ học sinh
+            {t('teacher.reports.overview.tabs.studentProgress')}
           </Link>
           <Link
             to="/giao-vien/bao-cao/phan-tich"
             className="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg hover:bg-gray-50 whitespace-nowrap"
           >
-            Phân tích kết quả
+            {t('teacher.reports.overview.tabs.analysis')}
           </Link>
           <Link
             to="/giao-vien/bao-cao/xuat-bao-cao"
             className="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg hover:bg-gray-50 whitespace-nowrap"
           >
-            Xuất báo cáo
+            {t('teacher.reports.overview.tabs.export')}
           </Link>
         </div>
       </div>
@@ -229,7 +233,7 @@ export function ReportsOverview() {
               +12%
             </span>
           </div>
-          <p className="text-sm text-gray-600 mb-1">Tổng học sinh</p>
+          <p className="text-sm text-gray-600 mb-1">{t('teacher.reports.overview.metrics.totalStudents')}</p>
           <p className="text-3xl font-bold text-gray-900">156</p>
         </div>
 
@@ -244,7 +248,7 @@ export function ReportsOverview() {
               +3
             </span>
           </div>
-          <p className="text-sm text-gray-600 mb-1">Khóa học hoạt động</p>
+          <p className="text-sm text-gray-600 mb-1">{t('teacher.reports.overview.metrics.activeCourses')}</p>
           <p className="text-3xl font-bold text-gray-900">12</p>
         </div>
 
@@ -259,7 +263,7 @@ export function ReportsOverview() {
               +5%
             </span>
           </div>
-          <p className="text-sm text-gray-600 mb-1">Tỷ lệ hoàn thành</p>
+          <p className="text-sm text-gray-600 mb-1">{t('teacher.reports.overview.metrics.completionRate')}</p>
           <p className="text-3xl font-bold text-gray-900">85.2%</p>
         </div>
 
@@ -274,7 +278,7 @@ export function ReportsOverview() {
               +0.8
             </span>
           </div>
-          <p className="text-sm text-gray-600 mb-1">Điểm trung bình</p>
+          <p className="text-sm text-gray-600 mb-1">{t('teacher.reports.overview.metrics.avgScore')}</p>
           <p className="text-3xl font-bold text-gray-900">7.5</p>
         </div>
       </div>
@@ -285,7 +289,7 @@ export function ReportsOverview() {
           <div className="flex items-center gap-3">
             <FileText className="w-5 h-5 text-gray-500" />
             <div>
-              <p className="text-xs text-gray-600">Đã chấm tuần này</p>
+              <p className="text-xs text-gray-600">{t('teacher.reports.overview.quickStats.gradedThisWeek')}</p>
               <p className="text-xl font-bold text-gray-900">87</p>
             </div>
           </div>
@@ -295,7 +299,7 @@ export function ReportsOverview() {
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-orange-500" />
             <div>
-              <p className="text-xs text-gray-600">Đang chờ chấm</p>
+              <p className="text-xs text-gray-600">{t('teacher.reports.overview.quickStats.pendingGrading')}</p>
               <p className="text-xl font-bold text-orange-600">38</p>
             </div>
           </div>
@@ -305,7 +309,7 @@ export function ReportsOverview() {
           <div className="flex items-center gap-3">
             <Activity className="w-5 h-5 text-gray-500" />
             <div>
-              <p className="text-xs text-gray-600">Hoạt động gần đây</p>
+              <p className="text-xs text-gray-600">{t('teacher.reports.overview.quickStats.recentActivities')}</p>
               <p className="text-xl font-bold text-gray-900">124</p>
             </div>
           </div>
@@ -315,7 +319,7 @@ export function ReportsOverview() {
           <div className="flex items-center gap-3">
             <Clock className="w-5 h-5 text-gray-500" />
             <div>
-              <p className="text-xs text-gray-600">Thời gian chấm TB</p>
+              <p className="text-xs text-gray-600">{t('teacher.reports.overview.quickStats.avgGradingTime')}</p>
               <p className="text-xl font-bold text-gray-900">12 phút</p>
             </div>
           </div>
@@ -328,8 +332,8 @@ export function ReportsOverview() {
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-bold text-gray-900">Hiệu suất theo thời gian</h3>
-              <p className="text-sm text-gray-600">Điểm trung bình 7 ngày qua</p>
+              <h3 className="text-lg font-bold text-gray-900">{t('teacher.reports.overview.charts.performance.title')}</h3>
+              <p className="text-sm text-gray-600">{t('teacher.reports.overview.charts.performance.subtitle')}</p>
             </div>
             <div className="p-2 bg-blue-100 rounded-lg">
               <BarChart3 className="w-5 h-5 text-blue-600" />
@@ -368,8 +372,8 @@ export function ReportsOverview() {
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-bold text-gray-900">Bài nộp theo trạng thái</h3>
-              <p className="text-sm text-gray-600">Tổng: {submissionStatus.reduce((sum, s) => sum + s.value, 0)} bài</p>
+              <h3 className="text-lg font-bold text-gray-900">{t('teacher.reports.overview.charts.submissionStatus.title')}</h3>
+              <p className="text-sm text-gray-600">{t('teacher.reports.overview.charts.submissionStatus.total')} {submissionStatus.reduce((sum, s) => sum + s.value, 0)}</p>
             </div>
             <div className="p-2 bg-purple-100 rounded-lg">
               <PieChart className="w-5 h-5 text-purple-600" />
@@ -414,12 +418,12 @@ export function ReportsOverview() {
         {/* Recent Activities */}
         <div className="lg:col-span-2 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Hoạt động gần đây</h3>
+            <h3 className="text-lg font-bold text-gray-900">{t('teacher.reports.overview.activities.title')}</h3>
             <Link
               to="/giao-vien/bao-cao/tien-do-students"
               className="text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center gap-1"
             >
-              Xem tất cả
+              {t('teacher.reports.overview.activities.viewAll')}
               <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
@@ -451,7 +455,7 @@ export function ReportsOverview() {
 
         {/* Quick Actions */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Thao tác nhanh</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-4">{t('teacher.reports.overview.quickActions.title')}</h3>
           <div className="space-y-3">
             <Link
               to="/giao-vien/cham-diem/bao-cao-lop"
@@ -461,8 +465,8 @@ export function ReportsOverview() {
                 <Users className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-gray-900">Xem báo cáo lớp</p>
-                <p className="text-xs text-gray-600">Chi tiết từng lớp</p>
+                <p className="font-semibold text-gray-900">{t('teacher.reports.overview.quickActions.classReport.title')}</p>
+                <p className="text-xs text-gray-600">{t('teacher.reports.overview.quickActions.classReport.subtitle')}</p>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600" />
             </Link>
@@ -475,8 +479,8 @@ export function ReportsOverview() {
                 <BarChart3 className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-gray-900">Phân tích bài thi</p>
-                <p className="text-xs text-gray-600">Thống kê chi tiết</p>
+                <p className="font-semibold text-gray-900">{t('teacher.reports.overview.quickActions.analysis.title')}</p>
+                <p className="text-xs text-gray-600">{t('teacher.reports.overview.quickActions.analysis.subtitle')}</p>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-purple-600" />
             </Link>
@@ -489,8 +493,8 @@ export function ReportsOverview() {
                 <Download className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-gray-900">Xuất báo cáo PDF</p>
-                <p className="text-xs text-gray-600">Tải về file</p>
+                <p className="font-semibold text-gray-900">{t('teacher.reports.overview.quickActions.exportPDF.title')}</p>
+                <p className="text-xs text-gray-600">{t('teacher.reports.overview.quickActions.exportPDF.subtitle')}</p>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-green-600" />
             </Link>
@@ -501,9 +505,9 @@ export function ReportsOverview() {
             <div className="flex items-start gap-2 mb-2">
               <TrendingUp className="w-5 h-5 text-orange-600 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-orange-900">Xu hướng tích cực!</p>
+                <p className="text-sm font-semibold text-orange-900">{t('teacher.reports.overview.insights.title')}</p>
                 <p className="text-xs text-orange-700 mt-1">
-                  Điểm TB tăng 15% so với tháng trước
+                  {t('teacher.reports.overview.insights.description')}
                 </p>
               </div>
             </div>

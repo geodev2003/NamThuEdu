@@ -45,6 +45,8 @@ class User extends Authenticatable
         'avatar_url',
         'bio',
         'language_preference',
+        'plain_password',
+        'notifications_read_at',
     ];
 
     /**
@@ -69,6 +71,7 @@ class User extends Authenticatable
         'uCreated_at' => 'datetime',
         'theme_updated_at' => 'datetime',
         'refresh_token_expires_at' => 'datetime',
+        'notifications_read_at'     => 'datetime',
     ];
 
     /**

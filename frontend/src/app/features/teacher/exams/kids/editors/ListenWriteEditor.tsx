@@ -74,9 +74,9 @@ const ListenWriteEditor: React.FC<ListenWriteEditorProps> = ({
       return;
     }
 
-    // Check file size (max 5MB)
-    if (blob.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    // Check file size (max 20MB)
+    if (blob.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -172,9 +172,9 @@ const ListenWriteEditor: React.FC<ListenWriteEditorProps> = ({
       return;
     }
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    // Check file size (max 20MB)
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -208,9 +208,9 @@ const ListenWriteEditor: React.FC<ListenWriteEditorProps> = ({
       return;
     }
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    // Check file size (max 20MB)
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -374,7 +374,7 @@ const ListenWriteEditor: React.FC<ListenWriteEditorProps> = ({
                 {isUploading ? '⏳ Đang tải lên...' : 'Nhấn để tải hình ảnh lên'}
               </span>
               <span className="mt-1 block text-sm text-gray-500">
-                PNG, JPG, GIF, WebP (tối đa 5MB)
+                PNG, JPG, GIF, WebP (tối đa 20MB)
               </span>
               <span className="mt-1 block text-xs text-indigo-600 font-medium">
                 hoặc Ctrl+V để paste ảnh

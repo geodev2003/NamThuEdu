@@ -876,17 +876,74 @@ export function ExamPreview() {
 
   if (!examData || !examData.questions || examData.questions.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-pink-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl mb-4">😕</div>
-          <p className="text-xl text-gray-600 mb-4 font-medium">No questions found</p>
-          <button
-            onClick={() => navigate(-1)}
-            className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all inline-flex items-center gap-2 font-medium"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Go Back
-          </button>
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-pink-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          {/* Animated Icon */}
+          <div className="text-center mb-6">
+            <div className="inline-block animate-bounce">
+              <div className="w-24 h-24 bg-gradient-to-br from-orange-400 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-5xl">📝</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card */}
+          <div className="bg-white rounded-2xl shadow-xl p-8 text-center border-2 border-orange-100">
+            {/* Title */}
+            <h2 className="text-2xl font-bold text-gray-800 mb-3">
+              Chưa Có Câu Hỏi
+            </h2>
+            
+            {/* Description */}
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              Đề thi này chưa có câu hỏi nào. Vui lòng thêm câu hỏi để học viên có thể làm bài.
+            </p>
+
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                <div className="text-2xl mb-1">🎧</div>
+                <div className="text-xs text-gray-600">Listening</div>
+                <div className="text-sm font-bold text-gray-800">0</div>
+              </div>
+              <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
+                <div className="text-2xl mb-1">📖</div>
+                <div className="text-xs text-gray-600">Reading</div>
+                <div className="text-sm font-bold text-gray-800">0</div>
+              </div>
+              <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
+                <div className="text-2xl mb-1">🗣️</div>
+                <div className="text-xs text-gray-600">Speaking</div>
+                <div className="text-sm font-bold text-gray-800">0</div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => navigate(-1)}
+                className="w-full px-6 py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl hover:from-orange-600 hover:to-pink-600 transition-all inline-flex items-center justify-center gap-2 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                Quay Lại
+              </button>
+              
+              <button
+                onClick={() => navigate(`/giao-vien/de-thi/${examId}/chinh-sua`)}
+                className="w-full px-6 py-3 bg-white text-orange-600 rounded-xl hover:bg-orange-50 transition-all inline-flex items-center justify-center gap-2 font-medium border-2 border-orange-200 hover:border-orange-300"
+              >
+                <span className="text-xl">➕</span>
+                Thêm Câu Hỏi
+              </button>
+            </div>
+          </div>
+
+          {/* Help Text */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-500">
+              💡 Mẹo: Bạn có thể thêm câu hỏi từ thư viện hoặc tạo mới
+            </p>
+          </div>
         </div>
       </div>
     );

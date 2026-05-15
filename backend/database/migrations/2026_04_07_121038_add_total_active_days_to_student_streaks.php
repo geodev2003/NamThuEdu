@@ -13,9 +13,11 @@ class AddTotalActiveDaysToStudentStreaks extends Migration
      */
     public function up()
     {
-        Schema::table('student_streaks', function (Blueprint $table) {
+        if (Schema::hasTable('student_streaks')) {
+            Schema::table('student_streaks', function (Blueprint $table) {
             $table->integer('total_active_days')->default(0)->after('last_activity_date');
         });
+        }
     }
 
     /**
@@ -25,8 +27,10 @@ class AddTotalActiveDaysToStudentStreaks extends Migration
      */
     public function down()
     {
-        Schema::table('student_streaks', function (Blueprint $table) {
+        if (Schema::hasTable('student_streaks')) {
+            Schema::table('student_streaks', function (Blueprint $table) {
             $table->dropColumn('total_active_days');
         });
+        }
     }
 }

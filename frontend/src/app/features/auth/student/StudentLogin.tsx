@@ -96,14 +96,16 @@ export function StudentLogin() {
   };
 
   return (
-    <div className="relative w-full min-h-screen flex flex-col bg-white">
+    <div className="relative w-full min-h-screen flex flex-col !bg-white" style={{ background: '#ffffff !important' }}>
       {/* Particles Background */}
       <ParticlesBackgroundWhite />
       
       {/* Login Card */}
-      <div className="flex-1 flex items-center justify-center p-2 md:p-4">
+      <div className="flex-1 flex items-center justify-center p-4 md:p-8">
         <div className="w-full max-w-md relative z-10">
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 border border-orange-100" style={{
+          boxShadow: '0 20px 60px rgba(234, 88, 12, 0.15), 0 0 0 1px rgba(234, 88, 12, 0.05)'
+        }}>
           {/* Badge */}
           <div className="flex justify-center mb-6">
             <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full" style={{

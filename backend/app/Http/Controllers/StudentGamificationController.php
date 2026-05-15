@@ -278,4 +278,67 @@ class StudentGamificationController extends Controller
             ]
         ]);
     }
+
+    /**
+     * GET /api/student/gamification/leaderboard
+     * Bảng xếp hạng học viên theo tổng điểm
+     */
+    public function getLeaderboard(Request $request)
+    {
+        $studentId = $request->user()->uId;
+        $limit     = min((int) $request->input('limit', 10), 50);
+
+        // Top N students by total_points
+        $top = DB::table('student_stats')
+            ->join('users', 'student_stats.student_id', '=', 'users.uId')
+            ->where('users.uRole', 'student')
+            ->orderByDesc('student_stats.total_points')
+            ->limit($limit)
+            ->get(['users.uId as id', 'users.uName as name', 'student_stats.total_points', 'student_stats.average_score', 'student_stats.exams_taken']);
+
+        // Current user's rank (number of students with strictly more points + 1)
+        $myStats = StudentStats::where('student_id', $studentId)->first();
+        $myPoints = $myStats ? (int) $myStats->total_points : 0;
+
+        $myRank = DB::table('student_stats')
+            ->join('users', 'student_stats.student_id', '=', 'users.uId')
+            ->where('users.uRole', 'student')
+            ->where('student_stats.total_points', '>', $myPoints)
+            ->count() + 1;
+
+        $totalStudents = DB::table('student_stats')
+            ->join('users', 'student_stats.student_id', '=', 'users.uId')
+            ->where('users.uRole', 'student')
+            ->count();
+
+        $streakMap = StudentStreak::whereIn('student_id', $top->pluck('id')->toArray())
+            ->get()
+            ->keyBy('student_id');
+
+        $rows = $top->values()->map(function ($row, $index) use ($studentId, $streakMap) {
+            $streak = $streakMap->get($row->id);
+            return [
+                'rank'         => $index + 1,
+                'id'           => $row->id,
+                'name'         => $row->name,
+                'total_points' => (int) $row->total_points,
+                'average_score'=> round((float) $row->average_score, 1),
+                'exams_taken'  => (int) $row->exams_taken,
+                'streak'       => $streak ? (int) $streak->current_streak : 0,
+                'is_me'        => $row->id == $studentId,
+            ];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => [
+                'top'            => $rows,
+                'me'             => [
+                    'rank'          => $myRank,
+                    'total_points'  => $myPoints,
+                    'total_students'=> $totalStudents,
+                ],
+            ],
+        ]);
+    }
 }

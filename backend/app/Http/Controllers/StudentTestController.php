@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\TestAssignment;
+use App\Models\Exam;
 use App\Models\Submission;
 use App\Models\SubmissionAnswer;
-use App\Models\ClassEnrollment;
 use App\Models\Question;
 use App\Services\StudentProgressService;
+use App\Services\VstepGradingService;
+use App\Jobs\GradeVstepSubjectiveJob;
 
 class StudentTestController extends Controller
 {
@@ -45,21 +48,41 @@ class StudentTestController extends Controller
             ], 401);
         }
 
-        // Get class IDs where student is enrolled
-        $classIds = ClassEnrollment::where('student_id', $user->uId)
-                                   ->pluck('class_id')
-                                   ->toArray();
+        // Get class IDs where student is enrolled (now stored on users.class_id directly)
+        $classIds = $user->class_id ? [$user->class_id] : [];
+
+        // Phân loại exam theo độ tuổi
+        $adultOnlyTypes = ['VSTEP', 'IELTS'];
+        $kidsOnlyTypes  = ['STARTERS', 'MOVERS', 'FLYERS'];
+        $ageGroup = $user->age_group;
 
         // Get assignments for student (individual or class-based)
-        $assignments = TestAssignment::with(['exam'])
-                                    ->where(function($query) use ($user, $classIds) {
+        // VSTEP đề thi chính thức phải là full (eSkill=mixed); đề nào skill riêng thuộc về /practice
+        $assignments = TestAssignment::with(['exam' => function ($q) {
+                                            $q->withCount('questions');
+                                        }])
+                                    ->whereHas('exam', function ($q) use ($ageGroup, $adultOnlyTypes, $kidsOnlyTypes) {
+                                        $q->where(function ($inner) {
+                                            $inner->where('eType', '!=', 'VSTEP')
+                                                  ->orWhere('eSkill', 'mixed');
+                                        });
+                                        // Ẩn VSTEP/IELTS với học viên không phải adults
+                                        if ($ageGroup !== 'adults') {
+                                            $q->whereNotIn('eType', $adultOnlyTypes);
+                                        }
+                                        // Ẩn STARTERS/MOVERS/FLYERS với học viên không phải kids
+                                        if ($ageGroup !== 'kids') {
+                                            $q->whereNotIn('eType', $kidsOnlyTypes);
+                                        }
+                                    })
+                                    ->where(function ($query) use ($user, $classIds) {
                                         // Individual assignments
-                                        $query->where(function($q) use ($user) {
+                                        $query->where(function ($q) use ($user) {
                                             $q->where('taTarget_type', 'student')
                                               ->where('taTarget_id', $user->uId);
                                         })
                                         // Class assignments
-                                        ->orWhere(function($q) use ($classIds) {
+                                        ->orWhere(function ($q) use ($classIds) {
                                             $q->where('taTarget_type', 'class')
                                               ->whereIn('taTarget_id', $classIds);
                                         });
@@ -67,31 +90,92 @@ class StudentTestController extends Controller
                                     ->orderBy('taCreated_at', 'desc')
                                     ->get();
 
-        // Add attempt count for each assignment
-        $data = $assignments->map(function($assignment) use ($user) {
-            $attemptsUsed = Submission::where('user_id', $user->uId)
-                                     ->where('assignment_id', $assignment->taId)
-                                     ->count();
+        // Bulk-fetch all submissions for these assignments (avoid N+1)
+        $assignmentIds = $assignments->pluck('taId')->all();
+        $submissionsByAssignment = Submission::where('user_id', $user->uId)
+                                            ->whereIn('assignment_id', $assignmentIds)
+                                            ->orderBy('sStart_time', 'desc')
+                                            ->get()
+                                            ->groupBy('assignment_id');
 
-            return [
-                'taId' => $assignment->taId,
-                'exam' => [
-                    'eId' => $assignment->exam->eId,
-                    'eTitle' => $assignment->exam->eTitle,
-                    'eDescription' => $assignment->exam->eDescription,
-                    'eType' => $assignment->exam->eType,
-                    'eSkill' => $assignment->exam->eSkill,
-                    'eDuration_minutes' => $assignment->exam->eDuration_minutes,
-                ],
-                'taDeadline' => $assignment->taDeadline,
-                'taMax_attempt' => $assignment->taMax_attempt,
-                'attemptsUsed' => $attemptsUsed,
+        $now = now();
+        $grouped = [
+            'pending'     => [],
+            'in_progress' => [],
+            'completed'   => [],
+        ];
+
+        foreach ($assignments as $assignment) {
+            $exam = $assignment->exam;
+            if (!$exam) {
+                continue;
+            }
+
+            $subs           = $submissionsByAssignment->get($assignment->taId, collect());
+            $attemptsUsed   = $subs->count();
+            $inProgressSub  = $subs->firstWhere('sStatus', 'in_progress');
+            $finishedSub    = $subs->first(function ($s) {
+                return in_array($s->sStatus, ['submitted', 'graded']);
+            });
+
+            // Single-bucket classification: in_progress > completed > pending
+            if ($inProgressSub) {
+                $status = 'in_progress';
+            } elseif ($finishedSub) {
+                $status = 'completed';
+            } else {
+                $status = 'pending';
+            }
+
+            // Deadline & urgency
+            $deadline      = $assignment->taDeadline;
+            $isUrgent      = false;
+            $timeRemaining = '';
+            if ($deadline) {
+                $deadlineCarbon = \Carbon\Carbon::parse($deadline);
+                $hours          = $now->diffInHours($deadlineCarbon, false);
+                $isUrgent       = $hours >= 0 && $hours <= 24;
+                if ($hours < 0) {
+                    $timeRemaining = 'Đã hết hạn';
+                } elseif ($hours < 1) {
+                    $timeRemaining = 'Dưới 1 giờ';
+                } elseif ($hours < 24) {
+                    $timeRemaining = (int) round($hours) . ' giờ';
+                } else {
+                    $timeRemaining = (int) floor($hours / 24) . ' ngày';
+                }
+            }
+
+            $relevantSub = $inProgressSub ?? $finishedSub;
+
+            $item = [
+                'assignment_id'    => $assignment->taId,
+                'exam_id'          => $exam->eId,
+                'exam_title'       => $exam->eTitle,
+                'exam_type'        => $exam->eType,
+                'exam_skill'       => $exam->eSkill,
+                'exam_duration'    => $exam->eDuration_minutes ?? $exam->eDuration ?? 0,
+                'total_questions'  => $exam->questions_count ?? 0,
+                'max_score'        => $exam->eTotal_score ?? 100,
+                'start_time'       => $assignment->taCreated_at,
+                'end_time'         => $assignment->taDeadline,
+                'deadline'         => $assignment->taDeadline,
+                'is_urgent'        => $isUrgent,
+                'time_remaining'   => $timeRemaining,
+                'attempts_allowed' => $assignment->taMax_attempt,
+                'attempts_used'    => $attemptsUsed,
+                'status'           => $status,
+                'submission_id'    => $relevantSub ? $relevantSub->sId : null,
+                'score'            => $finishedSub ? (float) $finishedSub->sScore : null,
+                'submitted_at'     => $finishedSub ? $finishedSub->sSubmit_time : null,
             ];
-        });
+
+            $grouped[$status][] = $item;
+        }
 
         return response()->json([
             'status' => 'success',
-            'data' => $data
+            'data'   => $grouped,
         ]);
     }
 
@@ -126,7 +210,7 @@ class StudentTestController extends Controller
             ], 401);
         }
 
-        $assignment = TestAssignment::with(['exam.questions.answers'])
+        $assignment = TestAssignment::with(['exam.questions.answers', 'exam.contentBlocks'])
                                     ->find($id);
 
         if (!$assignment) {
@@ -134,6 +218,30 @@ class StudentTestController extends Controller
                 'status' => 'error',
                 'message' => 'Không tìm thấy bài thi.'
             ], 404);
+        }
+
+        // VSTEP đề thi chính thức phải là full mixed
+        if ($assignment->exam->eType === 'VSTEP' && $assignment->exam->eSkill !== 'mixed') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đề thi VSTEP từng kỹ năng chỉ có trong mục ôn tập. Vui lòng truy cập /student/practice.'
+            ], 403);
+        }
+
+        // VSTEP / IELTS chỉ dành cho sinh viên và người đi làm
+        if (in_array($assignment->exam->eType, ['VSTEP', 'IELTS']) && $user->age_group !== 'adults') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đề thi ' . $assignment->exam->eType . ' chỉ dành cho học viên từ 18 tuổi trở lên (sinh viên / người đi làm).'
+            ], 403);
+        }
+
+        // STARTERS / MOVERS / FLYERS chỉ dành cho kids
+        if (in_array($assignment->exam->eType, ['STARTERS', 'MOVERS', 'FLYERS']) && $user->age_group !== 'kids') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đề thi ' . $assignment->exam->eType . ' chỉ dành cho học viên nhỏ tuổi (kids).'
+            ], 403);
         }
 
         // Check if student is eligible
@@ -161,12 +269,17 @@ class StudentTestController extends Controller
                                  ->where('assignment_id', $id)
                                  ->count();
 
+        $responseData = [
+            'taId'         => $assignment->taId,
+            'taDeadline'   => $assignment->taDeadline,
+            'taMax_attempt' => $assignment->taMax_attempt,
+            'attemptsUsed' => $attemptsUsed,
+            'exam'         => $this->buildExamData($exam),
+        ];
+
         return response()->json([
             'status' => 'success',
-            'data' => [
-                'assignment' => $assignment,
-                'attemptsUsed' => $attemptsUsed,
-            ]
+            'data'   => $responseData,
         ]);
     }
 
@@ -201,7 +314,7 @@ class StudentTestController extends Controller
             ], 401);
         }
 
-        $assignment = TestAssignment::with(['exam.questions.answers'])
+        $assignment = TestAssignment::with(['exam.questions.answers', 'exam.contentBlocks'])
                                     ->find($id);
 
         if (!$assignment) {
@@ -209,6 +322,30 @@ class StudentTestController extends Controller
                 'status' => 'error',
                 'message' => 'Không tìm thấy bài thi.'
             ], 404);
+        }
+
+        // VSTEP đề thi chính thức phải là full mixed
+        if ($assignment->exam->eType === 'VSTEP' && $assignment->exam->eSkill !== 'mixed') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đề thi VSTEP từng kỹ năng chỉ có trong mục ôn tập. Vui lòng truy cập /student/practice.'
+            ], 403);
+        }
+
+        // VSTEP / IELTS chỉ dành cho sinh viên và người đi làm
+        if (in_array($assignment->exam->eType, ['VSTEP', 'IELTS']) && $user->age_group !== 'adults') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đề thi ' . $assignment->exam->eType . ' chỉ dành cho học viên từ 18 tuổi trở lên (sinh viên / người đi làm).'
+            ], 403);
+        }
+
+        // STARTERS / MOVERS / FLYERS chỉ dành cho kids
+        if (in_array($assignment->exam->eType, ['STARTERS', 'MOVERS', 'FLYERS']) && $user->age_group !== 'kids') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đề thi ' . $assignment->exam->eType . ' chỉ dành cho học viên nhỏ tuổi (kids).'
+            ], 403);
         }
 
         // Check eligibility
@@ -293,8 +430,8 @@ class StudentTestController extends Controller
             'status' => 'success',
             'data' => [
                 'submissionId' => $submission->sId,
-                'sStart_time' => $submission->sStart_time,
-                'exam' => $exam,
+                'sStart_time'  => $submission->sStart_time,
+                'exam'         => $this->buildExamData($exam),
             ]
         ]);
     }
@@ -359,7 +496,7 @@ class StudentTestController extends Controller
 
         $validator = Validator::make($request->all(), [
             'question_id' => 'required|integer|exists:questions,qId',
-            'saAnswer_text' => 'required|string|max:5000',
+            'saAnswer_text' => 'required|string|max:50000',
         ]);
 
         if ($validator->fails()) {
@@ -494,20 +631,37 @@ class StudentTestController extends Controller
             ], 400);
         }
 
-        // Check if all questions are answered
-        $totalQuestions = $submission->exam->questions->count();
-        $answeredQuestions = $submission->answers->count();
-
-        if ($answeredQuestions < $totalQuestions) {
-            $answeredQuestionIds = $submission->answers->pluck('question_id')->toArray();
-            $allQuestionIds = $submission->exam->questions->pluck('qId')->toArray();
-            $unansweredQuestions = array_diff($allQuestionIds, $answeredQuestionIds);
-
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Vui lòng trả lời tất cả các câu hỏi trước khi nộp bài.',
-                'unansweredQuestions' => array_values($unansweredQuestions)
-            ], 400);
+        // For VSTEP exams: only gate on MCQ questions (writing/speaking are manually graded)
+        $isVstep = strtoupper($submission->exam->eType ?? '') === 'VSTEP';
+        $subjectiveTypes = ['essay', 'writing', 'speaking'];
+        if ($isVstep) {
+            $mcqQuestions = $submission->exam->questions->filter(function ($q) use ($subjectiveTypes) {
+                return !in_array(strtolower($q->qType ?? ''), $subjectiveTypes)
+                    && !in_array(strtolower($q->qSection ?? ''), ['writing', 'speaking']);
+            });
+            $answeredMcqIds = $submission->answers->pluck('question_id')->toArray();
+            $mcqIds = $mcqQuestions->pluck('qId')->toArray();
+            $unansweredMcq = array_diff($mcqIds, $answeredMcqIds);
+            if (count($unansweredMcq) > 0 && count($unansweredMcq) >= count($mcqIds)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Bạn chưa trả lời bất kỳ câu hỏi nào.',
+                    'unansweredQuestions' => array_values($unansweredMcq)
+                ], 400);
+            }
+        } else {
+            $totalQuestions = $submission->exam->questions->count();
+            $answeredQuestions = $submission->answers->count();
+            if ($answeredQuestions < $totalQuestions) {
+                $answeredQuestionIds = $submission->answers->pluck('question_id')->toArray();
+                $allQuestionIds = $submission->exam->questions->pluck('qId')->toArray();
+                $unansweredQuestions = array_diff($allQuestionIds, $answeredQuestionIds);
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Vui lòng trả lời tất cả các câu hỏi trước khi nộp bài.',
+                    'unansweredQuestions' => array_values($unansweredQuestions)
+                ], 400);
+            }
         }
 
         DB::beginTransaction();
@@ -547,63 +701,89 @@ class StudentTestController extends Controller
                 ], 400);
             }
 
-            // Auto-grade objective questions
-            $totalScore = 0;
-            $maxScore = 0;
+            // Grade all answers — skip subjective (writing/speaking) for VSTEP
+            $isVstepTx = strtoupper($submission->exam->eType ?? '') === 'VSTEP';
+            $subjTypes  = ['essay', 'writing', 'speaking'];
+            $gradingResult = $this->gradeAnswers($submission->answers, $submission->exam_id, $isVstepTx, $subjTypes);
+            if ($gradingResult['error']) {
+                DB::rollBack();
+                return response()->json(['status' => 'error', 'message' => $gradingResult['error']], 400);
+            }
 
-            foreach ($submission->answers as $submissionAnswer) {
-                $question = Question::with('answers')->find($submissionAnswer->question_id);
-                if (!$question || (int) $question->exam_id !== (int) $submission->exam_id) {
-                    DB::rollBack();
-                    return response()->json([
-                        'status' => 'error',
-                        'message' => 'Dữ liệu câu hỏi không hợp lệ cho bài thi này.'
-                    ], 400);
+            $scorePercentage = $gradingResult['scorePercentage'];
+            $vstepMeta       = $gradingResult['vstepMeta'];
+
+            // VSTEP: W+S need AI grading — only if writing answer has meaningful content (>=30 chars)
+            $hasSubjectiveContent = false;
+            if ($isVstepTx && $vstepMeta) {
+                $hasWriting = $submission->answers->contains(function ($a) {
+                    if (strtolower($a->question->qSection ?? '') !== 'writing') return false;
+                    return strlen(trim($a->saAnswer_text ?? '')) >= 30;
+                });
+                $rawFeedback = json_decode($submission->sGemini_feedback ?? '{}', true) ?? [];
+                $hasSpeaking = !empty($rawFeedback['speaking_audio'] ?? []);
+                $hasSubjectiveContent = $hasWriting || $hasSpeaking;
+
+                // Auto-grade empty/short writing answers as 0 immediately
+                if (!$hasWriting) {
+                    $submission->answers->filter(fn($a) =>
+                        strtolower($a->question->qSection ?? '') === 'writing'
+                    )->each(fn($a) => $a->update(['saPoints_awarded' => 0]));
+                    $vstepMeta['writing'] = 0;
                 }
-                $correctAnswer = $question->answers->where('aIs_correct', true)->first();
-
-                $maxScore += $question->qPoints;
-
-                if ($correctAnswer && $this->isCorrectAnswer($submissionAnswer->saAnswer_text, $correctAnswer->aContent)) {
-                    $submissionAnswer->update([
-                        'saIs_correct' => true,
-                        'saPoints_awarded' => $question->qPoints,
-                    ]);
-                    $totalScore += $question->qPoints;
-                } else {
-                    $submissionAnswer->update([
-                        'saIs_correct' => false,
-                        'saPoints_awarded' => 0,
-                    ]);
+                // Recalculate overall score with writing=0 if no meaningful speaking either
+                if (!$hasSubjectiveContent) {
+                    $vstepMeta['speaking'] = 0;
+                    $allScores = array_filter([$vstepMeta['listening'], $vstepMeta['reading'], 0, 0]);
+                    $scorePercentage = count($allScores) > 0
+                        ? round((array_sum($allScores) / 4) * 10, 2)
+                        : $scorePercentage;
                 }
             }
 
-            // Calculate score percentage
-            $scorePercentage = $maxScore > 0 ? round(($totalScore / $maxScore) * 100, 2) : 0;
+            $finalStatus = ($isVstepTx && $hasSubjectiveContent) ? 'grading_subjective' : 'graded';
 
-            // Update submission
-            $submission->update([
-                'sSubmit_time' => now(),
-                'sGraded_time' => now(),
+            $updateData = [
+                'sSubmit_time'           => now(),
                 'submit_idempotency_key' => $idempotencyKey,
-                'sScore' => $scorePercentage,
-                'sStatus' => 'graded',
-            ]);
+                'sScore'                 => $scorePercentage,
+                'sStatus'                => $finalStatus,
+            ];
+            if ($finalStatus === 'graded') {
+                $updateData['sGraded_time'] = now();
+            }
+            if ($vstepMeta) {
+                // Preserve existing speaking_audio if present
+                $existingRaw = json_decode($submission->sGemini_feedback ?? '{}', true) ?? [];
+                $existingRaw['vstep_scores'] = $vstepMeta;
+                $updateData['sGemini_feedback'] = json_encode($existingRaw);
+            }
+            $submission->update($updateData);
 
             DB::commit();
 
-            return response()->json([
-                'status' => 'success',
-                'data' => [
-                    'submissionId' => $submissionId,
-                    'sScore' => $scorePercentage,
-                    'sStatus' => 'graded',
-                    'message' => "Nộp bài thành công. Điểm số: {$scorePercentage}%"
-                ]
-            ]);
+            $responseData = [
+                'submissionId' => $submissionId,
+                'sScore'       => $scorePercentage,
+                'sStatus'      => $finalStatus,
+                'message'      => $finalStatus === 'grading_subjective'
+                    ? 'Nộp bài thành công. Đang chấm Writing & Speaking...'
+                    : "Nộp bài thành công. Điểm số: {$scorePercentage}%",
+            ];
+            if ($vstepMeta) {
+                $responseData['vstep_scores'] = $vstepMeta;
+            }
 
-        } catch (\Exception $e) {
+            // Dispatch Writing + Speaking AI grading (queued — runs async via queue:work)
+            if ($finalStatus === 'grading_subjective') {
+                GradeVstepSubjectiveJob::dispatch($submission->sId);
+            }
+
+            return response()->json(['status' => 'success', 'data' => $responseData]);
+
+        } catch (\Throwable $e) {
             DB::rollBack();
+            Log::error('VstepSubmit error', ['msg' => $e->getMessage(), 'trace' => substr($e->getTraceAsString(), 0, 800)]);
             return response()->json([
                 'status' => 'error',
                 'message' => 'Lỗi hệ thống khi nộp bài.',
@@ -730,9 +910,95 @@ class StudentTestController extends Controller
             ], 404);
         }
 
+        $isVstep = strtoupper($submission->exam->eType ?? '') === 'VSTEP';
+
+        if (!$isVstep) {
+            return response()->json([
+                'status' => 'success',
+                'data'   => $submission,
+            ]);
+        }
+
+        // ── VSTEP enriched response ───────────────────────────────────────────
+        $raw = $submission->sGemini_feedback
+            ? (is_array($submission->sGemini_feedback)
+                ? $submission->sGemini_feedback
+                : json_decode($submission->sGemini_feedback, true))
+            : [];
+
+        $vstepScores = $raw['vstep_scores'] ?? [
+            'listening' => null, 'reading' => null,
+            'writing'   => null, 'speaking' => null,
+        ];
+
+        // Per-skill answer stats (MCQ only — L and R)
+        $skillStats = ['listening' => ['correct' => 0, 'answered' => 0, 'total' => 0],
+                       'reading'   => ['correct' => 0, 'answered' => 0, 'total' => 0]];
+
+        // Count total questions per skill from exam
+        foreach ($submission->exam->questions as $q) {
+            $sec = strtolower($q->qSection ?? '');
+            if (isset($skillStats[$sec])) {
+                $skillStats[$sec]['total']++;
+            }
+        }
+
+        // Count answered + correct per skill
+        foreach ($submission->answers as $ans) {
+            $sec = strtolower($ans->question->qSection ?? '');
+            if (isset($skillStats[$sec])) {
+                $skillStats[$sec]['answered']++;
+                if ($ans->saIs_correct) {
+                    $skillStats[$sec]['correct']++;
+                }
+            }
+        }
+
+        // Writing/Speaking: check audio/text was submitted
+        $writingAnswers  = $submission->answers->filter(function ($a) {
+            return strtolower($a->question->qSection ?? '') === 'writing';
+        })->count();
+        $speakingAnswers = $submission->answers->filter(function ($a) {
+            return strtolower($a->question->qSection ?? '') === 'speaking';
+        })->count();
+        $speakingAudios  = isset($raw['speaking_audio']) ? count((array) $raw['speaking_audio']) : 0;
+
+        // VSTEP band from available (non-null) scores
+        $availableScores = array_filter([
+            $vstepScores['listening'] ?? null,
+            $vstepScores['reading']   ?? null,
+            $vstepScores['writing']   ?? null,
+            $vstepScores['speaking']  ?? null,
+        ], fn($v) => !is_null($v));
+
+        $overallAvg = count($availableScores) > 0
+            ? round(array_sum($availableScores) / count($availableScores), 2)
+            : null;
+
+        $vstepBand = null;
+        if (!is_null($overallAvg)) {
+            if ($overallAvg >= 7.5)     $vstepBand = 'C1';
+            elseif ($overallAvg >= 6.0) $vstepBand = 'B2';
+            elseif ($overallAvg >= 4.0) $vstepBand = 'B1';
+            else                        $vstepBand = 'A2+';
+        }
+
+        $vstepMeta = [
+            'is_vstep'       => true,
+            'vstep_scores'   => $vstepScores,
+            'vstep_band'     => $vstepBand,
+            'overall_avg'    => $overallAvg,
+            'skill_stats'    => $skillStats,
+            'writing_submitted'  => $writingAnswers > 0,
+            'speaking_submitted' => $speakingAudios > 0 || $speakingAnswers > 0,
+            'pending_skills' => array_values(array_filter(['writing', 'speaking'], function ($s) use ($vstepScores) {
+                return is_null($vstepScores[$s] ?? null);
+            })),
+        ];
+
         return response()->json([
             'status' => 'success',
-            'data' => $submission
+            'data'   => array_merge($submission->toArray(), ['vstep_meta' => $vstepMeta]),
         ]);
     }
 
@@ -752,7 +1018,7 @@ class StudentTestController extends Controller
         }
 
         // Tìm submission đang dở
-        $submission = Submission::with(['exam.questions.answers', 'answers'])
+        $submission = Submission::with(['exam.questions.answers', 'exam.contentBlocks', 'answers'])
                                ->where('user_id', $user->uId)
                                ->where('assignment_id', $id)
                                ->where('sStatus', 'in_progress')
@@ -792,10 +1058,10 @@ class StudentTestController extends Controller
             'message' => 'Khôi phục bài thi thành công. Bạn có thể tiếp tục làm bài.',
             'data' => [
                 'submissionId' => $submission->sId,
-                'sStart_time' => $submission->sStart_time,
+                'sStart_time'  => $submission->sStart_time,
                 'timeRemaining' => $timeRemaining,
-                'exam' => $exam,
-                'savedAnswers' => $submission->answers, // Câu trả lời đã lưu
+                'exam'         => $this->buildExamData($exam),
+                'savedAnswers' => $submission->answers,
             ]
         ]);
     }
@@ -807,63 +1073,48 @@ class StudentTestController extends Controller
     {
         DB::beginTransaction();
         try {
-            // Tự động chấm điểm các câu đã trả lời
-            $totalScore = 0;
-            $maxScore = 0;
-
-            foreach ($submission->answers as $submissionAnswer) {
-                $question = Question::with('answers')->find($submissionAnswer->question_id);
-                if (!$question || (int) $question->exam_id !== (int) $submission->exam_id) {
-                    DB::rollBack();
-                    return response()->json([
-                        'status' => 'error',
-                        'message' => 'Dữ liệu câu hỏi không hợp lệ cho bài thi này.'
-                    ], 400);
-                }
-                $correctAnswer = $question->answers->where('aIs_correct', true)->first();
-
-                $maxScore += $question->qPoints;
-
-                if ($correctAnswer && $this->isCorrectAnswer($submissionAnswer->saAnswer_text, $correctAnswer->aContent)) {
-                    $submissionAnswer->update([
-                        'saIs_correct' => true,
-                        'saPoints_awarded' => $question->qPoints,
-                    ]);
-                    $totalScore += $question->qPoints;
-                } else {
-                    $submissionAnswer->update([
-                        'saIs_correct' => false,
-                        'saPoints_awarded' => 0,
-                    ]);
-                }
+            // Grade answers — skip subjective types for VSTEP
+            $isVstepAuto = strtoupper($submission->exam->eType ?? '') === 'VSTEP';
+            $subjTypes   = ['essay', 'writing', 'speaking'];
+            $gradingResult = $this->gradeAnswers($submission->answers, $submission->exam_id, $isVstepAuto, $subjTypes);
+            if ($gradingResult['error']) {
+                DB::rollBack();
+                return response()->json(['status' => 'error', 'message' => $gradingResult['error']], 400);
             }
 
-            // Tính điểm dựa trên câu đã trả lời
+            $scorePercentage   = $gradingResult['scorePercentage'];
+            $vstepMeta         = $gradingResult['vstepMeta'];
             $answeredQuestions = $submission->answers->count();
-            $totalQuestions = $submission->exam->questions->count();
-            $scorePercentage = $maxScore > 0 ? round(($totalScore / $maxScore) * 100, 2) : 0;
+            $totalQuestions    = $submission->exam->questions->count();
 
-            // Cập nhật submission
-            $submission->update([
-                'sSubmit_time' => now(),
-                'sGraded_time' => now(),
-                'sScore' => $scorePercentage,
-                'sStatus' => 'auto_submitted', // Đánh dấu tự động nộp
-                'sTeacher_feedback' => "Bài thi được tự động nộp do hết thời gian. Đã trả lời {$answeredQuestions}/{$totalQuestions} câu hỏi.",
-            ]);
+            $updateData = [
+                'sSubmit_time'     => now(),
+                'sGraded_time'     => now(),
+                'sScore'           => $scorePercentage,
+                'sStatus'          => 'auto_submitted',
+                'sTeacher_feedback'=> "Bài thi được tự động nộp do hết thời gian. Đã trả lời {$answeredQuestions}/{$totalQuestions} câu hỏi.",
+            ];
+            if ($vstepMeta) {
+                $updateData['sGemini_feedback'] = json_encode(['vstep_scores' => $vstepMeta]);
+            }
+            $submission->update($updateData);
 
             DB::commit();
 
+            $responseData = [
+                'submissionId'     => $submission->sId,
+                'sScore'           => $scorePercentage,
+                'answeredQuestions'=> $answeredQuestions,
+                'totalQuestions'   => $totalQuestions,
+                'autoSubmitted'    => true,
+            ];
+            if ($vstepMeta) {
+                $responseData['vstep_scores'] = $vstepMeta;
+            }
             return response()->json([
-                'status' => 'warning',
+                'status'  => 'warning',
                 'message' => 'Bài thi đã hết thời gian và được tự động nộp.',
-                'data' => [
-                    'submissionId' => $submission->sId,
-                    'sScore' => $scorePercentage,
-                    'answeredQuestions' => $answeredQuestions,
-                    'totalQuestions' => $totalQuestions,
-                    'autoSubmitted' => true,
-                ]
+                'data'    => $responseData,
             ]);
 
         } catch (\Exception $e) {
@@ -892,6 +1143,39 @@ class StudentTestController extends Controller
      *     @OA\Response(response=404, description="Submission not found")
      * )
      * 
+     * GET /api/student/submissions/{id}/grading-status
+     * Poll VSTEP grading progress (W+S subjective)
+     */
+    public function getGradingStatus(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'student') {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized.'], 401);
+        }
+
+        $submission = Submission::where('sId', $id)->where('user_id', $user->uId)->first();
+        if (!$submission) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy bài làm.'], 404);
+        }
+
+        $raw         = $submission->sGemini_feedback
+            ? (json_decode($submission->sGemini_feedback, true) ?? [])
+            : [];
+        $vstepScores = $raw['vstep_scores'] ?? [];
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => [
+                'sStatus'      => $submission->sStatus,
+                'sScore'       => $submission->sScore,
+                'sGraded_time' => $submission->sGraded_time,
+                'vstep_scores' => $vstepScores,
+                'is_fully_graded' => $submission->sStatus === 'graded',
+            ],
+        ]);
+    }
+
+    /**
      * GET /api/student/submissions/{id}/answers
      * Xem đáp án đúng và giải thích sau khi nộp bài
      */
@@ -1255,9 +1539,9 @@ class StudentTestController extends Controller
         if ($assignment->taTarget_type === 'student') {
             return $assignment->taTarget_id == $studentId;
         } else if ($assignment->taTarget_type === 'class') {
-            return ClassEnrollment::where('class_id', $assignment->taTarget_id)
-                                 ->where('student_id', $studentId)
-                                 ->exists();
+            // Class enrollment now stored on users.class_id directly
+            $studentClassId = \App\Models\User::where('uId', $studentId)->value('class_id');
+            return $studentClassId && $studentClassId == $assignment->taTarget_id;
         }
         return false;
     }
@@ -1283,13 +1567,15 @@ class StudentTestController extends Controller
             $timeRemaining = max(0, $duration - $timeElapsed);
 
             return [
-                'id' => $exam->eId,
-                'submission_id' => $submission->sId,
-                'title' => $exam->eTitle,
+                'id'             => $exam->eId,
+                'submission_id'  => $submission->sId,
+                'assignment_id'  => $submission->assignment_id,
+                'title'          => $exam->eTitle,
+                'type'           => $exam->eType,
+                'skill'          => $exam->eSkill,
                 'time_remaining' => $timeRemaining,
                 'total_duration' => $duration,
-                'skill' => $exam->eSkill,
-                'started_at' => $submission->sStart_time,
+                'started_at'     => $submission->sStart_time,
             ];
         });
 
@@ -1307,47 +1593,57 @@ class StudentTestController extends Controller
         $studentId = $request->user()->uId;
         $days = $request->input('days', 7);
 
-        // Get assignments that are upcoming (within next X days)
-        $upcomingAssignments = TestAssignment::where(function ($query) use ($studentId) {
-                $query->where('taTarget_type', 'student')
-                      ->where('taTarget_id', $studentId)
-                      ->orWhereIn('taTarget_id', function ($subQuery) use ($studentId) {
-                          $subQuery->select('class_id')
-                                   ->from('class_enrollments')
-                                   ->where('student_id', $studentId);
-                      });
+        // Get class IDs where student is enrolled (now stored on users.class_id directly)
+        $student  = $request->user();
+        $classIds = $student && $student->class_id ? [$student->class_id] : [];
+
+        // Get assignments that are upcoming (deadline within next X days, not yet expired)
+        $upcomingAssignments = TestAssignment::where(function ($query) use ($studentId, $classIds) {
+                $query->where(function ($q) use ($studentId) {
+                    $q->where('taTarget_type', 'student')
+                      ->where('taTarget_id', $studentId);
+                })->orWhere(function ($q) use ($classIds) {
+                    $q->where('taTarget_type', 'class')
+                      ->whereIn('taTarget_id', $classIds);
+                });
             })
-            ->where('taStart_time', '<=', now())
-            ->where('taEnd_time', '>=', now())
-            ->where('taEnd_time', '<=', now()->addDays($days))
+            ->whereNotNull('taDeadline')
+            ->where('taDeadline', '>=', now())
+            ->where('taDeadline', '<=', now()->addDays($days))
             ->with(['exam'])
-            ->orderBy('taEnd_time', 'asc')
+            ->orderBy('taDeadline', 'asc')
             ->get();
 
         $tests = $upcomingAssignments->map(function ($assignment) use ($studentId) {
             $exam = $assignment->exam;
-            $deadline = \Carbon\Carbon::parse($assignment->taEnd_time);
+            if (!$exam) {
+                return null;
+            }
+            $deadline  = \Carbon\Carbon::parse($assignment->taDeadline);
             $daysUntil = now()->diffInDays($deadline, false);
-            $isUrgent = $daysUntil <= 1;
+            $isUrgent  = $daysUntil <= 1;
 
-            // Check if already started
-            $hasStarted = Submission::where('user_id', $studentId)
-                ->where('exam_id', $exam->eId)
+            // Skip if student has any active submission for this assignment
+            // (in_progress belongs to /tests/in-progress; finished belongs to /tests completed)
+            $hasActivity = Submission::where('user_id', $studentId)
+                ->where('assignment_id', $assignment->taId)
+                ->whereIn('sStatus', ['in_progress', 'submitted', 'graded'])
                 ->exists();
 
-            if ($hasStarted) {
-                return null; // Skip if already started
+            if ($hasActivity) {
+                return null;
             }
 
             return [
-                'id' => $exam->eId,
+                'id'            => $exam->eId,
                 'assignment_id' => $assignment->taId,
-                'title' => $exam->eTitle,
-                'deadline' => $assignment->taEnd_time,
-                'duration' => $exam->eDuration_minutes ?? $exam->eDuration,
-                'skill' => $exam->eSkill,
-                'is_urgent' => $isUrgent,
-                'days_until' => max(0, $daysUntil),
+                'title'         => $exam->eTitle,
+                'type'          => $exam->eType,
+                'skill'         => $exam->eSkill,
+                'deadline'      => $assignment->taDeadline,
+                'duration'      => $exam->eDuration_minutes ?? $exam->eDuration,
+                'is_urgent'     => $isUrgent,
+                'days_until'    => max(0, $daysUntil),
             ];
         })->filter()->values();
 
@@ -1374,7 +1670,8 @@ class StudentTestController extends Controller
 
         $skillStats = [];
         foreach ($recentSubmissions as $submission) {
-            $skill = $submission->exam->eSkill;
+            if (!$submission->exam || $submission->sScore === null) continue;
+            $skill = $submission->exam->eSkill ?? 'mixed';
             if (!isset($skillStats[$skill])) {
                 $skillStats[$skill] = [
                     'count' => 0,
@@ -1477,86 +1774,272 @@ class StudentTestController extends Controller
     }
 
     /**
-     * Get important notifications (mock implementation)
-     * TODO: Implement proper notification system with database table
+     * GET /api/student/notifications
      */
     public function getNotifications(Request $request)
     {
         $studentId = $request->user()->uId;
-        $urgent = $request->input('urgent', false);
-        $limit = $request->input('limit', 10);
+        $student   = $request->user();
+        $classIds  = $student && $student->class_id ? [$student->class_id] : [];
+        $urgent    = $request->boolean('urgent', false);
+        $limit     = (int) $request->input('limit', 20);
 
         $notifications = [];
 
-        // Check for urgent assignments (ending soon)
-        $urgentAssignments = TestAssignment::where(function ($query) use ($studentId) {
-                $query->where('taTarget_type', 'student')
-                      ->where('taTarget_id', $studentId)
-                      ->orWhereIn('taTarget_id', function ($subQuery) use ($studentId) {
-                          $subQuery->select('class_id')
-                                   ->from('class_enrollments')
-                                   ->where('student_id', $studentId);
-                      });
+        // Assignments with deadline within 24 hours
+        $urgentAssignments = TestAssignment::where(function ($q) use ($studentId, $classIds) {
+                $q->where(function ($s) use ($studentId) {
+                    $s->where('taTarget_type', 'student')->where('taTarget_id', $studentId);
+                })->orWhere(function ($s) use ($classIds) {
+                    $s->where('taTarget_type', 'class')->whereIn('taTarget_id', $classIds);
+                });
             })
-            ->where('taStart_time', '<=', now())
-            ->where('taEnd_time', '>=', now())
-            ->where('taEnd_time', '<=', now()->addDay())
+            ->whereNotNull('taDeadline')
+            ->where('taDeadline', '>=', now())
+            ->where('taDeadline', '<=', now()->addDay())
             ->with(['exam'])
             ->get();
 
         foreach ($urgentAssignments as $assignment) {
-            $hoursLeft = now()->diffInHours($assignment->taEnd_time);
+            if (!$assignment->exam) continue;
+            $hoursLeft = (int) now()->diffInHours($assignment->taDeadline, false);
             $notifications[] = [
-                'id' => 'assignment_' . $assignment->taId,
-                'title' => 'Bài thi sắp hết hạn',
-                'message' => $assignment->exam->eTitle . ' sẽ hết hạn trong ' . $hoursLeft . ' giờ nữa. Hãy hoàn thành ngay!',
-                'type' => 'urgent',
-                'created_at' => $assignment->taCreated_at,
-                'action_url' => '/bai-tap',
+                'id'           => 'assignment_' . $assignment->taId,
+                'title'        => 'Bài thi sắp hết hạn',
+                'message'      => $assignment->exam->eTitle . ' sẽ hết hạn trong ' . $hoursLeft . ' giờ nữa. Hãy hoàn thành ngay!',
+                'type'         => 'deadline',
+                'color'        => '#EF4444',
+                'is_read'      => false,
+                'created_at'   => $assignment->taDeadline,
+                'action_url'   => '/bai-tap',
                 'action_label' => 'Làm bài ngay',
             ];
         }
 
-        // Check for recently graded submissions
+        // Recently graded submissions (last 3 days)
         $recentGraded = Submission::where('user_id', $studentId)
             ->where('sStatus', 'graded')
-            ->where('sGraded_time', '>=', now()->subDay())
+            ->whereNotNull('sGraded_time')
+            ->where('sGraded_time', '>=', now()->subDays(3))
             ->with(['exam'])
             ->orderBy('sGraded_time', 'desc')
-            ->take(3)
+            ->take(5)
             ->get();
 
         foreach ($recentGraded as $submission) {
+            if (!$submission->exam) continue;
             $notifications[] = [
-                'id' => 'graded_' . $submission->sId,
-                'title' => 'Kết quả bài thi đã có',
-                'message' => 'Kết quả bài thi ' . $submission->exam->eTitle . ' đã được chấm. Điểm của bạn: ' . $submission->sScore,
-                'type' => 'info',
-                'created_at' => $submission->sGraded_time,
-                'action_url' => '/lich-su',
+                'id'           => 'graded_' . $submission->sId,
+                'title'        => 'Kết quả bài thi đã có',
+                'message'      => 'Bài thi ' . $submission->exam->eTitle . ' đã được chấm. Điểm: ' . round((float)$submission->sScore, 1),
+                'type'         => 'graded',
+                'color'        => '#10B981',
+                'is_read'      => false,
+                'created_at'   => $submission->sGraded_time,
+                'action_url'   => '/ket-qua/' . $submission->sId,
                 'action_label' => 'Xem kết quả',
             ];
         }
 
-        // Sort by created_at desc
-        usort($notifications, function ($a, $b) {
-            return strtotime($b['created_at']) - strtotime($a['created_at']);
-        });
+        // Newly assigned tests (last 7 days, not yet started)
+        $newAssignments = TestAssignment::where(function ($q) use ($studentId, $classIds) {
+                $q->where(function ($s) use ($studentId) {
+                    $s->where('taTarget_type', 'student')->where('taTarget_id', $studentId);
+                })->orWhere(function ($s) use ($classIds) {
+                    $s->where('taTarget_type', 'class')->whereIn('taTarget_id', $classIds);
+                });
+            })
+            ->where('taCreated_at', '>=', now()->subDays(7))
+            ->with(['exam'])
+            ->latest('taCreated_at')
+            ->take(5)
+            ->get();
 
-        // Filter by urgent if requested
-        if ($urgent) {
-            $notifications = array_filter($notifications, function ($n) {
-                return $n['type'] === 'urgent';
-            });
+        $startedAssignmentIds = Submission::where('user_id', $studentId)
+            ->pluck('assignment_id')
+            ->filter()
+            ->flip();
+
+        foreach ($newAssignments as $assignment) {
+            if (!$assignment->exam) continue;
+            if ($startedAssignmentIds->has($assignment->taId)) continue;
+            $notifications[] = [
+                'id'           => 'new_' . $assignment->taId,
+                'title'        => 'Bài thi mới được giao',
+                'message'      => 'Bạn có bài thi mới: ' . $assignment->exam->eTitle . '. Hãy chuẩn bị và làm bài!',
+                'type'         => 'assignment',
+                'color'        => '#2563EB',
+                'is_read'      => false,
+                'created_at'   => $assignment->taCreated_at,
+                'action_url'   => '/bai-tap',
+                'action_label' => 'Xem bài thi',
+            ];
         }
 
-        // Limit results
+        // Sort newest first
+        usort($notifications, function ($a, $b) {
+            return strtotime((string)$b['created_at']) - strtotime((string)$a['created_at']);
+        });
+
+        if ($urgent) {
+            $notifications = array_values(array_filter($notifications, fn($n) => $n['type'] === 'deadline'));
+        }
+
         $notifications = array_slice($notifications, 0, $limit);
+
+        $readAt = $request->user()->notifications_read_at;
+
+        foreach ($notifications as &$notif) {
+            $notif['is_read'] = $readAt && strtotime((string)$notif['created_at']) <= $readAt->timestamp;
+        }
+        unset($notif);
+
+        $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
 
         return response()->json([
             'status' => 'success',
-            'data' => array_values($notifications),
+            'data'   => [
+                'notifications' => array_values($notifications),
+                'unread_count'  => $unreadCount,
+            ],
         ]);
+    }
+
+    /**
+     * PUT /api/student/notifications/{id}/read
+     * Dynamic notifications don't have DB rows — marking all at current time covers this.
+     */
+    public function markNotificationRead(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$user->notifications_read_at) {
+            $user->notifications_read_at = now();
+            $user->save();
+        }
+        return response()->json(['status' => 'success', 'message' => 'Đã đánh dấu đã đọc.']);
+    }
+
+    /**
+     * PUT /api/student/notifications/read-all
+     */
+    public function markAllNotificationsRead(Request $request)
+    {
+        $user = $request->user();
+        $user->notifications_read_at = now();
+        $user->save();
+        return response()->json(['status' => 'success', 'message' => 'Đã đánh dấu tất cả đã đọc.']);
+    }
+
+    /**
+     * DELETE /api/student/notifications/{id}
+     */
+    public function deleteNotification(Request $request, $id)
+    {
+        return response()->json(['status' => 'success', 'message' => 'Đã xóa thông báo.']);
+    }
+
+    /**
+     * GET /api/student/reminders
+     * Active teacher reminders for the current student.
+     * Excludes reminders for assignments the student already finished
+     * (submitted/graded) to keep the list focused.
+     */
+    public function getReminders(Request $request)
+    {
+        $studentId = $request->user()->uId;
+
+        $reminders = \App\Models\AssignmentReminder::with([
+                'assignment.exam:eId,eTitle,eType,eSkill,eDuration_minutes',
+                'teacher:uId,uName',
+            ])
+            ->where('student_id', $studentId)
+            ->whereNull('dismissed_at')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        // Exclude assignments the student has already finished.
+        $finishedAssignmentIds = Submission::where('user_id', $studentId)
+            ->whereIn('sStatus', ['submitted', 'graded'])
+            ->whereNotNull('assignment_id')
+            ->pluck('assignment_id')
+            ->flip();
+
+        $items = $reminders->filter(function ($r) use ($finishedAssignmentIds) {
+            if (!$r->assignment || !$r->assignment->exam) return false;
+            return !$finishedAssignmentIds->has($r->assignment_id);
+        })->map(function ($r) {
+            $a = $r->assignment;
+            $exam = $a->exam;
+            $deadline = $a->taDeadline ? \Carbon\Carbon::parse($a->taDeadline) : null;
+            $daysUntil = $deadline ? (int) now()->diffInDays($deadline, false) : null;
+            $isUrgent = $deadline ? $deadline->lte(now()->addDay()) : false;
+
+            return [
+                'id'            => $r->id,
+                'assignment_id' => $a->taId,
+                'exam_id'       => $exam->eId,
+                'title'         => $exam->eTitle,
+                'type'          => $exam->eType,
+                'skill'         => $exam->eSkill,
+                'duration'      => $exam->eDuration_minutes,
+                'deadline'      => $a->taDeadline,
+                'days_until'    => $daysUntil,
+                'is_urgent'     => $isUrgent,
+                'message'       => $r->message,
+                'teacher_name'  => $r->teacher->uName ?? null,
+                'sent_at'       => $r->updated_at,
+                'read_at'       => $r->read_at,
+            ];
+        })->values();
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => [
+                'reminders'    => $items,
+                'unread_count' => $items->whereNull('read_at')->count(),
+            ],
+        ]);
+    }
+
+    /**
+     * PUT /api/student/reminders/{id}/read
+     */
+    public function markReminderRead(Request $request, $id)
+    {
+        $studentId = $request->user()->uId;
+        $reminder = \App\Models\AssignmentReminder::where('id', $id)
+            ->where('student_id', $studentId)
+            ->first();
+
+        if (!$reminder) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy nhắc nhở.'], 404);
+        }
+
+        if (!$reminder->read_at) {
+            $reminder->update(['read_at' => now()]);
+        }
+
+        return response()->json(['status' => 'success', 'message' => 'Đã đánh dấu đã đọc.']);
+    }
+
+    /**
+     * DELETE /api/student/reminders/{id}
+     * Soft-dismiss a reminder so it disappears from the dashboard.
+     */
+    public function dismissReminder(Request $request, $id)
+    {
+        $studentId = $request->user()->uId;
+        $reminder = \App\Models\AssignmentReminder::where('id', $id)
+            ->where('student_id', $studentId)
+            ->first();
+
+        if (!$reminder) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy nhắc nhở.'], 404);
+        }
+
+        $reminder->update(['dismissed_at' => now()]);
+
+        return response()->json(['status' => 'success', 'message' => 'Đã ẩn nhắc nhở.']);
     }
 
     private function normalizeAnswer($value)
@@ -1568,5 +2051,675 @@ class StudentTestController extends Controller
     private function isCorrectAnswer($studentAnswer, $correctAnswer)
     {
         return $this->normalizeAnswer($studentAnswer) === $this->normalizeAnswer($correctAnswer);
+    }
+
+    /**
+     * Grade submission answers — VSTEP-aware.
+     * Skips subjective (writing/speaking) questions and computes per-skill scores for VSTEP.
+     *
+     * Returns:
+     *   ['error' => null|string, 'scorePercentage' => float, 'vstepMeta' => array|null]
+     */
+    private function gradeAnswers($answers, $examId, bool $isVstep, array $subjectiveTypes): array
+    {
+        $totalScore   = 0;
+        $maxScore     = 0;
+        $skillBuckets = []; // ['listening' => ['correct'=>0,'total'=>0], ...]
+
+        foreach ($answers as $submissionAnswer) {
+            $question = Question::with('answers')->find($submissionAnswer->question_id);
+            if (!$question || (int) $question->exam_id !== (int) $examId) {
+                return ['error' => 'Dữ liệu câu hỏi không hợp lệ cho bài thi này.', 'scorePercentage' => 0, 'vstepMeta' => null];
+            }
+
+            $qType    = strtolower($question->qType    ?? '');
+            $qSection = strtolower($question->qSection ?? '');
+
+            // Subjective check: skip grading for writing/speaking
+            $isSubjective = in_array($qType, $subjectiveTypes)
+                         || ($isVstep && in_array($qSection, ['writing', 'speaking']));
+
+            if ($isSubjective) {
+                // Mark as pending manual grading — no points, no wrong
+                $submissionAnswer->update(['saIs_correct' => null, 'saPoints_awarded' => null]);
+                continue;
+            }
+
+            $correctAnswer = $question->answers->where('aIs_correct', true)->first();
+            $maxScore += $question->qPoints;
+
+            // Check if student answer is correct via two strategies:
+            // 1. Direct text match (e.g., student sends full answer text)
+            // 2. Letter-based MCQ (student sends "A"/"B"/"C"/"D" → map to nth answer by creation order)
+            $studentText = trim($submissionAnswer->saAnswer_text ?? '');
+            $isCorrect   = false;
+
+            if ($correctAnswer && $this->isCorrectAnswer($studentText, $correctAnswer->aContent)) {
+                $isCorrect = true;
+            } elseif (preg_match('/^[A-Da-d]$/', $studentText)) {
+                $letterIdx = ord(strtoupper($studentText)) - ord('A'); // A=0,B=1,C=2,D=3
+                // Prefer aOrder column if present, else fallback to insertion order (aId)
+                $firstAnswer    = $question->answers->first();
+                $hasOrder       = $firstAnswer && $firstAnswer->aOrder !== null;
+                $orderedAnswers = $hasOrder
+                    ? $question->answers->sortBy('aOrder')->values()
+                    : $question->answers->sortBy('aId')->values();
+                $picked = $orderedAnswers->get($letterIdx);
+                if ($picked && $picked->aIs_correct) {
+                    $isCorrect = true;
+                }
+            }
+
+            if ($isCorrect) {
+                $submissionAnswer->update(['saIs_correct' => true, 'saPoints_awarded' => $question->qPoints]);
+                $totalScore += $question->qPoints;
+                if ($isVstep && $qSection) {
+                    $skillBuckets[$qSection]['correct'] = ($skillBuckets[$qSection]['correct'] ?? 0) + 1;
+                    $skillBuckets[$qSection]['total']   = ($skillBuckets[$qSection]['total']   ?? 0) + 1;
+                }
+            } else {
+                $submissionAnswer->update(['saIs_correct' => false, 'saPoints_awarded' => 0]);
+                if ($isVstep && $qSection) {
+                    $skillBuckets[$qSection]['correct'] = ($skillBuckets[$qSection]['correct'] ?? 0);
+                    $skillBuckets[$qSection]['total']   = ($skillBuckets[$qSection]['total']   ?? 0) + 1;
+                }
+            }
+        }
+
+        $scorePercentage = $maxScore > 0 ? round(($totalScore / $maxScore) * 100, 2) : 0;
+
+        // Build VSTEP per-skill meta (0–10 scale, null for subjective)
+        $vstepMeta = null;
+        if ($isVstep) {
+            $vstepMeta = [
+                'listening' => isset($skillBuckets['listening'])
+                    ? round(($skillBuckets['listening']['correct'] / max(1, $skillBuckets['listening']['total'])) * 10, 2)
+                    : null,
+                'reading'   => isset($skillBuckets['reading'])
+                    ? round(($skillBuckets['reading']['correct'] / max(1, $skillBuckets['reading']['total'])) * 10, 2)
+                    : null,
+                'writing'   => null, // pending manual grading
+                'speaking'  => null, // pending manual grading
+                'raw_mcq_pct' => $scorePercentage,
+            ];
+            // Overall score = average of available skill scores (L + R only for now)
+            $availableScores = array_filter([$vstepMeta['listening'], $vstepMeta['reading']]);
+            if (count($availableScores) > 0) {
+                $scorePercentage = round((array_sum($availableScores) / count($availableScores)) * 10, 2);
+            }
+        }
+
+        return ['error' => null, 'scorePercentage' => $scorePercentage, 'vstepMeta' => $vstepMeta];
+    }
+
+    /**
+     * Chuẩn bị dữ liệu đề thi trả về cho học viên.
+     * - VSTEP skill riêng: trả về cấu trúc parts (passage/audio/instruction + câu hỏi theo part)
+     * - VSTEP mixed (full 4 kỹ năng): trả về cấu trúc skills -> parts
+     * - Đề thường: trả về flat (questions + contentBlocks)
+     */
+    private function buildExamData($exam): array
+    {
+        $base = [
+            'eId'               => $exam->eId,
+            'eTitle'            => $exam->eTitle,
+            'eDescription'      => $exam->eDescription,
+            'eType'             => $exam->eType,
+            'eSkill'            => $exam->eSkill,
+            'eDuration_minutes' => $exam->eDuration_minutes,
+        ];
+
+        if ($exam->eType !== 'VSTEP') {
+            $base['questions']     = $exam->questions->values();
+            $base['contentBlocks'] = $exam->contentBlocks->sortBy('display_order')->values();
+            return $base;
+        }
+
+        $skill = $exam->eSkill ?? 'mixed';
+
+        if ($skill === 'mixed') {
+            $base['vstep_structure'] = $this->buildMixedVstepStructure($exam);
+        } else {
+            $base['vstep_structure'] = $this->buildSkillVstepStructure($exam, $skill);
+        }
+
+        return $base;
+    }
+
+    /**
+     * Cấu trúc VSTEP cho 1 kỹ năng cụ thể (reading/listening/writing/speaking)
+     */
+    private function buildSkillVstepStructure($exam, string $skill): array
+    {
+        $contentBlocks = $exam->contentBlocks->sortBy('display_order');
+        $questions     = $exam->questions->sortBy(['qPart', 'qOrder', 'qId']);
+
+        $partNumbers = $questions->pluck('qPart')->unique()->sort()->values();
+        $parts = [];
+
+        foreach ($partNumbers as $partNum) {
+            $partBlock = $contentBlocks->first(function ($cb) use ($partNum) {
+                $meta = $cb->metadata ?? [];
+                return ($meta['part_number'] ?? null) == $partNum;
+            });
+
+            $partQuestions = $questions->where('qPart', $partNum)->values();
+
+            $partData = [
+                'partNumber' => $partNum,
+                'partName'   => $partBlock ? ($partBlock->metadata['part_name'] ?? "Part $partNum") : "Part $partNum",
+            ];
+
+            if ($skill === 'reading') {
+                $partData['passage']   = $partBlock ? $partBlock->content : null;
+                $partData['wordCount'] = $partBlock ? ($partBlock->metadata['word_count'] ?? null) : null;
+            } elseif ($skill === 'listening') {
+                $partData['audioUrl']       = $partBlock ? $partBlock->content : null;
+                $partData['audioDuration']  = $partBlock ? ($partBlock->metadata['audio_duration'] ?? null) : null;
+                $partData['transcript']     = $partBlock ? ($partBlock->metadata['transcript'] ?? null) : null;
+            } elseif ($skill === 'speaking') {
+                $partData['instruction'] = $partBlock ? $partBlock->content : null;
+                $partData['timeLimit']   = $partBlock ? ($partBlock->metadata['time_limit'] ?? null) : null;
+            } elseif ($skill === 'writing') {
+                $partData['prompt']    = $partBlock ? $partBlock->content : null;
+                $partData['wordCount'] = $partBlock ? ($partBlock->metadata['min_words'] ?? null) : null;
+            }
+
+            $partData['questions'] = $partQuestions->map(function ($q) {
+                return [
+                    'qId'       => $q->qId,
+                    'qContent'  => $q->qContent,
+                    'qType'     => $q->qType,
+                    'qPart'     => $q->qPart,
+                    'qOrder'    => $q->qOrder,
+                    'qPoints'   => $q->qPoints,
+                    'qWord_count'  => $q->qWord_count,
+                    'qTime_limit'  => $q->qTime_limit,
+                    'answers'   => $q->answers->values(),
+                ];
+            })->values();
+
+            $parts[] = $partData;
+        }
+
+        return ['skill' => $skill, 'parts' => $parts];
+    }
+
+    /**
+     * Cấu trúc VSTEP full mixed (4 kỹ năng), group theo skill rồi parts
+     */
+    private function buildMixedVstepStructure($exam): array
+    {
+        $contentBlocks = $exam->contentBlocks->sortBy('display_order');
+        $questions     = $exam->questions->sortBy(['qSkillSection', 'qPart', 'qOrder', 'qId']);
+
+        $skillGroups = $questions->groupBy('qSkillSection');
+        $skills = [];
+
+        foreach ($skillGroups as $skill => $skillQuestions) {
+            $partNumbers = $skillQuestions->pluck('qPart')->unique()->sort()->values();
+            $parts = [];
+
+            foreach ($partNumbers as $partNum) {
+                $partBlock = $contentBlocks->first(function ($cb) use ($skill, $partNum) {
+                    $meta = $cb->metadata ?? [];
+                    return ($meta['skill'] ?? null) === $skill
+                        && ($meta['part_number'] ?? null) == $partNum;
+                });
+
+                $partQuestions = $skillQuestions->where('qPart', $partNum)->values();
+
+                $partData = [
+                    'partNumber' => $partNum,
+                    'partName'   => $partBlock ? ($partBlock->metadata['part_name'] ?? "Part $partNum") : "Part $partNum",
+                    'blockType'  => $partBlock ? $partBlock->block_type : null,
+                    'content'    => $partBlock ? $partBlock->content : null,
+                    'metadata'   => $partBlock ? $partBlock->metadata : null,
+                    'questions'  => $partQuestions->map(function ($q) {
+                        return [
+                            'qId'      => $q->qId,
+                            'qContent' => $q->qContent,
+                            'qType'    => $q->qType,
+                            'qPart'    => $q->qPart,
+                            'qOrder'   => $q->qOrder,
+                            'qPoints'  => $q->qPoints,
+                            'answers'  => $q->answers->values(),
+                        ];
+                    })->values(),
+                ];
+
+                $parts[] = $partData;
+            }
+
+            $skills[$skill] = ['skill' => $skill, 'parts' => $parts];
+        }
+
+        return ['skills' => array_values($skills)];
+    }
+
+    /* =====================================================================
+     * VSTEP DIRECT EXAM (browse → take without assignment)
+     * ===================================================================== */
+
+    private const LISTENING_LAYOUT = [
+        1 => ['sectionCount' => 1, 'questionsPerSection' => 8,  'questionStart' => 1,  'sectionLabel' => 'Announcements'],
+        2 => ['sectionCount' => 3, 'questionsPerSection' => 4,  'questionStart' => 9,  'sectionLabel' => 'Conversation'],
+        3 => ['sectionCount' => 3, 'questionsPerSection' => 5,  'questionStart' => 21, 'sectionLabel' => 'Talk'],
+    ];
+
+    /**
+     * POST /api/student/exams/{examId}/start-direct
+     * Tạo submission cho học viên trực tiếp từ exam ID (không cần assignment)
+     */
+    public function startDirectExam(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'student') {
+            return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
+        }
+
+        $exam = Exam::where('eId', $examId)
+            ->whereIn('eType', ['VSTEP', 'IELTS'])
+            ->where(function ($q) {
+                $q->whereNull('eIs_private')->orWhere('eIs_private', false);
+            })
+            ->first();
+
+        if (!$exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy đề thi hoặc đề thi chưa công khai.'], 404);
+        }
+
+        $resume = $request->boolean('resume');
+
+        if ($resume) {
+            // F5/reload — resume existing in_progress if any
+            $existing = Submission::where('exam_id', $examId)
+                ->where('user_id', $user->uId)
+                ->whereNull('sSubmit_time')
+                ->whereIn('sStatus', ['draft', 'in_progress'])
+                ->orderByDesc('sId')
+                ->first();
+            if ($existing) {
+                $elapsed      = now()->diffInSeconds($existing->sStart_time ?? now());
+                $totalSeconds = ($exam->eDuration_minutes ?? 179) * 60;
+                $remaining    = max(0, $totalSeconds - $elapsed);
+                return response()->json([
+                    'status' => 'success',
+                    'data'   => ['submissionId' => $existing->sId, 'timeRemaining' => round($remaining / 60)],
+                ]);
+            }
+        }
+
+        // Fresh start: delete any existing in_progress submission (and its answers via FK cascade)
+        Submission::where('exam_id', $examId)
+            ->where('user_id', $user->uId)
+            ->whereNull('sSubmit_time')
+            ->where('sStatus', 'in_progress')
+            ->delete();
+
+        $submission = Submission::create([
+            'exam_id'      => $examId,
+            'user_id'      => $user->uId,
+            'sStart_time'  => now(),
+            'sStatus'      => 'in_progress',
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => ['submissionId' => $submission->sId, 'timeRemaining' => $exam->eDuration_minutes ?? 179],
+        ]);
+    }
+
+    /**
+     * GET /api/student/exams/{examId}/vstep/listening
+     */
+    public function loadVstepListening(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || !in_array($user->uRole, ['student', 'teacher'])) {
+            return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
+        }
+
+        $exam = Exam::where('eId', $examId)
+            ->where(function ($q) { $q->whereNull('eIs_private')->orWhere('eIs_private', false); })
+            ->with(['contentBlocks' => fn($q) => $q->orderBy('display_order'),
+                    'questions'     => fn($q) => $q->orderBy('qPart')->orderBy('qSection_order'),
+                    'questions.answers'])
+            ->first();
+
+        if (!$exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy đề thi.'], 404);
+        }
+
+        $parts = [];
+        foreach (self::LISTENING_LAYOUT as $partNumber => $layout) {
+            $sectionCount = $layout['sectionCount'];
+            $qPerSection  = $layout['questionsPerSection'];
+
+            $partBlocks = $exam->contentBlocks->filter(function ($block) use ($partNumber) {
+                $meta = $block->metadata ?? [];
+                return isset($meta['part_number']) && $meta['part_number'] == $partNumber && isset($meta['audio_duration']);
+            })->values();
+
+            $sections = [];
+            for ($s = 1; $s <= $sectionCount; $s++) {
+                $block = $partBlocks->first(function ($b) use ($s) {
+                    return ($b->metadata['section_number'] ?? 1) == $s;
+                });
+
+                $qStart = $layout['questionStart'];
+                $sectionQuestions = $exam->questions
+                    ->where('qSkill', 'listening')
+                    ->where('qPart', $partNumber)
+                    ->filter(function ($q) use ($s, $qStart, $qPerSection) {
+                        $qSec = $q->qData['section_number'] ?? null;
+                        if ($qSec !== null) return $qSec == $s;
+                        $qNum    = $q->qData['question_number'] ?? $q->qSection_order ?? 0;
+                        $relIdx  = max(0, $qNum - $qStart);
+                        $computed = intdiv($relIdx, max(1, $qPerSection)) + 1;
+                        return $computed == $s;
+                    })
+                    ->sortBy('qSection_order')
+                    ->values();
+
+                $sections[] = [
+                    'sectionNumber'       => $s,
+                    'sectionName'         => $block->metadata['section_name'] ?? "{$layout['sectionLabel']} {$s}",
+                    'audioUrl'            => $block->content ?? '',
+                    'audioDuration'       => $block->metadata['audio_duration'] ?? 0,
+                    'transcript'          => $block->metadata['transcript'] ?? '',
+                    'questionStart'       => $qStart + ($s - 1) * $qPerSection,
+                    'questionsPerSection' => $qPerSection,
+                    'questions'           => $sectionQuestions->map(fn($q) => [
+                        'qId'            => $q->qId,
+                        'questionNumber' => $q->qData['question_number'] ?? $q->qSection_order,
+                        'questionText'   => $q->qContent,
+                        'options'        => $q->qData['options'] ?? [
+                            'A' => $q->answers[0]->aContent ?? '',
+                            'B' => $q->answers[1]->aContent ?? '',
+                            'C' => $q->answers[2]->aContent ?? '',
+                            'D' => $q->answers[3]->aContent ?? '',
+                        ],
+                    ])->values()->toArray(),
+                ];
+            }
+
+            $parts[] = [
+                'partNumber'          => $partNumber,
+                'partName'            => "Part {$partNumber}",
+                'sectionCount'        => $sectionCount,
+                'questionsPerSection' => $qPerSection,
+                'sections'            => $sections,
+            ];
+        }
+
+        return response()->json(['status' => 'success', 'data' => ['exam_id' => $exam->eId, 'title' => $exam->eTitle, 'parts' => $parts]]);
+    }
+
+    /**
+     * GET /api/student/exams/{examId}/vstep/reading
+     */
+    public function loadVstepReading(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || !in_array($user->uRole, ['student', 'teacher'])) {
+            return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
+        }
+
+        $exam = Exam::where('eId', $examId)
+            ->where(function ($q) { $q->whereNull('eIs_private')->orWhere('eIs_private', false); })
+            ->with(['contentBlocks' => fn($q) => $q->orderBy('display_order'),
+                    'questions'     => fn($q) => $q->orderBy('qPart')->orderBy('qSection_order'),
+                    'questions.answers'])
+            ->first();
+
+        if (!$exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy đề thi.'], 404);
+        }
+
+        $parts = [];
+        for ($i = 1; $i <= 4; $i++) {
+            $partQuestions = $exam->questions->where('qPart', $i)->where('qSkill', 'reading')->values();
+            $contentBlock  = $exam->contentBlocks->first(function ($block) use ($i) {
+                $metadata = $block->metadata ?? [];
+                return isset($metadata['part_number']) && $metadata['part_number'] == $i && isset($metadata['word_count']);
+            });
+
+            $parts[] = [
+                'partNumber' => $i,
+                'partName'   => $contentBlock->metadata['part_name'] ?? "Part $i",
+                'passage'    => $contentBlock->content ?? '',
+                'wordCount'  => $contentBlock->metadata['word_count'] ?? 0,
+                'questions'  => $partQuestions->map(fn($q) => [
+                    'qId'            => $q->qId,
+                    'questionNumber' => $q->qData['question_number'] ?? $q->qSection_order,
+                    'questionText'   => $q->qContent,
+                    'options'        => $q->qData['options'] ?? [
+                        'A' => $q->answers[0]->aContent ?? '',
+                        'B' => $q->answers[1]->aContent ?? '',
+                        'C' => $q->answers[2]->aContent ?? '',
+                        'D' => $q->answers[3]->aContent ?? '',
+                    ],
+                ])->toArray(),
+            ];
+        }
+
+        return response()->json(['status' => 'success', 'data' => ['exam_id' => $exam->eId, 'title' => $exam->eTitle, 'parts' => $parts]]);
+    }
+
+    /**
+     * GET /api/student/exams/{examId}/vstep/writing
+     */
+    public function loadVstepWriting(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || !in_array($user->uRole, ['student', 'teacher'])) {
+            return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
+        }
+
+        $exam = Exam::where('eId', $examId)
+            ->where(function ($q) { $q->whereNull('eIs_private')->orWhere('eIs_private', false); })
+            ->with(['contentBlocks' => fn($q) => $q->orderBy('display_order'),
+                    'questions'     => fn($q) => $q->orderBy('qPart')])
+            ->first();
+
+        if (!$exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy đề thi.'], 404);
+        }
+
+        $tasks = [];
+        for ($i = 1; $i <= 2; $i++) {
+            $taskQuestion = $exam->questions
+                ->filter(fn($q) => $q->qPart == $i && strtolower($q->qSkill ?? $q->qSection ?? '') === 'writing')
+                ->first();
+            $contentBlock = $exam->contentBlocks->where('metadata.task_number', $i)->first();
+            if ($taskQuestion && $contentBlock) {
+                $tasks[] = [
+                    'taskNumber' => $i,
+                    'taskName'   => $contentBlock->metadata['task_name'] ?? "Task $i",
+                    'prompt'     => $contentBlock->content ?? '',
+                    'wordCount'  => $contentBlock->metadata['word_count'] ?? [150, 250],
+                    'timeLimit'  => $contentBlock->metadata['time_limit'] ?? 20,
+                    'questionId' => $taskQuestion->qId,
+                ];
+            }
+        }
+
+        return response()->json(['status' => 'success', 'data' => ['exam_id' => $exam->eId, 'title' => $exam->eTitle, 'tasks' => $tasks]]);
+    }
+
+    /**
+     * GET /api/student/exams/{examId}/vstep/speaking
+     */
+    public function loadVstepSpeaking(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || !in_array($user->uRole, ['student', 'teacher'])) {
+            return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
+        }
+
+        $exam = Exam::where('eId', $examId)
+            ->where(function ($q) { $q->whereNull('eIs_private')->orWhere('eIs_private', false); })
+            ->with(['contentBlocks' => fn($q) => $q->orderBy('display_order'),
+                    'questions'     => fn($q) => $q->where('qSkill', 'speaking')->orderBy('qPart')->orderBy('qSection_order')])
+            ->first();
+
+        if (!$exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy đề thi.'], 404);
+        }
+
+        $parts = [];
+        for ($i = 1; $i <= 3; $i++) {
+            $contentBlock = $exam->contentBlocks->first(function ($block) use ($i) {
+                $metadata = $block->metadata ?? [];
+                return isset($metadata['part_number']) && $metadata['part_number'] == $i
+                    && (isset($metadata['part1Data']) || isset($metadata['part2Data']) || isset($metadata['part3Data']));
+            });
+
+            if (!$contentBlock) {
+                $parts[] = ['partNumber' => $i, 'partName' => "Part $i", 'timeLimit' => $i === 1 ? 3 : ($i === 2 ? 4 : 5)];
+                continue;
+            }
+
+            $partData = [
+                'partNumber' => $i,
+                'partName'   => $contentBlock->metadata['part_name'] ?? "Part $i",
+                'timeLimit'  => $contentBlock->metadata['time_limit'] ?? 3,
+            ];
+
+            if (isset($contentBlock->metadata['part1Data']))      $partData['part1Data'] = $contentBlock->metadata['part1Data'];
+            elseif (isset($contentBlock->metadata['part2Data']))  $partData['part2Data'] = $contentBlock->metadata['part2Data'];
+            elseif (isset($contentBlock->metadata['part3Data']))  $partData['part3Data'] = $contentBlock->metadata['part3Data'];
+
+            $parts[] = $partData;
+        }
+
+        return response()->json(['status' => 'success', 'data' => ['exam_id' => $exam->eId, 'title' => $exam->eTitle, 'parts' => $parts]]);
+    }
+
+    /**
+     * POST /api/student/submissions/{submissionId}/speaking/{partNumber}/upload
+     * Upload student speaking audio recording for a given part.
+     */
+    public function uploadSpeakingAudio(Request $request, $submissionId, $partNumber)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'student') {
+            return response()->json(['status' => 'error', 'message' => 'Không có quyền truy cập.'], 401);
+        }
+
+        $submission = Submission::where('sId', $submissionId)
+            ->where('user_id', $user->uId)
+            ->first();
+
+        if (!$submission) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy bài làm.'], 404);
+        }
+
+        if (!in_array($submission->sStatus, ['in_progress', 'graded', 'auto_submitted'])) {
+            return response()->json(['status' => 'error', 'message' => 'Bài làm không ở trạng thái hợp lệ.'], 400);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'audio' => 'required|file|mimes:webm,ogg,mp4,wav,m4a,aac|max:102400', // 100 MB
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'message' => 'File âm thanh không hợp lệ.', 'errors' => $validator->errors()], 400);
+        }
+
+        $file      = $request->file('audio');
+        $ext       = $file->getClientOriginalExtension() ?: 'webm';
+        $filename  = "speaking_{$submissionId}_part{$partNumber}." . $ext;
+        $path      = $file->storeAs('speaking-recordings', $filename, 'public');
+        $publicUrl = \Storage::disk('public')->url($path);
+
+        // Merge audio URL into sGemini_feedback JSON (no schema change needed)
+        $feedback = [];
+        try { $feedback = json_decode($submission->sGemini_feedback ?? '{}', true) ?: []; } catch (\Exception $e) {}
+        $feedback['speaking_audio'][(int) $partNumber] = $publicUrl;
+        $submission->update(['sGemini_feedback' => json_encode($feedback)]);
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => ['url' => $publicUrl, 'submissionId' => $submissionId, 'partNumber' => $partNumber],
+        ]);
+    }
+
+    /**
+     * POST /api/student/exams/{examId}/checkin-photo
+     * Upload exam check-in photo (taken in the pre-exam lobby modal).
+     * Stores under storage/public/checkin-photos/{userId}_{examId}.jpg
+     */
+    public function uploadCheckinPhoto(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'student') {
+            return response()->json(['status' => 'error', 'message' => 'Không có quyền truy cập.'], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'photo' => 'required|file|mimes:jpeg,jpg,png,webp|max:10240',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'message' => 'File ảnh không hợp lệ.', 'errors' => $validator->errors()], 400);
+        }
+
+        $file     = $request->file('photo');
+        $ext      = $file->getClientOriginalExtension() ?: 'jpg';
+        $filename = "checkin_{$user->uId}_{$examId}_" . time() . ".{$ext}";
+        $path     = $file->storeAs('checkin-photos', $filename, 'public');
+        $url      = \Storage::disk('public')->url($path);
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => ['url' => $url, 'examId' => $examId],
+        ]);
+    }
+
+    /**
+     * GET /api/student/exams/browse
+     * Duyệt tất cả đề thi VSTEP/IELTS công khai dành cho học viên người lớn
+     */
+    public function browseExams(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'student') {
+            return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
+        }
+
+        $type = $request->query('type');
+
+        $query = Exam::withCount('questions')
+            ->whereIn('eType', ['VSTEP', 'IELTS'])
+            ->whereIn('eSkill', ['mixed', 'full'])
+            ->where(function ($q) {
+                $q->whereNull('age_group')
+                  ->orWhereIn('age_group', ['adults', 'all']);
+            })
+            ->where(function ($q) {
+                $q->whereNull('eIs_private')->orWhere('eIs_private', false);
+            })
+            ->orderBy('eCreated_at', 'desc');
+
+        if ($type && in_array(strtoupper($type), ['VSTEP', 'IELTS'])) {
+            $query->where('eType', strtoupper($type));
+        }
+
+        $exams = $query->get()->map(function ($exam) {
+            return [
+                'id'          => $exam->eId,
+                'title'       => $exam->eTitle,
+                'type'        => $exam->eType,
+                'skill'       => $exam->eSkill,
+                'duration'    => $exam->eDuration_minutes,
+                'description' => $exam->eDescription,
+                'age_group'   => $exam->age_group,
+                'questions_count' => $exam->questions_count,
+                'created_at'  => $exam->eCreated_at,
+            ];
+        });
+
+        return response()->json(['status' => 'success', 'data' => $exams]);
     }
 }

@@ -70,6 +70,15 @@ class GradingController extends Controller
             $query->where('sStatus', $request->status);
         }
 
+        // Filter by teacher review state: reviewed=0 (pending), reviewed=1 (done)
+        if ($request->has('reviewed')) {
+            if ($request->reviewed == '0') {
+                $query->whereNull('teacher_reviewed_at');
+            } else {
+                $query->whereNotNull('teacher_reviewed_at');
+            }
+        }
+
         $submissions = $query->orderBy('sSubmit_time', 'desc')->get();
 
         return response()->json([
@@ -187,7 +196,7 @@ class GradingController extends Controller
             ], 404);
         }
 
-        if (!in_array($submission->sStatus, ['submitted', 'graded', 'in_progress'])) {
+        if (!in_array($submission->sStatus, ['submitted', 'graded', 'in_progress', 'partially_graded', 'ai_graded'])) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Bài làm chưa được nộp.'
@@ -236,7 +245,8 @@ class GradingController extends Controller
             $submission->update([
                 'sTeacher_feedback' => $request->feedback ?? $request->sTeacher_feedback,
                 'sScore' => $totalScore,
-                'sStatus' => 'graded'
+                'sStatus' => 'graded',
+                'teacher_reviewed_at' => now(),
             ]);
 
             return response()->json([

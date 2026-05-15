@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { logout } from "../../../services/authApi";
+import { api } from "../../../services/api";
 import {
   LayoutDashboard,
   BookOpen,
@@ -16,6 +17,8 @@ import {
   Signal,
   Lightbulb,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 interface SubMenuItem {
@@ -53,7 +56,6 @@ const navigationData: MenuItem[] = [
     submenu: [
       { name: "allExams", href: "/giao-vien/de-thi" },
       { name: "createExam", href: "/giao-vien/de-thi/tao-moi" },
-      { name: "examTemplates", href: "/giao-vien/mau-de-cambridge" },
       { name: "myExams", href: "/giao-vien/de-thi/cua-toi" },
     ],
   },
@@ -71,18 +73,13 @@ const navigationData: MenuItem[] = [
     icon: Lightbulb,
     submenu: [
       { name: "practiceList", href: "/giao-vien/luyen-tap" },
-      { name: "byTopic", href: "/giao-vien/luyen-tap/theo-chu-de" },
-      { name: "byTemplate", href: "/giao-vien/luyen-tap/theo-mau" },
-      { name: "random", href: "/giao-vien/luyen-tap/ngau-nhien" },
     ],
   },
   {
     name: "grading",
     icon: CheckCircle2,
-    badge: 15,
     submenu: [
       { name: "pendingGrading", href: "/giao-vien/cham-diem" },
-      { name: "classReport", href: "/giao-vien/cham-diem/bao-cao-lop" },
       { name: "gradingStats", href: "/giao-vien/cham-diem/thong-ke" },
     ],
   },
@@ -92,7 +89,6 @@ const navigationData: MenuItem[] = [
     indicator: "active",
     submenu: [
       { name: "activeSessions", href: "/giao-vien/giam-sat-truc-tiep" },
-      { name: "connectionHistory", href: "/giao-vien/giam-sat-truc-tiep/lich-su" },
       { name: "realtimeStats", href: "/giao-vien/giam-sat-truc-tiep/thong-ke" },
     ],
   },
@@ -123,11 +119,33 @@ const navigationData: MenuItem[] = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onToggle: () => void }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
+  const [pendingGradingCount, setPendingGradingCount] = useState<number>(0);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchPendingGrading = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+      const res = await api.get('/teacher/dashboard/overview');
+      const count = res.data?.data?.pending_grading ?? 0;
+      setPendingGradingCount(count);
+    } catch {
+      // silently fail
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingGrading();
+    pollingRef.current = setInterval(fetchPendingGrading, 30_000);
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
 
   // Get user info from localStorage
   const userStr = localStorage.getItem('user');
@@ -135,9 +153,6 @@ export function Sidebar() {
   const userName = user?.name || user?.uName || 'Teacher';
   const userPhone = user?.phone || user?.uPhone || '';
   const userEmail = `${userPhone}@namthuedu.com`; // Generate email from phone
-  
-  // Debug log (remove in production)
-  console.log('Sidebar Debug:', { userStr, user, userName, userPhone });
   
   // Generate initials from name
   const getInitials = (name: string) => {
@@ -206,110 +221,87 @@ export function Sidebar() {
         <div key={item.name}>
           <button
             onClick={() => toggleMenu(item.name)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 relative group"
-            style={{
-              background: isActive ? "linear-gradient(135deg, #F97316 0%, #EA580C 100%)" : "transparent",
-              color: isActive ? "#FFFFFF" : "#78716C",
-              fontSize: "14px",
-              fontWeight: 500,
-            }}
-            onMouseEnter={(e) => {
-              if (!isActive) {
-                (e.currentTarget as HTMLButtonElement).style.background = "#FFF7ED";
-                (e.currentTarget as HTMLButtonElement).style.color = "#EA580C";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isActive) {
-                (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                (e.currentTarget as HTMLButtonElement).style.color = "#78716C";
-              }
-            }}
+            className={`w-full flex items-center gap-2.5 rounded-lg transition-all duration-150 relative group text-sm font-medium ${
+              isCollapsed ? 'px-2.5 py-2.5 justify-center' : 'px-3 py-2.5'
+            } ${
+              isActive
+                ? 'bg-slate-100 text-slate-900'
+                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+            }`}
+            title={isCollapsed ? t(`nav.${item.name}`) : undefined}
           >
-            {/* Left Accent Bar */}
-            {isActive && (
-              <div
-                className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
-                style={{ background: "#FBBF24" }}
-              />
+            {/* Left accent */}
+            {isActive && !isCollapsed && (
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full bg-slate-700" />
             )}
-            <Icon
-              className="w-5 h-5 flex-shrink-0"
-              style={{ color: isActive ? "#FFFFFF" : "#78716C" }}
-            />
-            <span className="flex-1 text-left">{t(`nav.${item.name}`)}</span>
-            
-            {/* Indicator for Live Monitor */}
-            {item.indicator === "active" && (
-              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            <Icon className="w-4 h-4 flex-shrink-0" />
+            {!isCollapsed && (
+              <>
+                <span className="flex-1 text-left">{t(`nav.${item.name}`)}</span>
+                {item.indicator === "active" && (
+                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                )}
+                {item.name === 'grading' && pendingGradingCount > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-500 text-white animate-pulse">
+                    {pendingGradingCount > 99 ? '99+' : pendingGradingCount}
+                  </span>
+                )}
+                {item.name !== 'grading' && item.badge && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-200 text-slate-600">
+                    {item.badge}
+                  </span>
+                )}
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
+                    isExpanded ? "rotate-180" : ""
+                  }`}
+                />
+              </>
             )}
-            
-            {/* Badge */}
-            {item.badge && (
-              <span
-                className="px-2 py-0.5 rounded-full text-white"
-                style={{
-                  background: "linear-gradient(135deg, #F97316 0%, #EA580C 100%)",
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  boxShadow: "0 2px 4px rgba(249, 115, 22, 0.3)",
-                }}
-              >
+            {isCollapsed && item.name === 'grading' && pendingGradingCount > 0 && (
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-[9px] font-bold">
+                {pendingGradingCount > 99 ? '9+' : pendingGradingCount}
+              </div>
+            )}
+            {isCollapsed && item.name !== 'grading' && item.badge && (
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-slate-700 rounded-full flex items-center justify-center text-white text-[9px] font-bold">
                 {item.badge}
-              </span>
+              </div>
             )}
-            
-            <ChevronDown
-              className="w-4 h-4 transition-transform duration-200"
-              style={{
-                transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
-                color: isActive ? "#FFFFFF" : "#A8A29E",
-              }}
-            />
+            {isCollapsed && item.indicator === "active" && (
+              <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full" />
+            )}
           </button>
 
           {/* Submenu */}
-          <div
-            className="overflow-hidden transition-all duration-300"
-            style={{
-              maxHeight: isExpanded ? "400px" : "0",
-              opacity: isExpanded ? 1 : 0,
-            }}
-          >
-            <div className="pl-8 pr-4 py-1 space-y-1">
-              {item.submenu?.map((subItem) => {
-                const isSubActive = isSubmenuActive(subItem.href);
-                return (
-                  <Link
-                    key={subItem.name}
-                    to={subItem.href}
-                    className="block px-4 py-2 rounded-md transition-all duration-150"
-                    style={{
-                      background: isSubActive ? "#FFF7ED" : "transparent",
-                      color: isSubActive ? "#EA580C" : "#78716C",
-                      fontSize: "13px",
-                      fontWeight: isSubActive ? 600 : 500,
-                      borderLeft: isSubActive ? "2px solid #F97316" : "2px solid transparent",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSubActive) {
-                        (e.currentTarget as HTMLAnchorElement).style.background = "#FFFBEB";
-                        (e.currentTarget as HTMLAnchorElement).style.color = "#C2410C";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSubActive) {
-                        (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
-                        (e.currentTarget as HTMLAnchorElement).style.color = "#78716C";
-                      }
-                    }}
-                  >
-                    {t(`nav.${subItem.name}`)}
-                  </Link>
-                );
-              })}
+          {!isCollapsed && (
+            <div
+              className="overflow-hidden transition-all duration-300"
+              style={{
+                maxHeight: isExpanded ? "400px" : "0",
+                opacity: isExpanded ? 1 : 0,
+              }}
+            >
+              <div className="ml-4 pl-3 border-l border-slate-100 space-y-0.5 py-1">
+                {item.submenu?.map((subItem) => {
+                  const isSubActive = isSubmenuActive(subItem.href);
+                  return (
+                    <Link
+                      key={subItem.name}
+                      to={subItem.href}
+                      className={`block px-3 py-1.5 rounded-md text-[13px] transition-colors ${
+                        isSubActive
+                          ? "bg-slate-100 text-slate-900 font-semibold"
+                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-medium"
+                      }`}
+                    >
+                      {t(`nav.${subItem.name}`)}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       );
     }
@@ -319,216 +311,135 @@ export function Sidebar() {
       <Link
         key={item.name}
         to={item.href!}
-        className="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 relative group"
-        style={{
-          background: isActive ? "linear-gradient(135deg, #F97316 0%, #EA580C 100%)" : "transparent",
-          color: isActive ? "#FFFFFF" : "#78716C",
-          fontSize: "14px",
-          fontWeight: 500,
-        }}
-        onMouseEnter={(e) => {
-          if (!isActive) {
-            (e.currentTarget as HTMLAnchorElement).style.background = "#FFF7ED";
-            (e.currentTarget as HTMLAnchorElement).style.color = "#EA580C";
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!isActive) {
-            (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
-            (e.currentTarget as HTMLAnchorElement).style.color = "#78716C";
-          }
-        }}
+        className={`flex items-center gap-2.5 rounded-lg transition-all duration-150 relative text-sm font-medium ${
+          isCollapsed ? 'px-2.5 py-2.5 justify-center' : 'px-3 py-2.5'
+        } ${
+          isActive
+            ? 'bg-slate-100 text-slate-900'
+            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+        }`}
+        title={isCollapsed ? t(`nav.${item.name}`) : undefined}
       >
-        {/* Left Accent Bar */}
-        {isActive && (
-          <div
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
-            style={{ background: "#FBBF24" }}
-          />
+        {isActive && !isCollapsed && (
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full bg-slate-700" />
         )}
-        <Icon
-          className="w-5 h-5 flex-shrink-0"
-          style={{ color: isActive ? "#FFFFFF" : "#78716C" }}
-        />
-        <span className="flex-1">{t(`nav.${item.name}`)}</span>
+        <Icon className="w-4 h-4 flex-shrink-0" />
+        {!isCollapsed && <span className="flex-1">{t(`nav.${item.name}`)}</span>}
       </Link>
     );
   };
 
   return (
-    <div className="w-[280px] h-screen bg-gradient-to-b from-white to-orange-50/30 border-r border-orange-100 flex flex-col flex-shrink-0">
+    <div 
+      className={`h-screen bg-white border-r border-slate-200 flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out relative ${
+        isCollapsed ? 'w-[80px]' : 'w-[260px]'
+      }`}
+    >
       {/* Logo Section */}
-      <div className="h-20 flex items-center px-6 border-b border-orange-100/50">
-        <div className="flex items-center gap-3">
-          <div
-            className="relative w-11 h-11 rounded-xl flex items-center justify-center overflow-hidden"
-            style={{
-              background: "linear-gradient(135deg, #F97316 0%, #EA580C 100%)",
-              boxShadow: "0 4px 12px rgba(249, 115, 22, 0.3)",
-            }}
-          >
-            <BookOpen className="w-6 h-6 text-white" strokeWidth={2.5} />
-            <div
-              className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full"
-              style={{
-                background: "linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%)",
-                boxShadow: "0 2px 4px rgba(251, 191, 36, 0.4)",
-              }}
-            />
+      <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100">
+        <div className="flex items-center gap-2.5 overflow-hidden">
+          <div className="w-9 h-9 rounded-lg bg-slate-900 flex items-center justify-center flex-shrink-0">
+            <BookOpen className="w-5 h-5 text-white" strokeWidth={2} />
           </div>
-
-          <div className="flex flex-col">
-            <span
-              className="text-gray-900 leading-none"
-              style={{
-                fontSize: "17px",
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
-              }}
-            >
-              {t("appName")}
-            </span>
-            <span
-              className="text-orange-600 leading-none mt-0.5"
-              style={{
-                fontSize: "11px",
-                fontWeight: 600,
-                letterSpacing: "0.02em",
-              }}
-            >
-              Teacher Dashboard
-            </span>
-          </div>
+          {!isCollapsed && (
+            <div className="flex flex-col leading-none">
+              <span className="text-slate-900 text-[15px] font-bold tracking-tight">{t("appName")}</span>
+              <span className="text-slate-400 text-[11px] font-medium mt-0.5">Teacher Portal</span>
+            </div>
+          )}
         </div>
+
+        {/* Toggle Button */}
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
+          className="w-7 h-7 rounded-md hover:bg-slate-100 flex items-center justify-center transition-colors flex-shrink-0 cursor-pointer"
+          title={isCollapsed ? "Mở rộng" : "Thu gọn"}
+          type="button"
+        >
+          {isCollapsed
+            ? <ChevronRight className="w-4 h-4 text-slate-400 pointer-events-none" />
+            : <ChevronLeft className="w-4 h-4 text-slate-400 pointer-events-none" />}
+        </button>
       </div>
 
-      {/* User Profile Card */}
-      <div className="px-4 py-4">
-        <div
-          className="rounded-xl p-4 flex items-center gap-3 border border-orange-100"
-          style={{
-            background: "linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%)",
-          }}
-        >
+      {/* User Profile */}
+      {!isCollapsed ? (
+        <div className="px-3 py-3 border-b border-slate-100">
+          <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-slate-50 transition-colors cursor-default">
+            <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+              {userInitials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-slate-800 text-sm font-semibold truncate leading-tight">{userName}</p>
+              <p className="text-slate-400 text-[11px] flex items-center gap-1 mt-0.5">
+                <GraduationCap className="w-3 h-3 flex-shrink-0" />
+                Giáo viên
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex justify-center py-3 border-b border-slate-100">
           <div
-            className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-white border-2 border-white"
-            style={{
-              background: "linear-gradient(135deg, #F97316 0%, #EA580C 100%)",
-              fontSize: "15px",
-              fontWeight: 700,
-              boxShadow: "0 4px 8px rgba(249, 115, 22, 0.25)",
-            }}
+            className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-white text-xs font-bold"
+            title={userName}
           >
             {userInitials}
           </div>
-          <div className="flex-1 min-w-0">
-            <p
-              className="text-gray-900 truncate"
-              style={{ fontSize: "14px", fontWeight: 700, marginBottom: "2px" }}
-            >
-              {userName}
-            </p>
-            <p
-              className="text-orange-600 flex items-center gap-1"
-              style={{ fontSize: "12px", fontWeight: 600 }}
-            >
-              <GraduationCap className="w-3.5 h-3.5 flex-shrink-0" />
-              Giáo viên
-            </p>
-            <p
-              className="text-orange-400 truncate mt-0.5"
-              style={{ fontSize: "11px" }}
-            >
-              {userEmail}
-            </p>
-          </div>
         </div>
-      </div>
+      )}
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-4 py-2 overflow-y-auto">
-        {/* MAIN Section */}
-        <div className="mb-4">
-          <div
-            className="px-3 mb-2 text-orange-400 uppercase tracking-wider"
-            style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em" }}
-          >
-            MAIN
-          </div>
+      <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-5">
+        {/* MAIN */}
+        <div>
+          {!isCollapsed && <p className="px-2 mb-1 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Main</p>}
           {renderMenuItem(navigationData[0])}
         </div>
 
-        {/* TEACHING Section */}
-        <div className="mb-4">
-          <div
-            className="px-3 mb-2 text-orange-400 uppercase tracking-wider"
-            style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em" }}
-          >
-            TEACHING
-          </div>
-          <div className="space-y-1">
+        {/* TEACHING */}
+        <div>
+          {!isCollapsed && <p className="px-2 mb-1 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Teaching</p>}
+          <div className="space-y-0.5">
             {navigationData.slice(1, 2).map((item) => renderMenuItem(item))}
           </div>
         </div>
 
-        {/* ASSESSMENT Section */}
-        <div className="mb-4">
-          <div
-            className="px-3 mb-2 text-orange-400 uppercase tracking-wider"
-            style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em" }}
-          >
-            ASSESSMENT
-          </div>
-          <div className="space-y-1">
+        {/* ASSESSMENT */}
+        <div>
+          {!isCollapsed && <p className="px-2 mb-1 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Assessment</p>}
+          <div className="space-y-0.5">
             {navigationData.slice(2, 7).map((item) => renderMenuItem(item))}
           </div>
         </div>
 
-        {/* CONTENT Section */}
-        <div className="mb-4">
-          <div
-            className="px-3 mb-2 text-orange-400 uppercase tracking-wider"
-            style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em" }}
-          >
-            CONTENT
-          </div>
-          <div className="space-y-1">
+        {/* CONTENT */}
+        <div>
+          {!isCollapsed && <p className="px-2 mb-1 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Content</p>}
+          <div className="space-y-0.5">
             {navigationData.slice(7, 9).map((item) => renderMenuItem(item))}
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="my-4 h-px bg-orange-100" />
+        <div className="h-px bg-slate-100" />
 
-        {/* SYSTEM Section */}
-        <div>
+        {/* SYSTEM */}
+        <div className="space-y-0.5">
           {renderMenuItem(navigationData[9])}
         </div>
       </nav>
 
-      {/* Bottom Actions */}
-      <div className="px-4 py-4 border-t border-orange-100 space-y-2">
-        {/* Search button removed */}
-
-        {/* Logout */}
+      {/* Bottom — Logout */}
+      <div className={`px-3 py-3 border-t border-slate-100`}>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all w-full"
-          style={{ 
-            fontSize: "14px", 
-            fontWeight: 500, 
-            color: "#DC2626",
-            background: "transparent"
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "#FEE2E2";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-          }}
+          className={`flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors ${
+            isCollapsed ? 'justify-center' : ''
+          }`}
+          title={isCollapsed ? "Đăng xuất" : undefined}
         >
-          <LogOut className="w-5 h-5" />
-          <span>Đăng xuất</span>
+          <LogOut className="w-4 h-4 flex-shrink-0" />
+          {!isCollapsed && <span>Đăng xuất</span>}
         </button>
       </div>
     </div>

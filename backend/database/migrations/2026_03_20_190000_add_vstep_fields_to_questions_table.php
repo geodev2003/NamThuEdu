@@ -13,7 +13,8 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('questions', function (Blueprint $table) {
+        if (Schema::hasTable('questions')) {
+            Schema::table('questions', function (Blueprint $table) {
             // Add VSTEP-specific fields
             $table->text('qPassage_text')->nullable()->after('qConfig'); // For reading passages
             $table->integer('qWord_count')->nullable()->after('qPassage_text'); // For writing tasks
@@ -23,6 +24,7 @@ return new class extends Migration
             $table->integer('qPlay_limit')->default(2)->after('qAudio_type'); // How many times audio can be played
             $table->boolean('qTranscript_available')->default(true)->after('qPlay_limit'); // Whether transcript is available
         });
+        }
     }
 
     /**
@@ -32,7 +34,8 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('questions', function (Blueprint $table) {
+        if (Schema::hasTable('questions')) {
+            Schema::table('questions', function (Blueprint $table) {
             $table->dropColumn([
                 'qPassage_text',
                 'qWord_count', 
@@ -43,5 +46,6 @@ return new class extends Migration
                 'qTranscript_available'
             ]);
         });
+        }
     }
 };

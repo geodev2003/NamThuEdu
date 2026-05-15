@@ -10,7 +10,8 @@ return new class extends Migration
     public function up(): void
     {
         // Add default_duration column to kids_exam_types table
-        Schema::table('kids_exam_types', function (Blueprint $table) {
+        if (Schema::hasTable('kids_exam_types')) {
+            Schema::table('kids_exam_types', function (Blueprint $table) {
             $table->integer('default_duration')->default(60)->after('vocabulary_size')->comment('Default exam duration in minutes');
         });
 
@@ -18,12 +19,15 @@ return new class extends Migration
         DB::table('kids_exam_types')->where('code', 'yle_starters')->update(['default_duration' => 45]);
         DB::table('kids_exam_types')->where('code', 'yle_movers')->update(['default_duration' => 60]);
         DB::table('kids_exam_types')->where('code', 'yle_flyers')->update(['default_duration' => 75]);
+        }
     }
 
     public function down(): void
     {
-        Schema::table('kids_exam_types', function (Blueprint $table) {
+        if (Schema::hasTable('kids_exam_types')) {
+            Schema::table('kids_exam_types', function (Blueprint $table) {
             $table->dropColumn('default_duration');
         });
+        }
     }
 };

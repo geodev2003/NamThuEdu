@@ -8,6 +8,7 @@ use App\Models\TestAssignment;
 use App\Models\Exam;
 use App\Models\Classes;
 use App\Models\User;
+use App\Services\PushNotificationService;
 
 class TestAssignmentController extends Controller
 {
@@ -110,6 +111,30 @@ class TestAssignmentController extends Controller
             'taMax_attempt' => $request->taMax_attempt ?? 1,
             'taIs_public' => $request->taIs_public ?? false,
         ]);
+
+        // Send push notifications to assigned students
+        try {
+            $pushService = new PushNotificationService();
+            $deadlineText = $request->taDeadline
+                ? ' · Hạn: ' . \Carbon\Carbon::parse($request->taDeadline)->format('d/m/Y')
+                : '';
+
+            if ($request->taTarget_type === 'class') {
+                $studentIds = User::where('class_id', $request->taTarget_id)
+                    ->where('uRole', 'student')
+                    ->whereNull('uDeleted_at')
+                    ->pluck('uId')
+                    ->toArray();
+            } else {
+                $studentIds = [$request->taTarget_id];
+            }
+
+            $pushService->sendToUsers($studentIds, '📚 Bài tập mới', $exam->eTitle . $deadlineText, [
+                'url' => '/hoc-vien/bai-tap',
+            ]);
+        } catch (\Exception $e) {
+            \Log::warning('Push notification failed on assign: ' . $e->getMessage());
+        }
 
         return response()->json([
             'status' => 'success',
@@ -700,25 +725,62 @@ class TestAssignmentController extends Controller
             ], 404);
         }
 
-        // Get students who haven't completed
-        $targetStudents = $this->getTargetStudents($assignment);
-        $submissions = \App\Models\Submission::where('assignment_id', $id)->pluck('user_id');
-        $incompleteStudents = $targetStudents->whereNotIn('uId', $submissions);
+        $message = $request->input('message');
+
+        // Get students who haven't fully completed (no submission yet OR still in_progress)
+        $targetStudents     = $this->getTargetStudents($assignment);
+        $finishedStudentIds = \App\Models\Submission::where('assignment_id', $id)
+            ->whereIn('sStatus', ['submitted', 'graded'])
+            ->pluck('user_id');
+        $incompleteStudents = $targetStudents->whereNotIn('uId', $finishedStudentIds);
 
         $remindersSent = 0;
+        $incompleteStudentIds = [];
         foreach ($incompleteStudents as $student) {
-            // Here you would integrate with notification system
-            // For now, we'll just count them
+            // Refresh the existing active reminder if any, otherwise create new.
+            \App\Models\AssignmentReminder::updateOrCreate(
+                [
+                    'assignment_id' => $assignment->taId,
+                    'student_id'    => $student->uId,
+                    'dismissed_at'  => null,
+                ],
+                [
+                    'teacher_id' => $user->uId,
+                    'message'    => $message,
+                    'read_at'    => null,
+                    'updated_at' => now(),
+                ]
+            );
+            $incompleteStudentIds[] = $student->uId;
             $remindersSent++;
+        }
+
+        // Send push notifications to incomplete students
+        if (!empty($incompleteStudentIds)) {
+            try {
+                $pushService = new PushNotificationService();
+                $deadlineText = $assignment->taDeadline
+                    ? ' · Hạn: ' . \Carbon\Carbon::parse($assignment->taDeadline)->format('d/m/Y')
+                    : '';
+                $pushService->sendToUsers(
+                    $incompleteStudentIds,
+                    '⏰ Nhắc nhở bài tập',
+                    $assignment->exam->eTitle . $deadlineText,
+                    ['url' => '/hoc-vien/bai-tap']
+                );
+            } catch (\Exception $e) {
+                \Log::warning('Push notification failed on reminder: ' . $e->getMessage());
+            }
         }
 
         return response()->json([
             'status' => 'success',
+            'message' => 'Reminders sent successfully',
             'data' => [
-                'reminders_sent' => $remindersSent,
+                'reminders_sent'   => $remindersSent,
                 'assignment_title' => $assignment->exam->eTitle,
-                'deadline' => $assignment->taDeadline,
-                'message' => "Đã gửi nhắc nhở đến {$remindersSent} học sinh chưa làm bài."
+                'deadline'         => $assignment->taDeadline,
+                'message_text'     => $message,
             ]
         ]);
     }

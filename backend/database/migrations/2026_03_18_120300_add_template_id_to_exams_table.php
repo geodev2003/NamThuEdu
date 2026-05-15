@@ -13,10 +13,12 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('exams', function (Blueprint $table) {
+        if (Schema::hasTable('exams')) {
+            Schema::table('exams', function (Blueprint $table) {
             $table->foreignId('template_id')->nullable()->after('eId')
                   ->constrained('exam_templates')->onDelete('set null');
         });
+        }
     }
 
     /**
@@ -26,9 +28,11 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('exams', function (Blueprint $table) {
+        if (Schema::hasTable('exams')) {
+            Schema::table('exams', function (Blueprint $table) {
             $table->dropForeign(['template_id']);
             $table->dropColumn('template_id');
         });
+        }
     }
 };

@@ -144,6 +144,24 @@ class KidsExamController extends Controller
 
         $exams = $query->orderBy('eCreated_at', 'desc')->get();
         
+        // Map kids_exam_type_id to exam_type code for backward compatibility
+        $kidsExamTypes = \DB::table('kids_exam_types')->get()->keyBy('id');
+        
+        $exams->each(function($exam) use ($kidsExamTypes) {
+            if ($exam->kids_exam_config) {
+                $config = $exam->kids_exam_config;
+                
+                // If exam_type is missing but kids_exam_type_id exists, populate it
+                if (empty($config['exam_type']) && !empty($config['kids_exam_type_id'])) {
+                    $typeId = $config['kids_exam_type_id'];
+                    if (isset($kidsExamTypes[$typeId])) {
+                        $config['exam_type'] = $kidsExamTypes[$typeId]->code;
+                        $exam->kids_exam_config = $config;
+                    }
+                }
+            }
+        });
+        
         return response()->json($exams);
     }
 

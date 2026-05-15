@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
 
 console.log('🔧 API Base URL:', API_BASE_URL);
 
@@ -46,7 +46,7 @@ api.interceptors.response.use(
       } else if (currentPath.includes('/admin')) {
         window.location.href = '/admin/login';
       } else if (currentPath.includes('/hoc-vien')) {
-        window.location.href = '/hoc-vien/dang-nhap';
+        window.location.href = '/dang-nhap';
       } else {
         window.location.href = '/';
       }

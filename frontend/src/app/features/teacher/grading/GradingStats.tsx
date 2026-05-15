@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import {
   FileText,
@@ -29,101 +30,77 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { useGradingStats } from "@/hooks/useGradingStats";
 
 export function GradingStats() {
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchGradingStats = async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem('auth_token');
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/grading/stats`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success') {
-            setStats(result.data);
-          } else {
-            setError('Không thể tải thống kê chấm bài');
-          }
-        } else {
-          setError('Lỗi khi tải dữ liệu');
-        }
-      } catch (err) {
-        setError('Lỗi kết nối đến server');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchGradingStats();
-  }, []);
+  const { t } = useTranslation();
+  // Use custom hook
+  const { data: statsData, loading, error } = useGradingStats();
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 font-semibold">Đang tải thống kê chấm bài...</p>
+          <p className="text-gray-600 font-semibold">{t("teacher.grading.statsPage.loading")}</p>
         </div>
       </div>
     );
   }
 
-  if (error || !stats) {
+  if (error || !statsData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
         <div className="text-center bg-white rounded-2xl p-8 border border-red-200">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-8 h-8 text-red-600" />
           </div>
-          <p className="text-red-600 font-semibold mb-2">{error || 'Không tìm thấy dữ liệu'}</p>
+          <p className="text-red-600 font-semibold mb-2">{error || t("teacher.grading.statsPage.notFound")}</p>
           <button
             onClick={() => window.location.reload()}
             className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
           >
-            Thử lại
+            {t("teacher.grading.statsPage.retry")}
           </button>
         </div>
       </div>
     );
   }
 
-  const scoresByExamType = stats.scoresByExamType || [];
+  // Extract data from statsData
+  const overview = statsData.overview;
+  const bySkill = statsData.bySkill;
+  const trend = statsData.trend;
+
+  // Calculate completion rate
+  const completionRate = overview.total > 0 
+    ? Math.round((overview.graded / overview.total) * 100) 
+    : 0;
+
+  // Prepare data for charts
+  const submissionsByStatus = [
+    { name: t("teacher.grading.statsPage.graded"), value: overview.graded, color: "#10B981" },
+    { name: t("teacher.grading.statsPage.pendingGrading"), value: overview.pending, color: "#F59E0B" },
+  ];
+  
+  const gradingActivity = trend.map(item => ({
+    date: new Date(item.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+    graded: item.count,
+  }));
+
+  // Mock data for exam types (will be replaced with real data when available)
+  const scoresByExamType: any[] = [];
   const avgScoresByType = scoresByExamType.map((item: any) => ({
     name: item.type,
     score: item.average,
   }));
 
-  const submissionsByStatus = stats.submissionsByStatus || [
-    { name: "Đã chấm", value: 98, color: "#10B981" },
-    { name: "Chờ chấm", value: 47, color: "#F59E0B" },
-  ];
-  
-  const gradingActivity = stats.gradingActivity || [
-    { date: "17/03", graded: 12 },
-    { date: "18/03", graded: 15 },
-    { date: "19/03", graded: 18 },
-    { date: "20/03", graded: 14 },
-    { date: "21/03", graded: 20 },
-    { date: "22/03", graded: 16 },
-    { date: "23/03", graded: 23 },
-  ];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Thống kê chấm bài 📈</h1>
-        <p className="text-gray-600">Tổng quan về hoạt động chấm bài và hiệu suất</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">{t("teacher.grading.statsPage.heading")} 📈</h1>
+        <p className="text-gray-600">{t("teacher.grading.statsPage.subtitle")}</p>
       </div>
 
       {/* Overview Metrics */}
@@ -136,8 +113,8 @@ export function GradingStats() {
             </div>
             <TrendingUp className="w-5 h-5 text-green-500" />
           </div>
-          <p className="text-gray-600 text-sm mb-1">Tổng số bài nộp</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.totalSubmissions}</p>
+          <p className="text-gray-600 text-sm mb-1">{t("teacher.grading.statsPage.totalSubmissions")}</p>
+          <p className="text-3xl font-bold text-gray-900">{overview.total}</p>
         </div>
 
         {/* Graded Submissions */}
@@ -147,11 +124,11 @@ export function GradingStats() {
               <CheckCircle2 className="w-6 h-6 text-green-600" />
             </div>
             <span className="px-2 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">
-              {stats.graded}
+              {Math.round((overview.graded / overview.total) * 100)}%
             </span>
           </div>
-          <p className="text-gray-600 text-sm mb-1">Đã chấm</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.graded}</p>
+          <p className="text-gray-600 text-sm mb-1">{t("teacher.grading.statsPage.graded")}</p>
+          <p className="text-3xl font-bold text-gray-900">{overview.graded}</p>
         </div>
 
         {/* Pending Submissions */}
@@ -161,11 +138,11 @@ export function GradingStats() {
               <Clock className="w-6 h-6 text-orange-600" />
             </div>
             <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-bold">
-              {stats.pending}
+              {Math.round((overview.pending / overview.total) * 100)}%
             </span>
           </div>
-          <p className="text-gray-600 text-sm mb-1">Chờ chấm</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.pending}</p>
+          <p className="text-gray-600 text-sm mb-1">{t("teacher.grading.statsPage.pendingGrading")}</p>
+          <p className="text-3xl font-bold text-gray-900">{overview.pending}</p>
         </div>
 
         {/* Completion Rate */}
@@ -175,14 +152,14 @@ export function GradingStats() {
               <BarChart3 className="w-6 h-6 text-purple-600" />
             </div>
           </div>
-          <p className="text-gray-600 text-sm mb-1">Tỷ lệ hoàn thành</p>
+          <p className="text-gray-600 text-sm mb-1">{t("teacher.grading.statsPage.completionRate")}</p>
           <div className="flex items-end gap-3">
-            <p className="text-3xl font-bold text-gray-900">{stats.completionRate}%</p>
+            <p className="text-3xl font-bold text-gray-900">{completionRate}%</p>
             <div className="flex-1">
               <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full"
-                  style={{ width: `${stats.completionRate}%` }}
+                  style={{ width: `${completionRate}%` }}
                 />
               </div>
             </div>
@@ -196,9 +173,9 @@ export function GradingStats() {
               <Calendar className="w-6 h-6 text-indigo-600" />
             </div>
           </div>
-          <p className="text-gray-600 text-sm mb-1">Hoạt động 7 ngày qua</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.recentActivity}</p>
-          <p className="text-xs text-gray-500 mt-1">Bài đã chấm gần đây</p>
+          <p className="text-gray-600 text-sm mb-1">{t("teacher.grading.statsPage.recentActivity")}</p>
+          <p className="text-3xl font-bold text-gray-900">{overview.graded}</p>
+          <p className="text-xs text-gray-500 mt-1">{t("teacher.grading.statsPage.recentlyGraded")}</p>
         </div>
 
         {/* Average Grading Time */}
@@ -208,9 +185,9 @@ export function GradingStats() {
               <Timer className="w-6 h-6 text-pink-600" />
             </div>
           </div>
-          <p className="text-gray-600 text-sm mb-1">Thời gian chấm TB</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.averageGradingTime}</p>
-          <p className="text-xs text-gray-500 mt-1">phút / bài</p>
+          <p className="text-gray-600 text-sm mb-1">{t("teacher.grading.statsPage.avgTime")}</p>
+          <p className="text-3xl font-bold text-gray-900">{overview.avgTime}</p>
+          <p className="text-xs text-gray-500 mt-1">{t("teacher.grading.statsPage.minutesPerSubmission")}</p>
         </div>
       </div>
 
@@ -220,7 +197,7 @@ export function GradingStats() {
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
           <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-blue-600" />
-            Phân bố theo trạng thái
+            {t("teacher.grading.statsPage.statusDistribution")}
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -247,7 +224,7 @@ export function GradingStats() {
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
           <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-green-600" />
-            Hoạt động chấm bài (7 ngày)
+            {t("teacher.grading.statsPage.gradingActivityChart")}
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={gradingActivity}>
@@ -279,7 +256,7 @@ export function GradingStats() {
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6 mb-6">
         <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-purple-600" />
-          Điểm trung bình theo loại đề thi
+          {t("teacher.grading.statsPage.avgScoreByType")}
         </h3>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={avgScoresByType}>
@@ -306,26 +283,26 @@ export function GradingStats() {
       {/* Scores by Exam Type Table */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 overflow-hidden mb-6">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-bold text-gray-900">Điểm số theo loại đề thi</h3>
+          <h3 className="text-lg font-bold text-gray-900">{t("teacher.grading.statsPage.scoresByExamType")}</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Loại đề thi
+                  {t("teacher.grading.statsPage.examType")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Số bài nộp
+                  {t("teacher.grading.statsPage.submissionsCount")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Điểm TB
+                  {t("teacher.grading.statsPage.avgScore")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Cao nhất
+                  {t("teacher.grading.statsPage.highest")}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Thấp nhất
+                  {t("teacher.grading.statsPage.lowest")}
                 </th>
               </tr>
             </thead>
@@ -368,10 +345,10 @@ export function GradingStats() {
             <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
               <Eye className="w-6 h-6" />
             </div>
-            <span className="text-2xl font-bold">{stats.pending}</span>
+            <span className="text-2xl font-bold">{overview.pending}</span>
           </div>
-          <h3 className="text-lg font-bold mb-2">Xem bài chờ chấm</h3>
-          <p className="text-sm text-blue-100">Danh sách bài thi cần chấm điểm</p>
+          <h3 className="text-lg font-bold mb-2">{t("teacher.grading.statsPage.viewPending")}</h3>
+          <p className="text-sm text-blue-100">{t("teacher.grading.statsPage.viewPendingDesc")}</p>
         </Link>
 
         <button className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white hover:shadow-lg transition-all group text-left">
@@ -379,10 +356,10 @@ export function GradingStats() {
             <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
               <Zap className="w-6 h-6" />
             </div>
-            <span className="text-2xl font-bold">{stats.pending}</span>
+            <span className="text-2xl font-bold">{overview.pending}</span>
           </div>
-          <h3 className="text-lg font-bold mb-2">Chấm tự động hàng loạt</h3>
-          <p className="text-sm text-green-100">Chấm nhiều bài cùng lúc</p>
+          <h3 className="text-lg font-bold mb-2">{t("teacher.grading.statsPage.autoGrade")}</h3>
+          <p className="text-sm text-green-100">{t("teacher.grading.statsPage.autoGradeDesc")}</p>
         </button>
 
         <Link
@@ -394,8 +371,8 @@ export function GradingStats() {
               <FileSearch className="w-6 h-6" />
             </div>
           </div>
-          <h3 className="text-lg font-bold mb-2">Xem báo cáo chi tiết</h3>
-          <p className="text-sm text-purple-100">Thống kê và phân tích lớp học</p>
+          <h3 className="text-lg font-bold mb-2">{t("teacher.grading.statsPage.viewReport")}</h3>
+          <p className="text-sm text-purple-100">{t("teacher.grading.statsPage.viewReportDesc")}</p>
         </Link>
       </div>
     </div>

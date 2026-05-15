@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('questions', function (Blueprint $table) {
+        if (Schema::hasTable('questions')) {
+            Schema::table('questions', function (Blueprint $table) {
             // Link to content_blocks (nullable - không phải câu nào cũng cần)
             $table->unsignedBigInteger('content_block_id')->nullable()->after('exam_id');
             
@@ -24,6 +25,7 @@ return new class extends Migration
             // Index
             $table->index('content_block_id');
         });
+        }
     }
 
     /**
@@ -31,10 +33,12 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('questions', function (Blueprint $table) {
+        if (Schema::hasTable('questions')) {
+            Schema::table('questions', function (Blueprint $table) {
             $table->dropForeign(['content_block_id']);
             $table->dropIndex(['content_block_id']);
             $table->dropColumn(['content_block_id', 'qData']);
         });
+        }
     }
 };

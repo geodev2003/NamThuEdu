@@ -21,13 +21,24 @@ import { getSkillColor, getSkillIcon, getSkillName } from "../../../../utils/ski
 type SkillFilter = 'all' | 'listening' | 'reading' | 'writing' | 'speaking';
 type DifficultyFilter = 'all' | 'easy' | 'medium' | 'hard';
 
-const PURPLE = "#7C3AED";
-const PURPLE_LIGHT = "#EDE9FE";
 const STUDENT_BASE_PATH = "/hoc-vien";
+const THEME_KIDS    = { PRIMARY: '#F43F5E', PRIMARY_LIGHT: '#FFE4E6' };
+const THEME_DEFAULT = { PRIMARY: '#7C3AED', PRIMARY_LIGHT: '#EDE9FE' };
 
 export function PracticeList() {
   const [skill, setSkill] = useState<SkillFilter>('all');
   const [difficulty, setDifficulty] = useState<DifficultyFilter>('all');
+
+  // Hide VSTEP content for kids (Cambridge YL audience)
+  const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+  const ageGroup = userStr ? (JSON.parse(userStr)?.age_group as string) : '';
+  const isKids = ageGroup === 'kids';
+
+  // Theme palette switches based on age group (rose for kids, purple for others)
+  const { PRIMARY: PURPLE, PRIMARY_LIGHT: PURPLE_LIGHT } = isKids ? THEME_KIDS : THEME_DEFAULT;
+
+  // URL base — keep kids in /hoc-vien/kids/* namespace
+  const BASE = isKids ? '/hoc-vien/kids' : STUDENT_BASE_PATH;
 
   const { data, isLoading } = useQuery({
     queryKey: ['student', 'practice', 'topics'],
@@ -43,10 +54,10 @@ export function PracticeList() {
   });
 
   const quickActions = [
-    { icon: Shuffle, title: "Luyện ngẫu nhiên", desc: "10 câu hỏi tổng hợp", color: "#8B5CF6", path: `${STUDENT_BASE_PATH}/luyen-tap/random?count=10`, bg: "#F5F3FF" },
-    { icon: AlertCircle, title: "Ôn lại lỗi sai", desc: "Các câu hay sai gần đây", color: "#EF4444", path: `${STUDENT_BASE_PATH}/luyen-tap/mistakes`, bg: "#FEF2F2" },
-    { icon: BookOpen, title: "Khám phá mới", desc: "Các chủ đề chưa học", color: "#10B981", path: `${STUDENT_BASE_PATH}/luyen-tap/new`, bg: "#F0FDF4" },
-    { icon: Target, title: "Tạo bộ đề riêng", desc: "Tuỳ biến cấp độ và số lượng", color: "#F59E0B", path: `${STUDENT_BASE_PATH}/luyen-tap/custom`, bg: "#FFFBEB" },
+    { icon: Shuffle, title: "Luyện ngẫu nhiên", desc: "10 câu hỏi tổng hợp", color: "#8B5CF6", path: `${BASE}/luyen-tap/random?count=10`, bg: "#F5F3FF" },
+    { icon: AlertCircle, title: "Ôn lại lỗi sai", desc: "Các câu hay sai gần đây", color: "#EF4444", path: `${BASE}/luyen-tap/mistakes`, bg: "#FEF2F2" },
+    { icon: BookOpen, title: "Khám phá mới", desc: "Các chủ đề chưa học", color: "#10B981", path: `${BASE}/luyen-tap/new`, bg: "#F0FDF4" },
+    { icon: Target, title: "Tạo bộ đề riêng", desc: "Tuỳ biến cấp độ và số lượng", color: "#F59E0B", path: `${BASE}/luyen-tap/custom`, bg: "#FFFBEB" },
   ];
 
   const skillTabs = [
@@ -65,83 +76,117 @@ export function PracticeList() {
   };
 
   return (
-    <div className="py-6 space-y-8 max-w-[1600px] mx-auto">
-      {/* Header Area */}
-      <div>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "#1F1344", letterSpacing: "-0.03em" }}>
-          Khu vực Luyện tập
-        </h1>
-        <p style={{ fontSize: 14, color: "#9CA3AF", marginTop: 4 }}>
-          Tự do rèn luyện thông qua kho đề khổng lồ trên hệ thống
-        </p>
+    <div className="min-h-screen" style={{ background: "#F8F7FF" }}>
+
+      {/* ══ Hero ═════════════════════════════════════════════════════════════ */}
+      <div className="relative overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #1E0B4B 0%, #3B1B8F 45%, #1D4ED8 100%)" }}>
+        {/* Orbs */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full opacity-20"
+            style={{ background: "radial-gradient(circle, #A78BFA, transparent)", transform: "translateY(-50%)" }} />
+          <div className="absolute bottom-0 right-1/3 w-64 h-64 rounded-full opacity-15"
+            style={{ background: "radial-gradient(circle, #60A5FA, transparent)", transform: "translateY(40%)" }} />
+        </div>
+        <div className="relative z-10 px-8 lg:px-16 py-10 max-w-[1600px] mx-auto">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg"
+                style={{ background: "linear-gradient(135deg, #7C3AED, #8B5CF6)" }}>
+                <Zap className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <p className="text-purple-300 text-sm font-semibold tracking-widest uppercase mb-1">Khu vực học tập</p>
+                <h1 className="text-3xl font-extrabold text-white tracking-tight leading-tight">Luyện tập</h1>
+                <p className="text-purple-200 text-sm mt-1 font-medium">Tự do rèn luyện thông qua kho đề khổng lồ trên hệ thống</p>
+              </div>
+            </div>
+          </div>
+          {/* Stat chips */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {[
+              { label: "Chủ đề", value: isLoading ? "—" : topics.length, color: "#C4B5FD" },
+              { label: "Luyện nhanh", value: "4", color: "#FCD34D" },
+              { label: "Kỹ năng", value: "4", color: "#86EFAC" },
+            ].map((s) => (
+              <div key={s.label} className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl"
+                style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.15)" }}>
+                <span className="text-xl font-extrabold" style={{ color: s.color }}>{s.value}</span>
+                <span className="text-xs font-semibold text-purple-200">{s.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Quick Actions (Grid 1 -> 2 -> 4 cols) */}
+      {/* ══ Content ══════════════════════════════════════════════════════════ */}
+      <div className="px-8 lg:px-16 py-8 max-w-[1600px] mx-auto space-y-8">
+
+      {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {quickActions.map((action) => (
           <Link key={action.title} to={action.path}
                 className="group p-5 rounded-3xl transition-all duration-300 hover:-translate-y-1"
-                style={{ background: "#fff", border: "1.5px solid #F0EEFF", boxShadow: "0 4px 20px rgba(0,0,0,0.02)" }}
+                style={{ background: "#fff", border: "1.5px solid #F0F0F8", boxShadow: "0 4px 20px rgba(124,58,237,0.05)" }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = `0 12px 30px ${action.color}15`;
-                  e.currentTarget.style.borderColor = `${action.color}40`;
+                  e.currentTarget.style.boxShadow = `0 12px 30px rgba(124,58,237,0.12)`;
+                  e.currentTarget.style.borderColor = `rgba(124,58,237,0.25)`;
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.02)";
-                  e.currentTarget.style.borderColor = "#F0EEFF";
+                  e.currentTarget.style.boxShadow = "0 4px 20px rgba(124,58,237,0.05)";
+                  e.currentTarget.style.borderColor = "#F0F0F8";
                 }}>
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110" style={{ background: action.bg }}>
                <action.icon className="w-6 h-6" style={{ color: action.color }} />
             </div>
-            <h3 style={{ fontSize: 16, fontWeight: 800, color: "#1F1344", marginBottom: 4 }}>{action.title}</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: "#1A1040", marginBottom: 4 }}>{action.title}</h3>
             <p style={{ fontSize: 13, color: "#6B7280" }}>{action.desc}</p>
           </Link>
         ))}
       </div>
 
-      {/* VSTEP Full Test */}
+      {/* VSTEP Full Test (hidden for kids) */}
+      {!isKids && (
       <div
-        className="rounded-[2rem] p-6 lg:p-7"
+        className="relative rounded-3xl overflow-hidden p-6 lg:p-7"
         style={{
-          background: "linear-gradient(135deg, #F5F3FF 0%, #EEF2FF 100%)",
-          border: "1.5px solid #E9D5FF",
-          boxShadow: "0 8px 28px rgba(124,58,237,0.08)",
+          background: "linear-gradient(135deg, #1E0B4B 0%, #4C1D95 50%, #1D4ED8 100%)",
+          boxShadow: "0 8px 32px rgba(124,58,237,0.25)",
         }}
       >
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        {/* Decorative orb */}
+        <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-20 pointer-events-none"
+          style={{ background: "radial-gradient(circle, #A78BFA, transparent)" }} />
+        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="mb-2 inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-bold text-violet-700">
+            <p className="mb-2 inline-flex items-center rounded-full px-3 py-1 text-xs font-bold text-purple-200"
+              style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
               VSTEP Mock Test
             </p>
-            <h2 style={{ fontSize: 24, fontWeight: 800, color: "#1F1344", letterSpacing: "-0.02em" }}>
+            <h2 className="text-white" style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em" }}>
               Bài thi VSTEP Full 4 kỹ năng
             </h2>
-            <p style={{ fontSize: 14, color: "#6B7280", marginTop: 6 }}>
+            <p className="text-purple-200" style={{ fontSize: 14, marginTop: 6 }}>
               1 bài hoàn chỉnh gồm Nghe - Đọc - Viết - Nói, mô phỏng theo đề thi thật.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-violet-700">
-                <Headphones className="h-3.5 w-3.5" /> Listening
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-violet-700">
-                <BookOpen className="h-3.5 w-3.5" /> Reading
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-violet-700">
-                <PenSquare className="h-3.5 w-3.5" /> Writing
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-violet-700">
-                <Mic className="h-3.5 w-3.5" /> Speaking
-              </span>
+              {[{Icon: Headphones, label: "Listening"}, {Icon: BookOpen, label: "Reading"}, {Icon: PenSquare, label: "Writing"}, {Icon: Mic, label: "Speaking"}].map(({Icon, label}) => (
+                <span key={label} className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
+                  style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                  <Icon className="h-3.5 w-3.5" /> {label}
+                </span>
+              ))}
             </div>
           </div>
-
           <div className="flex flex-col items-start gap-3 lg:items-end">
-            <div className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-700">
-              Thời lượng: <span className="text-violet-700">~180 phút</span>
+            <div className="rounded-xl px-4 py-2 text-sm font-semibold text-purple-200"
+              style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}>
+              Thời lượng: <span className="text-yellow-300 font-bold">~180 phút</span>
             </div>
             <Link
               to={`${STUDENT_BASE_PATH}/luyen-tap/custom?mode=vstep-full-4-skills`}
-              className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-violet-700"
+              className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white transition hover:opacity-90"
+              style={{ background: "linear-gradient(135deg, #7C3AED, #8B5CF6)", boxShadow: "0 4px 16px rgba(124,58,237,0.4)" }}
             >
               <Play className="h-4 w-4 fill-current" />
               Bắt đầu bài thi VSTEP
@@ -149,9 +194,10 @@ export function PracticeList() {
           </div>
         </div>
       </div>
+      )}
 
-      {/* Main Grid Section */}
-      <div className="bg-white rounded-[2rem] p-6 lg:p-8" style={{ border: "1.5px solid #F0EEFF", boxShadow: "0 8px 32px rgba(124,58,237,0.04)" }}>
+      {/* Topics Grid Section */}
+      <div className="bg-white rounded-3xl p-6 lg:p-8" style={{ border: "1.5px solid #F0F0F8", boxShadow: "0 8px 32px rgba(124,58,237,0.06)" }}>
          <div className="flex flex-col xl:flex-row justify-between xl:items-center gap-4 mb-8">
             <h2 style={{ fontSize: 20, fontWeight: 800, color: "#1F1344" }}>Chủ đề luyện tập</h2>
             
@@ -232,7 +278,7 @@ export function PracticeList() {
                              ~{topic.estimated_time} phút
                           </span>
                           {!isLocked && (
-                             <Link to={`${STUDENT_BASE_PATH}/luyen-tap/${topic.id}`}
+                             <Link to={`${BASE}/luyen-tap/${topic.id}`}
                                     className="w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-110"
                                     style={{ background: `${color}15`, color: color }}>
                                 <Play className="w-4 h-4 fill-current ml-0.5" />
@@ -244,6 +290,7 @@ export function PracticeList() {
                })}
             </div>
          )}
+      </div>
       </div>
     </div>
   );

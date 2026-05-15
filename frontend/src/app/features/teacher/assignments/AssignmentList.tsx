@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import {
@@ -14,6 +14,7 @@ import {
   Send,
 } from "lucide-react";
 import { Header } from "../../../components/shared/Header";
+import { api } from "../../../../services/api";
 import { BulkAssignment } from "./BulkAssignment";
 import { ReminderModal } from "./ReminderModal";
 
@@ -52,54 +53,41 @@ export function AssignmentList() {
       try {
         const token = localStorage.getItem('auth_token');
         if (!token) {
-          setError('Vui lòng đăng nhập');
+          setError(t('teacher.assignments.loginRequired'));
           setLoading(false);
           return;
         }
 
-        // Build query params
-        const params = new URLSearchParams();
-        if (targetFilter !== 'all') params.append('target_type', targetFilter);
+        const params: Record<string, string> = {};
+        if (targetFilter !== 'all') params.target_type = targetFilter;
 
-        const response = await fetch(
-          `http://localhost:8000/api/teacher/assignments?${params}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
+        const { data: result } = await api.get('/teacher/assignments', { params });
+        if (result.status === 'success') {
+          // Transform backend data to frontend format
+          const transformedAssignments = result.data.map((assign: any) => {
+            const deadline = assign.taDeadline ? new Date(assign.taDeadline) : null;
+            const isOverdue = deadline ? new Date() > deadline : false;
 
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success') {
-            // Transform backend data to frontend format
-            const transformedAssignments = result.data.map((assign: any) => {
-              const deadline = assign.taDeadline ? new Date(assign.taDeadline) : null;
-              const isOverdue = deadline ? new Date() > deadline : false;
-              
-              return {
-                id: assign.taId.toString(),
-                examTitle: assign.exam?.eTitle || 'Unknown Exam',
-                targetType: assign.taTarget_type as "class" | "student",
-                targetName: assign.target_name || `ID: ${assign.taTarget_id}`,
-                deadline: deadline,
-                maxAttempts: assign.taMax_attempt || 1,
-                completionRate: assign.completion_rate || 0,
-                isOverdue: isOverdue,
-                totalStudents: assign.total_students || 0,
-                completedStudents: assign.completed_students || 0,
-              };
-            });
-            setAssignments(transformedAssignments);
-          }
+            return {
+              id: assign.taId.toString(),
+              examTitle: assign.exam?.eTitle || 'Unknown Exam',
+              targetType: assign.taTarget_type as "class" | "student",
+              targetName: assign.target_name || `ID: ${assign.taTarget_id}`,
+              deadline: deadline,
+              maxAttempts: assign.taMax_attempt || 1,
+              completionRate: assign.completion_rate || 0,
+              isOverdue: isOverdue,
+              totalStudents: assign.total_students || 0,
+              completedStudents: assign.completed_students || 0,
+            };
+          });
+          setAssignments(transformedAssignments);
         } else {
-          setError('Không thể tải danh sách bài tập');
+          setError(t('teacher.assignments.loadError'));
         }
       } catch (err) {
         console.error('Error fetching assignments:', err);
-        setError('Đã xảy ra lỗi khi tải dữ liệu');
+        setError(t('teacher.assignments.dataError'));
       } finally {
         setLoading(false);
       }
@@ -110,7 +98,7 @@ export function AssignmentList() {
 
   const stats = [
     {
-      label: "Tổng số bài",
+      label: t("teacher.assignments.stats.total"),
       value: assignments.length,
       icon: BarChart3,
       color: "from-blue-500 to-blue-600",
@@ -118,7 +106,7 @@ export function AssignmentList() {
       iconColor: "text-blue-600",
     },
     {
-      label: "Giao cho lớp",
+      label: t("teacher.assignments.stats.toClass"),
       value: assignments.filter((a) => a.targetType === "class").length,
       icon: Users,
       color: "from-green-500 to-green-600",
@@ -126,7 +114,7 @@ export function AssignmentList() {
       iconColor: "text-green-600",
     },
     {
-      label: "Giao cá nhân",
+      label: t("teacher.assignments.stats.toIndividual"),
       value: assignments.filter((a) => a.targetType === "student").length,
       icon: User,
       color: "from-purple-500 to-purple-600",
@@ -134,7 +122,7 @@ export function AssignmentList() {
       iconColor: "text-purple-600",
     },
     {
-      label: "Quá hạn",
+      label: t("teacher.assignments.stats.overdue"),
       value: assignments.filter((a) => a.isOverdue).length,
       icon: AlertCircle,
       color: "from-red-500 to-red-600",
@@ -153,15 +141,16 @@ export function AssignmentList() {
     return matchesSearch && matchesExam && matchesTarget;
   });
 
-  const formatDeadline = (date: Date) => {
+  const formatDeadline = (date: Date | null | undefined) => {
+    if (!date) return "—";
     const now = new Date();
-    const diffTime = date.getTime() - now.getTime();
+    const diffTime = new Date(date).getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 0) return `Quá hạn ${Math.abs(diffDays)} ngày`;
-    if (diffDays === 0) return "Hôm nay";
-    if (diffDays === 1) return "Ngày mai";
-    return `${diffDays} ngày nữa`;
+    if (diffDays < 0) return t("teacher.assignments.deadline.overdueBy", { count: Math.abs(diffDays) });
+    if (diffDays === 0) return t("teacher.assignments.deadline.today");
+    if (diffDays === 1) return t("teacher.assignments.deadline.tomorrow");
+    return t("teacher.assignments.deadline.inDays", { count: diffDays });
   };
 
   return (
@@ -191,19 +180,6 @@ export function AssignmentList() {
             </div>
           )}
 
-          {/* Quick Actions */}
-          {!loading && !error && (
-            <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={() => setShowBulkModal(true)}
-                className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center gap-2"
-              >
-                <Send className="w-4 h-4" />
-                Giao hàng loạt
-              </button>
-            </div>
-          )}
-
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {stats.map((stat, index) => (
@@ -228,18 +204,18 @@ export function AssignmentList() {
 
           {/* Filters */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Tìm kiếm bài thi..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
-            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Search */}
+              <div className="relative flex-1 min-w-[180px]">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm bài thi..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
 
               {/* Exam Filter */}
               <select
@@ -263,6 +239,15 @@ export function AssignmentList() {
                 <option value="class">{t('teacher.assignments.targetType.class')}</option>
                 <option value="student">{t('teacher.assignments.targetType.student')}</option>
               </select>
+
+              {/* Giao hàng loạt button — right side */}
+              <button
+                onClick={() => setShowBulkModal(true)}
+                className="ml-auto flex items-center gap-2 px-4 py-2.5 bg-orange-50 border border-orange-200 text-orange-600 font-medium rounded-lg hover:bg-orange-100 hover:border-orange-300 transition-all text-sm whitespace-nowrap"
+              >
+                <Send className="w-4 h-4" />
+                {t("teacher.assignments.bulkAssign")}
+              </button>
             </div>
           </div>
 
@@ -274,22 +259,22 @@ export function AssignmentList() {
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                      Đề thi
+                      {t("teacher.assignments.table.exam")}
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                      Đối tượng
+                      {t("teacher.assignments.table.target")}
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                      Hạn nộp
+                      {t("teacher.assignments.table.dueDate")}
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                      Lượt làm
+                      {t("teacher.assignments.table.attempts")}
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                      Tiến độ
+                      {t("teacher.assignments.table.completed")}
                     </th>
                     <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700">
-                      Thao tác
+                      {t("teacher.assignments.table.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -316,7 +301,7 @@ export function AssignmentList() {
                             ) : (
                               <User className="w-3 h-3" />
                             )}
-                            {assignment.targetType === "class" ? "Lớp học" : "Cá nhân"}
+                            {assignment.targetType === "class" ? t("teacher.assignments.targetLabel.class") : t("teacher.assignments.targetLabel.individual")}
                           </span>
                           <p className="text-sm text-gray-600">{assignment.targetName}</p>
                         </div>
@@ -324,7 +309,7 @@ export function AssignmentList() {
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
                           <p className="text-sm font-medium text-gray-900">
-                            {assignment.deadline.toLocaleDateString("vi-VN")}
+                            {assignment.deadline ? assignment.deadline.toLocaleDateString("vi-VN") : "—"}
                           </p>
                           <p
                             className={`text-xs font-semibold ${
@@ -340,7 +325,7 @@ export function AssignmentList() {
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-sm font-medium text-gray-900">
-                          {assignment.maxAttempts} lần
+                          {t("teacher.assignments.attemptsCount", { count: assignment.maxAttempts })}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -372,7 +357,7 @@ export function AssignmentList() {
                           <Link
                             to={`/giao-vien/bai-tap/${assignment.id}/tien-do`}
                             className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                            title="Xem tiến độ"
+                            title={t("teacher.assignments.viewProgress")}
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
@@ -382,7 +367,7 @@ export function AssignmentList() {
                               setShowReminderModal(true);
                             }}
                             className="p-2 text-orange-600 hover:bg-orange-100 rounded-lg transition-colors"
-                            title="Gửi nhắc nhở"
+                            title={t("teacher.assignments.sendReminderTitle")}
                           >
                             <Bell className="w-4 h-4" />
                           </button>
@@ -407,16 +392,16 @@ export function AssignmentList() {
               <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
                 <BarChart3 className="w-12 h-12 text-blue-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900">Chưa có bài thi nào được giao</h3>
+              <h3 className="text-xl font-bold text-gray-900">{t("teacher.assignments.empty.title")}</h3>
               <p className="text-gray-600">
-                Bắt đầu giao bài thi cho học sinh hoặc lớp học để theo dõi tiến độ học tập
+                {t("teacher.assignments.empty.description")}
               </p>
               <button
                 onClick={() => navigate("/giao-vien/bai-tap/giao-moi")}
                 className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all inline-flex items-center gap-2"
               >
                 <Plus className="w-5 h-5" />
-                Giao bài thi đầu tiên
+                {t("teacher.assignments.empty.cta")}
               </button>
             </div>
           </div>

@@ -6,6 +6,19 @@ interface ApiResponse<T> {
   data: T;
 }
 
+export interface PublicTest {
+  id: number;
+  title: string;
+  description: string;
+  type: string;
+  skill: string;
+  duration: number;
+  total_score: number;
+  status: string;
+  visibility: string;
+  created_at: string;
+}
+
 export interface PublicCourse {
   cId: number;
   cName: string;
@@ -24,9 +37,30 @@ export interface PublicCourse {
   } | null;
 }
 
+export interface PublicStats {
+  students: number;
+  teachers: number;
+  courses: number;
+  exams: number;
+}
+
 export const publicApi = {
+  async getStats(): Promise<PublicStats> {
+    try {
+      const response = await api.get<ApiResponse<PublicStats>>("/public/stats");
+      return response.data.data;
+    } catch {
+      return { students: 0, teachers: 0, courses: 0, exams: 0 };
+    }
+  },
+
   async getCourses() {
     const response = await api.get<ApiResponse<PublicCourse[]>>("/public/courses");
     return response.data.data || [];
   },
+  
+  async getTests() {
+    const response = await api.get<ApiResponse<PublicTest[]>>("/tests");
+    return response.data.data || [];
+  }
 };

@@ -43,6 +43,11 @@ class ExamController extends Controller
         }
 
         $exams = Exam::where('eTeacher_id', $user->uId)
+                    ->where(function($q) {
+                        $q->whereNull('ePurpose')
+                          ->orWhere('ePurpose', '!=', 'practice');
+                    })
+                    ->withCount('questions')
                     ->orderBy('eCreated_at', 'desc')
                     ->get();
 
@@ -80,6 +85,7 @@ class ExamController extends Controller
      */
     public function store(Request $request)
     {
+        
         $user = $request->user();
 
         if (!$user || $user->uRole !== 'teacher') {
@@ -123,6 +129,8 @@ class ExamController extends Controller
         \DB::beginTransaction();
         try {
             // 1. Create exam
+            $ePurpose = ($request->eType === 'VSTEP' && $request->eSkill !== 'mixed') ? 'practice' : null;
+
             $exam = Exam::create([
                 'eTitle' => $request->eTitle,
                 'eDescription' => $request->eDescription,
@@ -133,6 +141,7 @@ class ExamController extends Controller
                 'eIs_private' => $request->eIs_private ?? false,
                 'eSource_type' => $request->eSource_type ?? 'manual',
                 'age_group' => $request->age_group ?? 'all',
+                'ePurpose' => $ePurpose,
             ]);
 
             // 2. Create content blocks (if provided)
@@ -241,23 +250,13 @@ class ExamController extends Controller
      */
     public function show(Request $request, $id)
     {
-        $user = $request->user();
-
-        if (!$user || $user->uRole !== 'teacher') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Bạn không có quyền truy cập.'
-            ], 401);
-        }
-
         $exam = Exam::where('eId', $id)
-                   ->where('eTeacher_id', $user->uId)
                    ->with([
                        'contentBlocks' => function($q) {
                            $q->orderBy('display_order');
                        },
                        'questions' => function($q) {
-                           $q->orderBy('qSection_order');
+                           $q->orderBy('qOrder');
                        },
                        'questions.answers',
                        'questions.contentBlock'
@@ -1034,6 +1033,342 @@ class ExamController extends Controller
     }
 
     /**
+     * POST /api/teacher/exams/{examId}/vstep/parts/{partNumber}
+     * Lưu một part của đề VSTEP Reading
+     */
+    public function saveVstepPart(Request $request, $examId, $partNumber)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'partName' => 'required|string',
+            'passage' => 'required|string',
+            'wordCount' => 'required|integer',
+            'questions' => 'required|array|min:1',
+            'questions.*.questionNumber' => 'required|integer',
+            'questions.*.questionText' => 'required|string',
+            'questions.*.options' => 'required|array',
+            'questions.*.options.A' => 'required|string',
+            'questions.*.options.B' => 'required|string',
+            'questions.*.options.C' => 'required|string',
+            'questions.*.options.D' => 'required|string',
+            'questions.*.correctAnswer' => 'required|in:A,B,C,D',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Find or create exam
+            $exam = Exam::where('eId', $examId)
+                       ->where('eTeacher_id', $user->uId)
+                       ->first();
+
+            if (!$exam) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Không tìm thấy đề thi. Vui lòng tạo đề trước khi lưu part.'
+                ], 404);
+            }
+
+            // Delete existing reading questions for this part (DON'T touch listening/writing)
+            $oldQs = Question::where('exam_id', $exam->eId)
+                ->where('qSkill', 'reading')
+                ->where('qPart', $partNumber)
+                ->get();
+            foreach ($oldQs as $oq) {
+                Answer::where('question_id', $oq->qId)->delete();
+                $oq->delete();
+            }
+
+            // Find or create content_block for this passage (avoid duplicates)
+            $contentBlock = \App\Models\ContentBlock::where('exam_id', $exam->eId)
+                ->where('block_type', 'passage')
+                ->get()
+                ->first(function ($b) use ($partNumber) {
+                    $meta = $b->metadata ?? [];
+                    return ($meta['part_number'] ?? null) == $partNumber
+                        && isset($meta['word_count']);
+                });
+
+            $blockData = [
+                'exam_id' => $exam->eId,
+                'block_type' => 'passage',
+                'content' => $request->passage,
+                'metadata' => [
+                    'part_number' => $partNumber,
+                    'part_name' => $request->partName,
+                    'word_count' => $request->wordCount,
+                ],
+                'display_order' => $partNumber,
+            ];
+            if ($contentBlock) {
+                $contentBlock->update($blockData);
+            } else {
+                $contentBlock = \App\Models\ContentBlock::create($blockData);
+            }
+
+            // Create questions
+            foreach ($request->questions as $questionData) {
+                $question = Question::create([
+                    'exam_id' => $exam->eId,
+                    'content_block_id' => $contentBlock->id,
+                    'qContent' => $questionData['questionText'],
+                    'qType' => 'multiple_choice',
+                    'qSection' => 'reading',
+                    'qSkill' => 'reading',
+                    'qPart' => $partNumber,
+                    'qSection_order' => $questionData['questionNumber'],
+                    'qPoints' => 1,
+                    'qData' => [
+                        'part_number' => $partNumber,
+                        'part_name' => $request->partName,
+                        'question_number' => $questionData['questionNumber'],
+                        'options' => $questionData['options'],
+                        'correct_answer' => $questionData['correctAnswer'],
+                    ],
+                ]);
+
+                // Create answers
+                foreach (['A', 'B', 'C', 'D'] as $option) {
+                    Answer::create([
+                        'question_id' => $question->qId,
+                        'aContent' => $questionData['options'][$option],
+                        'aIs_correct' => $questionData['correctAnswer'] === $option,
+                        'aOrder' => ord($option) - ord('A'),
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Đã lưu Part ' . $partNumber . ' thành công',
+                'data' => [
+                    'exam_id' => $exam->eId,
+                    'part_number' => $partNumber,
+                    'questions_saved' => count($request->questions),
+                    'word_count' => $request->wordCount,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Lỗi khi lưu Part: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/teacher/exams/{examId}/vstep/publish
+     * Xuất bản đề VSTEP Reading hoàn chỉnh
+     */
+    public function publishVstepExam(Request $request, $examId)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'parts' => 'required|array|size:4',
+            'parts.*.partNumber' => 'required|integer|min:1|max:4',
+            'parts.*.partName' => 'required|string',
+            'parts.*.passage' => 'required|string',
+            'parts.*.questions' => 'required|array|size:10',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Find exam
+            $exam = Exam::where('eId', $examId)
+                       ->where('eTeacher_id', $user->uId)
+                       ->first();
+
+            if (!$exam) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Không tìm thấy đề thi.'
+                ], 404);
+            }
+
+            // Update exam title and status
+            $exam->update([
+                'eTitle' => $request->title,
+                'eIs_private' => false,
+                'eStatus' => 'published',
+            ]);
+
+            // Verify all 4 parts exist
+            $questionCount = Question::where('exam_id', $exam->eId)->count();
+            if ($questionCount < 40) {
+                DB::rollBack();
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Đề thi chưa đủ 40 câu hỏi (4 parts x 10 câu).',
+                    'data' => [
+                        'current_questions' => $questionCount,
+                        'required_questions' => 40,
+                    ]
+                ], 400);
+            }
+
+            // Create practice session
+            $practiceSession = DB::table('practice_sessions')->insertGetId([
+                'ps_title' => $request->title,
+                'ps_description' => 'Đề luyện tập VSTEP Reading - 4 Parts, 40 câu hỏi',
+                'ps_type' => 'skill_based',
+                'ps_purpose' => 'practice',
+                'ps_target_skill' => 'reading',
+                'ps_difficulty' => 'medium',
+                'ps_duration_minutes' => 60,
+                'ps_teacher_id' => $user->uId,
+                'ps_exam_id' => $exam->eId,
+                'ps_is_active' => true,
+                'ps_created_at' => now(),
+                'ps_updated_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Đã xuất bản đề thi thành công',
+                'data' => [
+                    'exam_id' => $exam->eId,
+                    'exam_title' => $exam->eTitle,
+                    'practice_session_id' => $practiceSession,
+                    'total_questions' => $questionCount,
+                    'parts' => 4,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Lỗi khi xuất bản đề thi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/teacher/exams/{examId}/vstep/load
+     * Load existing VSTEP Reading exam
+     */
+    public function loadVstepExam(Request $request, $examId)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $exam = Exam::where('eId', $examId)
+                   ->where('eTeacher_id', $user->uId)
+                   ->with([
+                       'contentBlocks' => function($q) {
+                           $q->orderBy('display_order');
+                       },
+                       'questions' => function($q) {
+                           $q->orderBy('qPart')->orderBy('qSection_order');
+                       },
+                       'questions.answers'
+                   ])
+                   ->first();
+
+        if (!$exam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy đề thi.'
+            ], 404);
+        }
+
+        // Organize data by parts
+        $parts = [];
+        for ($i = 1; $i <= 4; $i++) {
+            // Filter by skill + part; NULL-part/skill questions belong to Part 1 only
+            $partQuestions = $exam->questions
+                ->filter(function($q) use ($i) {
+                    $skillMatch = $q->qSkill === 'reading' || $q->qSkill === null || $q->qSkill === '';
+                    $noPartSet  = ($q->qPart === null || $q->qPart === 0);
+                    $partMatch  = $noPartSet ? ($i === 1) : ($q->qPart == $i);
+                    return $skillMatch && $partMatch;
+                })
+                ->values();
+            
+            // FIXED: Filter content blocks to only get reading parts (those with word_count)
+            $contentBlock = $exam->contentBlocks->first(function($block) use ($i) {
+                $metadata = $block->metadata ?? [];
+                return isset($metadata['part_number']) && 
+                       $metadata['part_number'] == $i &&
+                       isset($metadata['word_count']); // Reading blocks have word_count
+            });
+
+            $parts[] = [
+                'partNumber' => $i,
+                'partName' => $contentBlock->metadata['part_name'] ?? "Part $i",
+                'passage' => $contentBlock->content ?? '',
+                'wordCount' => $contentBlock->metadata['word_count'] ?? 0,
+                'questions' => $partQuestions->map(function($q) {
+                    return [
+                        'questionNumber' => $q->qData['question_number'] ?? $q->qSection_order,
+                        'questionText' => $q->qContent,
+                        'options' => $q->qData['options'] ?? [
+                            'A' => $q->answers[0]->aContent ?? '',
+                            'B' => $q->answers[1]->aContent ?? '',
+                            'C' => $q->answers[2]->aContent ?? '',
+                            'D' => $q->answers[3]->aContent ?? '',
+                        ],
+                        'correctAnswer' => $q->qData['correct_answer'] ?? 'A',
+                    ];
+                })->toArray(),
+            ];
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'exam_id' => $exam->eId,
+                'title' => $exam->eTitle,
+                'parts' => $parts,
+            ]
+        ]);
+    }
+
+    /**
      * Helper method to organize questions by sections
      */
     private function organizeQuestionsBySection($exam)
@@ -1464,6 +1799,1503 @@ class ExamController extends Controller
                 'by_skill' => $examsBySkill,
                 'by_teacher' => $examsByTeacher,
                 'recent_exams' => $recentExams,
+            ]
+        ]);
+    }
+
+    /* ========================================
+     * VSTEP LISTENING METHODS
+     * ======================================== */
+
+    /**
+     * Layout chuẩn VSTEP Listening (số section + số câu hỏi mỗi section)
+     */
+    private const LISTENING_LAYOUT = [
+        1 => ['sectionCount' => 1, 'questionsPerSection' => 8, 'questionStart' => 1,  'sectionLabel' => 'Announcements'],
+        2 => ['sectionCount' => 3, 'questionsPerSection' => 4, 'questionStart' => 9,  'sectionLabel' => 'Conversation'],
+        3 => ['sectionCount' => 3, 'questionsPerSection' => 5, 'questionStart' => 21, 'sectionLabel' => 'Talk'],
+    ];
+
+    /**
+     * Tính display_order chuẩn cho 1 section: partNumber*100 + sectionNumber.
+     */
+    private function listeningDisplayOrder(int $partNumber, int $sectionNumber): int
+    {
+        return $partNumber * 100 + $sectionNumber;
+    }
+
+    /**
+     * Tìm content_block của 1 section, hỗ trợ cả schema mới (section_number trong metadata)
+     * lẫn schema cũ (1 audio/part, không có section_number → coi là section 1).
+     */
+    private function findListeningSectionBlock(int $examId, int $partNumber, int $sectionNumber)
+    {
+        $matches = \App\Models\ContentBlock::where('exam_id', $examId)
+            ->where('block_type', 'audio')
+            ->get()
+            ->filter(function ($b) use ($partNumber, $sectionNumber) {
+                $meta = $b->metadata ?? [];
+                if (($meta['part_number'] ?? null) != $partNumber) return false;
+                $sec = $meta['section_number'] ?? 1; // legacy = section 1
+                return $sec == $sectionNumber;
+            });
+
+        // Ưu tiên block có section_number explicit (data mới) > legacy block không có section_number
+        $explicit = $matches->first(function ($b) {
+            return isset($b->metadata['section_number']);
+        });
+        return $explicit ?: $matches->first();
+    }
+
+    /**
+     * Tìm tất cả content_blocks match 1 section (để cleanup duplicates).
+     */
+    private function findAllListeningSectionBlocks(int $examId, int $partNumber, int $sectionNumber)
+    {
+        return \App\Models\ContentBlock::where('exam_id', $examId)
+            ->where('block_type', 'audio')
+            ->get()
+            ->filter(function ($b) use ($partNumber, $sectionNumber) {
+                $meta = $b->metadata ?? [];
+                if (($meta['part_number'] ?? null) != $partNumber) return false;
+                $sec = $meta['section_number'] ?? 1;
+                return $sec == $sectionNumber;
+            })
+            ->values();
+    }
+
+    /**
+     * POST /api/teacher/exams/{examId}/vstep/listening/parts/{partNumber}/sections/{sectionNumber}/audio
+     * Auto-save audio + transcript của 1 section (không đụng questions).
+     */
+    public function saveVstepListeningSectionAudio(Request $request, $examId, $partNumber, $sectionNumber)
+    {
+        $user = $request->user();
+        $partNumber = (int) $partNumber;
+        $sectionNumber = (int) $sectionNumber;
+
+        if (!isset(self::LISTENING_LAYOUT[$partNumber])) {
+            return response()->json(['status' => 'error', 'message' => 'Part number không hợp lệ.'], 400);
+        }
+        $layout = self::LISTENING_LAYOUT[$partNumber];
+        if ($sectionNumber < 1 || $sectionNumber > $layout['sectionCount']) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Part {$partNumber} chỉ có {$layout['sectionCount']} section (1..{$layout['sectionCount']}).",
+            ], 400);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'sectionName' => 'nullable|string',
+            'audioUrl' => 'required|string',
+            'audioDuration' => 'required|integer|min:1',
+            'transcript' => 'nullable|string',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'message' => 'Dữ liệu không hợp lệ.', 'errors' => $validator->errors()], 400);
+        }
+
+        $exam = Exam::where('eId', $examId)->where('eTeacher_id', $user->uId)->first();
+        if (!$exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy đề thi.'], 404);
+        }
+
+        $allMatches = $this->findAllListeningSectionBlocks((int) $exam->eId, $partNumber, $sectionNumber);
+        $existing = $this->findListeningSectionBlock((int) $exam->eId, $partNumber, $sectionNumber);
+
+        $defaultName = "{$layout['sectionLabel']} {$sectionNumber}";
+        $metadata = [
+            'part_number' => $partNumber,
+            'section_number' => $sectionNumber,
+            'part_name' => "Part {$partNumber}",
+            'section_name' => $request->sectionName ?: ($existing->metadata['section_name'] ?? $defaultName),
+            'audio_duration' => $request->audioDuration,
+            'transcript' => $request->transcript,
+        ];
+
+        if ($existing) {
+            $existing->update([
+                'content' => $request->audioUrl,
+                'metadata' => $metadata,
+                'display_order' => $this->listeningDisplayOrder($partNumber, $sectionNumber),
+            ]);
+        } else {
+            $existing = \App\Models\ContentBlock::create([
+                'exam_id' => $exam->eId,
+                'block_type' => 'audio',
+                'content' => $request->audioUrl,
+                'metadata' => $metadata,
+                'display_order' => $this->listeningDisplayOrder($partNumber, $sectionNumber),
+            ]);
+        }
+
+        // Xoá các block duplicate (legacy block không có section_number, hoặc bản sao thừa)
+        // Questions trỏ đến block bị xoá sẽ được load logic phân phối lại theo qSection_order.
+        foreach ($allMatches as $b) {
+            if ($b->id !== $existing->id) {
+                $b->delete();
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Đã lưu audio Part {$partNumber} - Section {$sectionNumber}",
+            'data' => [
+                'exam_id' => $exam->eId,
+                'part_number' => $partNumber,
+                'section_number' => $sectionNumber,
+                'audio_url' => $request->audioUrl,
+                'audio_duration' => $request->audioDuration,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/teacher/exams/{examId}/vstep/listening/parts/{partNumber}/sections/{sectionNumber}
+     * Lưu trọn 1 section: audio + transcript + questions (xoá-tạo lại questions).
+     */
+    public function saveVstepListeningSection(Request $request, $examId, $partNumber, $sectionNumber)
+    {
+        $user = $request->user();
+        $partNumber = (int) $partNumber;
+        $sectionNumber = (int) $sectionNumber;
+
+        if (!isset(self::LISTENING_LAYOUT[$partNumber])) {
+            return response()->json(['status' => 'error', 'message' => 'Part number không hợp lệ.'], 400);
+        }
+        $layout = self::LISTENING_LAYOUT[$partNumber];
+        if ($sectionNumber < 1 || $sectionNumber > $layout['sectionCount']) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Part {$partNumber} chỉ có {$layout['sectionCount']} section.",
+            ], 400);
+        }
+        $expectedQ = $layout['questionsPerSection'];
+
+        $validator = Validator::make($request->all(), [
+            'sectionName' => 'nullable|string',
+            'audioUrl' => 'nullable|string',
+            'audioDuration' => 'nullable|integer|min:0',
+            'transcript' => 'nullable|string',
+            'questions' => "required|array|min:1|max:{$expectedQ}",
+            'questions.*.questionNumber' => 'required|integer',
+            'questions.*.questionText' => 'required|string',
+            'questions.*.options' => 'required|array',
+            'questions.*.options.A' => 'required|string',
+            'questions.*.options.B' => 'required|string',
+            'questions.*.options.C' => 'required|string',
+            'questions.*.options.D' => 'required|string',
+            'questions.*.correctAnswer' => 'required|in:A,B,C,D',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'message' => 'Dữ liệu không hợp lệ.', 'errors' => $validator->errors()], 400);
+        }
+
+        $exam = Exam::where('eId', $examId)->where('eTeacher_id', $user->uId)->first();
+        if (!$exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy đề thi.'], 404);
+        }
+
+        DB::beginTransaction();
+        try {
+            // 1. UpdateOrCreate content_block của section
+            $defaultName = "{$layout['sectionLabel']} {$sectionNumber}";
+            $allMatches = $this->findAllListeningSectionBlocks((int) $exam->eId, $partNumber, $sectionNumber);
+            $existing = $this->findListeningSectionBlock((int) $exam->eId, $partNumber, $sectionNumber);
+
+            $audioUrl = $request->audioUrl ?? ($existing->content ?? '');
+            $audioDuration = $request->audioDuration ?? ($existing->metadata['audio_duration'] ?? 0);
+
+            $metadata = [
+                'part_number' => $partNumber,
+                'section_number' => $sectionNumber,
+                'part_name' => "Part {$partNumber}",
+                'section_name' => $request->sectionName ?: ($existing->metadata['section_name'] ?? $defaultName),
+                'audio_duration' => $audioDuration,
+                'transcript' => $request->transcript ?? ($existing->metadata['transcript'] ?? ''),
+            ];
+
+            if ($existing) {
+                $existing->update([
+                    'content' => $audioUrl,
+                    'metadata' => $metadata,
+                    'display_order' => $this->listeningDisplayOrder($partNumber, $sectionNumber),
+                ]);
+                $contentBlock = $existing;
+            } else {
+                $contentBlock = \App\Models\ContentBlock::create([
+                    'exam_id' => $exam->eId,
+                    'block_type' => 'audio',
+                    'content' => $audioUrl,
+                    'metadata' => $metadata,
+                    'display_order' => $this->listeningDisplayOrder($partNumber, $sectionNumber),
+                ]);
+            }
+
+            // Xoá các block duplicate (legacy + bản sao) sau khi đã update
+            foreach ($allMatches as $b) {
+                if ($b->id !== $contentBlock->id) {
+                    $b->delete();
+                }
+            }
+
+            // 2. Xoá questions cũ của section này
+            //    Bao gồm: questions linked đúng content_block_id + legacy questions
+            //    (xác định theo qData.section_number hoặc compute từ qSection_order)
+            $qStart = $layout['questionStart'];
+            $qPerSec = $layout['questionsPerSection'];
+            $oldQuestions = Question::where('exam_id', $exam->eId)
+                ->where('qSkill', 'listening')
+                ->where('qPart', $partNumber)
+                ->get()
+                ->filter(function ($q) use ($contentBlock, $sectionNumber, $qStart, $qPerSec) {
+                    if ($q->content_block_id == $contentBlock->id) return true;
+                    $qSec = $q->qData['section_number'] ?? null;
+                    if ($qSec !== null) return $qSec == $sectionNumber;
+                    $qNum = $q->qData['question_number'] ?? $q->qSection_order ?? 0;
+                    $relIdx = max(0, $qNum - $qStart);
+                    $computed = intdiv($relIdx, max(1, $qPerSec)) + 1;
+                    return $computed == $sectionNumber;
+                });
+            foreach ($oldQuestions as $oq) {
+                Answer::where('question_id', $oq->qId)->delete();
+                $oq->delete();
+            }
+
+            // 3. Tạo questions mới
+            foreach ($request->questions as $qData) {
+                $question = Question::create([
+                    'exam_id' => $exam->eId,
+                    'content_block_id' => $contentBlock->id,
+                    'qContent' => $qData['questionText'],
+                    'qType' => 'multiple_choice',
+                    'qSection' => 'listening',
+                    'qSkill' => 'listening',
+                    'qPart' => $partNumber,
+                    'qSection_order' => $qData['questionNumber'],
+                    'qPoints' => 1,
+                    'qData' => [
+                        'part_number' => $partNumber,
+                        'section_number' => $sectionNumber,
+                        'question_number' => $qData['questionNumber'],
+                        'options' => $qData['options'],
+                        'correct_answer' => $qData['correctAnswer'],
+                    ],
+                ]);
+
+                foreach (['A', 'B', 'C', 'D'] as $opt) {
+                    Answer::create([
+                        'question_id' => $question->qId,
+                        'aContent' => $qData['options'][$opt],
+                        'aIs_correct' => $qData['correctAnswer'] === $opt,
+                        'aOrder' => ord($opt) - ord('A'),
+                    ]);
+                }
+            }
+
+            DB::commit();
+            return response()->json([
+                'status' => 'success',
+                'message' => "Đã lưu Part {$partNumber} - Section {$sectionNumber}",
+                'data' => [
+                    'exam_id' => $exam->eId,
+                    'part_number' => $partNumber,
+                    'section_number' => $sectionNumber,
+                    'questions_saved' => count($request->questions),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['status' => 'error', 'message' => 'Lỗi khi lưu section: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * POST /api/teacher/exams/{examId}/vstep/listening/parts/{partNumber}/audio
+     * (LEGACY) Lightweight: chỉ lưu audioUrl + duration + transcript của 1 part,
+     * KHÔNG đụng đến questions. Map sang section 1 cho backwards compatibility.
+     */
+    public function saveVstepListeningAudio(Request $request, $examId, $partNumber)
+    {
+        $user = $request->user();
+        $partNumber = (int) $partNumber;
+
+        if (!in_array($partNumber, [1, 2, 3], true)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Part number không hợp lệ.'
+            ], 400);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'partName' => 'nullable|string',
+            'audioUrl' => 'required|string',
+            'audioDuration' => 'required|integer|min:1',
+            'transcript' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        $exam = Exam::where('eId', $examId)
+                   ->where('eTeacher_id', $user->uId)
+                   ->first();
+
+        if (!$exam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy đề thi.'
+            ], 404);
+        }
+
+        // Tìm content_block hiện tại của part này (nếu đã có)
+        $existing = \App\Models\ContentBlock::where('exam_id', $exam->eId)
+            ->where('block_type', 'audio')
+            ->where('display_order', $partNumber)
+            ->first();
+
+        $partNames = [
+            1 => 'Part 1 - Thông báo ngắn',
+            2 => 'Part 2 - Hội thoại',
+            3 => 'Part 3 - Bài giảng',
+        ];
+
+        $metadata = [
+            'part_number' => $partNumber,
+            'part_name' => $request->partName ?: ($existing->metadata['part_name'] ?? $partNames[$partNumber]),
+            'audio_duration' => $request->audioDuration,
+            'transcript' => $request->transcript,
+        ];
+
+        if ($existing) {
+            $existing->update([
+                'content' => $request->audioUrl,
+                'metadata' => $metadata,
+            ]);
+        } else {
+            \App\Models\ContentBlock::create([
+                'exam_id' => $exam->eId,
+                'block_type' => 'audio',
+                'content' => $request->audioUrl,
+                'metadata' => $metadata,
+                'display_order' => $partNumber,
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Đã lưu audio Part ' . $partNumber,
+            'data' => [
+                'exam_id' => $exam->eId,
+                'part_number' => $partNumber,
+                'audio_url' => $request->audioUrl,
+                'audio_duration' => $request->audioDuration,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/teacher/exams/{examId}/vstep/listening/parts/{partNumber}
+     * Lưu một part của đề VSTEP Listening
+     */
+    public function saveVstepListeningPart(Request $request, $examId, $partNumber)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        // Validate part number and expected question count
+        $expectedQuestions = [1 => 8, 2 => 12, 3 => 15];
+        if (!isset($expectedQuestions[$partNumber])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Part number không hợp lệ. Chỉ có Part 1, 2, 3.'
+            ], 400);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'partName' => 'required|string',
+            'audioUrl' => 'required|string',
+            'audioDuration' => 'required|integer|min:1',
+            'transcript' => 'nullable|string',
+            'completedQuestions' => 'required|integer|min:1',
+            'totalQuestions' => 'required|integer',
+            'questions' => 'required|array|min:1',
+            'questions.*.questionNumber' => 'required|integer',
+            'questions.*.questionText' => 'required|string',
+            'questions.*.options' => 'required|array',
+            'questions.*.options.A' => 'required|string',
+            'questions.*.options.B' => 'required|string',
+            'questions.*.options.C' => 'required|string',
+            'questions.*.options.D' => 'required|string',
+            'questions.*.correctAnswer' => 'required|in:A,B,C,D',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        // Validate question count doesn't exceed limit
+        if (count($request->questions) > $expectedQuestions[$partNumber]) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Part {$partNumber} chỉ có tối đa {$expectedQuestions[$partNumber]} câu hỏi."
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Find or create exam
+            $exam = Exam::where('eId', $examId)
+                       ->where('eTeacher_id', $user->uId)
+                       ->first();
+
+            if (!$exam) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Không tìm thấy đề thi. Vui lòng tạo đề trước khi lưu part.'
+                ], 404);
+            }
+
+            // Delete existing questions for this part
+            Question::where('exam_id', $exam->eId)
+                   ->where('qPart', $partNumber)
+                   ->delete();
+
+            // Create content block for audio
+            $contentBlock = \App\Models\ContentBlock::create([
+                'exam_id' => $exam->eId,
+                'block_type' => 'audio',
+                'content' => $request->audioUrl,
+                'metadata' => [
+                    'part_number' => $partNumber,
+                    'part_name' => $request->partName,
+                    'audio_duration' => $request->audioDuration,
+                    'transcript' => $request->transcript,
+                ],
+                'display_order' => $partNumber,
+            ]);
+
+            // Create questions
+            foreach ($request->questions as $questionData) {
+                $question = Question::create([
+                    'exam_id' => $exam->eId,
+                    'content_block_id' => $contentBlock->id,
+                    'qContent' => $questionData['questionText'],
+                    'qType' => 'multiple_choice',
+                    'qSection' => 'listening',
+                    'qSkill' => 'listening',
+                    'qPart' => $partNumber,
+                    'qSection_order' => $questionData['questionNumber'],
+                    'qPoints' => 1,
+                    'qData' => [
+                        'part_number' => $partNumber,
+                        'part_name' => $request->partName,
+                        'question_number' => $questionData['questionNumber'],
+                        'options' => $questionData['options'],
+                        'correct_answer' => $questionData['correctAnswer'],
+                    ],
+                ]);
+
+                // Create answers
+                foreach (['A', 'B', 'C', 'D'] as $option) {
+                    Answer::create([
+                        'question_id' => $question->qId,
+                        'aContent' => $questionData['options'][$option],
+                        'aIs_correct' => $questionData['correctAnswer'] === $option,
+                        'aOrder' => ord($option) - ord('A'),
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Đã lưu Part ' . $partNumber . ' thành công',
+                'data' => [
+                    'exam_id' => $exam->eId,
+                    'part_number' => $partNumber,
+                    'questions_saved' => count($request->questions),
+                    'audio_duration' => $request->audioDuration,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Lỗi khi lưu Part: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/teacher/exams/{examId}/vstep/listening/publish
+     * Xuất bản đề VSTEP Listening hoàn chỉnh
+     */
+    public function publishVstepListeningExam(Request $request, $examId)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'parts' => 'required|array|size:3',
+            'parts.*.partNumber' => 'required|integer|min:1|max:3',
+            'parts.*.partName' => 'required|string',
+            'parts.*.audioUrl' => 'required|string',
+            'parts.*.questions' => 'required|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Find exam
+            $exam = Exam::where('eId', $examId)
+                       ->where('eTeacher_id', $user->uId)
+                       ->first();
+
+            if (!$exam) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Không tìm thấy đề thi.'
+                ], 404);
+            }
+
+            // Update exam title and status
+            $exam->update([
+                'eTitle' => $request->title,
+                'eIs_private' => false,
+                'eStatus' => 'published',
+            ]);
+
+            // Verify all 3 parts exist with correct question counts
+            $questionCount = Question::where('exam_id', $exam->eId)->count();
+            if ($questionCount < 35) {
+                DB::rollBack();
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Đề thi chưa đủ 35 câu hỏi (Part 1: 8, Part 2: 12, Part 3: 15).',
+                    'data' => [
+                        'current_questions' => $questionCount,
+                        'required_questions' => 35,
+                    ]
+                ], 400);
+            }
+
+            // Create practice session
+            $practiceSession = DB::table('practice_sessions')->insertGetId([
+                'ps_title' => $request->title,
+                'ps_description' => 'Đề luyện tập VSTEP Listening - 3 Parts, 35 câu hỏi',
+                'ps_type' => 'skill_based',
+                'ps_purpose' => 'practice',
+                'ps_target_skill' => 'listening',
+                'ps_difficulty' => 'medium',
+                'ps_duration_minutes' => 40,
+                'ps_teacher_id' => $user->uId,
+                'ps_exam_id' => $exam->eId,
+                'ps_is_active' => true,
+                'ps_created_at' => now(),
+                'ps_updated_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Đã xuất bản đề thi thành công',
+                'data' => [
+                    'exam_id' => $exam->eId,
+                    'exam_title' => $exam->eTitle,
+                    'practice_session_id' => $practiceSession,
+                    'total_questions' => $questionCount,
+                    'parts' => 3,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Lỗi khi xuất bản đề thi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/teacher/exams/{examId}/vstep/listening/load
+     * Load existing VSTEP Listening exam
+     */
+    public function loadVstepListeningExam(Request $request, $examId)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $exam = Exam::where('eId', $examId)
+                   ->where('eTeacher_id', $user->uId)
+                   ->with([
+                       'contentBlocks' => function($q) {
+                           $q->orderBy('display_order');
+                       },
+                       'questions' => function($q) {
+                           $q->orderBy('qPart')->orderBy('qSection_order');
+                       },
+                       'questions.answers'
+                   ])
+                   ->first();
+
+        if (!$exam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy đề thi.'
+            ], 404);
+        }
+
+        // Organize data by parts -> sections
+        $parts = [];
+        foreach (self::LISTENING_LAYOUT as $partNumber => $layout) {
+            $sectionCount = $layout['sectionCount'];
+            $qPerSection  = $layout['questionsPerSection'];
+
+            // Tìm tất cả audio content_blocks của part này
+            $partBlocks = $exam->contentBlocks->filter(function ($block) use ($partNumber) {
+                $meta = $block->metadata ?? [];
+                return isset($meta['part_number'])
+                    && $meta['part_number'] == $partNumber
+                    && isset($meta['audio_duration']);
+            })->values();
+
+            // Build sections (1..sectionCount), kể cả khi DB trống
+            $sections = [];
+            for ($s = 1; $s <= $sectionCount; $s++) {
+                // Match block by section_number trong metadata; legacy block (no section_number) → section 1
+                $block = $partBlocks->first(function ($b) use ($s) {
+                    $meta = $b->metadata ?? [];
+                    $sec = $meta['section_number'] ?? 1;
+                    return $sec == $s;
+                });
+
+                // Questions của section: phân phối theo thứ tự hợp lý
+                // 1) Nếu qData.section_number có → dùng nó (data mới chuẩn)
+                // 2) Nếu không → tính section dựa trên qSection_order/question_number
+                //    (legacy: ví dụ Part 1 có 8 câu cho 8 section → Q1→S1, Q2→S2, ...)
+                $qStart = $layout['questionStart'];
+                $qPerSec = $qPerSection;
+                $sectionQuestions = $exam->questions
+                    ->where('qSkill', 'listening')
+                    ->where('qPart', $partNumber)
+                    ->filter(function ($q) use ($s, $qStart, $qPerSec) {
+                        $qSec = $q->qData['section_number'] ?? null;
+                        if ($qSec !== null) return $qSec == $s;
+                        // Compute từ question_number (relative index trong part)
+                        $qNum = $q->qData['question_number'] ?? $q->qSection_order ?? 0;
+                        $relIdx = $qNum - $qStart;
+                        if ($relIdx < 0) $relIdx = 0;
+                        $computed = intdiv($relIdx, max(1, $qPerSec)) + 1;
+                        return $computed == $s;
+                    })
+                    ->sortBy('qSection_order')
+                    ->values();
+
+                $sections[] = [
+                    'sectionNumber' => $s,
+                    'sectionName'   => $block->metadata['section_name'] ?? "{$layout['sectionLabel']} {$s}",
+                    'audioUrl'      => $block->content ?? '',
+                    'audioDuration' => $block->metadata['audio_duration'] ?? 0,
+                    'transcript'    => $block->metadata['transcript'] ?? '',
+                    'questionStart' => $layout['questionStart'] + ($s - 1) * $qPerSection,
+                    'questionsPerSection' => $qPerSection,
+                    'questions'     => $sectionQuestions->map(function ($q) {
+                        return [
+                            'questionNumber' => $q->qData['question_number'] ?? $q->qSection_order,
+                            'questionText' => $q->qContent,
+                            'options' => $q->qData['options'] ?? [
+                                'A' => $q->answers[0]->aContent ?? '',
+                                'B' => $q->answers[1]->aContent ?? '',
+                                'C' => $q->answers[2]->aContent ?? '',
+                                'D' => $q->answers[3]->aContent ?? '',
+                            ],
+                            'correctAnswer' => $q->qData['correct_answer'] ?? 'A',
+                        ];
+                    })->values()->toArray(),
+                ];
+            }
+
+            $parts[] = [
+                'partNumber'   => $partNumber,
+                'partName'     => "Part {$partNumber}",
+                'sectionCount' => $sectionCount,
+                'questionsPerSection' => $qPerSection,
+                'sections'     => $sections,
+            ];
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'exam_id' => $exam->eId,
+                'title' => $exam->eTitle,
+                'parts' => $parts,
+            ]
+        ]);
+    }
+
+    /* ========================================
+     * VSTEP WRITING APIs
+     * ======================================== */
+
+    /**
+     * POST /api/teacher/exams/{examId}/vstep/writing/tasks/{taskNumber}
+     * Lưu một task của đề VSTEP Writing
+     */
+    public function saveVstepWritingTask(Request $request, $examId, $taskNumber)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        // Validate task number
+        if (!in_array($taskNumber, [1, 2])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Task number không hợp lệ. Chỉ có Task 1, 2.'
+            ], 400);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'taskName' => 'required|string',
+            'prompt' => 'required|string',
+            'wordCount' => 'required|array|size:2',
+            'wordCount.0' => 'required|integer|min:1',
+            'wordCount.1' => 'required|integer|min:1',
+            'timeLimit' => 'required|integer|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Find or create exam
+            $exam = Exam::where('eId', $examId)
+                       ->where('eTeacher_id', $user->uId)
+                       ->first();
+
+            if (!$exam) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Không tìm thấy đề thi. Vui lòng tạo đề trước khi lưu task.'
+                ], 404);
+            }
+
+            // Delete existing writing question for this task (DON'T touch listening/reading)
+            $oldQs = Question::where('exam_id', $exam->eId)
+                ->where('qSkill', 'writing')
+                ->where('qPart', $taskNumber)
+                ->get();
+            foreach ($oldQs as $oq) {
+                Answer::where('question_id', $oq->qId)->delete();
+                $oq->delete();
+            }
+
+            // Find or create content_block for this writing task (avoid duplicates)
+            $contentBlock = \App\Models\ContentBlock::where('exam_id', $exam->eId)
+                ->where('block_type', 'instruction')
+                ->get()
+                ->first(function ($b) use ($taskNumber) {
+                    $meta = $b->metadata ?? [];
+                    return ($meta['task_number'] ?? null) == $taskNumber;
+                });
+
+            $blockData = [
+                'exam_id' => $exam->eId,
+                'block_type' => 'instruction',
+                'content' => $request->prompt,
+                'metadata' => [
+                    'task_number' => $taskNumber,
+                    'task_name' => $request->taskName,
+                    'word_count' => $request->wordCount,
+                    'time_limit' => $request->timeLimit,
+                ],
+                'display_order' => $taskNumber,
+            ];
+            if ($contentBlock) {
+                $contentBlock->update($blockData);
+            } else {
+                $contentBlock = \App\Models\ContentBlock::create($blockData);
+            }
+
+            // Create question (writing task)
+            $question = Question::create([
+                'exam_id' => $exam->eId,
+                'content_block_id' => $contentBlock->id,
+                'qContent' => $request->prompt,
+                'qType' => 'essay',
+                'qSection' => 'writing',
+                'qSkill' => 'writing',
+                'qPart' => $taskNumber,
+                'qSection_order' => $taskNumber,
+                'qPoints' => $taskNumber === 1 ? 33 : 67, // Task 1: 33%, Task 2: 67%
+                'qData' => [
+                    'task_number' => $taskNumber,
+                    'task_name' => $request->taskName,
+                    'word_count' => $request->wordCount,
+                    'time_limit' => $request->timeLimit,
+                ],
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Đã lưu Task ' . $taskNumber . ' thành công',
+                'data' => [
+                    'exam_id' => $exam->eId,
+                    'task_number' => $taskNumber,
+                    'word_count' => $request->wordCount,
+                    'time_limit' => $request->timeLimit,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Lỗi khi lưu Task: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/teacher/exams/{examId}/vstep/writing/publish
+     * Xuất bản đề VSTEP Writing hoàn chỉnh
+     */
+    public function publishVstepWritingExam(Request $request, $examId)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'tasks' => 'required|array|size:2',
+            'tasks.*.taskNumber' => 'required|integer|min:1|max:2',
+            'tasks.*.taskName' => 'required|string',
+            'tasks.*.prompt' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Find exam
+            $exam = Exam::where('eId', $examId)
+                       ->where('eTeacher_id', $user->uId)
+                       ->first();
+
+            if (!$exam) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Không tìm thấy đề thi.'
+                ], 404);
+            }
+
+            // Update exam title and status
+            $exam->update([
+                'eTitle' => $request->title,
+                'eIs_private' => false,
+                'eStatus' => 'published',
+            ]);
+
+            // Verify both tasks exist
+            $questionCount = Question::where('exam_id', $exam->eId)->count();
+            if ($questionCount < 2) {
+                DB::rollBack();
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Đề thi chưa đủ 2 tasks (Task 1 + Task 2).',
+                    'data' => [
+                        'current_tasks' => $questionCount,
+                        'required_tasks' => 2,
+                    ]
+                ], 400);
+            }
+
+            // Create practice session
+            $practiceSession = DB::table('practice_sessions')->insertGetId([
+                'ps_title' => $request->title,
+                'ps_description' => 'Đề luyện tập VSTEP Writing - 2 Tasks',
+                'ps_type' => 'skill_based',
+                'ps_purpose' => 'practice',
+                'ps_target_skill' => 'writing',
+                'ps_difficulty' => 'medium',
+                'ps_duration_minutes' => 60,
+                'ps_teacher_id' => $user->uId,
+                'ps_exam_id' => $exam->eId,
+                'ps_is_active' => true,
+                'ps_created_at' => now(),
+                'ps_updated_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Đã xuất bản đề thi thành công',
+                'data' => [
+                    'exam_id' => $exam->eId,
+                    'exam_title' => $exam->eTitle,
+                    'practice_session_id' => $practiceSession,
+                    'total_tasks' => $questionCount,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Lỗi khi xuất bản đề thi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/teacher/exams/{examId}/vstep/writing/load
+     * Load existing VSTEP Writing exam
+     */
+    public function loadVstepWritingExam(Request $request, $examId)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $exam = Exam::where('eId', $examId)
+                   ->where('eTeacher_id', $user->uId)
+                   ->with([
+                       'contentBlocks' => function($q) {
+                           $q->orderBy('display_order');
+                       },
+                       'questions' => function($q) {
+                           $q->orderBy('qPart');
+                       }
+                   ])
+                   ->first();
+
+        if (!$exam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy đề thi.'
+            ], 404);
+        }
+
+        // Organize data by tasks
+        $tasks = [];
+        for ($i = 1; $i <= 2; $i++) {
+            $taskQuestion = $exam->questions->where('qPart', $i)->first();
+            $contentBlock = $exam->contentBlocks->where('metadata.task_number', $i)->first();
+
+            if ($taskQuestion && $contentBlock) {
+                $tasks[] = [
+                    'taskNumber' => $i,
+                    'taskName' => $contentBlock->metadata['task_name'] ?? "Task $i",
+                    'prompt' => $contentBlock->content ?? '',
+                    'wordCount' => $contentBlock->metadata['word_count'] ?? [150, 250],
+                    'timeLimit' => $contentBlock->metadata['time_limit'] ?? 20,
+                ];
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'exam_id' => $exam->eId,
+                'title' => $exam->eTitle,
+                'tasks' => $tasks,
+            ]
+        ]);
+    }
+
+    /* ========================================
+     * VSTEP SPEAKING APIs
+     * ======================================== */
+
+    /**
+     * POST /api/teacher/exams/{examId}/vstep/speaking/parts/{partNumber}
+     * Lưu một part của đề VSTEP Speaking (NEW FORMAT)
+     */
+    public function saveVstepSpeakingPart(Request $request, $examId, $partNumber)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        // Validate part number
+        if (!in_array($partNumber, [1, 2, 3])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Part number không hợp lệ. Chỉ có Part 1, 2, 3.'
+            ], 400);
+        }
+
+        // NEW FORMAT: Accept part1Data, part2Data, part3Data
+        $validator = Validator::make($request->all(), [
+            'partName' => 'required|string',
+            'timeLimit' => 'required|integer|min:1',
+            'part1Data' => 'nullable|array',
+            'part1Data.*.topicName' => 'required_with:part1Data|string',
+            'part1Data.*.questions' => 'required_with:part1Data|array|size:3',
+            'part2Data' => 'nullable|array',
+            'part2Data.situation' => 'required_with:part2Data|string',
+            'part2Data.solutions' => 'required_with:part2Data|array|size:3',
+            'part2Data.question' => 'required_with:part2Data|string',
+            'part3Data' => 'nullable|array',
+            'part3Data.mainTopic' => 'required_with:part3Data|string',
+            'part3Data.suggestedIdeas' => 'required_with:part3Data|array|min:3',
+            'part3Data.followUpQuestions' => 'required_with:part3Data|array|min:2',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Find or create exam
+            $exam = Exam::where('eId', $examId)
+                       ->where('eTeacher_id', $user->uId)
+                       ->first();
+
+            if (!$exam) {
+                // Create exam if not exists
+                $exam = Exam::create([
+                    'eTitle' => 'VSTEP Speaking Practice',
+                    'eDescription' => 'VSTEP Speaking Test - 3 Parts',
+                    'eType' => 'VSTEP',
+                    'eSkill' => 'speaking',
+                    'eTeacher_id' => $user->uId,
+                    'eDuration_minutes' => 12,
+                    'eIs_private' => true,
+                    'eSource_type' => 'manual',
+                    'age_group' => 'adults',
+                    'ePurpose' => 'practice',
+                ]);
+            }
+
+            // Delete existing content blocks and questions for THIS Speaking part only.
+            // CRITICAL: filter by block_type='instruction' để không xoá Reading passage
+            // (cũng có metadata->part_number trùng) hoặc Listening audio.
+            $existingBlocks = \App\Models\ContentBlock::where('exam_id', $exam->eId)
+                ->where('block_type', 'instruction')
+                ->whereJsonContains('metadata->part_number', $partNumber)
+                ->get();
+
+            foreach ($existingBlocks as $block) {
+                // Chỉ xoá questions thuộc Speaking skill
+                Question::where('content_block_id', $block->id)
+                    ->where('qSkill', 'speaking')
+                    ->delete();
+                $block->delete();
+            }
+
+            // Đồng thời xoá orphan Speaking questions của part này (không gắn block)
+            Question::where('exam_id', $exam->eId)
+                ->where('qSkill', 'speaking')
+                ->where('qPart', $partNumber)
+                ->delete();
+
+            // Create content block for part
+            $contentBlock = \App\Models\ContentBlock::create([
+                'exam_id' => $exam->eId,
+                'block_type' => 'instruction',
+                'content' => $request->partName,
+                'metadata' => [
+                    'part_number' => $partNumber,
+                    'part_name' => $request->partName,
+                    'time_limit' => $request->timeLimit,
+                    'part1Data' => $request->part1Data ?? null,
+                    'part2Data' => $request->part2Data ?? null,
+                    'part3Data' => $request->part3Data ?? null,
+                ],
+                'display_order' => $partNumber,
+            ]);
+
+            // Create questions based on part type
+            $questionsCreated = 0;
+
+            if ($partNumber == 1 && $request->has('part1Data')) {
+                // Part 1: Topics with 3 questions each
+                foreach ($request->part1Data as $topicIndex => $topic) {
+                    foreach ($topic['questions'] as $qIndex => $questionText) {
+                        if (!empty($questionText)) {
+                            Question::create([
+                                'exam_id' => $exam->eId,
+                                'content_block_id' => $contentBlock->id,
+                                'qContent' => $questionText,
+                                'qType' => 'speaking_interaction',
+                                'qSection' => 'speaking',
+                                'qSkill' => 'speaking',
+                                'qPart' => $partNumber,
+                                'qSection_order' => ($topicIndex * 3) + $qIndex + 1,
+                                'qPoints' => 1,
+                                'qData' => [
+                                    'part_number' => $partNumber,
+                                    'topic_name' => $topic['topicName'],
+                                    'topic_index' => $topicIndex,
+                                    'question_index' => $qIndex,
+                                ],
+                            ]);
+                            $questionsCreated++;
+                        }
+                    }
+                }
+            } elseif ($partNumber == 2 && $request->has('part2Data')) {
+                // Part 2: Situation + 3 Solutions + Question
+                $part2 = $request->part2Data;
+                Question::create([
+                    'exam_id' => $exam->eId,
+                    'content_block_id' => $contentBlock->id,
+                    'qContent' => $part2['question'],
+                    'qType' => 'speaking_solution',
+                    'qSection' => 'speaking',
+                    'qSkill' => 'speaking',
+                    'qPart' => $partNumber,
+                    'qSection_order' => 1,
+                    'qPoints' => 1,
+                    'qData' => [
+                        'part_number' => $partNumber,
+                        'situation' => $part2['situation'],
+                        'solutions' => $part2['solutions'],
+                        'question' => $part2['question'],
+                    ],
+                ]);
+                $questionsCreated++;
+            } elseif ($partNumber == 3 && $request->has('part3Data')) {
+                // Part 3: Main Topic + Ideas + Follow-up Questions
+                $part3 = $request->part3Data;
+                
+                // Main topic question
+                Question::create([
+                    'exam_id' => $exam->eId,
+                    'content_block_id' => $contentBlock->id,
+                    'qContent' => $part3['mainTopic'],
+                    'qType' => 'speaking_topic',
+                    'qSection' => 'speaking',
+                    'qSkill' => 'speaking',
+                    'qPart' => $partNumber,
+                    'qSection_order' => 1,
+                    'qPoints' => 1,
+                    'qData' => [
+                        'part_number' => $partNumber,
+                        'main_topic' => $part3['mainTopic'],
+                        'suggested_ideas' => $part3['suggestedIdeas'],
+                        'question_type' => 'main_topic',
+                    ],
+                ]);
+                $questionsCreated++;
+                
+                // Follow-up questions
+                foreach ($part3['followUpQuestions'] as $qIndex => $questionText) {
+                    if (!empty($questionText)) {
+                        Question::create([
+                            'exam_id' => $exam->eId,
+                            'content_block_id' => $contentBlock->id,
+                            'qContent' => $questionText,
+                            'qType' => 'speaking_topic',
+                            'qSection' => 'speaking',
+                            'qSkill' => 'speaking',
+                            'qPart' => $partNumber,
+                            'qSection_order' => $qIndex + 2,
+                            'qPoints' => 1,
+                            'qData' => [
+                                'part_number' => $partNumber,
+                                'main_topic' => $part3['mainTopic'],
+                                'question_type' => 'follow_up',
+                                'question_index' => $qIndex,
+                            ],
+                        ]);
+                        $questionsCreated++;
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Đã lưu Part ' . $partNumber . ' thành công',
+                'data' => [
+                    'exam_id' => $exam->eId,
+                    'part_number' => $partNumber,
+                    'questions_saved' => $questionsCreated,
+                    'time_limit' => $request->timeLimit,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Lỗi khi lưu Part: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/teacher/exams/{examId}/vstep/speaking/publish
+     * Xuất bản đề VSTEP Speaking hoàn chỉnh
+     */
+    public function publishVstepSpeakingExam(Request $request, $examId)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'parts' => 'required|array|size:3',
+            'parts.*.partNumber' => 'required|integer|min:1|max:3',
+            'parts.*.partName' => 'required|string',
+            'parts.*.questions' => 'required|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Find exam
+            $exam = Exam::where('eId', $examId)
+                       ->where('eTeacher_id', $user->uId)
+                       ->first();
+
+            if (!$exam) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Không tìm thấy đề thi.'
+                ], 404);
+            }
+
+            // Update exam title and status
+            $exam->update([
+                'eTitle' => $request->title,
+                'eIs_private' => false,
+                'eStatus' => 'published',
+            ]);
+
+            // Verify all 3 parts exist
+            $questionCount = Question::where('exam_id', $exam->eId)->count();
+            if ($questionCount < 3) {
+                DB::rollBack();
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Đề thi chưa đủ 3 parts (Part 1, 2, 3).',
+                    'data' => [
+                        'current_questions' => $questionCount,
+                        'required_parts' => 3,
+                    ]
+                ], 400);
+            }
+
+            // Create practice session
+            $practiceSession = DB::table('practice_sessions')->insertGetId([
+                'ps_title' => $request->title,
+                'ps_description' => 'Đề luyện tập VSTEP Speaking - 3 Parts',
+                'ps_type' => 'skill_based',
+                'ps_purpose' => 'practice',
+                'ps_target_skill' => 'speaking',
+                'ps_difficulty' => 'medium',
+                'ps_duration_minutes' => 12,
+                'ps_teacher_id' => $user->uId,
+                'ps_exam_id' => $exam->eId,
+                'ps_is_active' => true,
+                'ps_created_at' => now(),
+                'ps_updated_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Đã xuất bản đề thi thành công',
+                'data' => [
+                    'exam_id' => $exam->eId,
+                    'exam_title' => $exam->eTitle,
+                    'practice_session_id' => $practiceSession,
+                    'total_questions' => $questionCount,
+                    'parts' => 3,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Lỗi khi xuất bản đề thi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/teacher/exams/{examId}/vstep/speaking/load
+     * Load existing VSTEP Speaking exam (NEW FORMAT)
+     */
+    public function loadVstepSpeakingExam(Request $request, $examId)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $exam = Exam::where('eId', $examId)
+                   ->where('eTeacher_id', $user->uId)
+                   ->with([
+                       'contentBlocks' => function($q) {
+                           $q->orderBy('display_order');
+                       },
+                       'questions' => function($q) {
+                           // FIXED: Only load speaking questions
+                           $q->where('qSkill', 'speaking')
+                             ->orderBy('qPart')
+                             ->orderBy('qSection_order');
+                       }
+                   ])
+                   ->first();
+
+        if (!$exam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy đề thi.'
+            ], 404);
+        }
+
+        // Organize data by parts (NEW FORMAT)
+        $parts = [];
+        for ($i = 1; $i <= 3; $i++) {
+            // FIXED: Filter content blocks to only get speaking parts (those with part1Data/part2Data/part3Data)
+            $contentBlock = $exam->contentBlocks->first(function($block) use ($i) {
+                $metadata = $block->metadata ?? [];
+                return isset($metadata['part_number']) && 
+                       $metadata['part_number'] == $i &&
+                       (isset($metadata['part1Data']) || isset($metadata['part2Data']) || isset($metadata['part3Data']));
+            });
+            
+            if (!$contentBlock) {
+                // Return empty structure if part doesn't exist
+                $parts[] = [
+                    'partNumber' => $i,
+                    'partName' => "Part $i",
+                    'timeLimit' => $i === 1 ? 3 : ($i === 2 ? 4 : 5),
+                ];
+                continue;
+            }
+
+            $partData = [
+                'partNumber' => $i,
+                'partName' => $contentBlock->metadata['part_name'] ?? "Part $i",
+                'timeLimit' => $contentBlock->metadata['time_limit'] ?? 3,
+            ];
+
+            // Add part-specific data from metadata
+            if (isset($contentBlock->metadata['part1Data'])) {
+                $partData['part1Data'] = $contentBlock->metadata['part1Data'];
+            } elseif (isset($contentBlock->metadata['part2Data'])) {
+                $partData['part2Data'] = $contentBlock->metadata['part2Data'];
+            } elseif (isset($contentBlock->metadata['part3Data'])) {
+                $partData['part3Data'] = $contentBlock->metadata['part3Data'];
+            }
+
+            $parts[] = $partData;
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'exam_id' => $exam->eId,
+                'title' => $exam->eTitle,
+                'parts' => $parts,
             ]
         ]);
     }
