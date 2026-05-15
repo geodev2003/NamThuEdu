@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router";
 import {
   ArrowLeft,
@@ -18,6 +19,7 @@ import {
 import { useAssignmentProgress } from "@/hooks/useAssignmentProgress";
 
 export function AssignmentProgress() {
+  const { t } = useTranslation();
   const { assignmentId } = useParams();
   const [showReminderModal, setShowReminderModal] = useState(false);
   
@@ -33,17 +35,17 @@ export function AssignmentProgress() {
   const completionRate = progressData?.completion_rate || 0;
 
   const getTimeRemaining = () => {
-    if (!assignment?.taDue_date) return "Không có hạn";
+    if (!assignment?.taDue_date) return t("teacher.assignments.progress.noDeadline");
     const now = new Date();
     const deadline = new Date(assignment.taDue_date);
     const diff = deadline.getTime() - now.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
-    if (diff < 0) return "Đã quá hạn";
-    if (days > 0) return `Còn ${days} ngày ${hours} giờ`;
-    if (hours > 0) return `Còn ${hours} giờ`;
-    return "Sắp hết hạn";
+    if (diff < 0) return t("teacher.assignments.progress.overdue");
+    if (days > 0) return t("teacher.assignments.progress.daysHoursRemaining", { days, hours });
+    if (hours > 0) return t("teacher.assignments.progress.hoursRemaining", { hours });
+    return t("teacher.assignments.progress.almostDue");
   };
 
   const isOverdue = assignment?.taDue_date && new Date(assignment.taDue_date) < new Date();
@@ -53,7 +55,7 @@ export function AssignmentProgress() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 font-semibold">Đang tải tiến độ làm bài...</p>
+          <p className="text-gray-600 font-semibold">{t("teacher.assignments.progress.loading")}</p>
         </div>
       </div>
     );
@@ -66,12 +68,12 @@ export function AssignmentProgress() {
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-8 h-8 text-red-600" />
           </div>
-          <p className="text-red-600 font-semibold mb-2">{error || 'Không tìm thấy dữ liệu'}</p>
+          <p className="text-red-600 font-semibold mb-2">{error || t("teacher.assignments.progress.notFound")}</p>
           <Link
             to="/giao-vien/bai-tap"
             className="inline-block px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all"
           >
-            Quay lại
+            {t("teacher.assignments.progress.back")}
           </Link>
         </div>
       </div>
@@ -80,7 +82,7 @@ export function AssignmentProgress() {
 
   const stats = [
     {
-      label: "Tổng học sinh",
+      label: t("teacher.assignments.progress.stats.totalStudents"),
       value: totalStudents,
       icon: Users,
       color: "from-blue-500 to-blue-600",
@@ -88,7 +90,7 @@ export function AssignmentProgress() {
       iconColor: "text-blue-600",
     },
     {
-      label: "Đã hoàn thành",
+      label: t("teacher.assignments.progress.stats.completed"),
       value: completedStudents.length,
       icon: CheckCircle2,
       color: "from-green-500 to-green-600",
@@ -96,7 +98,7 @@ export function AssignmentProgress() {
       iconColor: "text-green-600",
     },
     {
-      label: "Chưa hoàn thành",
+      label: t("teacher.assignments.progress.stats.notCompleted"),
       value: notCompletedStudents.length,
       icon: Clock,
       color: "from-orange-500 to-orange-600",
@@ -104,7 +106,7 @@ export function AssignmentProgress() {
       iconColor: "text-orange-600",
     },
     {
-      label: "Tỷ lệ hoàn thành",
+      label: t("teacher.assignments.progress.stats.completionRate"),
       value: `${completionRate}%`,
       icon: TrendingUp,
       color: "from-purple-500 to-purple-600",
@@ -119,10 +121,10 @@ export function AssignmentProgress() {
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm">
           <Link to="/giao-vien/bai-tap" className="text-gray-600 hover:text-blue-600 transition-colors">
-            Quản lý giao bài
+            {t("teacher.assignments.progress.managementLink")}
           </Link>
           <span className="text-gray-400">/</span>
-          <span className="text-gray-900 font-medium">{assignment?.taTitle || 'Chi tiết bài tập'}</span>
+          <span className="text-gray-900 font-medium">{assignment?.taTitle || t('teacher.assignments.progress.title')}</span>
         </div>
 
         {/* Header */}
@@ -135,8 +137,8 @@ export function AssignmentProgress() {
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Tiến độ làm bài 📊</h1>
-              <p className="text-gray-600 mt-1">Theo dõi chi tiết kết quả làm bài của học sinh</p>
+              <h1 className="text-3xl font-bold text-gray-900">{t("teacher.assignments.progress.heading")} 📊</h1>
+              <p className="text-gray-600 mt-1">{t("teacher.assignments.progress.subtitle")}</p>
             </div>
           </div>
         </div>
@@ -145,24 +147,24 @@ export function AssignmentProgress() {
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white shadow-xl">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div>
-              <p className="text-blue-100 text-sm mb-1">Đề thi</p>
+              <p className="text-blue-100 text-sm mb-1">{t("teacher.assignments.progress.examLabel")}</p>
               <p className="font-bold text-lg">{assignment?.taTitle || 'N/A'}</p>
               <span className="inline-block mt-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-xs font-semibold">
                 {assignment?.taStatus || 'active'}
               </span>
             </div>
             <div>
-              <p className="text-blue-100 text-sm mb-1">Giao cho</p>
+              <p className="text-blue-100 text-sm mb-1">{t("teacher.assignments.table.target")}</p>
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5" />
-                <p className="font-bold text-lg">{totalStudents} học sinh</p>
+                <p className="font-bold text-lg">{totalStudents} {t("teacher.assignments.progress.stats.totalStudents")}</p>
               </div>
               <span className="inline-block mt-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-xs font-semibold">
-                Lớp học
+                {t("teacher.assignments.progress.classLabel")}
               </span>
             </div>
             <div>
-              <p className="text-blue-100 text-sm mb-1">Hạn nộp</p>
+              <p className="text-blue-100 text-sm mb-1">{t("teacher.assignments.progress.dueDate")}</p>
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5" />
                 <p className="font-bold text-lg">
@@ -172,7 +174,7 @@ export function AssignmentProgress() {
               <p className="text-sm mt-2 font-semibold">{getTimeRemaining()}</p>
             </div>
             <div>
-              <p className="text-blue-100 text-sm mb-1">Điểm trung bình</p>
+              <p className="text-blue-100 text-sm mb-1">{t("teacher.assignments.progress.avgScoreLabel")}</p>
               <div className="flex items-center gap-2">
                 <Target className="w-5 h-5" />
                 <p className="font-bold text-lg">{progressData?.average_score?.toFixed(1) || 0}</p>
@@ -186,9 +188,9 @@ export function AssignmentProgress() {
           <div className="bg-red-50 border-l-4 border-red-500 rounded-xl p-4 flex items-center gap-3">
             <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
             <div>
-              <p className="font-semibold text-red-900">Bài thi đã quá hạn!</p>
+              <p className="font-semibold text-red-900">{t("teacher.assignments.progress.overdueTitle")}</p>
               <p className="text-sm text-red-700">
-                Vui lòng gửi nhắc nhở đến học sinh chưa hoàn thành
+                {t("teacher.assignments.progress.overdueDesc")}
               </p>
             </div>
           </div>
@@ -223,7 +225,7 @@ export function AssignmentProgress() {
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <CheckCircle2 className="w-6 h-6 text-green-600" />
-                Đã hoàn thành ({completedStudents.length})
+                {t("teacher.assignments.progress.completedCount", { count: completedStudents.length })}
               </h2>
             </div>
 
@@ -260,7 +262,7 @@ export function AssignmentProgress() {
                       )}
                       {student.submission?.sStatus === 'graded' && (
                         <span className="px-2 py-1 bg-green-100 text-green-700 rounded font-semibold">
-                          Đã chấm
+                          {t("teacher.assignments.progress.graded")}
                         </span>
                       )}
                     </div>
@@ -269,7 +271,7 @@ export function AssignmentProgress() {
                       className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-1"
                     >
                       <Eye className="w-4 h-4" />
-                      Xem chi tiết
+                      {t("teacher.common.viewDetail")}
                     </Link>
                   </div>
                 </div>
@@ -282,7 +284,7 @@ export function AssignmentProgress() {
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <Clock className="w-6 h-6 text-orange-600" />
-                Chưa hoàn thành ({notCompletedStudents.length})
+                {t("teacher.assignments.progress.notCompletedCount", { count: notCompletedStudents.length })}
               </h2>
             </div>
 
@@ -298,13 +300,13 @@ export function AssignmentProgress() {
                       <p className="text-sm text-gray-600">{student.uPhone}</p>
                     </div>
                     <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-semibold">
-                      Chưa làm bài
+                      {t("teacher.assignments.progress.notStarted")}
                     </span>
                   </div>
 
                   <button className="w-full py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2">
                     <Bell className="w-4 h-4" />
-                    Gửi nhắc nhở
+                    {t("teacher.assignments.progress.sendReminder")}
                   </button>
                 </div>
               ))}
@@ -319,7 +321,7 @@ export function AssignmentProgress() {
             className="fixed bottom-8 right-8 px-6 py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold rounded-full shadow-2xl shadow-orange-500/50 flex items-center gap-2 transition-all duration-200 hover:scale-105"
           >
             <Send className="w-5 h-5" />
-            Gửi nhắc nhở hàng loạt ({notCompletedStudents.length})
+            {t("teacher.assignments.progress.bulkReminderBtn", { count: notCompletedStudents.length })}
           </button>
         )}
       </div>

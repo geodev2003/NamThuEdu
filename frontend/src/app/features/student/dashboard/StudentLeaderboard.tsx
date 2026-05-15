@@ -14,93 +14,88 @@ type LeaderboardRow = {
   isMe?: boolean;
 };
 
-function buildLeaderboard(myRank: number, totalUsers: number, avgScore: number): LeaderboardRow[] {
-  const base: LeaderboardRow[] = [
-    { rank: 1, name: "Minh Anh", xp: 4250, score: 92, streak: 21 },
-    { rank: 2, name: "Tuấn Kiệt", xp: 4010, score: 90, streak: 19 },
-    { rank: 3, name: "Bảo Ngọc", xp: 3880, score: 89, streak: 18 },
-    { rank: 4, name: "Ngọc Lan", xp: 3620, score: 86, streak: 15 },
-    { rank: 5, name: "Gia Huy", xp: 3510, score: 85, streak: 14 },
-  ];
-
-  const safeRank = Number.isFinite(myRank) && myRank > 0 ? myRank : 12;
-  const me: LeaderboardRow = {
-    rank: safeRank,
-    name: "Bạn",
-    xp: 1240,
-    score: Number.isFinite(avgScore) ? Math.round(avgScore) : 78,
-    streak: 7,
-    isMe: true,
-  };
-
-  if (safeRank <= 5) {
-    return base.map((row) => (row.rank === safeRank ? { ...me, rank: safeRank } : row));
-  }
-
-  const total = Number.isFinite(totalUsers) && totalUsers > 0 ? totalUsers : 150;
-  return [...base, { rank: safeRank - 1, name: "Người chơi #"+String(safeRank - 1), xp: 1300, score: 80, streak: 6 }, me, { rank: Math.min(total, safeRank + 1), name: "Người chơi #"+String(safeRank + 1), xp: 1180, score: 77, streak: 5 }];
-}
-
 export function StudentLeaderboard() {
   const { data, isLoading } = useQuery({
-    queryKey: ["student", "progress", "leaderboard"],
-    queryFn: () => studentApi.getProgress(),
+    queryKey: ["student", "gamification", "leaderboard"],
+    queryFn: () => studentApi.getLeaderboard({ limit: 10 }),
   });
 
-  const progress = (data as any)?.data?.data;
-  const rank = progress?.leaderboard?.rank ?? 12;
-  const totalUsers = progress?.leaderboard?.total_users ?? 150;
-  const avg = progress?.overview?.average_score ?? 78;
-  const rows = buildLeaderboard(rank, totalUsers, avg);
+  const payload = (data as any)?.data?.data;
+  const topRaw: any[] = payload?.top ?? [];
+  const me = payload?.me ?? {};
+  const rank = me.rank ?? 1;
+  const totalUsers = me.total_students ?? topRaw.length;
+  const avg = topRaw.find((r: any) => r.is_me)?.average_score ?? 0;
+
+  const rows: LeaderboardRow[] = topRaw.map((r: any) => ({
+    rank: r.rank,
+    name: r.is_me ? "Bạn" : r.name,
+    xp: r.total_points,
+    score: r.average_score,
+    streak: r.streak,
+    isMe: Boolean(r.is_me),
+  }));
 
   if (isLoading) {
     return (
-      <div className="py-6">
-        <div className="h-28 rounded-3xl bg-gray-100 animate-pulse mb-5" />
-        <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((k) => (
-            <div key={k} className="h-16 rounded-2xl bg-gray-100 animate-pulse" />
-          ))}
+      <div className="min-h-screen" style={{ background: "#F8F7FF" }}>
+        <div style={{ background: "linear-gradient(135deg, #4C1D95 0%, #6D28D9 45%, #7C3AED 100%)" }}>
+          <div className="px-8 lg:px-16 py-10 animate-pulse">
+            <div className="h-3 w-28 rounded-full mb-3" style={{ background: "rgba(255,255,255,0.2)" }} />
+            <div className="h-8 w-56 rounded-xl mb-2" style={{ background: "rgba(255,255,255,0.2)" }} />
+            <div className="h-3 w-72 rounded-full" style={{ background: "rgba(255,255,255,0.12)" }} />
+          </div>
+        </div>
+        <div className="px-8 lg:px-16 py-8 animate-pulse space-y-3">
+          {[1,2,3,4,5].map(k => <div key={k} className="h-16 rounded-2xl bg-purple-50" />)}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="py-6 space-y-5">
-      <div
-        className="rounded-3xl p-6"
-        style={{
-          background: `linear-gradient(135deg, ${PRIMARY} 0%, #A78BFA 100%)`,
-          color: "white",
-        }}
-      >
-        <div className="flex items-center gap-3 mb-2">
-          <Trophy className="w-7 h-7" />
-          <h1 className="text-2xl font-extrabold">Bảng xếp hạng học viên</h1>
+    <div className="min-h-screen" style={{ background: "#F8F7FF" }}>
+
+      {/* Hero */}
+      <div className="relative overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #4C1D95 0%, #6D28D9 45%, #7C3AED 100%)" }}>
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/3 w-80 h-80 rounded-full opacity-20"
+            style={{ background: "radial-gradient(circle, #C4B5FD, transparent)", transform: "translateY(-50%)" }} />
+          <div className="absolute bottom-0 right-1/4 w-56 h-56 rounded-full opacity-15"
+            style={{ background: "radial-gradient(circle, #A5B4FC, transparent)", transform: "translateY(40%)" }} />
         </div>
-        <p className="text-white/85 text-sm">Theo dõi vị trí của bạn và bứt phá thứ hạng mỗi tuần.</p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
-          <div className="rounded-2xl p-3 bg-white/15">
-            <p className="text-xs text-white/80">Xếp hạng của bạn</p>
-            <p className="text-2xl font-black">#{rank}</p>
+        <div className="relative z-10 px-8 lg:px-16 py-10">
+          <div className="flex items-start gap-4 mb-6">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg"
+              style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.25)" }}>
+              <Trophy className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <p className="text-purple-200 text-sm font-semibold tracking-widest uppercase mb-1">Thứ hạng</p>
+              <h1 className="text-3xl font-extrabold text-white tracking-tight leading-tight">Bảng xếp hạng</h1>
+              <p className="text-purple-200 text-sm mt-1 font-medium">Theo dõi vị trí và bứt phá thứ hạng mỗi tuần</p>
+            </div>
           </div>
-          <div className="rounded-2xl p-3 bg-white/15">
-            <p className="text-xs text-white/80">Tổng học viên</p>
-            <p className="text-2xl font-black">{totalUsers}</p>
-          </div>
-          <div className="rounded-2xl p-3 bg-white/15">
-            <p className="text-xs text-white/80">Điểm TB</p>
-            <p className="text-2xl font-black">{Number(avg).toFixed(1)}</p>
-          </div>
-          <div className="rounded-2xl p-3 bg-white/15">
-            <p className="text-xs text-white/80">Mục tiêu tuần</p>
-            <p className="text-2xl font-black flex items-center gap-1"><TrendingUp className="w-5 h-5" />Top 10</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: "Xếp hạng của bạn", value: `#${rank}`, color: "#FCD34D" },
+              { label: "Tổng học viên", value: totalUsers, color: "#DDD6FE" },
+              { label: "Điểm TB", value: Number(avg).toFixed(1), color: "#86EFAC" },
+              { label: "Mục tiêu tuần", value: "Top 10", color: "#FDBA74" },
+            ].map(s => (
+              <div key={s.label} className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl"
+                style={{ background: "rgba(255,255,255,0.12)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.18)" }}>
+                <span className="text-lg font-extrabold" style={{ color: s.color }}>{s.value}</span>
+                <span className="text-xs font-semibold text-purple-200">{s.label}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="rounded-2xl bg-white p-4" style={{ border: "1.5px solid #F0EEFF" }}>
+      <div className="px-8 lg:px-16 py-8 space-y-5">
+      <div className="rounded-2xl bg-white p-4" style={{ border: "1.5px solid #F0F0F8", boxShadow: "0 2px 12px rgba(124,58,237,0.06)" }}>
         <div className="space-y-2">
           {rows.map((row) => (
             <div
@@ -130,6 +125,7 @@ export function StudentLeaderboard() {
             </div>
           ))}
         </div>
+      </div>
       </div>
     </div>
   );

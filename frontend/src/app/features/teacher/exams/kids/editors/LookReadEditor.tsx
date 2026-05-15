@@ -85,8 +85,8 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
       return;
     }
 
-    if (blob.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    if (blob.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -114,8 +114,8 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
       return;
     }
 
-    if (blob.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    if (blob.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -146,8 +146,8 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -174,8 +174,8 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -381,7 +381,7 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
               <span className="mb-1 text-lg font-bold text-blue-700">
                 {uploadingSharedImage ? '⏳ Đang tải lên...' : 'Nhấn để tải ảnh chung hoặc Ctrl+V'}
               </span>
-              <span className="text-sm text-blue-600">PNG, JPG (tối đa 5MB)</span>
+              <span className="text-sm text-blue-600">PNG, JPG (tối đa 20MB)</span>
               {focusedSharedImage && (
                 <p className="mt-2 text-sm font-bold text-blue-700 animate-pulse">
                   💡 Bạn có thể Ctrl+V để dán ảnh từ clipboard
@@ -522,7 +522,7 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
                             <span className="mb-1 text-base font-medium text-gray-700">
                               {uploadingImages[stmt.id] ? '⏳ Đang tải lên...' : 'Nhấn để tải ảnh hoặc Ctrl+V'}
                             </span>
-                            <span className="text-sm text-gray-500">PNG, JPG (tối đa 5MB)</span>
+                            <span className="text-sm text-gray-500">PNG, JPG (tối đa 20MB)</span>
                             {focusedStatement === stmt.id && (
                               <p className="mt-2 text-xs font-bold text-orange-600 animate-pulse">
                                 💡 Bạn có thể Ctrl+V để dán ảnh từ clipboard

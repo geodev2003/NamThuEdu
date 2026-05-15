@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useNavigate, useSearchParams, useParams } from "react-router";
 import {
   ArrowLeft,
   Save,
@@ -11,6 +11,7 @@ import {
   Loader2,
   ChevronDown,
   ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
 import { useToast } from "../../../../../hooks/useToast";
 import { useTranslation } from "react-i18next";
@@ -49,12 +50,12 @@ interface ListeningPart {
 }
 
 // ─── VSTEP B1-C1 Listening Layout ─────────────────────────────────────────
-// Part 1: 8 short announcements × 1 question = 8 audios
+// Part 1: 1 audio chung × 8 questions
 // Part 2: 3 conversations × 4 questions = 3 audios
 // Part 3: 3 talks/lectures × 5 questions = 3 audios
 
 const VSTEP_LISTENING_LAYOUT = {
-  1: { sectionCount: 8, questionsPerSection: 1, questionStart: 1, label: "Announcement", partTitle: "Part 1 - Announcements", partDesc: "8 thông báo ngắn × 1 câu" },
+  1: { sectionCount: 1, questionsPerSection: 8, questionStart: 1, label: "Announcements", partTitle: "Part 1 - Announcements", partDesc: "1 audio × 8 câu" },
   2: { sectionCount: 3, questionsPerSection: 4, questionStart: 9, label: "Conversation", partTitle: "Part 2 - Conversations", partDesc: "3 hội thoại × 4 câu" },
   3: { sectionCount: 3, questionsPerSection: 5, questionStart: 21, label: "Talk", partTitle: "Part 3 - Talks/Lectures", partDesc: "3 bài giảng × 5 câu" },
 } as const;
@@ -115,9 +116,11 @@ export const CreateVstepListening = ({
   const { success, error } = useToast();
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const params = useParams();
+  const urlExamId = params.examId || searchParams.get("id");
 
   const initialExamId =
-    propExamId || searchParams.get("id") || `vstep-listening-${Date.now()}`;
+    propExamId || urlExamId || `vstep-listening-${Date.now()}`;
   const [examId, setExamId] = useState<string>(initialExamId);
   const [examTitle, setExamTitle] = useState<string>(t("vstep.listening.title"));
   const [isLoading, setIsLoading] = useState(false);
@@ -289,15 +292,15 @@ export const CreateVstepListening = ({
   // ─── Load existing exam ─────────────────────────────────────────────────
 
   useEffect(() => {
-    const effectiveExamId = propExamId || searchParams.get("id");
+    const effectiveExamId = propExamId || urlExamId;
 
     if (!effectiveExamId) {
-      if (!isFullTest) setSearchParams({ id: examId }, { replace: true });
+      if (!isFullTest && !params.examId) setSearchParams({ id: examId }, { replace: true });
       return;
     }
 
     if (effectiveExamId !== examId) setExamId(effectiveExamId);
-    if (!isFullTest && !searchParams.get("id"))
+    if (!isFullTest && !params.examId && !searchParams.get("id"))
       setSearchParams({ id: effectiveExamId }, { replace: true });
 
     setIsLoading(true);
@@ -931,13 +934,23 @@ export const CreateVstepListening = ({
               const layout = VSTEP_LISTENING_LAYOUT[pn as 1 | 2 | 3];
               const isActive = currentPart === pn;
               const isFilled = isPartFullyFilled(pn);
-              const savedCount = parts
-                .find((p) => p.partNumber === pn)
-                ?.sections.filter((_, i) =>
+              const partData = parts.find((p) => p.partNumber === pn);
+              const savedCount =
+                partData?.sections.filter((_, i) =>
                   savedSections.has(sectionKey(pn, i + 1))
                 ).length || 0;
               const totalQs =
                 layout.sectionCount * layout.questionsPerSection;
+
+              // Cảnh báo: có câu hỏi nhưng thiếu audio file
+              const sectionsWithQs =
+                partData?.sections.filter((s) =>
+                  s.questions.some((q) => q.questionText.trim())
+                ) || [];
+              const missingAudioCount = sectionsWithQs.filter(
+                (s) => !s.audioUrl || s.audioUrl.startsWith("blob:")
+              ).length;
+              const hasWarning = sectionsWithQs.length > 0 && missingAudioCount > 0;
 
               return (
                 <button
@@ -951,7 +964,20 @@ export const CreateVstepListening = ({
                 >
                   <Headphones className="w-5 h-5" />
                   <div className="text-left">
-                    <div className="font-semibold">Part {pn}</div>
+                    <div className="font-semibold flex items-center gap-1.5">
+                      Part {pn}
+                      {hasWarning && (
+                        <span
+                          title={`Thiếu audio cho ${missingAudioCount} section`}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-medium border border-amber-200"
+                        >
+                          <AlertTriangle className="w-3 h-3" />
+                          {missingAudioCount === sectionsWithQs.length
+                            ? "Thiếu audio"
+                            : `Thiếu ${missingAudioCount} audio`}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-gray-500">
                       {savedCount}/{layout.sectionCount} sections • {totalQs}{" "}
                       câu

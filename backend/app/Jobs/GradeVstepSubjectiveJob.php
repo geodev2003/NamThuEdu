@@ -1,0 +1,82 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Models\Submission;
+use App\Services\VstepGradingService;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+
+class GradeVstepSubjectiveJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /** Max attempts before failing */
+    public int $tries = 3;
+
+    /** Seconds before the job is considered timed out */
+    public int $timeout = 180;
+
+    /** Delay between retries (seconds) */
+    public int $backoff = 30;
+
+    private int $submissionId;
+
+    public function __construct(int $submissionId)
+    {
+        $this->submissionId = $submissionId;
+    }
+
+    public function handle(VstepGradingService $service): void
+    {
+        $submission = Submission::with(['exam.questions', 'answers.question'])
+            ->find($this->submissionId);
+
+        if (!$submission) {
+            Log::warning("GradeVstepSubjectiveJob: submission {$this->submissionId} not found.");
+            return;
+        }
+
+        if ($submission->sStatus !== 'grading_subjective') {
+            Log::info("GradeVstepSubjectiveJob: submission {$this->submissionId} is not in grading_subjective status, skipping.");
+            return;
+        }
+
+        Log::info("GradeVstepSubjectiveJob: starting for submission {$this->submissionId}");
+
+        try {
+            // Skip AI for short/empty writing answers — auto-grade as 0
+            $hasRealWriting = $submission->answers->contains(function ($a) {
+                if (strtolower($a->question->qSection ?? '') !== 'writing') return false;
+                return strlen(trim($a->saAnswer_text ?? '')) >= 30;
+            });
+            $writingScore  = $hasRealWriting ? $service->gradeWriting($submission) : 0;
+            $speakingScore = $service->gradeSpeaking($submission);
+            $service->updateSubmission($submission, $writingScore, $speakingScore);
+
+            Log::info("GradeVstepSubjectiveJob: completed for submission {$this->submissionId}", [
+                'writing'  => $writingScore,
+                'speaking' => $speakingScore,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("GradeVstepSubjectiveJob: failed for submission {$this->submissionId}: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    public function failed(\Throwable $e): void
+    {
+        Log::error("GradeVstepSubjectiveJob: permanently failed for submission {$this->submissionId}: " . $e->getMessage());
+
+        // Mark submission as partially graded so it's not stuck in grading_subjective
+        $submission = Submission::find($this->submissionId);
+        if ($submission && $submission->sStatus === 'grading_subjective') {
+            $submission->update(['sStatus' => 'graded']);
+        }
+    }
+}

@@ -1,7 +1,15 @@
 /**
  * Groq AI API Service
- * Sử dụng Groq API để generate gợi ý cho VSTEP Speaking
+ * Sử dụng Groq API để generate gợi ý cho VSTEP Speaking và parse PDF đề thi
  */
+
+export interface ParsedQuestion {
+  qContent: string;
+  qType: 'multiple_choice' | 'fill_blank' | 'short_answer';
+  qPoints: number;
+  options: { A?: string; B?: string; C?: string; D?: string };
+  correct_answer: string;
+}
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const GROQ_MODEL = import.meta.env.VITE_GROQ_MODEL || 'llama-3.3-70b-versatile';
@@ -459,4 +467,221 @@ Return ONLY a JSON array of exactly 3 strings, no explanation:
     console.error('Failed to parse enhanced questions:', err);
     return existingQuestions;
   }
+};
+
+/**
+ * Parse câu hỏi và đáp án từ text PDF đề thi
+ * Sử dụng max_tokens cao hơn để xử lý nhiều câu hỏi
+ */
+export const parsePdfQA = async (pdfText: string): Promise<ParsedQuestion[]> => {
+  if (!GROQ_API_KEY) throw new Error('Missing VITE_GROQ_API_KEY');
+
+  const response = await fetch(GROQ_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.1,
+      max_tokens: 1200,
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert exam parser for English language tests (VSTEP, IELTS, TOEIC, General).
+Extract ALL multiple choice questions from the provided exam text.
+
+Return ONLY a valid JSON array in this exact format:
+[
+  {
+    "qContent": "Complete question text (include question number if present)",
+    "qType": "multiple_choice",
+    "qPoints": 1,
+    "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
+    "correct_answer": "A"
+  }
+]
+
+STRICT RULES:
+- Extract EVERY question — do not skip any
+- correct_answer MUST be exactly one of: "A", "B", "C", "D"
+- If answer key is not shown in the text, default to "A"
+- SKIP: instructions, headings, reading passages, audio transcripts, blank boxes
+- KEEP: the full question stem and all 4 options
+- Return ONLY the JSON array — no markdown, no explanation`,
+        },
+        {
+          role: 'user',
+          content: `Extract all questions from this exam text:\n\n${pdfText}`,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text().catch(() => response.statusText);
+    throw new Error(`Groq API error: ${err}`);
+  }
+
+  const data: GroqResponse = await response.json();
+  const content = data.choices[0].message.content;
+
+  try {
+    const match = content.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+    const parsed = JSON.parse(match[0]);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    console.error('parsePdfQA: failed to parse Groq JSON response');
+    return [];
+  }
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * VSTEP exam PDF → ImportPayload
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+export interface VstepImportPayload {
+  listening?: { parts: Array<{ partNumber: number; sections: Array<any> }> };
+  reading?:   { parts: Array<{ partNumber: number; passage: string; questions: Array<any> }> };
+  writing?:   { tasks: Array<{ taskNumber: number; prompt: string; wordCount?: [number, number]; timeLimit?: number }> };
+}
+
+const callGroqJson = async (system: string, user: string, maxTokens = 2500): Promise<any> => {
+  if (!GROQ_API_KEY) throw new Error('Missing VITE_GROQ_API_KEY');
+  const res = await fetch(GROQ_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_API_KEY}` },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.1,
+      max_tokens: maxTokens,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user',   content: user },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error(`Groq error: ${await res.text().catch(() => res.statusText)}`);
+  const data = await res.json();
+  const content = data.choices[0].message.content as string;
+  const match = content.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try { return JSON.parse(match[0]); } catch { return null; }
+};
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+/**
+ * Parse VSTEP exam text into the ImportPayload structure.
+ * Calls Groq 3 times (one per skill) to keep each request small.
+ * onProgress: ({ skill, done, total })
+ */
+export const parseVstepFromText = async (
+  fullText: string,
+  onProgress?: (info: { skill: 'listening' | 'reading' | 'writing'; done: number; total: number }) => void,
+): Promise<VstepImportPayload> => {
+  const text = fullText.slice(0, 18_000); // safety cap
+  const out: VstepImportPayload = {};
+
+  // ─── LISTENING ─────────────────────────────────────────────────────────────
+  onProgress?.({ skill: 'listening', done: 0, total: 3 });
+  const listeningPrompt = `You are a VSTEP exam parser. Extract the LISTENING section.
+
+Return ONLY valid JSON in this exact format (no markdown, no explanation):
+{
+  "parts": [
+    {
+      "partNumber": 1,
+      "sections": [
+        {
+          "sectionNumber": 1,
+          "sectionName": "Announcement 1",
+          "transcript": "...full transcript text...",
+          "questions": [
+            { "questionNumber": 1, "questionText": "...", "options": { "A": "...", "B": "...", "C": "...", "D": "..." }, "correctAnswer": "A" }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+VSTEP Listening structure:
+- Part 1: 8 short Announcements (Q1-8) — 1 question each
+- Part 2: 3 Conversations (Q9-20) — 4 questions each
+- Part 3: 3 Talks/Lectures (Q21-35) — 5 questions each
+
+RULES:
+- Group questions by their numbers into the correct part/section
+- Include transcript if present in text, otherwise empty string
+- correctAnswer MUST be "A", "B", "C", or "D" — default "A" if no answer key
+- Only output parts/sections that exist in the text`;
+
+  try {
+    const lis = await callGroqJson(listeningPrompt, `Extract VSTEP Listening from:\n\n${text}`, 3000);
+    if (lis?.parts?.length) out.listening = lis;
+  } catch (e) { console.warn('Listening parse failed:', e); }
+  onProgress?.({ skill: 'listening', done: 1, total: 3 });
+
+  await sleep(2000); // rate-limit safety
+
+  // ─── READING ───────────────────────────────────────────────────────────────
+  const readingPrompt = `You are a VSTEP exam parser. Extract the READING section.
+
+Return ONLY valid JSON in this exact format:
+{
+  "parts": [
+    {
+      "partNumber": 1,
+      "passage": "...full passage text...",
+      "questions": [
+        { "questionNumber": 1, "questionText": "...", "options": { "A": "...", "B": "...", "C": "...", "D": "..." }, "correctAnswer": "A" }
+      ]
+    }
+  ]
+}
+
+VSTEP Reading: 4 parts × 10 questions each (Q1-10, 11-20, 21-30, 31-40 in reading numbering, may be Q36-75 overall).
+
+RULES:
+- Group questions by their numbers into 4 parts of 10
+- Include the full passage text for each part
+- correctAnswer MUST be "A", "B", "C", or "D" — default "A" if no answer key`;
+
+  try {
+    const rd = await callGroqJson(readingPrompt, `Extract VSTEP Reading from:\n\n${text}`, 3500);
+    if (rd?.parts?.length) out.reading = rd;
+  } catch (e) { console.warn('Reading parse failed:', e); }
+  onProgress?.({ skill: 'reading', done: 2, total: 3 });
+
+  await sleep(2000);
+
+  // ─── WRITING ───────────────────────────────────────────────────────────────
+  const writingPrompt = `You are a VSTEP exam parser. Extract the WRITING section.
+
+Return ONLY valid JSON in this exact format:
+{
+  "tasks": [
+    { "taskNumber": 1, "prompt": "...full prompt text...", "wordCount": [80, 120], "timeLimit": 20 },
+    { "taskNumber": 2, "prompt": "...full prompt text...", "wordCount": [200, 250], "timeLimit": 40 }
+  ]
+}
+
+VSTEP Writing:
+- Task 1: Informal letter/email — 80-120 words — 20 minutes
+- Task 2: Argumentative essay — 200-250 words — 40 minutes
+
+RULES:
+- Extract the FULL prompt including any instructions
+- Use defaults [80,120]/20 and [200,250]/40 if word count/time not stated`;
+
+  try {
+    const wr = await callGroqJson(writingPrompt, `Extract VSTEP Writing from:\n\n${text}`, 1500);
+    if (wr?.tasks?.length) out.writing = wr;
+  } catch (e) { console.warn('Writing parse failed:', e); }
+  onProgress?.({ skill: 'writing', done: 3, total: 3 });
+
+  return out;
 };

@@ -1,7 +1,6 @@
 import { Outlet } from "react-router";
 import { Sidebar } from "../components/shared/Sidebar";
 import { SidebarProvider, useSidebar } from "../../contexts/SidebarContext";
-
 function TeacherLayoutContent() {
   const { isCollapsed, toggle } = useSidebar();
 

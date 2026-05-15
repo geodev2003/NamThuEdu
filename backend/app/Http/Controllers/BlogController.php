@@ -864,4 +864,65 @@ class BlogController extends Controller
             'data' => $blogType
         ], 201);
     }
+
+    /**
+     * GET /api/public/posts
+     * Danh sách bài viết đã duyệt (không cần auth)
+     */
+    public function publicIndex(Request $request)
+    {
+        $query = Post::with(['author:uId,uName', 'category:caId,caName'])
+            ->whereIn('pStatus', ['active', 'published'])
+            ->whereNull('pDeleted_at');
+
+        if ($request->filled('type')) {
+            $query->where('pType', $request->type);
+        }
+
+        if ($request->filled('category')) {
+            $query->where('pCategory', $request->category);
+        }
+
+        if ($request->filled('search')) {
+            $query->where('pTitle', 'LIKE', '%' . $request->search . '%');
+        }
+
+        $perPage = min((int) $request->get('per_page', 12), 50);
+        $posts = $query->orderBy('pCreated_at', 'desc')->paginate($perPage);
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $posts,
+        ]);
+    }
+
+    /**
+     * GET /api/public/posts/{slug}
+     * Chi tiết bài viết (slug hoặc pId), tăng view count
+     */
+    public function publicShow($slug)
+    {
+        $post = Post::with(['author:uId,uName', 'category:caId,caName'])
+            ->whereIn('pStatus', ['active', 'published'])
+            ->whereNull('pDeleted_at')
+            ->where(function ($q) use ($slug) {
+                $q->where('pUrl', $slug)
+                  ->orWhere('pId', is_numeric($slug) ? (int) $slug : 0);
+            })
+            ->first();
+
+        if (!$post) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Không tìm thấy bài viết.',
+            ], 404);
+        }
+
+        $post->increment('pView');
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $post,
+        ]);
+    }
 }

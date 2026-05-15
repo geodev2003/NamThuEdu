@@ -21,6 +21,175 @@ class StudentPracticeController extends Controller
     }
 
     /**
+     * GET /api/student/practice/topics
+     * List of practice topics (mapped from PracticeSession) for frontend PracticeList.
+     */
+    public function getTopics(Request $request)
+    {
+        $user = $request->user();
+        $ageGroup = $user->age_group;
+        $adultOnlyTypes = ['VSTEP', 'IELTS'];
+        $kidsOnlyTypes  = ['STARTERS', 'MOVERS', 'FLYERS'];
+
+        $sessions = PracticeSession::with(['exam'])
+            ->where('ps_is_active', true)
+            ->whereHas('exam', function ($q) use ($ageGroup, $adultOnlyTypes, $kidsOnlyTypes) {
+                if ($ageGroup !== 'adults') {
+                    $q->whereNotIn('eType', $adultOnlyTypes);
+                }
+                if ($ageGroup !== 'kids') {
+                    $q->whereNotIn('eType', $kidsOnlyTypes);
+                }
+            })
+            ->orderBy('ps_created_at', 'desc')
+            ->get();
+
+        $userSubmissionsByExam = Submission::where('user_id', $user->uId)
+            ->whereNull('assignment_id')
+            ->whereIn('sStatus', ['graded', 'submitted'])
+            ->get()
+            ->groupBy('exam_id');
+
+        $topics = $sessions->map(function ($session) use ($userSubmissionsByExam) {
+            $exam = $session->exam;
+            $totalQuestions = $session->ps_question_count
+                ?? ($exam ? $exam->questions()->count() : 0);
+            $skill = $session->ps_target_skill ?? ($exam->eSkill ?? 'mixed');
+            $userSubs = $userSubmissionsByExam->get($session->ps_exam_id, collect());
+            $completedQuestions = $userSubs->isNotEmpty() ? $totalQuestions : 0;
+
+            return [
+                'id'                  => $session->ps_id,
+                'name'                => $session->ps_title,
+                'description'         => $session->ps_description,
+                'skill'               => strtolower($skill),
+                'difficulty'          => $session->ps_difficulty ?? 'medium',
+                'total_questions'     => (int) $totalQuestions,
+                'completed_questions' => (int) $completedQuestions,
+                'estimated_time'      => (int) ($session->ps_duration_minutes ?? 30),
+                'is_locked'           => false,
+                'attempts_count'      => $userSubs->count(),
+                'best_score'          => $userSubs->where('sStatus', 'graded')->max('sScore'),
+            ];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => ['topics' => $topics->values()],
+        ]);
+    }
+
+    /**
+     * GET /api/student/practice/questions?topic_id=X&count=N
+     * Returns questions for a given practice topic without creating a submission.
+     */
+    public function getQuestions(Request $request)
+    {
+        $user = $request->user();
+        $topicId = (int) $request->input('topic_id', 0);
+        $count   = max(1, min(50, (int) $request->input('count', 10)));
+
+        if ($topicId <= 0) {
+            return response()->json(['status' => 'error', 'message' => 'topic_id là bắt buộc.'], 400);
+        }
+
+        $session = PracticeSession::with(['exam.questions.answers'])
+            ->where('ps_id', $topicId)
+            ->where('ps_is_active', true)
+            ->first();
+
+        if (!$session || !$session->exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy chủ đề luyện tập.'], 404);
+        }
+
+        $eType = $session->exam->eType;
+        if (in_array($eType, ['VSTEP', 'IELTS']) && $user->age_group !== 'adults') {
+            return response()->json(['status' => 'error', 'message' => 'Chủ đề này chỉ dành cho học viên trưởng thành.'], 403);
+        }
+        if (in_array($eType, ['STARTERS', 'MOVERS', 'FLYERS']) && $user->age_group !== 'kids') {
+            return response()->json(['status' => 'error', 'message' => 'Chủ đề này chỉ dành cho học viên nhỏ tuổi.'], 403);
+        }
+
+        $questions = $session->exam->questions
+            ->take($count)
+            ->map(function ($q) {
+                return [
+                    'id'        => $q->qId,
+                    'qId'       => $q->qId,
+                    'content'   => $q->qContent,
+                    'qContent'  => $q->qContent,
+                    'qType'     => $q->qType,
+                    'qSkill'    => $q->qSkill ?? $q->qSection,
+                    'options'   => $q->answers->map(function ($a) {
+                        return [
+                            'id'       => $a->aId,
+                            'aId'      => $a->aId,
+                            'content'  => $a->aContent,
+                            'aContent' => $a->aContent,
+                        ];
+                    })->values(),
+                ];
+            })->values();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'topic_id'  => $session->ps_id,
+                'topic_name'=> $session->ps_title,
+                'questions' => $questions,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/student/practice/sessions
+     * Body: { topic_id: number, question_count?: number, difficulty?: string }
+     * Creates a Submission record for the topic; returns submission_id used to save answers.
+     */
+    public function createSession(Request $request)
+    {
+        $user = $request->user();
+        $validator = Validator::make($request->all(), [
+            'topic_id'       => 'required|integer|exists:practice_sessions,ps_id',
+            'question_count' => 'nullable|integer|min:1',
+            'difficulty'     => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 400);
+        }
+
+        $session = PracticeSession::with('exam')
+            ->where('ps_id', $request->topic_id)
+            ->where('ps_is_active', true)
+            ->first();
+
+        if (!$session || !$session->exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy chủ đề luyện tập.'], 404);
+        }
+
+        $submission = Submission::create([
+            'user_id'       => $user->uId,
+            'exam_id'       => $session->ps_exam_id,
+            'assignment_id' => null,
+            'sAttempt'      => Submission::where('user_id', $user->uId)
+                                ->where('exam_id', $session->ps_exam_id)
+                                ->whereNull('assignment_id')->count() + 1,
+            'sStart_time'   => now(),
+            'sStatus'       => 'in_progress',
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'session_id'   => $submission->sId,
+                'id'           => $submission->sId,
+                'submissionId' => $submission->sId,
+            ],
+        ]);
+    }
+
+    /**
      * GET /api/student/practice
      * Danh sách practice session có thể làm
      */
@@ -244,14 +413,17 @@ class StudentPracticeController extends Controller
 
         $validator = Validator::make($request->all(), [
             'question_id'   => 'required|integer|exists:questions,qId',
-            'saAnswer_text' => 'required|string|max:10000',
+            'answer_id'     => 'nullable|integer|exists:answers,aId',
+            'answer_text'   => 'nullable|string|max:10000',
+            'saAnswer_text' => 'nullable|string|max:10000',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['status' => 'error', 'errors' => $validator->errors()], 400);
         }
 
-        $question = Question::where('qId', $request->question_id)
+        $question = Question::with('answers')
+            ->where('qId', $request->question_id)
             ->where('exam_id', $submission->exam_id)
             ->first();
 
@@ -259,9 +431,23 @@ class StudentPracticeController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Câu hỏi không thuộc bài thi này.'], 403);
         }
 
+        // Resolve answer text: prefer explicit text, otherwise resolve from answer_id
+        $answerText = $request->saAnswer_text ?? $request->answer_text;
+        if ($answerText === null && $request->filled('answer_id')) {
+            $answer = $question->answers->firstWhere('aId', (int) $request->answer_id);
+            $answerText = $answer ? $answer->aContent : null;
+        }
+
+        if ($answerText === null || $answerText === '') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cần cung cấp answer_id hoặc answer_text.'
+            ], 400);
+        }
+
         SubmissionAnswer::updateOrCreate(
             ['submission_id' => $submissionId, 'question_id' => $question->qId],
-            ['saAnswer_text' => $request->saAnswer_text]
+            ['saAnswer_text' => $answerText]
         );
 
         return response()->json(['status' => 'success', 'message' => 'Đã lưu câu trả lời.']);

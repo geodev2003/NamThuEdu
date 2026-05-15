@@ -173,7 +173,7 @@ export function StudentManagement() {
       const token = localStorage.getItem('auth_token');
       
       if (!token) {
-        toast.error('Vui lòng đăng nhập lại');
+        toast.error(t('teacher.students.management.toast.loginRequired'));
         setLoading(false);
         return;
       }
@@ -243,14 +243,14 @@ export function StudentManagement() {
         console.error('Failed to fetch students:', errorData);
         
         if (response.status === 401) {
-          toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại');
+          toast.error(t('teacher.students.management.toast.sessionExpired'));
         } else {
-          toast.error(errorData.message || 'Không thể tải danh sách học viên');
+          toast.error(errorData.message || t('teacher.students.management.toast.loadError'));
         }
       }
     } catch (error) {
       console.error('Error fetching students:', error);
-      toast.error('Có lỗi xảy ra khi tải danh sách học viên');
+      toast.error(t('teacher.students.management.toast.loadError'));
     } finally {
       setLoading(false);
     }
@@ -262,7 +262,7 @@ export function StudentManagement() {
       const token = localStorage.getItem('auth_token');
       
       if (!token) {
-        toast.error('Vui lòng đăng nhập lại');
+        toast.error(t('teacher.students.management.toast.loginRequired'));
         setLoadingDeleted(false);
         return;
       }
@@ -281,11 +281,11 @@ export function StudentManagement() {
         }
       } else {
         const errorData = await response.json();
-        toast.error(errorData.message || 'Không thể tải danh sách đã xóa');
+        toast.error(errorData.message || t('teacher.students.management.toast.deletedLoadError'));
       }
     } catch (error) {
       console.error('Error fetching deleted students:', error);
-      toast.error('Có lỗi xảy ra khi tải danh sách đã xóa');
+      toast.error(t('teacher.students.management.toast.deletedLoadGeneralError'));
     } finally {
       setLoadingDeleted(false);
     }
@@ -350,11 +350,11 @@ export function StudentManagement() {
 
   const handleRestoreStudent = async (studentId: number, studentName: string) => {
     const result = await Swal.fire({
-      title: 'Khôi phục học viên?',
+      title: t('teacher.students.management.confirmRestore.title'),
       html: `
         <div style="text-align: left; font-size: 14px;">
           <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); padding: 12px 14px; border-radius: 10px; border-left: 3px solid #10b981;">
-            <p style="margin: 0 0 4px 0; font-size: 11px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Học viên sẽ được khôi phục</p>
+            <p style="margin: 0 0 4px 0; font-size: 11px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">${t('teacher.students.management.confirmRestore.willBeRestored')}</p>
             <p style="margin: 0; font-size: 15px; color: #111827; font-weight: 700; display: flex; align-items: center; gap: 6px;">
               <span style="width: 6px; height: 6px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
               ${studentName}
@@ -365,8 +365,8 @@ export function StudentManagement() {
       icon: 'question',
       iconColor: '#10b981',
       showCancelButton: true,
-      confirmButtonText: 'Khôi phục',
-      cancelButtonText: 'Hủy',
+      confirmButtonText: t('teacher.students.management.confirmRestore.restore'),
+      cancelButtonText: t('teacher.students.management.confirmDelete.cancel'),
       width: '420px',
       customClass: {
         popup: 'swal-custom-popup',
@@ -382,7 +382,7 @@ export function StudentManagement() {
         const token = localStorage.getItem('auth_token');
         
         if (!token) {
-          toast.error('Vui lòng đăng nhập lại');
+          toast.error(t('teacher.students.management.toast.loginRequired'));
           return;
         }
 
@@ -395,39 +395,39 @@ export function StudentManagement() {
         });
 
         if (response.ok) {
-          toast.success(`Đã khôi phục học viên "${studentName}" thành công!`);
+          toast.success(t('teacher.students.management.toast.restoreSuccess', { name: studentName }));
           fetchDeletedStudents();
           fetchStudents();
         } else {
           const errorData = await response.json();
-          toast.error(errorData.message || "Không thể khôi phục học viên");
+          toast.error(errorData.message || t('teacher.students.management.toast.restoreError'));
         }
       } catch (error) {
         console.error('Error restoring student:', error);
-        toast.error("Có lỗi xảy ra khi khôi phục học viên");
+        toast.error(t('teacher.students.management.toast.restoreGeneralError'));
       }
     }
   };
 
   const handlePermanentDelete = async (studentId: number, studentName: string) => {
     const result = await Swal.fire({
-      title: 'Xóa vĩnh viễn?',
+      title: t('teacher.students.management.confirmPermanentDelete.title'),
       html: `
         <div style="text-align: left; font-size: 14px;">
           <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); padding: 12px 14px; border-radius: 10px; border-left: 3px solid #ef4444;">
-            <p style="margin: 0 0 4px 0; font-size: 11px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">⚠️ Không thể khôi phục</p>
+            <p style="margin: 0 0 4px 0; font-size: 11px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">${t('teacher.students.management.confirmPermanentDelete.cannotRestore')}</p>
             <p style="margin: 0; font-size: 15px; color: #111827; font-weight: 700;">
               ${studentName}
             </p>
           </div>
-          <p style="margin-top: 12px; color: #6b7280; font-size: 13px;">Hành động này không thể hoàn tác!</p>
+          <p style="margin-top: 12px; color: #6b7280; font-size: 13px;">${t('teacher.students.management.confirmPermanentDelete.cannotUndo')}</p>
         </div>
       `,
       icon: 'warning',
       iconColor: '#ef4444',
       showCancelButton: true,
-      confirmButtonText: 'Xóa vĩnh viễn',
-      cancelButtonText: 'Hủy',
+      confirmButtonText: t('teacher.students.management.confirmPermanentDelete.permanentDelete'),
+      cancelButtonText: t('teacher.students.management.confirmDelete.cancel'),
       width: '420px',
       customClass: {
         popup: 'swal-custom-popup',
@@ -443,7 +443,7 @@ export function StudentManagement() {
         const token = localStorage.getItem('auth_token');
         
         if (!token) {
-          toast.error('Vui lòng đăng nhập lại');
+          toast.error(t('teacher.students.management.toast.loginRequired'));
           return;
         }
 
@@ -456,15 +456,15 @@ export function StudentManagement() {
         });
 
         if (response.ok) {
-          toast.success(`Đã xóa vĩnh viễn học viên "${studentName}"`);
+          toast.success(t('teacher.students.management.toast.permanentDeleteSuccess', { name: studentName }));
           fetchDeletedStudents();
         } else {
           const errorData = await response.json();
-          toast.error(errorData.message || "Không thể xóa vĩnh viễn");
+          toast.error(errorData.message || t('teacher.students.management.toast.permanentDeleteError'));
         }
       } catch (error) {
         console.error('Error permanent deleting student:', error);
-        toast.error("Có lỗi xảy ra khi xóa vĩnh viễn");
+        toast.error(t('teacher.students.management.toast.permanentDeleteGeneralError'));
       }
     }
   };
@@ -509,16 +509,16 @@ export function StudentManagement() {
   const handleSaveEdit = async (updatedStudent: any) => {
     // Refresh the student list
     await fetchStudents();
-    toast.success(`Đã cập nhật thông tin học viên "${updatedStudent.name}" thành công!`);
+    toast.success(t('teacher.students.management.toast.updateSuccess', { name: updatedStudent.name }));
   };
 
   const handleDeleteClick = async (student: typeof students[0]) => {
     const result = await Swal.fire({
-      title: 'Xác nhận xóa học viên',
+      title: t('teacher.students.management.confirmDelete.title'),
       html: `
         <div style="text-align: left; font-size: 14px;">
           <div style="background: linear-gradient(135deg, #fee2e2 0%, #fed7aa 100%); padding: 12px 14px; border-radius: 10px; border-left: 3px solid #ef4444;">
-            <p style="margin: 0 0 4px 0; font-size: 11px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Học viên sẽ bị xóa</p>
+            <p style="margin: 0 0 4px 0; font-size: 11px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">${t('teacher.students.management.confirmDelete.willBeDeleted')}</p>
             <p style="margin: 0; font-size: 15px; color: #111827; font-weight: 700; display: flex; align-items: center; gap: 6px;">
               <span style="width: 6px; height: 6px; background: #ef4444; border-radius: 50%; display: inline-block;"></span>
               ${student.name}
@@ -529,8 +529,8 @@ export function StudentManagement() {
       icon: 'warning',
       iconColor: '#ef4444',
       showCancelButton: true,
-      confirmButtonText: '<span style="display: flex; align-items: center; gap: 6px; font-size: 14px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Xóa ngay</span>',
-      cancelButtonText: 'Hủy bỏ',
+      confirmButtonText: `<span style="display: flex; align-items: center; gap: 6px; font-size: 14px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> ${t('teacher.students.management.confirmDelete.deleteNow')}</span>`,
+      cancelButtonText: t('teacher.students.management.confirmDelete.cancel'),
       width: '420px',
       customClass: {
         popup: 'swal-custom-popup',
@@ -560,7 +560,7 @@ export function StudentManagement() {
         const token = localStorage.getItem('auth_token');
         
         if (!token) {
-          toast.error('Vui lòng đăng nhập lại');
+          toast.error(t('teacher.students.management.toast.loginRequired'));
           return;
         }
 
@@ -574,14 +574,14 @@ export function StudentManagement() {
 
         if (response.ok) {
           setStudents(students.filter(s => s.id !== student.id));
-          toast.success(`Đã xóa học viên "${student.name}". Có thể khôi phục trong 24h tại tab "Đã xóa gần đây"`);
+          toast.success(t('teacher.students.management.toast.deleteSuccess', { name: student.name }));
         } else {
           const errorData = await response.json();
-          toast.error(errorData.message || "Có lỗi xảy ra khi xóa học viên");
+          toast.error(errorData.message || t('teacher.students.management.toast.deleteError'));
         }
       } catch (error) {
         console.error('Error deleting student:', error);
-        toast.error("Có lỗi xảy ra khi xóa học viên. Vui lòng thử lại!");
+        toast.error(t('teacher.students.management.toast.deleteError'));
       }
     }
   };
@@ -595,14 +595,14 @@ export function StudentManagement() {
     
     const namesDisplay = selectedCount <= 3 
       ? selectedNames.join(', ')
-      : `${selectedNames.join(', ')} và ${selectedCount - 3} học viên khác`;
+      : `${selectedNames.join(', ')} ${t('teacher.students.management.confirmBulkDelete.and', { count: selectedCount - 3 })}`;
 
     const result = await Swal.fire({
-      title: 'Xác nhận xóa nhiều học viên',
+      title: t('teacher.students.management.confirmBulkDelete.title'),
       html: `
         <div style="text-align: left; font-size: 14px;">
           <div style="background: linear-gradient(135deg, #fee2e2 0%, #fed7aa 100%); padding: 12px 14px; border-radius: 10px; border-left: 3px solid #ef4444;">
-            <p style="margin: 0 0 4px 0; font-size: 11px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Sẽ xóa ${selectedCount} học viên</p>
+            <p style="margin: 0 0 4px 0; font-size: 11px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">${t('teacher.students.management.confirmBulkDelete.willDelete', { count: selectedCount })}</p>
             <p style="margin: 0; font-size: 15px; color: #111827; font-weight: 700; display: flex; align-items: center; gap: 6px;">
               <span style="width: 6px; height: 6px; background: #ef4444; border-radius: 50%; display: inline-block;"></span>
               ${namesDisplay}
@@ -613,8 +613,8 @@ export function StudentManagement() {
       icon: 'warning',
       iconColor: '#ef4444',
       showCancelButton: true,
-      confirmButtonText: '<span style="display: flex; align-items: center; gap: 6px; font-size: 14px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Xóa tất cả</span>',
-      cancelButtonText: 'Hủy bỏ',
+      confirmButtonText: `<span style="display: flex; align-items: center; gap: 6px; font-size: 14px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> ${t('teacher.students.management.confirmBulkDelete.deleteAll')}</span>`,
+      cancelButtonText: t('teacher.students.management.confirmDelete.cancel'),
       width: '420px',
       customClass: {
         popup: 'swal-custom-popup',
@@ -644,7 +644,7 @@ export function StudentManagement() {
         const token = localStorage.getItem('auth_token');
         
         if (!token) {
-          toast.error('Vui lòng đăng nhập lại');
+          toast.error(t('teacher.students.management.toast.loginRequired'));
           return;
         }
 
@@ -675,13 +675,13 @@ export function StudentManagement() {
         setSelectedStudents([]);
 
         if (failCount === 0) {
-          toast.success(`Đã xóa thành công ${successCount} học viên!`);
+          toast.success(t('teacher.students.management.toast.bulkDeleteSuccess', { count: successCount }));
         } else {
-          toast.warning(`Đã xóa ${successCount} học viên. ${failCount} học viên không thể xóa.`);
+          toast.warning(t('teacher.students.management.toast.bulkDeletePartial', { success: successCount, fail: failCount }));
         }
       } catch (error) {
         console.error('Error bulk deleting students:', error);
-        toast.error("Có lỗi xảy ra khi xóa học viên. Vui lòng thử lại!");
+        toast.error(t('teacher.students.management.toast.deleteError'));
       }
     }
   };
@@ -695,7 +695,7 @@ export function StudentManagement() {
     
     // Check if already exporting or in cooldown
     if (isExporting || exportCooldown > 0) {
-      toast.warning(`Vui lòng đợi ${exportCooldown} giây trước khi xuất lại`);
+      toast.warning(t('teacher.students.management.toast.exportWait', { seconds: exportCooldown }));
       return;
     }
     
@@ -744,7 +744,7 @@ export function StudentManagement() {
       // Save file
       XLSX.writeFile(wb, filename);
 
-      toast.success(`Đã xuất ${students.length} học viên ra file Excel!`);
+      toast.success(t('teacher.students.management.toast.exportSuccess', { count: students.length }));
       
       // Set cooldown for 10 seconds
       setExportCooldown(10);
@@ -760,7 +760,7 @@ export function StudentManagement() {
       
     } catch (error) {
       console.error('Error exporting Excel:', error);
-      toast.error('Có lỗi xảy ra khi xuất Excel. Vui lòng thử lại!');
+      toast.error(t('teacher.students.management.toast.exportError'));
     } finally {
       setIsExporting(false);
     }
@@ -773,8 +773,8 @@ export function StudentManagement() {
 
   const getStatusBadge = (status: string) => {
     const config = {
-      active: { label: "Đang học", color: "#10B981", bg: "#D1FAE5" },
-      inactive: { label: "Tạm nghỉ", color: "#6B7280", bg: "#F3F4F6" },
+      active: { label: t('teacher.students.management.status.active'), color: "#10B981", bg: "#D1FAE5" },
+      inactive: { label: t('teacher.students.management.status.inactive'), color: "#6B7280", bg: "#F3F4F6" },
     };
     const { label, color, bg } = config[status as keyof typeof config] || config.active;
     return (
@@ -789,9 +789,9 @@ export function StudentManagement() {
 
   const getAgeGroupBadge = (ageGroup: string) => {
     const config = {
-      kids: { label: "Trẻ em", icon: "👶", color: "#EC4899", bg: "#FCE7F3" },
-      teens: { label: "Thiếu niên", icon: "🎓", color: "#F97316", bg: "#FFEDD5" },
-      adults: { label: "Người lớn", icon: "👔", color: "#6366F1", bg: "#E0E7FF" },
+      kids: { label: t('teacher.students.management.ageGroup.kids'), icon: "👶", color: "#EC4899", bg: "#FCE7F3" },
+      teens: { label: t('teacher.students.management.ageGroup.teens'), icon: "🎓", color: "#F97316", bg: "#FFEDD5" },
+      adults: { label: t('teacher.students.management.ageGroup.adults'), icon: "👔", color: "#6366F1", bg: "#E0E7FF" },
     };
     const { label, icon, color, bg } = config[ageGroup as keyof typeof config] || config.teens;
     return (
@@ -887,7 +887,7 @@ export function StudentManagement() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9CA3AF]" />
                 <input
                   type="text"
-                  placeholder="Tìm theo tên, SĐT, email..."
+                  placeholder={t('teacher.students.management.search.placeholder')}
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -904,7 +904,7 @@ export function StudentManagement() {
                 }}
                 className="px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
-                <option value="all">Tất cả khóa</option>
+                <option value="all">{t('teacher.students.management.search.allCourses')}</option>
                 {uniqueCourses.map((course) => (
                   <option key={course} value={course}>{course}</option>
                 ))}
@@ -917,9 +917,9 @@ export function StudentManagement() {
                 }}
                 className="px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="active">Đang học</option>
-                <option value="inactive">Tạm nghỉ</option>
+                <option value="all">{t('teacher.students.management.search.allStatuses')}</option>
+                <option value="active">{t('teacher.students.management.status.active')}</option>
+                <option value="inactive">{t('teacher.students.management.status.inactive')}</option>
               </select>
               <button 
                 onClick={() => {
@@ -928,12 +928,12 @@ export function StudentManagement() {
                   setCourseFilter("all");
                   setStatusFilter("all");
                   setCurrentPage(1); // Reset to page 1
-                  toast.success("Đã xóa bộ lọc");
+                  toast.success(t('teacher.students.management.toast.filtersCleared'));
                 }}
                 className="px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium flex items-center gap-2"
               >
                 <Filter className="w-4 h-4" />
-                Xóa lọc
+                {t('teacher.students.management.search.clearFilters')}
               </button>
               
               {/* Action Buttons - moved here */}
@@ -947,14 +947,14 @@ export function StudentManagement() {
                     }`}
                   >
                     <Trash2 className="w-5 h-5" />
-                    <span>Xóa</span>
+                    <span>{t('teacher.students.management.actions.deleteSelected')}</span>
                     <span 
                       key={`count-${selectedStudents.length}`}
                       className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 bg-red-700 rounded-full text-sm font-bold animate-count-pulse"
                     >
                       {selectedStudents.length}
                     </span>
-                    <span>học viên</span>
+                    <span>{t('teacher.students.management.actions.students')}</span>
                   </button>
                 )}
                 <button
@@ -962,7 +962,7 @@ export function StudentManagement() {
                   className="flex items-center gap-2 px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium"
                 >
                   <UserPlus className="w-5 h-5" />
-                  Thêm học sinh
+                  {t('teacher.students.management.actions.addStudent')}
                 </button>
                 <button 
                   onClick={handleExportExcel}
@@ -977,17 +977,17 @@ export function StudentManagement() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      <span>Đang xuất...</span>
+                      <span>{t('teacher.students.management.actions.exporting')}</span>
                     </>
                   ) : exportCooldown > 0 ? (
                     <>
                       <Upload className="w-5 h-5" />
-                      <span>Đợi {exportCooldown}s</span>
+                      <span>{t('teacher.students.management.actions.waitSeconds', { seconds: exportCooldown })}</span>
                     </>
                   ) : (
                     <>
                       <Upload className="w-5 h-5" />
-                      <span>Xuất Excel</span>
+                      <span>{t('teacher.students.management.actions.exportExcel')}</span>
                     </>
                   )}
                 </button>
@@ -999,7 +999,7 @@ export function StudentManagement() {
           {loading ? (
             <div className="bg-white rounded-xl border border-[#E5E7EB] p-12 text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
-              <p className="mt-4 text-[#6B7280]">Đang tải danh sách học viên...</p>
+              <p className="mt-4 text-[#6B7280]">{t('teacher.students.management.loading')}</p>
             </div>
           ) : (
           <div className="bg-white rounded-xl border border-[#E5E7EB] overflow-hidden">
@@ -1016,28 +1016,28 @@ export function StudentManagement() {
                       />
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                      Học sinh
+                      {t('teacher.students.management.table.student')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                      SĐT
+                      {t('teacher.students.management.table.phone')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                      Email
+                      {t('teacher.students.management.table.email')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                      Nhóm tuổi
+                      {t('teacher.students.management.table.ageGroup')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                      Khóa học
+                      {t('teacher.students.management.table.course')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                      Trạng thái
+                      {t('teacher.students.management.table.status')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                      Ngày tạo
+                      {t('teacher.students.management.table.createdAt')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                      Thao tác
+                      {t('teacher.students.management.table.actions')}
                     </th>
                   </tr>
                 </thead>
@@ -1046,19 +1046,20 @@ export function StudentManagement() {
                     <tr>
                       <td colSpan={9} className="px-6 py-12 text-center">
                         <Search className="w-12 h-12 text-[#9CA3AF] mx-auto mb-3" />
-                        <p className="text-[#6B7280] font-medium">Không tìm thấy học viên nào</p>
-                        <p className="text-sm text-[#9CA3AF] mt-1">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
+                        <p className="text-[#6B7280] font-medium">{t('teacher.students.management.noResults.title')}</p>
+                        <p className="text-sm text-[#9CA3AF] mt-1">{t('teacher.students.management.noResults.subtitle')}</p>
                       </td>
                     </tr>
                   ) : (
                     filteredStudents.map((student) => (
-                    <tr key={student.id} className="hover:bg-[#F9FAFB] transition-colors">
+                    <tr key={student.id} onClick={() => handleEditClick(student)} className="hover:bg-[#F9FAFB] transition-colors cursor-pointer">
                       <td className="px-6 py-4">
                         <input 
                           type="checkbox" 
                           className="rounded cursor-pointer" 
                           checked={selectedStudents.includes(student.id)}
                           onChange={() => handleSelectStudent(student.id)}
+                          onClick={(e) => e.stopPropagation()}
                         />
                       </td>
                       <td className="px-6 py-4">
@@ -1098,22 +1099,16 @@ export function StudentManagement() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <button 
+                            onClick={(e) => { e.stopPropagation(); handleEditClick(student); }}
                             className="p-2 hover:bg-[#EFF6FF] rounded-lg transition-colors"
-                            title="Xem chi tiết"
-                          >
-                            <Eye className="w-4 h-4 text-[#6B7280]" />
-                          </button>
-                          <button 
-                            onClick={() => handleEditClick(student)}
-                            className="p-2 hover:bg-[#EFF6FF] rounded-lg transition-colors"
-                            title="Chỉnh sửa"
+                            title={t('teacher.students.management.actions.edit')}
                           >
                             <Edit className="w-4 h-4 text-[#6B7280]" />
                           </button>
                           <button 
-                            onClick={() => handleDeleteClick(student)}
+                            onClick={(e) => { e.stopPropagation(); handleDeleteClick(student); }}
                             className="p-2 hover:bg-[#FEE2E2] rounded-lg transition-colors"
-                            title="Xóa học viên"
+                            title={t('teacher.students.management.actions.delete')}
                           >
                             <Trash2 className="w-4 h-4 text-[#EF4444]" />
                           </button>
@@ -1129,8 +1124,8 @@ export function StudentManagement() {
             {/* Pagination */}
             <div className="px-6 py-4 border-t border-[#E5E7EB] flex items-center justify-between">
               <p className="text-sm text-[#6B7280]">
-                Hiển thị <span className="font-medium text-[#111827]">{((currentPage - 1) * perPage) + 1}-{Math.min(currentPage * perPage, totalStudents)}</span> trong{" "}
-                <span className="font-medium text-[#111827]">{totalStudents}</span> kết quả
+                {t('teacher.students.management.pagination.showing')} <span className="font-medium text-[#111827]">{((currentPage - 1) * perPage) + 1}-{Math.min(currentPage * perPage, totalStudents)}</span> {t('teacher.students.management.pagination.of')}{" "}
+                <span className="font-medium text-[#111827]">{totalStudents}</span> {t('teacher.students.management.pagination.results')}
               </p>
               {/* Only show pagination if there are more than 10 students */}
               {totalPages > 1 && (
@@ -1144,7 +1139,7 @@ export function StudentManagement() {
                         : 'text-[#6B7280] hover:bg-[#F9FAFB]'
                     }`}
                   >
-                    Trước
+                    {t('teacher.students.management.pagination.previous')}
                   </button>
                   
                   {getPageNumbers().map((page, index) => (
@@ -1174,7 +1169,7 @@ export function StudentManagement() {
                         : 'text-[#6B7280] hover:bg-[#F9FAFB]'
                     }`}
                   >
-                    Sau
+                    {t('teacher.students.management.pagination.next')}
                   </button>
                 </div>
               )}
@@ -1189,13 +1184,13 @@ export function StudentManagement() {
           {loadingDeleted ? (
             <div className="bg-white rounded-xl border border-[#E5E7EB] p-12 text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
-              <p className="mt-4 text-[#6B7280]">Đang tải danh sách đã xóa...</p>
+              <p className="mt-4 text-[#6B7280]">{t('teacher.students.management.deleted.loading')}</p>
             </div>
           ) : deletedStudents.length === 0 ? (
             <div className="bg-white rounded-xl border border-[#E5E7EB] p-12 text-center">
               <Trash2 className="w-16 h-16 text-[#9CA3AF] mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-[#111827] mb-2">Không có học viên nào đã xóa</h3>
-              <p className="text-[#6B7280]">Học viên đã xóa sẽ được lưu trong 24 giờ trước khi xóa vĩnh viễn</p>
+              <h3 className="text-lg font-semibold text-[#111827] mb-2">{t('teacher.students.management.deleted.empty.title')}</h3>
+              <p className="text-[#6B7280]">{t('teacher.students.management.deleted.empty.subtitle')}</p>
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-[#E5E7EB] overflow-hidden">
@@ -1203,7 +1198,7 @@ export function StudentManagement() {
                 <div className="flex items-center gap-2 text-[#92400E]">
                   <AlertTriangle className="w-5 h-5" />
                   <p className="text-sm font-medium">
-                    Học viên đã xóa sẽ tự động bị xóa vĩnh viễn sau 24 giờ
+                    {t('teacher.students.management.deleted.warning')}
                   </p>
                 </div>
               </div>
@@ -1212,19 +1207,19 @@ export function StudentManagement() {
                   <thead className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                        Học sinh
+                        {t('teacher.students.management.table.student')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                        SĐT
+                        {t('teacher.students.management.table.phone')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                        Thời gian xóa
+                        {t('teacher.students.management.deleted.table.deletedTime')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                        Còn lại
+                        {t('teacher.students.management.deleted.table.remaining')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                        Thao tác
+                        {t('teacher.students.management.table.actions')}
                       </th>
                     </tr>
                   </thead>
@@ -1254,8 +1249,8 @@ export function StudentManagement() {
                         </td>
                         <td className="px-6 py-4 text-sm text-[#6B7280]">
                           {student.deleted_hours_ago < 1 
-                            ? 'Vừa xong' 
-                            : `${Math.floor(student.deleted_hours_ago)} giờ trước`}
+                            ? t('teacher.students.management.deleted.table.justNow')
+                            : t('teacher.students.management.deleted.table.hoursAgo', { hours: Math.floor(student.deleted_hours_ago) })}
                         </td>
                         <td className="px-6 py-4">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -1267,7 +1262,7 @@ export function StudentManagement() {
                           }`}>
                             {student.hours_remaining > 0 
                               ? `${Math.floor(student.hours_remaining)}h ${Math.floor((student.hours_remaining % 1) * 60)}m`
-                              : 'Hết hạn'}
+                              : t('teacher.students.management.deleted.table.expired')}
                           </span>
                         </td>
                         <td className="px-6 py-4">
@@ -1276,19 +1271,19 @@ export function StudentManagement() {
                               <button 
                                 onClick={() => handleRestoreStudent(student.uId, student.uName)}
                                 className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-1"
-                                title="Khôi phục"
+                                title={t('teacher.students.management.deleted.actions.restore')}
                               >
                                 <Check className="w-4 h-4" />
-                                Khôi phục
+                                {t('teacher.students.management.deleted.actions.restore')}
                               </button>
                             )}
                             <button 
                               onClick={() => handlePermanentDelete(student.uId, student.uName)}
                               className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium flex items-center gap-1"
-                              title="Xóa vĩnh viễn"
+                              title={t('teacher.students.management.deleted.actions.permanentDelete')}
                             >
                               <X className="w-4 h-4" />
-                              Xóa vĩnh viễn
+                              {t('teacher.students.management.deleted.actions.permanentDelete')}
                             </button>
                           </div>
                         </td>

@@ -120,7 +120,7 @@ class FileUploadController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'image' => 'required|image|mimes:jpeg,jpg,png,gif,svg,webp|max:10240', // 10MB max
+                'image' => 'required|image|mimes:jpeg,jpg,png,gif,svg,webp|max:20480', // 20MB max
                 'questionId' => 'required|string'
             ]);
 

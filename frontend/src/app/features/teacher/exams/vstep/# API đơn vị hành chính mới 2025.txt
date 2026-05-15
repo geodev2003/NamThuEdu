@@ -1,0 +1,20 @@
+# API đơn vị hành chính mới 2025
+
+- [API](https://addresskit.cas.so/)
+- [Danh sách](https://addresskit.cas.so/demo)
+- [Chuyển đổi](https://addresskit.cas.so/demo-convert)
+[API](https://addresskit.cas.so/)
+[Danh sách](https://addresskit.cas.so/demo)
+[Chuyển đổi](https://addresskit.cas.so/demo-convert)
+Dữ liệu Danh mục hành chính quốc gia không cố định, mà thay đổi liên tục theo các nghị quyết của Quốc Hội hoặc nghị định của Chính Phủ Kể từ năm 2000, Đã có hơn 500 nghị quyết, nghị định có liên quan tới việc thay đổi các khu vực hành chính. Nguồn dữ liệu từ Cục Thống Kê được thiết kế để ghi nhận các thay đổi của từng nghị định. Từ đó tra cứu được danh mục hành chính tại bất kì thời điểm nào từ 2003 tới nay.
+Các API danh mục hành chính cần có tham số ngày hiệu lực (effectiveDate): - Đặt effectiveDate là "2025-07-01", API /2025-07-01/provinces trả về danh sách tỉnh thành có hiệu lực vào ngày 2025-07-01. - Đặt effectiveDate là "latest", API [/latest/communes](https://production.cas.so/address-kit/latest/communes) sẽ trả về danh sách xã đang có hiệu lực ngay hiện tại.
+
+# Danh sách API
+[Try
+            it!](https://production.cas.so/address-kit/2025-07-01/provinces)
+[Try it!](https://production.cas.so/address-kit/2025-07-01/provinces/01/communes)
+[Try
+            it!](https://production.cas.so/address-kit/2025-07-01/communes)
+[Try it!](https://addresskit.cas.so/demo-convert)
+Dữ liệu được update tự động hằng ngày theo dữ liệu nguồn từ cục thống kê https://danhmuchanhchinh.nso.gov.vn Được xây dựng, bảo trì, và sử dụng trong các các sản phẩm nội bộ bởi CASSO.
+[Casso](http://about.cas.so)

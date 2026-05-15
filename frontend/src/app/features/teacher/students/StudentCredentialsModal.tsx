@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { X, Copy, Eye, EyeOff, CheckCircle2, Clock } from "lucide-react";
 
 interface StudentCredentialsModalProps {
@@ -56,11 +57,23 @@ export function StudentCredentialsModal({ isOpen, onClose, studentData }: Studen
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
+    <AnimatePresence>
+      {isOpen && (
+    <motion.div
+      className="fixed inset-0 bg-white/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <motion.div
+        className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl"
+        initial={{ opacity: 0, scale: 0.92, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      >
         {/* Header */}
         <div className="bg-gradient-to-r from-[#EA580C] to-[#F97316] p-6 text-white">
           <div className="flex items-center justify-between mb-2">
@@ -218,7 +231,9 @@ export function StudentCredentialsModal({ isOpen, onClose, studentData }: Studen
             Đã hiểu
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

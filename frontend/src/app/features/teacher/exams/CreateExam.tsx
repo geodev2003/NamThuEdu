@@ -578,6 +578,8 @@ export function CreateExam() {
     }
   };
 
+  const [showImportModal, setShowImportModal] = useState(false);
+
   const canProceedStep1 = examType && examSkill && examTitle && duration > 0;
   const canProceedStep2 = questions.length > 0;
   const canSubmitExam = canProceedStep1 && questions.length > 0;
@@ -1940,7 +1942,7 @@ Your response will be evaluated in terms of Task Fulfillment, Organization, Voca
                 Hủy
               </Link>
               <button
-                onClick={handleNextStep}
+                onClick={() => canProceedStep1 && setShowImportModal(true)}
                 disabled={!canProceedStep1}
                 className={`px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-all ${
                   canProceedStep1
@@ -3150,6 +3152,65 @@ Your response will be evaluated in terms of Task Fulfillment, Organization, Voca
             </div>
           </div>
         )}
+      {/* ── Import Mode Modal ── */}
+      {showImportModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowImportModal(false)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 z-10"
+            style={{ animation: 'scale-in 0.18s cubic-bezier(0.34,1.56,0.64,1)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <style>{`@keyframes scale-in{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}`}</style>
+
+            <button
+              onClick={() => setShowImportModal(false)}
+              className="absolute top-4 right-4 p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center mb-7">
+              <h2 className="text-xl font-bold text-gray-900">Thêm câu hỏi cho đề thi</h2>
+              <p className="text-sm text-gray-500 mt-1.5">Chọn cách bạn muốn tạo bộ câu hỏi</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Manual */}
+              <button
+                onClick={() => { setShowImportModal(false); handleNextStep(); }}
+                className="group p-6 border-2 border-gray-200 rounded-2xl hover:border-orange-400 hover:bg-orange-50/60 text-left transition-all duration-200"
+              >
+                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-orange-200 transition-colors">
+                  <BookOpen className="w-6 h-6 text-orange-600" />
+                </div>
+                <p className="font-bold text-gray-900 mb-1.5">Thêm thủ công</p>
+                <p className="text-xs text-gray-500 leading-relaxed">Nhập từng câu hỏi và đáp án theo từng bước</p>
+              </button>
+
+              {/* AI Import */}
+              <button
+                onClick={() => { setShowImportModal(false); navigate('/giao-vien/de-thi/import'); }}
+                className="group p-6 border-2 border-indigo-200 rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 hover:border-indigo-400 hover:from-indigo-100 hover:to-violet-100 text-left transition-all duration-200 relative"
+              >
+                <span className="absolute top-3 right-3 text-xs font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full">AI</span>
+                <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-indigo-200 transition-colors">
+                  <Sparkles className="w-6 h-6 text-indigo-600" />
+                </div>
+                <p className="font-bold text-gray-900 mb-1.5">Import từ PDF</p>
+                <p className="text-xs text-gray-500 leading-relaxed">AI tự động trích xuất câu hỏi từ file PDF đề thi</p>
+              </button>
+            </div>
+
+            <p className="text-center text-xs text-gray-400 mt-6">
+              Bấm vào bên ngoài để đóng
+            </p>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

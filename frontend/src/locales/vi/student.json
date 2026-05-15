@@ -1,0 +1,253 @@
+{
+  "student": {
+    "nav": {
+      "dashboard": "Trang chủ",
+      "tests": "Bài tập",
+      "practice": "Luyện tập",
+      "progress": "Tiến độ",
+      "history": "Lịch sử",
+      "notifications": "Thông báo",
+      "profile": {
+        "student": "Học viên",
+        "myProfile": "Hồ sơ của tôi",
+        "settings": "Cài đặt",
+        "logout": "Đăng xuất"
+      },
+      "streak": {
+        "days": "ngày",
+        "keepGoing": "Tiếp tục phát huy!"
+      },
+      "language": "Ngôn ngữ"
+    },
+    "dashboard": {
+      "greeting": {
+        "morning": "Chào buổi sáng",
+        "afternoon": "Chào buổi chiều",
+        "evening": "Chào buổi tối"
+      },
+      "loading": "Đang tải...",
+      "student": "Học viên",
+      "stats": {
+        "pendingTests": "Bài tập đang chờ",
+        "todayTests": "bài hôm nay",
+        "averageScore": "Điểm trung bình",
+        "testsCompleted": "bài đã làm",
+        "recentScore": "Điểm gần nhất",
+        "totalTests": "Tổng bài thi",
+        "completed": "Hoàn thành"
+      },
+      "pendingAssignments": {
+        "title": "Bài tập đang chờ",
+        "viewAll": "Xem tất cả",
+        "empty": "Chưa có bài tập nào được giao",
+        "startTest": "Làm bài"
+      },
+      "skills": {
+        "title": "Kỹ năng",
+        "description": "Đánh giá năng lực các kỹ năng",
+        "highest": "Điểm cao nhất",
+        "needImprovement": "Cần cải thiện",
+        "noData": "Chưa có dữ liệu"
+      },
+      "progress": {
+        "title": "Tiến độ gần đây",
+        "points": "điểm",
+        "noData": "Chưa có dữ liệu"
+      },
+      "recentResults": {
+        "title": "Kết quả gần đây",
+        "viewAll": "Tất cả",
+        "noResults": "Chưa có kết quả"
+      },
+      "quickPractice": {
+        "title": "Luyện tập nhanh"
+      },
+      "skillNames": {
+        "listening": "Nghe",
+        "reading": "Đọc",
+        "writing": "Viết",
+        "speaking": "Nói"
+      }
+    },
+    "tests": {
+      "title": "Bài thi của tôi",
+      "available": "Bài thi khả dụng",
+      "inProgress": "Đang làm",
+      "completed": "Đã hoàn thành",
+      "startTest": "Bắt đầu làm bài",
+      "continueTest": "Tiếp tục",
+      "viewResult": "Xem kết quả",
+      "dueIn": "Hạn nộp trong {{time}}",
+      "urgent": "Gấp",
+      "attemptsLeft": "Còn {{count}} lượt"
+    },
+    "practice": {
+      "title": "Luyện tập",
+      "subtitle": "Rèn luyện kỹ năng theo chủ đề",
+      "allSkills": "Tất cả",
+      "startPractice": "Bắt đầu luyện tập",
+      "continue": "Tiếp tục",
+      "quickStart": "Luyện tập nhanh",
+      "random10": "Ngẫu nhiên 10 câu",
+      "recentMistakes": "Câu sai gần đây",
+      "unanswered": "Câu chưa làm",
+      "custom": "Tạo bộ tùy chỉnh"
+    },
+    "notifications": {
+      "title": "Thông báo",
+      "unreadCount": "{{count}} chưa đọc",
+      "markAllRead": "Đánh dấu tất cả đã đọc",
+      "deleteRead": "Xóa đã đọc",
+      "tabs": {
+        "all": "Tất cả",
+        "assignments": "Bài tập",
+        "results": "Kết quả",
+        "reminders": "Nhắc nhở",
+        "messages": "Tin nhắn"
+      },
+      "actions": {
+        "markRead": "Đánh dấu đã đọc",
+        "delete": "Xóa thông báo"
+      },
+      "empty": {
+        "title": "Không có thông báo mới",
+        "subtitle": "Bạn sẽ nhận thông báo khi có bài tập mới"
+      }
+    },
+    "profile": {
+      "title": "Hồ sơ cá nhân",
+      "tabs": {
+        "info": "Thông tin cá nhân",
+        "goals": "Mục tiêu học tập",
+        "settings": "Cài đặt",
+        "security": "Bảo mật",
+        "stats": "Thống kê"
+      }
+    },
+    "settings": {
+      "theme": {
+        "title": "Giao diện ưa thích",
+        "description": "Chọn giao diện phù hợp với bạn nhất. Tùy chọn của bạn sẽ được lưu và đồng bộ trên các thiết bị.",
+        "playful": {
+          "label": "Vui nhộn",
+          "description": "Màu sắc tươi sáng, vui tươi và khuyến khích - phù hợp với học viên nhỏ tuổi"
+        },
+        "dynamic": {
+          "label": "Năng động",
+          "description": "Hiện đại, năng lượng và tập trung vào thành tích"
+        },
+        "professional": {
+          "label": "Chuyên nghiệp",
+          "description": "Gọn gàng, hiệu quả và tập trung - tối ưu cho người học nghiêm túc"
+        },
+        "auto": {
+          "label": "Tự động (Theo tuổi)",
+          "description": "Tự động chọn giao diện dựa trên độ tuổi của bạn"
+        },
+        "currentlyLabel": "Hiện tại",
+        "tipTitle": "Mẹo",
+        "tipDescription": "Giao diện bạn chọn sẽ thay đổi màu sắc, phông chữ, khoảng cách và cảm nhận tổng thể của giao diện. Hãy thử các tùy chọn khác nhau để tìm ra cái phù hợp nhất với bạn!"
+      }
+    },
+    "themeSelection": {
+      "title": "Chọn giao diện phù hợp với bạn",
+      "subtitle": "Chọn phong cách học tập mà bạn thích nhất",
+      "skipForNow": "Bỏ qua (chọn sau)",
+      "confirmSelection": "Chọn giao diện này",
+      "recommended": "Đề xuất cho bạn",
+      "canChangeAnytime": "Bạn có thể thay đổi giao diện bất cứ lúc nào trong phần Cài đặt",
+      "kids": {
+        "title": "Vui nhộn",
+        "description": "Giao diện sinh động với hình ảnh đầy màu sắc, phù hợp với các em nhỏ",
+        "ageRange": "6-12 tuổi",
+        "feature1": "⭐ Nhận sao và phần thưởng",
+        "feature2": "🎮 Trò chơi học tập",
+        "feature3": "🎨 Hình ảnh sinh động",
+        "feature4": "🏆 Bảng xếp hạng bạn bè"
+      },
+      "teens": {
+        "title": "Năng động",
+        "description": "Giao diện hiện đại, năng động với focus vào thành tích",
+        "ageRange": "13-17 tuổi",
+        "feature1": "🔥 Streak tracking",
+        "feature2": "📊 Thống kê chi tiết",
+        "feature3": "🏅 Bảng xếp hạng toàn quốc",
+        "feature4": "💪 Thử thách hàng tuần"
+      },
+      "adults": {
+        "title": "Chuyên nghiệp",
+        "description": "Giao diện chuyên nghiệp, tập trung hiệu quả học tập",
+        "ageRange": "18+ tuổi",
+        "feature1": "📈 Lộ trình học rõ ràng",
+        "feature2": "📊 Báo cáo tiến độ chi tiết",
+        "feature3": "🎯 Mục tiêu IELTS/VSTEP",
+        "feature4": "📚 Tài liệu chuyên sâu"
+      }
+    },
+    "examLobby": {
+      "title": "PHÒNG CHỜ VÀO THI",
+      "defaultTitle": "Đề thi VSTEP tổng hợp",
+      "subtitle": "Vui lòng kiểm tra camera, tai nghe/loa và microphone trước khi nhận đề thi.",
+      "duration": "Thời gian làm bài: {{minutes}} phút",
+      "loadingExam": "Đang tải thông tin đề thi...",
+      "sectionExamStructure": "CẤU TRÚC BÀI THI",
+      "skill1": "Kỹ năng 1: NGHE - 3 phần (47 phút)",
+      "skill2": "Kỹ năng 2: ĐỌC - 4 phần (60 phút)",
+      "skill3": "Kỹ năng 3: VIẾT - 2 phần (60 phút)",
+      "skill4": "Kỹ năng 4: NÓI - 3 phần (12 phút)",
+      "sectionDeviceCheck": "KIỂM TRA THIẾT BỊ",
+      "enableCamera": "Bật camera",
+      "testSpeaker": "Test loa",
+      "testMic": "Test mic",
+      "recording": "Đang thu...",
+      "sectionReady": "TRẠNG THÁI SẴN SÀNG",
+      "camera": "Camera",
+      "speaker": "Loa",
+      "microphone": "Microphone",
+      "enterExam": "NHẬN ĐỀ",
+      "connecting": "Đang kết nối...",
+      "mediaUnsupported": "Trình duyệt không hỗ trợ camera/microphone.",
+      "permissionGranted": "Đã cấp quyền camera và microphone.",
+      "permissionRequired": "Bạn cần cấp quyền camera và microphone để vào bài thi.",
+      "loadExamFailed": "Không tải được thông tin đề thi. Bạn vẫn có thể kiểm tra thiết bị.",
+      "startingSession": "Đang khởi tạo phiên thi...",
+      "sessionConnected": "Đã kết nối phiên thi thành công.",
+      "sessionFailed": "Kết nối phiên thi thất bại.",
+      "alertMicPermission": "Không thể truy cập microphone. Vui lòng cấp quyền và thử lại.",
+      "alertCameraMicPermission": "Bạn cần bật cả camera và microphone trước khi nhận đề.",
+      "alertSpeakerRequired": "Bạn cần test loa trước khi nhận đề.",
+      "alertSessionFailed": "Không thể khởi tạo phiên thi. Vui lòng thử lại sau vài giây."
+    },
+    "examTaking": {
+      "unansweredTitle": "Còn câu chưa trả lời",
+      "readyTitle": "Sẵn sàng nộp bài",
+      "unansweredText": "Bạn còn {{count}} câu chưa trả lời.",
+      "answeredText": "Bạn đã trả lời {{answered}}/{{total}} câu.",
+      "continue": "Tiếp tục",
+      "submitting": "Đang nộp...",
+      "submit": "Nộp bài",
+      "alertMockMode": "Không kết nối được Backend. Tự động chuyển sang Mock Mode để xem giao diện thi.",
+      "alertSubmitMock": "Mock Mode: Nộp bài thành công (Local)",
+      "alertMicPermission": "Không thể truy cập microphone. Vui lòng cấp quyền và thử lại.",
+      "answered": "Đã trả lời: {{answered}}/{{total}}",
+      "currentSkill": "Kỹ năng:",
+      "part": "Phần",
+      "saving": "Đang lưu bài...",
+      "saved": "Đã lưu",
+      "listeningInstruction": "Ở phần này, bạn sẽ nghe đoạn audio đúng một lần. Hãy đọc câu hỏi bên dưới và chọn đáp án đúng A, B, C hoặc D.",
+      "audioOneTime": "Audio (chỉ nghe 1 lần)",
+      "audioFinished": "Đã nghe xong",
+      "writePlaceholder": "Nhập bài viết của bạn...",
+      "stop": "Dừng",
+      "record": "Thu âm",
+      "play": "Nghe lại",
+      "recording": "Đang thu âm...",
+      "recorded": "Đã có bản ghi âm",
+      "notRecorded": "Chưa có bản ghi âm",
+      "speakingNote": "Ghi chú câu trả lời (nếu cần)...",
+      "save": "Lưu bài",
+      "hideMenu": "Ẩn menu",
+      "showMenu": "Hiện menu"
+    }
+  }
+}

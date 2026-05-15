@@ -403,7 +403,7 @@ export function PracticeSessionList() {
 
                   {/* Actions */}
                   <div className="grid grid-cols-4 gap-2 pt-4">
-                    <button className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors flex items-center justify-center" title="Xem">
+                    <button onClick={() => navigate(`/giao-vien/luyen-tap/${session.ps_id}`)} className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors flex items-center justify-center" title="Xem">
                       <Eye className="w-4 h-4" />
                     </button>
                     <button className="p-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg transition-colors flex items-center justify-center" title="Giao bài">

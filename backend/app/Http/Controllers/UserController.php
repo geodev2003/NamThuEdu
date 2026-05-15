@@ -470,7 +470,7 @@ class UserController extends Controller
             'studentEmail' => 'nullable|email|max:255',
             'studentDoB' => 'nullable|date|before:today',
             'age_group' => 'required|in:kids,teens,adults',
-            'avatar' => 'nullable|image|mimes:jpeg,jpg,png,gif,webp,bmp,svg|max:5120',
+            'avatar' => 'nullable|image|mimes:jpeg,jpg,png,gif,webp,bmp,svg|max:20480',
         ]);
 
         if ($validator->fails()) {
@@ -565,6 +565,28 @@ class UserController extends Controller
                 'message' => $e->getMessage()
             ], 400);
         }
+    }
+
+    /**
+     * GET /api/teacher/student/check-phone?phone=xxx
+     * Kiểm tra số điện thoại đã tồn tại chưa (real-time unique check)
+     */
+    public function checkPhoneUnique(Request $request)
+    {
+        $phone = trim($request->input('phone', ''));
+
+        if (!$phone) {
+            return response()->json(['status' => 'error', 'message' => 'Phone required'], 400);
+        }
+
+        $exists = \App\Models\User::where('uPhone', $phone)
+            ->whereNull('uDeleted_at')
+            ->exists();
+
+        return response()->json([
+            'status'    => 'success',
+            'available' => !$exists,
+        ]);
     }
 
     private function batchCreateStudents(Request $request, $user)
@@ -768,7 +790,7 @@ class UserController extends Controller
             'age_group' => 'sometimes|nullable|in:kids,teens,adults',
             'class_id' => 'sometimes|nullable|integer',
             'uStatus' => 'sometimes|required|in:active,inactive',
-            'avatar' => 'sometimes|nullable|image|mimes:jpeg,jpg,png,gif,webp,bmp,svg|max:5120',
+            'avatar' => 'sometimes|nullable|image|mimes:jpeg,jpg,png,gif,webp,bmp,svg|max:20480',
         ]);
 
         if ($validator->fails()) {

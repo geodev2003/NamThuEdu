@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useNavigate, useSearchParams, useParams } from "react-router";
 import { ArrowLeft, Save, Plus, Trash2, MessageSquare, Lightbulb, Users, Sparkles, X, Eraser } from "lucide-react";
 import { useToast } from "../../../../../hooks/useToast";
 import { useTranslation } from "react-i18next";
@@ -67,8 +67,10 @@ export const CreateVstepSpeaking = ({ examId: propExamId, onComplete, isFullTest
   const { success, error } = useToast();
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  
-  const initialExamId = propExamId || searchParams.get("id") || `vstep-speaking-${Date.now()}`;
+  const params = useParams();
+  const urlExamId = params.examId || searchParams.get("id");
+
+  const initialExamId = propExamId || urlExamId || `vstep-speaking-${Date.now()}`;
   const [examId, setExamId] = useState<string>(initialExamId);
   const [examTitle, setExamTitle] = useState<string>(t('vstep.speaking.title'));
   const [isLoading, setIsLoading] = useState(false);
@@ -104,7 +106,7 @@ export const CreateVstepSpeaking = ({ examId: propExamId, onComplete, isFullTest
 
   useEffect(() => {
     // Priority: propExamId (from Full Test) > URL param > generate new
-    const effectiveExamId = propExamId || searchParams.get("id");
+    const effectiveExamId = propExamId || urlExamId;
     
     if (effectiveExamId) {
       // Update examId state if different
@@ -112,8 +114,8 @@ export const CreateVstepSpeaking = ({ examId: propExamId, onComplete, isFullTest
         setExamId(effectiveExamId);
       }
       
-      // Update URL if not in Full Test mode and URL doesn't have ID
-      if (!isFullTest && !searchParams.get("id")) {
+      // Update URL if not in Full Test mode and URL doesn't have ID (skip if on /sua/:examId route)
+      if (!isFullTest && !params.examId && !searchParams.get("id")) {
         setSearchParams({ id: effectiveExamId }, { replace: true });
       }
       

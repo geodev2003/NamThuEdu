@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
 import {
   ChevronRight,
   Save,
@@ -157,7 +157,7 @@ export function CreatePost() {
       showError(t("blog.create.errorImageType"));
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 20 * 1024 * 1024) {
       showError(t("blog.create.errorImageSize"));
       return;
     }

@@ -10,6 +10,8 @@
 
 import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
+import { usePushNotification } from '../../hooks/usePushNotification';
+import { NotificationPermissionBanner } from '../../components/NotificationPermissionBanner';
 import {
   Home,
   ClipboardList,
@@ -53,6 +55,7 @@ const NavLink = ({
 );
 
 export function KidsLayout() {
+  const push = usePushNotification();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -69,8 +72,8 @@ export function KidsLayout() {
 
   const navItems: NavItem[] = [
     { icon: Home,          label: 'Trang chủ',  path: '/hoc-vien/kids' },
-    { icon: ClipboardList, label: 'Bài thi',    path: '/hoc-vien/bai-tap' },
-    { icon: Sparkles,      label: 'Luyện tập',  path: '/hoc-vien/luyen-tap' },
+    { icon: ClipboardList, label: 'Bài thi',    path: '/hoc-vien/kids/bai-tap' },
+    { icon: Sparkles,      label: 'Luyện tập',  path: '/hoc-vien/kids/luyen-tap' },
     { icon: Trophy,        label: 'Thành tích', path: '/hoc-vien/kids/thanh-tich' },
     { icon: Settings,      label: 'Cài đặt',    path: '/hoc-vien/kids/cai-dat' },
   ];
@@ -79,6 +82,7 @@ export function KidsLayout() {
 
   return (
     <div className="kids-scope min-h-screen bg-slate-50">
+      <NotificationPermissionBanner push={push} />
       {/* Mobile Header */}
       <div className="lg:hidden bg-white border-b border-slate-200">
         <div className="flex items-center justify-between px-4 py-3">

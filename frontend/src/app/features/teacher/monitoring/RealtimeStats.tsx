@@ -1,506 +1,329 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router";
-import { useApiQuery } from "../../../../hooks/useTeacherApi";
-import { teacherApi } from "../../../../services/teacherApi";
-import { handleApiError } from "../../../../components/shared/ErrorHandler";
-import type { TestStatistics, ApiResponse } from "../../../../types/teacher";
 import {
-  Users,
-  CheckCircle,
-  Clock,
-  Award,
-  Timer,
-  Activity,
-  Eye,
+  Users, CheckCircle, BookOpen, Zap, TrendingUp, Activity,
+  ChevronRight, RefreshCw,
 } from "lucide-react";
 import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
+  AreaChart, Area, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
+import { api } from "../../../../services/api";
+
+type Period = "24h" | "7d" | "30d";
+
+interface Summary {
+  total_sessions: number;
+  exam_sessions: number;
+  practice_sessions: number;
+  completion_rate: number;
+  avg_score: number | null;
+  unique_students: number;
+}
+interface TimelinePoint { label: string; exam: number; practice: number; }
+interface TopStudent { id: number; name: string; avatar: string; exam_count: number; practice_count: number; total: number; }
+interface TopExam { id: number; title: string; type: string; purpose: string; attempts: number; completion_rate: number; }
+interface StatsData {
+  period: Period;
+  summary: Summary;
+  timeline: TimelinePoint[];
+  top_students: TopStudent[];
+  top_exams: TopExam[];
+}
+
+const PERIOD_LABELS: Record<Period, string> = { "24h": "24 giờ", "7d": "7 ngày", "30d": "30 ngày" };
+const DONUT_COLORS = ["#6366F1", "#F59E0B"];
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-lg text-sm">
+      <p className="font-semibold text-gray-700 mb-1">{label}</p>
+      {payload.map((p: any) => (
+        <p key={p.name} style={{ color: p.color }} className="font-medium">
+          {p.name === "exam" ? "Thi chính thức" : "Luyện tập"}: <span className="font-bold">{p.value}</span>
+        </p>
+      ))}
+    </div>
+  );
+};
 
 export function RealtimeStats() {
-  const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [examId, setExamId] = useState<number | null>(null); // Get from URL params or props
+  const [period, setPeriod]     = useState<Period>("7d");
+  const [data, setData]         = useState<StatsData | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [tick, setTick]         = useState(0);
+  const [lastFetch, setLastFetch] = useState<Date>(new Date());
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Fetch test statistics with polling
-  const { data: statsData, loading, error } = useApiQuery(
-    () => examId 
-      ? teacherApi.dashboard.getTestStatistics(examId) 
-      : Promise.resolve({ status: 'success', data: null } as ApiResponse<TestStatistics | null>),
-    {
-      enabled: !!examId,
-      refetchInterval: 10000, // 10 seconds
-      onError: (error: any) => {
-        handleApiError(error, () => window.location.reload());
-      }
-    }
-  );
+  const fetchData = (p: Period) => {
+    setLoading(true);
+    api.get(`/teacher/dashboard/statistics?period=${p}`)
+      .then((res: any) => {
+        const d = res?.data?.data ?? res?.data;
+        if (d) { setData(d); setLastFetch(new Date()); }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
 
-  const stats: TestStatistics | null = statsData;
-
-  // Simulate auto-refresh for last update time
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLastUpdate(new Date());
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Students active over time - use real data if available
-  const activeStudentsData = stats?.active_students_over_time || [
-    { time: "14:00", count: 5 },
-    { time: "14:10", count: 12 },
-    { time: "14:20", count: 18 },
-    { time: "14:30", count: 25 },
-    { time: "14:40", count: 22 },
-    { time: "14:50", count: 15 },
-    { time: "15:00", count: 12 },
-  ];
-
-  // Questions answered distribution
-  const questionsData = stats?.questions_distribution || [
-    { range: "0-5", count: 2 },
-    { range: "6-10", count: 5 },
-    { range: "11-15", count: 8 },
-    { range: "16-20", count: 12 },
-    { range: "21-25", count: 10 },
-    { range: "26-30", count: 8 },
-  ];
-
-  // Connection status breakdown
-  const connectionData = stats?.connection_status || [
-    { name: "Kết nối tốt", value: 35, color: "#10B981" },
-    { name: "Không ổn định", value: 7, color: "#F59E0B" },
-    { name: "Mất kết nối", value: 3, color: "#EF4444" },
-  ];
-
-  // Question difficulty analysis
-  const questionAnalysis = stats?.question_analysis || [
-    {
-      id: "1",
-      number: 1,
-      attempts: 45,
-      correct: 42,
-      successRate: 93,
-      avgTime: "1:20",
-      difficulty: "easy" as const,
-    },
-    {
-      id: "2",
-      number: 5,
-      attempts: 45,
-      correct: 35,
-      successRate: 78,
-      avgTime: "2:10",
-      difficulty: "medium" as const,
-    },
-    {
-      id: "3",
-      number: 12,
-      attempts: 45,
-      correct: 18,
-      successRate: 40,
-      avgTime: "3:45",
-      difficulty: "hard" as const,
-    },
-    {
-      id: "4",
-      number: 18,
-      attempts: 45,
-      correct: 38,
-      successRate: 84,
-      avgTime: "1:50",
-      difficulty: "easy" as const,
-    },
-    {
-      id: "5",
-      number: 25,
-      attempts: 45,
-      correct: 22,
-      successRate: 49,
-      avgTime: "4:20",
-      difficulty: "hard" as const,
-    },
-  ];
-
-  // Student progress
-  const studentProgress = stats?.student_progress || [
-    {
-      id: "1",
-      name: "Nguyễn Văn An",
-      avatar: "NA",
-      progress: 90,
-      timeElapsed: "45:30",
-      connectionStatus: "connected" as const,
-      currentQuestion: 27,
-    },
-    {
-      id: "2",
-      name: "Trần Thị Bình",
-      avatar: "TB",
-      progress: 60,
-      timeElapsed: "38:15",
-      connectionStatus: "unstable" as const,
-      currentQuestion: 18,
-    },
-    {
-      id: "3",
-      name: "Lê Hoàng Cường",
-      avatar: "LC",
-      progress: 40,
-      timeElapsed: "42:00",
-      connectionStatus: "disconnected" as const,
-      currentQuestion: 12,
-    },
-  ];
-
-  const getDifficultyBadge = (difficulty: "easy" | "medium" | "hard") => {
-    const badges = {
-      easy: { text: "Dễ", color: "bg-green-100 text-green-700" },
-      medium: { text: "Trung bình", color: "bg-orange-100 text-orange-700" },
-      hard: { text: "Khó", color: "bg-red-100 text-red-700" },
+    fetchData(period);
+    pollRef.current = setInterval(() => fetchData(period), 30000);
+    tickRef.current = setInterval(() => setTick(n => n + 1), 1000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (tickRef.current) clearInterval(tickRef.current);
     };
-    return badges[difficulty];
-  };
+  }, [period]);
 
-  const getConnectionBadge = (status: "connected" | "unstable" | "disconnected") => {
-    const badges = {
-      connected: { text: "Kết nối", color: "text-green-600 bg-green-100" },
-      unstable: { text: "Không ổn định", color: "text-yellow-600 bg-yellow-100" },
-      disconnected: { text: "Mất kết nối", color: "text-red-600 bg-red-100" },
-    };
-    return badges[status];
-  };
+  const secAgo = Math.floor((Date.now() - lastFetch.getTime()) / 1000);
+  const lastUpdateLabel = secAgo < 60 ? `${secAgo}s trước` : `${Math.floor(secAgo / 60)}m trước`;
+
+  const s = data?.summary;
+  const donutData = s ? [
+    { name: "Thi chính thức", value: s.exam_sessions },
+    { name: "Luyện tập", value: s.practice_sessions },
+  ] : [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-gray-900">
-              Thống kê: {stats?.exam_title || "Đang tải..."} 📊
-            </h1>
-            {/* LIVE Indicator */}
-            <div className="flex items-center gap-2 px-4 py-2 bg-green-100 rounded-lg">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-green-700 font-bold text-sm">LIVE</span>
-            </div>
+    <div className="min-h-screen bg-[#F9FAFB] p-6">
+
+      {/* ── Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+            <Link to="/giao-vien/giam-sat-truc-tiep" className="hover:text-blue-600 transition-colors">
+              Giám sát trực tiếp
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <span className="text-gray-900 font-medium">Thống kê</span>
           </div>
-          <div className="text-sm text-gray-600">
-            Cập nhật {Math.floor((Date.now() - lastUpdate.getTime()) / 1000)} giây trước
-          </div>
-        </div>
-        <p className="text-gray-600">Thống kê thời gian thực về bài thi đang diễn ra</p>
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      ) : (
-        <>
-          {/* Overview Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Users className="w-6 h-6 text-blue-600" />
-                </div>
-              </div>
-              <p className="text-gray-600 text-sm mb-1">Đã bắt đầu</p>
-              <p className="text-3xl font-bold text-gray-900">{stats?.total_started || 0}</p>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-orange-600" />
-                </div>
-                <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse" />
-              </div>
-              <p className="text-gray-600 text-sm mb-1">Đang làm bài</p>
-              <p className="text-3xl font-bold text-gray-900">{stats?.in_progress || 0}</p>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
-                </div>
-              </div>
-              <p className="text-gray-600 text-sm mb-1">Đã hoàn thành</p>
-              <p className="text-3xl font-bold text-gray-900">{stats?.completed || 0}</p>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                  <Award className="w-6 h-6 text-purple-600" />
-                </div>
-              </div>
-              <p className="text-gray-600 text-sm mb-1">Điểm trung bình</p>
-              <p className="text-3xl font-bold text-gray-900">{stats?.average_score || 0}</p>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center">
-                  <Timer className="w-6 h-6 text-pink-600" />
-                </div>
-              </div>
-              <p className="text-gray-600 text-sm mb-1">Thời gian TB</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.average_time_spent || "0 phút"}</p>
-            </div>
-          </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* Line Chart: Students Active Over Time */}
-        <div className="lg:col-span-2 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-blue-600" />
-            Học sinh đang hoạt động theo thời gian
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={activeStudentsData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="time" tick={{ fill: "#6B7280", fontSize: 12 }} />
-              <YAxis tick={{ fill: "#6B7280", fontSize: 12 }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "rgba(255, 255, 255, 0.95)",
-                  border: "1px solid #E5E7EB",
-                  borderRadius: "8px",
-                  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="count"
-                stroke="#3B82F6"
-                strokeWidth={3}
-                dot={{ fill: "#3B82F6", r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <h1 className="text-2xl font-bold text-gray-900">Thống kê hoạt động</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Lượt thi, luyện tập, học viên trong {PERIOD_LABELS[period]}</p>
         </div>
 
-        {/* Pie Chart: Connection Status */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-6">Trạng thái kết nối</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={connectionData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
+        <div className="flex items-center gap-3">
+          {/* Period tabs */}
+          <div className="flex items-center bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
+            {(["24h", "7d", "30d"] as Period[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`px-4 py-1.5 text-sm font-semibold rounded-lg transition-all ${
+                  period === p
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
               >
-                {connectionData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+                {PERIOD_LABELS[p]}
+              </button>
+            ))}
+          </div>
+          {/* Last update */}
+          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span>Cập nhật {lastUpdateLabel}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Summary cards ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        {[
+          { label: "Tổng lượt", value: s?.total_sessions ?? "—", icon: Activity, iconBg: "bg-blue-100", iconColor: "text-blue-600", valueBg: "text-blue-700" },
+          { label: "Thi chính thức", value: s?.exam_sessions ?? "—", icon: BookOpen, iconBg: "bg-indigo-100", iconColor: "text-indigo-600", valueBg: "text-indigo-700" },
+          { label: "Luyện tập", value: s?.practice_sessions ?? "—", icon: Zap, iconBg: "bg-amber-100", iconColor: "text-amber-600", valueBg: "text-amber-700" },
+          { label: "Hoàn thành", value: s ? `${s.completion_rate}%` : "—", icon: CheckCircle, iconBg: "bg-green-100", iconColor: "text-green-600", valueBg: "text-green-700" },
+          { label: "Điểm TB", value: s?.avg_score != null ? s.avg_score : "—", icon: TrendingUp, iconBg: "bg-purple-100", iconColor: "text-purple-600", valueBg: "text-purple-700" },
+          { label: "Học viên", value: s?.unique_students ?? "—", icon: Users, iconBg: "bg-cyan-100", iconColor: "text-cyan-600", valueBg: "text-cyan-700" },
+        ].map(({ label, value, icon: Icon, iconBg, iconColor, valueBg }) => (
+          <div key={label} className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className={`w-9 h-9 ${iconBg} rounded-xl flex items-center justify-center mb-3`}>
+              <Icon className={`w-4.5 h-4.5 ${iconColor}`} />
+            </div>
+            <p className="text-xs text-gray-500 font-medium mb-1">{label}</p>
+            <p className={`text-2xl font-bold ${valueBg}`}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Charts row ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+
+        {/* Area chart — 2/3 width */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-5">
+            <Activity className="w-4.5 h-4.5 text-indigo-500" />
+            <h3 className="text-base font-bold text-gray-900">Lượt làm bài theo thời gian</h3>
+          </div>
+          {loading ? (
+            <div className="h-[280px] flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={data?.timeline ?? []} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="examGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366F1" stopOpacity={0.18} />
+                    <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="practiceGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.18} />
+                    <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 11 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                <YAxis tick={{ fill: "#9CA3AF", fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend formatter={(v) => v === "exam" ? "Thi chính thức" : "Luyện tập"} wrapperStyle={{ fontSize: 12 }} />
+                <Area type="monotone" dataKey="exam" stroke="#6366F1" strokeWidth={2.5} fill="url(#examGrad)" dot={false} activeDot={{ r: 4, fill: "#6366F1" }} />
+                <Area type="monotone" dataKey="practice" stroke="#F59E0B" strokeWidth={2.5} fill="url(#practiceGrad)" dot={false} activeDot={{ r: 4, fill: "#F59E0B" }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Donut chart — 1/3 width */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm flex flex-col">
+          <h3 className="text-base font-bold text-gray-900 mb-5">Phân loại lượt làm</h3>
+          {loading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={donutData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={4} dataKey="value" stroke="none">
+                    {donutData.map((_, i) => (
+                      <Cell key={i} fill={DONUT_COLORS[i]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: any) => [`${v} lượt`, ""]} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-col gap-2 mt-2 w-full">
+                {donutData.map((item, i) => (
+                  <div key={item.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full inline-block flex-shrink-0" style={{ background: DONUT_COLORS[i] }} />
+                      <span className="text-xs text-gray-600">{item.name}</span>
+                    </div>
+                    <span className="text-sm font-bold text-gray-800">{item.value}</span>
+                  </div>
                 ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Bar Chart: Questions Answered Distribution */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6 mb-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-6">Phân bố số câu đã trả lời</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={questionsData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-            <XAxis dataKey="range" tick={{ fill: "#6B7280", fontSize: 12 }} />
-            <YAxis tick={{ fill: "#6B7280", fontSize: 12 }} />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "rgba(255, 255, 255, 0.95)",
-                border: "1px solid #E5E7EB",
-                borderRadius: "8px",
-                boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-              }}
-            />
-            <Bar dataKey="count" fill="#8B5CF6" radius={[8, 8, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+      {/* ── Top tables row ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+        {/* Top students */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <Users className="w-4.5 h-4.5 text-indigo-500" />
+              <h3 className="text-base font-bold text-gray-900">Top học viên</h3>
+            </div>
+            <span className="text-xs text-gray-400">{PERIOD_LABELS[period]}</span>
+          </div>
+          {loading ? (
+            <div className="h-40 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-indigo-400" />
+            </div>
+          ) : (data?.top_students?.length ?? 0) === 0 ? (
+            <p className="text-center text-sm text-gray-400 py-10">Chưa có dữ liệu</p>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {(data?.top_students ?? []).map((student, idx) => (
+                <Link key={student.id} to="/giao-vien/giam-sat-truc-tiep" className="flex items-center gap-3 px-6 py-3.5 hover:bg-indigo-50/60 transition-colors cursor-pointer">
+                  <span className={`w-5 text-xs font-bold text-center flex-shrink-0 ${idx === 0 ? "text-amber-500" : idx === 1 ? "text-slate-400" : idx === 2 ? "text-orange-400" : "text-gray-300"}`}>
+                    {idx + 1}
+                  </span>
+                  <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                    {student.avatar}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{student.name}</p>
+                    <div className="flex gap-3 mt-0.5">
+                      <span className="text-[11px] text-indigo-600 font-medium">{student.exam_count} thi</span>
+                      <span className="text-[11px] text-amber-600 font-medium">{student.practice_count} luyện tập</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full"
+                        style={{ width: `${Math.min(100, (student.total / ((data?.top_students?.[0]?.total ?? 1) || 1)) * 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-sm font-bold text-gray-700 w-6 text-right">{student.total}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Top exams */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4.5 h-4.5 text-indigo-500" />
+              <h3 className="text-base font-bold text-gray-900">Top đề thi</h3>
+            </div>
+            <span className="text-xs text-gray-400">{PERIOD_LABELS[period]}</span>
+          </div>
+          {loading ? (
+            <div className="h-40 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-indigo-400" />
+            </div>
+          ) : (data?.top_exams?.length ?? 0) === 0 ? (
+            <p className="text-center text-sm text-gray-400 py-10">Chưa có dữ liệu</p>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {(data?.top_exams ?? []).map((exam, idx) => (
+                <div key={exam.id} className="flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50/60 transition-colors">
+                  <span className={`w-5 text-xs font-bold text-center flex-shrink-0 ${idx === 0 ? "text-amber-500" : idx === 1 ? "text-slate-400" : idx === 2 ? "text-orange-400" : "text-gray-300"}`}>
+                    {idx + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{exam.title}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${exam.type?.toUpperCase() === "VSTEP" ? "bg-indigo-100 text-indigo-700" : "bg-blue-100 text-blue-700"}`}>
+                        {exam.type}
+                      </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${exam.purpose === "practice" || exam.purpose === "review" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}>
+                        {exam.purpose === "practice" || exam.purpose === "review" ? "Luyện tập" : "Thi"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <span className="text-sm font-bold text-gray-800">{exam.attempts} lượt</span>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${exam.completion_rate >= 70 ? "bg-green-400" : exam.completion_rate >= 40 ? "bg-amber-400" : "bg-red-400"}`}
+                          style={{ width: `${exam.completion_rate}%` }}
+                        />
+                      </div>
+                      <span className="text-[11px] text-gray-500 font-medium w-8 text-right">{exam.completion_rate}%</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Question Difficulty Analysis */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 overflow-hidden mb-6">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-bold text-gray-900">Phân tích độ khó câu hỏi</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Câu hỏi
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Số lượt
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Đúng
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Tỷ lệ đúng
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Thời gian TB
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Độ khó
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {questionAnalysis.map((question) => {
-                const badge = getDifficultyBadge(question.difficulty);
-                return (
-                  <tr key={question.id} className="hover:bg-blue-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <span className="font-bold text-gray-900">Câu {question.number}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-gray-900 font-semibold">{question.attempts}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-green-600 font-semibold">{question.correct}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden max-w-[100px]">
-                          <div
-                            className="h-full bg-gradient-to-r from-green-500 to-green-600"
-                            style={{ width: `${question.successRate}%` }}
-                          />
-                        </div>
-                        <span className="text-lg font-bold text-green-600 min-w-[50px]">
-                          {question.successRate}%
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-gray-900 font-semibold">{question.avgTime}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-lg text-sm font-semibold ${badge.color}`}>
-                        {badge.text}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Student Progress Table */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-bold text-gray-900">Tiến độ học sinh</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Học sinh
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Tiến độ
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Thời gian
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Kết nối
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Câu hiện tại
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase">
-                  Hành động
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {studentProgress.map((student) => {
-                const badge = getConnectionBadge(student.connectionStatus);
-                return (
-                  <tr key={student.id} className="hover:bg-blue-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                          {student.avatar}
-                        </div>
-                        <p className="font-semibold text-gray-900">{student.name}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden max-w-[150px]">
-                          <div
-                            className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
-                            style={{ width: `${student.progress}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-bold text-blue-600 min-w-[40px]">
-                          {student.progress}%
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-gray-900 font-semibold">{student.timeElapsed}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-lg text-sm font-semibold ${badge.color}`}>
-                        {badge.text}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg font-bold">
-                        Câu {student.currentQuestion}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Link
-                        to={`/giam-sat-truc-tiep/${student.id}`}
-                        className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all inline-flex"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      </>
-      )}
     </div>
   );
 }

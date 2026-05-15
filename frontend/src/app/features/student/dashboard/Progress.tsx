@@ -22,9 +22,9 @@ import {
   CartesianGrid,
 } from "recharts";
 
-const PRIMARY = "#0EA5E9";
-const PRIMARY_LIGHT = "#E0F2FE";
-const CYAN = "#06B6D4";
+const PRIMARY = "#7C3AED";
+const PRIMARY_MID = "#8B5CF6";
+const PRIMARY_LIGHT = "#EDE9FE";
 
 const masteryLabel: Record<string, { label: string; color: string; bg: string }> = {
   expert: { label: "Thành thạo", color: "#10B981", bg: "#D1FAE5" },
@@ -57,36 +57,88 @@ export function Progress() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 rounded-full animate-spin"
-          style={{ borderColor: PRIMARY_LIGHT, borderTopColor: PRIMARY }} />
+      <div className="min-h-screen" style={{ background: "#F8F7FF" }}>
+        <div style={{ background: "linear-gradient(135deg, #1E0B4B 0%, #3B1B8F 45%, #1D4ED8 100%)" }}>
+          <div className="px-8 lg:px-16 py-10">
+            <div className="animate-pulse">
+              <div className="h-3 w-32 rounded-full mb-3" style={{ background: "rgba(255,255,255,0.2)" }} />
+              <div className="h-8 w-56 rounded-xl mb-2" style={{ background: "rgba(255,255,255,0.2)" }} />
+              <div className="h-3 w-72 rounded-full" style={{ background: "rgba(255,255,255,0.12)" }} />
+            </div>
+          </div>
+        </div>
+        <div className="px-8 lg:px-16 py-8 animate-pulse space-y-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[1,2,3,4].map(i => <div key={i} className="h-28 rounded-2xl bg-purple-50" />)}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <div className="lg:col-span-7 h-64 rounded-2xl bg-purple-50" />
+            <div className="lg:col-span-5 h-64 rounded-2xl bg-purple-50" />
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="py-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: "#1F1344" }}>Tiến độ học tập</h1>
-        <p style={{ fontSize: 13, color: "#9CA3AF" }}>Phân tích kết quả và kỹ năng của bạn</p>
+    <div className="min-h-screen" style={{ background: "#F8F7FF" }}>
+
+      {/* ══ Hero */}
+      <div className="relative overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #1E0B4B 0%, #3B1B8F 45%, #1D4ED8 100%)" }}>
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/3 w-80 h-80 rounded-full opacity-20"
+            style={{ background: "radial-gradient(circle, #A78BFA, transparent)", transform: "translateY(-50%)" }} />
+          <div className="absolute bottom-0 right-1/4 w-56 h-56 rounded-full opacity-15"
+            style={{ background: "radial-gradient(circle, #60A5FA, transparent)", transform: "translateY(40%)" }} />
+        </div>
+        <div className="relative z-10 px-8 lg:px-16 py-10">
+          <div className="flex items-start gap-4 mb-6">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg"
+              style={{ background: "linear-gradient(135deg, #7C3AED, #8B5CF6)" }}>
+              <TrendingUp className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <p className="text-purple-300 text-sm font-semibold tracking-widest uppercase mb-1">Kết quả học tập</p>
+              <h1 className="text-3xl font-extrabold text-white tracking-tight leading-tight">Tiến độ</h1>
+              <p className="text-purple-200 text-sm mt-1 font-medium">Phân tích kết quả và kỹ năng của bạn</p>
+            </div>
+          </div>
+          {/* Stat chips */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {[
+              { label: "Tổng bài thi", value: overview.total_tests ?? 0, color: "#C4B5FD" },
+              { label: "Điểm TB", value: Number(overview.average_score ?? 0).toFixed(1), color: "#FCD34D" },
+              { label: "Cao nhất", value: Number(overview.highest_score ?? 0).toFixed(1), color: "#86EFAC" },
+            ].map((s) => (
+              <div key={s.label} className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl"
+                style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.15)" }}>
+                <span className="text-xl font-extrabold" style={{ color: s.color }}>{s.value}</span>
+                <span className="text-xs font-semibold text-purple-200">{s.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
+
+      {/* ══ Content */}
+      <div className="px-8 lg:px-16 py-8 space-y-6">
 
       {/* Overview stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Tổng bài thi", value: overview.total_tests ?? 0, icon: BarChart2, color: PRIMARY, bg: PRIMARY_LIGHT },
-          { label: "Điểm trung bình", value: (overview.average_score ?? 0).toFixed(1), icon: TrendingUp, color: "#2563EB", bg: "#DBEAFE" },
-          { label: "Điểm cao nhất", value: (overview.highest_score ?? 0).toFixed(1), icon: Star, color: "#10B981", bg: "#D1FAE5" },
-          { label: "Điểm gần nhất", value: (overview.recent_score ?? 0).toFixed(1), icon: Award, color: "#F59E0B", bg: "#FEF3C7" },
+          { label: "Tổng bài thi",   value: overview.total_tests ?? 0,                         icon: BarChart2,  color: PRIMARY,    bg: PRIMARY_LIGHT },
+          { label: "Điểm trung bình", value: Number(overview.average_score  ?? 0).toFixed(1), icon: TrendingUp, color: PRIMARY_MID, bg: "#F5F3FF" },
+          { label: "Điểm cao nhất",  value: Number(overview.highest_score ?? 0).toFixed(1), icon: Star,       color: "#10B981",  bg: "#D1FAE5" },
+          { label: "Điểm gần nhất",  value: Number(overview.recent_score  ?? 0).toFixed(1), icon: Award,      color: "#F59E0B",  bg: "#FEF3C7" },
         ].map((card) => (
-          <div key={card.label} className="rounded-2xl p-4 bg-white"
-            style={{ border: "1.5px solid #F0EEFF", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+          <div key={card.label} className="rounded-2xl p-4 bg-white hover:-translate-y-0.5 transition-all duration-200"
+            style={{ border: "1.5px solid #F0F0F8", boxShadow: "0 2px 12px rgba(124,58,237,0.07)" }}>
             <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-2"
               style={{ background: card.bg }}>
               <card.icon className="w-4 h-4" style={{ color: card.color }} />
             </div>
-            <p style={{ fontSize: 24, fontWeight: 900, color: "#1F1344", lineHeight: 1 }}>{card.value}</p>
+            <p style={{ fontSize: 24, fontWeight: 900, color: "#1A1040", lineHeight: 1 }}>{card.value}</p>
             <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>{card.label}</p>
           </div>
         ))}
@@ -96,7 +148,7 @@ export function Progress() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Trend Chart — col 7 */}
         <div className="lg:col-span-7 rounded-2xl p-5 bg-white"
-          style={{ border: "1.5px solid #F0EEFF" }}>
+          style={{ border: "1.5px solid #F0F0F8", boxShadow: "0 2px 12px rgba(124,58,237,0.06)" }}>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: PRIMARY_LIGHT }}>
               <TrendingUp className="w-4 h-4" style={{ color: PRIMARY }} />
@@ -129,7 +181,7 @@ export function Progress() {
 
         {/* Radar Chart — col 5 */}
         <div className="lg:col-span-5 rounded-2xl p-5 bg-white"
-          style={{ border: "1.5px solid #F0EEFF" }}>
+          style={{ border: "1.5px solid #F0F0F8", boxShadow: "0 2px 12px rgba(124,58,237,0.06)" }}>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: PRIMARY_LIGHT }}>
               <Target className="w-4 h-4" style={{ color: PRIMARY }} />
@@ -152,7 +204,7 @@ export function Progress() {
 
       {/* Skill Breakdown */}
       {skillsBreakdown.length > 0 && (
-        <div className="rounded-2xl p-5 bg-white" style={{ border: "1.5px solid #F0EEFF" }}>
+        <div className="rounded-2xl p-5 bg-white" style={{ border: "1.5px solid #F0F0F8", boxShadow: "0 2px 12px rgba(124,58,237,0.06)" }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, color: "#1F1344", marginBottom: 16 }}>
             Chi tiết kỹ năng
           </h2>
@@ -173,7 +225,7 @@ export function Progress() {
                       </span>
                     </div>
                     <span style={{ fontSize: 14, fontWeight: 800, color }}>
-                      {(s.average_score ?? 0).toFixed(1)}
+                      {Number(s.average_score ?? 0).toFixed(1)}
                     </span>
                   </div>
                   <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "#F3F4F6" }}>
@@ -181,7 +233,7 @@ export function Progress() {
                       style={{ width: `${s.average_score ?? 0}%`, background: `linear-gradient(90deg, ${color}, ${color}BB)` }} />
                   </div>
                   <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>
-                    {s.count ?? 0} bài · Cao nhất: {(s.highest_score ?? 0).toFixed(1)} · Thấp nhất: {(s.lowest_score ?? 0).toFixed(1)}
+                    {s.count ?? 0} bài · Cao nhất: {Number(s.highest_score ?? 0).toFixed(1)} · Thấp nhất: {Number(s.lowest_score ?? 0).toFixed(1)}
                   </p>
                 </div>
               );
@@ -189,6 +241,7 @@ export function Progress() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

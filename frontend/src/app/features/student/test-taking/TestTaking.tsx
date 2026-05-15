@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { 
   AlertTriangle, BookOpen, CheckCircle, Mic, Pause, Play, Square, 
@@ -70,6 +70,16 @@ const SKILL_LABELS: Record<string, string> = {
 
 const SKILL_ORDER = ["listening", "reading", "writing", "speaking"];
 
+const PURPLE = "#7C3AED";
+const PURPLE_LIGHT = "#EDE9FE";
+const PAGE_BG = "#F1F5F9";
+const SKILL_DURATION: Record<string, string> = {
+  listening: "40 phút",
+  reading: "60 phút",
+  writing: "60 phút",
+  speaking: "19 phút",
+};
+
 type Section = {
   skill: string;
   part: number;
@@ -121,132 +131,9 @@ function getOptions(question: any) {
   return [];
 }
 
-function buildMockExam() {
-  return {
-    eTitle: "VSTEP Mock Full Test",
-    eDuration_minutes: 179,
-    questions: [
-      {
-        id: "l1",
-        qId: 1,
-        qSkill: "listening",
-        qPart: 1,
-        qContent: "Question 1: What music will they have at the party?",
-        qAudio_duration: 426,
-        options: [
-          { id: 1, label: "A", content: "guitar" },
-          { id: 2, label: "B", content: "cello" },
-          { id: 3, label: "C", content: "CDs" },
-          { id: 4, label: "D", content: "piano" },
-        ],
-      },
-      {
-        id: "l2",
-        qId: 2,
-        qSkill: "listening",
-        qPart: 1,
-        qContent: "Question 2: When will the man go on holiday?",
-        options: [
-          { id: 1, label: "A", content: "January" },
-          { id: 2, label: "B", content: "August" },
-          { id: 3, label: "C", content: "June" },
-          { id: 4, label: "D", content: "July" },
-        ],
-      },
-      {
-        id: "r1",
-        qId: 3,
-        qSkill: "reading",
-        qPart: 1,
-        qPassage:
-          "<p><b>Directions:</b> In this section, you will read several passages and answer questions based on each passage.</p><p>(A) It is estimated that over 99 percent of all species that ever existed have become extinct...</p>",
-        qContent: "Question 1: The word \"it\" in paragraph (A) refers to",
-        options: [
-          { id: 1, label: "A", content: "99 percent" },
-          { id: 2, label: "B", content: "species" },
-          { id: 3, label: "C", content: "extinction" },
-          { id: 4, label: "D", content: "environment" },
-        ],
-      },
-      {
-        id: "r2",
-        qId: 4,
-        qSkill: "reading",
-        qPart: 1,
-        qPassage:
-          "<p><b>Directions:</b> In this section, you will read several passages and answer questions based on each passage.</p><p>(A) It is estimated that over 99 percent of all species that ever existed have become extinct...</p>",
-        qContent: "Question 2: The word \"ultimately\" in paragraph (A) is closest in meaning to",
-        options: [
-          { id: 1, label: "A", content: "dramatically" },
-          { id: 2, label: "B", content: "exceptionally" },
-          { id: 3, label: "C", content: "unfortunately" },
-          { id: 4, label: "D", content: "eventually" },
-        ],
-      },
-      {
-        id: "w1",
-        qId: 5,
-        qSkill: "writing",
-        qPart: 1,
-        qContent:
-          "You should spend about 20 minutes on this task. Write an email responding to your friend and sharing your music preferences.",
-        qWord_count: 120,
-      },
-      {
-        id: "w2",
-        qId: 6,
-        qSkill: "writing",
-        qPart: 2,
-        qContent:
-          "You should spend about 40 minutes on this task. Write an essay discussing the effects of the Internet on human interactions.",
-        qWord_count: 250,
-      },
-      {
-        id: "s1",
-        qId: 7,
-        qSkill: "speaking",
-        qPart: 1,
-        qContent:
-          "Social Interaction (3 minutes): Talk about your birthday and your favorite means of transportation.",
-      },
-      {
-        id: "s2",
-        qId: 8,
-        qSkill: "speaking",
-        qPart: 2,
-        qContent: "Solution Discussion (4 minutes): Choose one option and justify your choice.",
-      },
-      {
-        id: "s3",
-        qId: 9,
-        qSkill: "speaking",
-        qPart: 3,
-        qContent: "Topic Development (5 minutes): Present your viewpoint and defend it with examples.",
-      },
-    ],
-  };
-}
-
-function ensureVstepFullExam(exam: any) {
-  if (!exam) return buildMockExam();
-
-  const questions = Array.isArray(exam?.questions) ? exam.questions : [];
-  const skillSet = new Set(questions.map((q: any) => getQuestionSkill(q)));
-  const hasAllSkills = ["listening", "reading", "writing", "speaking"].every((s) => skillSet.has(s));
-
-  if (hasAllSkills) return exam;
-
-  const title = String(exam?.eTitle ?? exam?.exam_title ?? "").toLowerCase();
-  const type = String(exam?.eType ?? exam?.exam_type ?? "").toLowerCase();
-  const isVstep = title.includes("vstep") || type.includes("vstep");
-
-  if (!isVstep) return exam;
-
-  const fallback = buildMockExam();
-  return {
-    ...fallback,
-    eTitle: exam?.eTitle ?? fallback.eTitle,
-  };
+function ensureValidExam(exam: any) {
+  if (!exam || !Array.isArray(exam?.questions)) return null;
+  return exam;
 }
 
 function mapSavedAnswers(savedAnswers: any[] | undefined) {
@@ -340,6 +227,7 @@ export function TestTaking() {
   }, [location.search]);
 
   const [submissionId, setSubmissionId] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [exam, setExam] = useState<any>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [activeSkill, setActiveSkill] = useState<string>("listening");
@@ -439,8 +327,12 @@ export function TestTaking() {
     onSuccess: (res: any) => {
       const data = res?.data?.data;
       const rawExam = data?.exam ?? data?.assignment?.exam;
-      const fetchedExam = ensureVstepFullExam(rawExam);
-      setSubmissionId(data?.submissionId || querySubmissionId || 999);
+      const fetchedExam = ensureValidExam(rawExam);
+      if (!fetchedExam) {
+        setLoadError("Không thể tải dữ liệu bài thi. Vui lòng thử lại.");
+        return;
+      }
+      setSubmissionId(data?.submissionId ?? querySubmissionId ?? null);
       setExam(fetchedExam);
       const restoredAnswers = mapSavedAnswers(data?.savedAnswers);
       if (Object.keys(restoredAnswers).length > 0) {
@@ -457,11 +349,7 @@ export function TestTaking() {
       setStarted(true);
     },
     onError: () => {
-      alert(t("student.examTaking.alertMockMode"));
-      setSubmissionId(999);
-      setExam(buildMockExam());
-      setTimeLeft(120 * 60);
-      setStarted(true);
+      setLoadError("Không thể kết nối đến máy chủ. Vui lòng tải lại trang.");
     },
   });
 
@@ -477,8 +365,7 @@ export function TestTaking() {
       navigate(`${STUDENT_BASE_PATH}/ket-qua/${sid}`);
     },
     onError: () => {
-      alert(t("student.examTaking.alertSubmitMock"));
-      navigate(`${STUDENT_BASE_PATH}/ket-qua/${submissionId ?? 999}`);
+      alert(t("student.examTaking.alertSubmitError"));
     },
   });
 
@@ -695,6 +582,25 @@ export function TestTaking() {
   }, [autoStart, started, startMutation]);
 
   if (!started) {
+    if (loadError) {
+      return (
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-7 h-7 text-red-500" />
+            </div>
+            <p className="text-base font-semibold text-gray-800">{loadError}</p>
+            <button
+              onClick={() => { setLoadError(null); startMutation.mutate(); }}
+              className="px-5 py-2.5 rounded-xl font-bold text-sm text-white hover:opacity-90 transition"
+              style={{ background: PURPLE }}
+            >
+              Thử lại
+            </button>
+          </div>
+        </div>
+      );
+    }
     if (autoStart) {
       return (
         <div className="min-h-[60vh] flex items-center justify-center">

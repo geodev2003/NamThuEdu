@@ -61,6 +61,17 @@ type SkillType = keyof typeof VSTEP_STRUCTURE;
 
 const STUDENT_BASE_PATH = "/hoc-vien";
 
+function mapSavedAnswers(savedAnswers: any[]): Record<string, string> {
+  if (!Array.isArray(savedAnswers)) return {};
+  const map: Record<string, string> = {};
+  savedAnswers.forEach((a: any) => {
+    const qid = String(a?.question_id ?? a?.qId ?? "");
+    const val = String(a?.saAnswer_text ?? a?.answer_text ?? a?.answer_id ?? "");
+    if (qid && val) map[qid] = val;
+  });
+  return map;
+}
+
 function formatClock(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
@@ -176,8 +187,14 @@ export function TestTakingVSTEP() {
   const navigate = useNavigate();
   const assignmentId = Number(id);
 
+  const querySubmissionId = useMemo(() => {
+    const raw = Number(new URLSearchParams(location.search).get("submissionId") ?? 0);
+    return Number.isFinite(raw) && raw > 0 ? raw : null;
+  }, [location.search]);
+
   // State
   const [submissionId, setSubmissionId] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [exam, setExam] = useState<any>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
@@ -277,74 +294,68 @@ export function TestTakingVSTEP() {
     return () => clearInterval(timer);
   }, [started, timeLeft, submitMutation]);
 
-  // Mock start for now
-  useEffect(() => {
-    if (!started) {
-      // Mock exam data
-      const mockExam = {
-        eTitle: "VSTEP B2 - Full Mock Test",
-        eDuration_minutes: 179,
-        questions: [
-          // Listening Part 1
-          ...Array.from({ length: 8 }, (_, i) => ({
-            id: `l1-${i + 1}`,
-            qId: i + 1,
-            qSkill: "listening",
-            qPart: 1,
-            qContent: `Question ${i + 1}: What music will they have at the party?`,
-            options: [
-              { id: 1, label: "A", content: "guitar" },
-              { id: 2, label: "B", content: "cello" },
-              { id: 3, label: "C", content: "CDs" },
-              { id: 4, label: "D", content: "piano" },
-            ],
-          })),
-          // Reading Part 1
-          ...Array.from({ length: 10 }, (_, i) => ({
-            id: `r1-${i + 1}`,
-            qId: 20 + i + 1,
-            qSkill: "reading",
-            qPart: 1,
-            qPassage: "<p>Reading passage content here...</p>",
-            qContent: `Question ${i + 1}: The word "it" in paragraph (A) refers to`,
-            options: [
-              { id: 1, label: "A", content: "99 percent" },
-              { id: 2, label: "B", content: "species" },
-              { id: 3, label: "C", content: "extinction" },
-              { id: 4, label: "D", content: "environment" },
-            ],
-          })),
-          // Writing Part 1
-          {
-            id: "w1-1",
-            qId: 76,
-            qSkill: "writing",
-            qPart: 1,
-            qContent: "Write an email responding to your friend (150 words minimum)",
-            qWord_count: 150,
-          },
-          // Speaking Part 1
-          {
-            id: "s1-1",
-            qId: 78,
-            qSkill: "speaking",
-            qPart: 1,
-            qContent: "Social Interaction (3 minutes): Talk about your birthday",
-          },
-        ],
-      };
-
-      setExam(mockExam);
-      setSubmissionId(999);
-      setTimeLeft(179 * 60);
+  // Start / resume real exam from backend
+  const startMutation = useMutation({
+    mutationFn: async () => {
+      if (querySubmissionId) {
+        return studentApi.resumeTest(assignmentId);
+      }
+      const startRes: any = await studentApi.startTest(assignmentId);
+      const startData = startRes?.data?.data;
+      if (!startData?.exam && startData?.canResume) {
+        return studentApi.resumeTest(assignmentId);
+      }
+      return startRes;
+    },
+    onSuccess: (res: any) => {
+      const data = res?.data?.data;
+      const rawExam = data?.exam ?? data?.assignment?.exam;
+      if (!rawExam) {
+        setLoadError("Không thể tải dữ liệu bài thi. Vui lòng thử lại.");
+        return;
+      }
+      setExam(rawExam);
+      setSubmissionId(data?.submissionId ?? querySubmissionId ?? null);
+      const restored = mapSavedAnswers(data?.savedAnswers);
+      if (Object.keys(restored).length > 0) setAnswers(restored);
+      const remaining = Number(data?.timeRemaining ?? 0);
+      setTimeLeft(remaining > 0 ? remaining * 60 : Number(rawExam?.eDuration_minutes ?? 179) * 60);
       setStarted(true);
+    },
+    onError: () => {
+      setLoadError("Không thể kết nối đến máy chủ. Vui lòng tải lại trang.");
+    },
+  });
+
+  useEffect(() => {
+    if (!started && !startMutation.isPending && !loadError) {
+      startMutation.mutate();
     }
-  }, [started]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!started) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: "#EDE9FE", borderTopColor: "#7C3AED" }} />
+        {loadError ? (
+          <div className="text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-7 h-7 text-red-500" />
+            </div>
+            <p className="text-base font-semibold text-gray-800">{loadError}</p>
+            <button
+              onClick={() => { setLoadError(null); startMutation.mutate(); }}
+              className="px-5 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-sm hover:bg-purple-700 transition"
+            >
+              Thử lại
+            </button>
+          </div>
+        ) : (
+          <div className="text-center space-y-3">
+            <div className="w-10 h-10 border-4 rounded-full animate-spin mx-auto" style={{ borderColor: "#EDE9FE", borderTopColor: "#7C3AED" }} />
+            <p className="text-sm text-slate-500">Đang tải bài thi...</p>
+          </div>
+        )}
       </div>
     );
   }

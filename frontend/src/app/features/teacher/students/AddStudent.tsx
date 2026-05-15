@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router";
 import {
@@ -18,6 +18,9 @@ import {
   Baby,
   Users,
   GraduationCap,
+  Loader2,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { useToast } from "../../../../hooks/useToast";
 import { ToastContainer } from "../../../../components/ui";
@@ -53,36 +56,102 @@ export function AddStudent() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
+  type PhoneStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid';
+  const [phoneStatus, setPhoneStatus] = useState<PhoneStatus>('idle');
+  const phoneDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const ADDRESS_API = import.meta.env.VITE_ADDRESS_API as string;
+  type AddrItem = { code: string; name: string };
+  const [provinces, setProvinces] = useState<AddrItem[]>([]);
+  const [communes, setCommunes] = useState<AddrItem[]>([]);
+  const [addrProvince, setAddrProvince] = useState<AddrItem | null>(null);
+  const [addrCommune, setAddrCommune] = useState<AddrItem | null>(null);
+  const [addrStreet, setAddrStreet] = useState('');
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingCommunes, setLoadingCommunes] = useState(false);
+
+  useEffect(() => {
+    setLoadingProvinces(true);
+    fetch(`${ADDRESS_API}/provinces`)
+      .then(r => r.json())
+      .then(d => setProvinces((d.provinces ?? []).map((p: any) => ({ code: p.code, name: p.name }))))
+      .catch(() => {})
+      .finally(() => setLoadingProvinces(false));
+  }, []);
+
+  useEffect(() => {
+    if (!addrProvince) { setCommunes([]); setAddrCommune(null); return; }
+    setLoadingCommunes(true);
+    setAddrCommune(null);
+    fetch(`${ADDRESS_API}/provinces/${addrProvince.code}/communes`)
+      .then(r => r.json())
+      .then(d => setCommunes((d.communes ?? []).map((c: any) => ({ code: c.code, name: c.name }))))
+      .catch(() => {})
+      .finally(() => setLoadingCommunes(false));
+  }, [addrProvince]);
+
+  useEffect(() => {
+    const parts = [addrStreet.trim(), addrCommune?.name, addrProvince?.name].filter(Boolean);
+    handleInputChange('address', parts.join(', '));
+  }, [addrStreet, addrCommune, addrProvince]);
+
+  useEffect(() => {
+    const phone = formData.studentPhone.trim();
+    if (!phone) { setPhoneStatus('idle'); return; }
+
+    const phoneRegex = /^0[0-9]{9,10}$/;
+    if (!phoneRegex.test(phone)) { setPhoneStatus('invalid'); return; }
+
+    if (phoneDebounceRef.current) clearTimeout(phoneDebounceRef.current);
+    setPhoneStatus('checking');
+
+    phoneDebounceRef.current = setTimeout(async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/teacher/student/check-phone?phone=${encodeURIComponent(phone)}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const data = await res.json();
+        setPhoneStatus(data.available ? 'available' : 'taken');
+      } catch {
+        setPhoneStatus('idle');
+      }
+    }, 500);
+
+    return () => { if (phoneDebounceRef.current) clearTimeout(phoneDebounceRef.current); };
+  }, [formData.studentPhone]);
+
   const ageGroups = [
     {
       value: 'kids' as const,
-      label: 'Trẻ em',
-      ageRange: '6-12 tuổi',
+      label: t('teacher.students.addStudent.ageGroups.kids.label'),
+      ageRange: t('teacher.students.addStudent.ageGroups.kids.ageRange'),
       icon: Baby,
       color: 'from-pink-400 to-purple-400',
       bgColor: 'bg-pink-50',
       borderColor: 'border-pink-300',
-      description: 'Lớp 1 - 5 (Tiểu học)'
+      description: t('teacher.students.addStudent.ageGroups.kids.description')
     },
     {
       value: 'teens' as const,
-      label: 'Thiếu niên',
-      ageRange: '13-17 tuổi',
+      label: t('teacher.students.addStudent.ageGroups.teens.label'),
+      ageRange: t('teacher.students.addStudent.ageGroups.teens.ageRange'),
       icon: Users,
       color: 'from-orange-400 to-amber-400',
       bgColor: 'bg-orange-50',
       borderColor: 'border-orange-300',
-      description: 'Cấp 2 - 3 (THCS + THPT)'
+      description: t('teacher.students.addStudent.ageGroups.teens.description')
     },
     {
       value: 'adults' as const,
-      label: 'Người lớn',
-      ageRange: '18+ tuổi',
+      label: t('teacher.students.addStudent.ageGroups.adults.label'),
+      ageRange: t('teacher.students.addStudent.ageGroups.adults.ageRange'),
       icon: GraduationCap,
       color: 'from-slate-400 to-gray-400',
       bgColor: 'bg-slate-50',
       borderColor: 'border-slate-300',
-      description: 'Sinh viên & người đi làm'
+      description: t('teacher.students.addStudent.ageGroups.adults.description')
     },
   ];
 
@@ -93,16 +162,16 @@ export function AddStudent() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Kích thước ảnh không được vượt quá 5MB');
+      // Validate file size (max 20MB)
+      if (file.size > 20 * 1024 * 1024) {
+        setError(t('teacher.students.addStudent.avatar.tooLarge'));
         return;
       }
 
       // Validate file type - accept common image formats
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml'];
       if (!allowedTypes.includes(file.type)) {
-        setError('Vui lòng chọn file ảnh hợp lệ (JPG, PNG, GIF, WEBP, BMP, SVG)');
+        setError(t('teacher.students.addStudent.avatar.invalidType'));
         return;
       }
 
@@ -127,9 +196,18 @@ export function AddStudent() {
     e.preventDefault();
     setError(null);
     
+    if (phoneStatus === 'taken') {
+      setError('Số điện thoại này đã được sử dụng. Vui lòng chọn số khác.');
+      return;
+    }
+    if (phoneStatus === 'invalid') {
+      setError('Định dạng số điện thoại không hợp lệ.');
+      return;
+    }
+
     // Validate password if not auto-generating
     if (!autoPassword && !formData.studentPassword) {
-      setError('Vui lòng nhập mật khẩu');
+      setError(t('teacher.students.addStudent.validation.passwordRequired'));
       return;
     }
     
@@ -181,7 +259,7 @@ export function AddStudent() {
       console.log('Response:', data);
 
       if (!response.ok) {
-        throw new Error(data.message || 'Không thể tạo học viên');
+        throw new Error(data.message || t('teacher.students.addStudent.error'));
       }
 
       // Success - show credentials modal with password
@@ -192,19 +270,19 @@ export function AddStudent() {
       });
       setShowCredentialsModal(true);
       
-      success(`Đã tạo học viên "${formData.studentName}" thành công! 🎉`);
+      success(t('teacher.students.addStudent.toast.success', { name: formData.studentName }));
     } catch (err: any) {
       console.error('Error:', err);
-      setError(err.message || 'Có lỗi xảy ra');
-      showError(err.message || 'Có lỗi xảy ra khi tạo học viên');
+      setError(err.message || t('teacher.students.addStudent.error'));
+      showError(err.message || t('teacher.students.addStudent.toast.error'));
     } finally {
       setIsLoading(false);
     }
   };
 
   const steps = [
-    { id: 1, title: "Thông tin cá nhân", icon: User },
-    { id: 2, title: "Tài khoản", icon: Shield },
+    { id: 1, title: t('teacher.students.addStudent.steps.personalInfo'), icon: User },
+    { id: 2, title: t('teacher.students.addStudent.steps.account'), icon: Shield },
   ];
 
   return (
@@ -219,15 +297,15 @@ export function AddStudent() {
           <div className="p-1.5 rounded-lg bg-white border border-[#E5E7EB] group-hover:border-[#EA580C] transition-colors">
             <ArrowLeft className="w-4 h-4" />
           </div>
-          <span className="text-sm font-medium">Quay lại danh sách</span>
+          <span className="text-sm font-medium">{t('teacher.students.addStudent.backBtn')}</span>
         </Link>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-[#111827] mb-2">
-              Thêm học sinh mới
+              {t('teacher.students.addStudent.title')}
             </h1>
             <p className="text-[#6B7280]">
-              Điền đầy đủ thông tin để tạo hồ sơ học sinh
+              {t('teacher.students.addStudent.subtitle')}
             </p>
           </div>
         </div>
@@ -266,10 +344,10 @@ export function AddStudent() {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-[#111827]">
-                Thông tin cá nhân
+                {t('teacher.students.addStudent.personalSection.title')}
               </h2>
               <p className="text-sm text-[#6B7280]">
-                Thông tin cơ bản về học sinh
+                {t('teacher.students.addStudent.personalSection.subtitle')}
               </p>
             </div>
           </div>
@@ -309,9 +387,9 @@ export function AddStudent() {
                 )}
               </div>
               <p className="text-xs text-[#6B7280] mt-3 text-center font-medium">
-                Tải ảnh đại diện
+                {t('teacher.students.addStudent.avatar.upload')}
                 <br />
-                <span className="text-[#9CA3AF]">JPG, PNG, GIF, WEBP (Max 5MB)</span>
+                <span className="text-[#9CA3AF]">{t('teacher.students.addStudent.avatar.formats')}</span>
               </p>
             </div>
 
@@ -319,14 +397,14 @@ export function AddStudent() {
               <div className="col-span-2">
                 <label className="flex items-center gap-2 text-sm font-semibold text-[#111827] mb-3">
                   <User className="w-4 h-4 text-[#6B7280]" />
-                  Họ và tên <span className="text-[#EF4444] ml-1">*</span>
+                  {t('teacher.students.addStudent.fullName')} <span className="text-[#EF4444] ml-1">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={formData.studentName}
                   onChange={(e) => handleInputChange("studentName", e.target.value)}
-                  placeholder="Nhập họ và tên đầy đủ"
+                  placeholder={t('teacher.students.addStudent.namePlaceholder')}
                   className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
                 />
               </div>
@@ -334,22 +412,38 @@ export function AddStudent() {
               <div>
                 <label className="flex items-center gap-2 text-sm font-semibold text-[#111827] mb-3">
                   <Phone className="w-4 h-4 text-[#6B7280]" />
-                  Số điện thoại <span className="text-[#EF4444] ml-1">*</span>
+                  {t('teacher.students.addStudent.phone')} <span className="text-[#EF4444] ml-1">*</span>
                 </label>
-                <input
-                  type="tel"
-                  required
-                  value={formData.studentPhone}
-                  onChange={(e) => handleInputChange("studentPhone", e.target.value)}
-                  placeholder="0901 234 567"
-                  className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
-                />
+                <div className="relative">
+                  <input
+                    type="tel"
+                    required
+                    value={formData.studentPhone}
+                    onChange={(e) => handleInputChange("studentPhone", e.target.value)}
+                    placeholder="0901 234 567"
+                    className={`w-full px-4 py-3.5 pr-11 border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB] ${
+                      phoneStatus === 'taken'   ? 'border-red-400 focus:ring-red-200' :
+                      phoneStatus === 'available' ? 'border-emerald-400 focus:ring-emerald-100' :
+                      phoneStatus === 'invalid'  ? 'border-amber-400 focus:ring-amber-100' :
+                      'border-[#E5E7EB] focus:ring-[#EA580C]'
+                    }`}
+                  />
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                    {phoneStatus === 'checking'  && <Loader2   className="w-4 h-4 animate-spin text-slate-400" />}
+                    {phoneStatus === 'available' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                    {phoneStatus === 'taken'     && <XCircle   className="w-4 h-4 text-red-500" />}
+                    {phoneStatus === 'invalid'   && <XCircle   className="w-4 h-4 text-amber-500" />}
+                  </div>
+                </div>
+                {phoneStatus === 'taken'     && <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1"><XCircle className="w-3 h-3" /> Số điện thoại này đã được sử dụng</p>}
+                {phoneStatus === 'available' && <p className="mt-1.5 text-xs text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Số điện thoại hợp lệ</p>}
+                {phoneStatus === 'invalid'   && <p className="mt-1.5 text-xs text-amber-600 flex items-center gap-1"><XCircle className="w-3 h-3" /> Định dạng không hợp lệ (VD: 0901234567)</p>}
               </div>
 
               <div>
                 <label className="flex items-center gap-2 text-sm font-semibold text-[#111827] mb-3">
                   <Mail className="w-4 h-4 text-[#6B7280]" />
-                  Email <span className="text-[#9CA3AF] font-normal">(Không bắt buộc)</span>
+                  {t('teacher.students.addStudent.emailOptional')}
                 </label>
                 <input
                   type="email"
@@ -366,7 +460,7 @@ export function AddStudent() {
             <div>
               <label className="flex items-center gap-2 text-sm font-semibold text-[#111827] mb-3">
                 <Calendar className="w-4 h-4 text-[#6B7280]" />
-                Ngày sinh
+                {t('teacher.students.addStudent.dateOfBirth')}
               </label>
               <input
                 type="date"
@@ -378,13 +472,13 @@ export function AddStudent() {
 
             <div>
               <label className="block text-sm font-semibold text-[#111827] mb-3">
-                Giới tính
+                {t('teacher.students.addStudent.gender')}
               </label>
               <div className="flex items-center gap-4 h-[50px]">
                 {[
-                  { value: "male", label: "Nam" },
-                  { value: "female", label: "Nữ" },
-                  { value: "other", label: "Khác" },
+                  { value: "male", label: t('teacher.students.addStudent.genderOptions.male') },
+                  { value: "female", label: t('teacher.students.addStudent.genderOptions.female') },
+                  { value: "other", label: t('teacher.students.addStudent.genderOptions.other') },
                 ].map((option) => (
                   <label
                     key={option.value}
@@ -411,23 +505,62 @@ export function AddStudent() {
             <div className="col-span-2">
               <label className="flex items-center gap-2 text-sm font-semibold text-[#111827] mb-3">
                 <MapPin className="w-4 h-4 text-[#6B7280]" />
-                Địa chỉ
+                {t('teacher.students.addStudent.address')}
               </label>
-              <textarea
-                value={formData.address}
-                onChange={(e) => handleInputChange("address", e.target.value)}
-                placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
-                rows={3}
-                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent resize-none transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="relative">
+                  <select
+                    value={addrProvince?.code ?? ''}
+                    onChange={e => {
+                      const p = provinces.find(x => x.code === e.target.value) ?? null;
+                      setAddrProvince(p);
+                    }}
+                    disabled={loadingProvinces}
+                    className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] bg-white appearance-none cursor-pointer hover:border-[#D1D5DB] disabled:opacity-60"
+                  >
+                    <option value="">{loadingProvinces ? 'Đang tải...' : 'Chọn Tỉnh / Thành phố'}</option>
+                    {provinces.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
+                  </select>
+                  <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  </div>
+                </div>
+                <div className="relative">
+                  <select
+                    value={addrCommune?.code ?? ''}
+                    onChange={e => setAddrCommune(communes.find(x => x.code === e.target.value) ?? null)}
+                    disabled={!addrProvince || loadingCommunes}
+                    className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] bg-white appearance-none cursor-pointer hover:border-[#D1D5DB] disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <option value="">{loadingCommunes ? 'Đang tải...' : !addrProvince ? 'Chọn tỉnh trước' : 'Chọn Phường / Xã'}</option>
+                    {communes.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                  </select>
+                  <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  </div>
+                </div>
+              </div>
+              <input
+                type="text"
+                value={addrStreet}
+                onChange={e => setAddrStreet(e.target.value)}
+                placeholder="Số nhà, tên đường..."
+                className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all text-[#111827] placeholder:text-[#9CA3AF] hover:border-[#D1D5DB]"
               />
+              {formData.address && (
+                <p className="mt-2 text-xs text-slate-400 flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  {formData.address}
+                </p>
+              )}
             </div>
 
             <div className="col-span-2">
               <label className="block text-sm font-semibold text-[#111827] mb-3">
-                Chọn độ tuổi học viên <span className="text-red-500">*</span>
+                {t('teacher.students.addStudent.ageGroupTitle')} <span className="text-red-500">*</span>
               </label>
               <p className="text-xs text-[#6B7280] mb-3">
-                Học viên sẽ được tự động gán vào lớp phù hợp với độ tuổi
+                {t('teacher.students.addStudent.ageGroupSubtitle')}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {ageGroups.map((group) => {
@@ -487,10 +620,10 @@ export function AddStudent() {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-[#111827]">
-                Tài khoản đăng nhập
+                {t('teacher.students.addStudent.accountSection.title')}
               </h2>
               <p className="text-sm text-[#6B7280]">
-                Thông tin bảo mật và quyền truy cập
+                {t('teacher.students.addStudent.accountSection.subtitle')}
               </p>
             </div>
           </div>
@@ -506,14 +639,14 @@ export function AddStudent() {
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <p className="font-bold text-[#C2410C]">
-                    Tự động tạo mật khẩu
+                    {t('teacher.students.addStudent.autoPassword.label')}
                   </p>
                   <span className="px-2 py-0.5 bg-[#EA580C] text-white text-xs font-bold rounded-full">
-                    Khuyến nghị
+                    {t('teacher.students.addStudent.autoPassword.badge')}
                   </span>
                 </div>
                 <p className="text-sm text-[#6B7280]">
-                  Hệ thống sẽ tạo mật khẩu mạnh và gửi qua SMS/Email cho học sinh
+                  {t('teacher.students.addStudent.autoPassword.description')}
                 </p>
               </div>
             </label>
@@ -522,7 +655,7 @@ export function AddStudent() {
               <div className="grid grid-cols-2 gap-6 p-6 bg-[#F9FAFB] rounded-xl border border-[#E5E7EB]">
                 <div>
                   <label className="block text-sm font-semibold text-[#111827] mb-3">
-                    Mật khẩu <span className="text-[#EF4444]">*</span>
+                    {t('teacher.students.addStudent.passwordLabel')} <span className="text-[#EF4444]">*</span>
                   </label>
                   <div className="relative">
                     <input
@@ -530,7 +663,7 @@ export function AddStudent() {
                       required={!autoPassword}
                       value={formData.studentPassword}
                       onChange={(e) => handleInputChange("studentPassword", e.target.value)}
-                      placeholder="Nhập mật khẩu mạnh"
+                      placeholder={t('teacher.students.addStudent.passwordPlaceholder')}
                       className="w-full px-4 py-3.5 pr-12 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all bg-white"
                     />
                     <button
@@ -553,14 +686,14 @@ export function AddStudent() {
                       />
                     </div>
                     <span className="text-xs text-[#10B981] font-bold px-2 py-0.5 bg-[#D1FAE5] rounded">
-                      Mạnh
+                      {t('teacher.students.addStudent.passwordStrong')}
                     </span>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-[#111827] mb-3">
-                    Xác nhận mật khẩu <span className="text-[#EF4444]">*</span>
+                    {t('teacher.students.addStudent.confirmPasswordLabel')} <span className="text-[#EF4444]">*</span>
                   </label>
                   <input
                     type="password"
@@ -569,7 +702,7 @@ export function AddStudent() {
                     onChange={(e) =>
                       handleInputChange("confirmPassword", e.target.value)
                     }
-                    placeholder="Nhập lại mật khẩu"
+                    placeholder={t('teacher.students.addStudent.confirmPasswordPlaceholder')}
                     className="w-full px-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all bg-white"
                   />
                 </div>
@@ -585,13 +718,13 @@ export function AddStudent() {
               />
               <Phone className="w-5 h-5 text-[#6B7280] group-hover:text-[#EA580C] transition-colors" />
               <span className="text-sm font-medium text-[#374151] group-hover:text-[#EA580C] transition-colors">
-                Gửi thông tin tài khoản qua SMS
+                {t('teacher.students.addStudent.sendSMS')}
               </span>
             </label>
 
             <div className="p-5 bg-[#F9FAFB] rounded-xl border border-[#E5E7EB]">
               <label className="block text-sm font-semibold text-[#111827] mb-4">
-                Trạng thái tài khoản
+                {t('teacher.students.addStudent.statusLabel')}
               </label>
               <div className="flex items-center gap-4">
                 <button
@@ -615,7 +748,7 @@ export function AddStudent() {
                   <span className={`text-sm font-bold ${
                     formData.status === "active" ? "text-[#10B981]" : "text-[#6B7280]"
                   }`}>
-                    {formData.status === "active" ? "Kích hoạt" : "Tạm khóa"}
+                    {formData.status === "active" ? t('teacher.students.addStudent.statusActive') : t('teacher.students.addStudent.statusInactive')}
                   </span>
                   {formData.status === "active" && (
                     <div className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
@@ -624,8 +757,8 @@ export function AddStudent() {
               </div>
               <p className="text-xs text-[#6B7280] mt-3">
                 {formData.status === "active"
-                  ? "Học sinh có thể đăng nhập và sử dụng hệ thống"
-                  : "Tài khoản bị tạm khóa, học sinh không thể đăng nhập"}
+                  ? t('teacher.students.addStudent.statusActiveDesc')
+                  : t('teacher.students.addStudent.statusInactiveDesc')}
               </p>
             </div>
           </div>
@@ -645,7 +778,7 @@ export function AddStudent() {
             className="flex items-center gap-2 px-6 py-3.5 border-2 border-[#E5E7EB] text-[#374151] rounded-xl hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-all font-semibold"
           >
             <X className="w-5 h-5" />
-            Hủy bỏ
+            {t('teacher.students.addStudent.cancel')}
           </Link>
           <div className="flex items-center gap-3">
             <button
@@ -659,12 +792,12 @@ export function AddStudent() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  <span>Đang tạo...</span>
+                  <span>{t('teacher.students.addStudent.submitting')}</span>
                 </>
               ) : (
                 <>
                   <Save className="w-5 h-5" />
-                  Thêm học sinh
+                  {t('teacher.students.addStudent.submit')}
                 </>
               )}
             </button>

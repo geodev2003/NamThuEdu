@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import {
   BarChart3,
@@ -27,6 +28,7 @@ import {
 } from "recharts";
 
 export function AssignmentStats() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,13 +50,13 @@ export function AssignmentStats() {
           if (result.status === 'success') {
             setStats(result.data);
           } else {
-            setError('Không thể tải thống kê giao bài');
+            setError(t('teacher.assignments.assignmentStats.loadError'));
           }
         } else {
-          setError('Lỗi khi tải dữ liệu');
+          setError(t('teacher.assignments.assignmentStats.dataError'));
         }
       } catch (err) {
-        setError('Lỗi kết nối đến server');
+        setError(t('teacher.assignments.assignmentStats.connectionError'));
       } finally {
         setLoading(false);
       }
@@ -68,7 +70,7 @@ export function AssignmentStats() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 font-semibold">Đang tải thống kê giao bài...</p>
+          <p className="text-gray-600 font-semibold">{t("teacher.assignments.assignmentStats.loading")}</p>
         </div>
       </div>
     );
@@ -81,12 +83,12 @@ export function AssignmentStats() {
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-8 h-8 text-red-600" />
           </div>
-          <p className="text-red-600 font-semibold mb-2">{error || 'Không tìm thấy dữ liệu'}</p>
+          <p className="text-red-600 font-semibold mb-2">{error || t("teacher.assignments.assignmentStats.notFound")}</p>
           <button
             onClick={() => window.location.reload()}
             className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
           >
-            Thử lại
+            {t("teacher.assignments.assignmentStats.retry")}
           </button>
         </div>
       </div>
@@ -99,7 +101,7 @@ export function AssignmentStats() {
 
   const statsCards = [
     {
-      label: "Tổng số bài đã giao",
+      label: t("teacher.assignments.assignmentStats.totalAssigned"),
       value: stats.totalAssignments || "0",
       change: "+12%",
       trend: "up",
@@ -109,7 +111,7 @@ export function AssignmentStats() {
       iconColor: "text-blue-600",
     },
     {
-      label: "Bài có deadline",
+      label: t("teacher.assignments.assignmentStats.withDeadline"),
       value: stats.withDeadlines || "0",
       change: "+8%",
       trend: "up",
@@ -119,7 +121,7 @@ export function AssignmentStats() {
       iconColor: "text-green-600",
     },
     {
-      label: "Giao gần đây (7 ngày)",
+      label: t("teacher.assignments.assignmentStats.recentCount"),
       value: stats.recentAssignmentsCount || "0",
       change: "+25%",
       trend: "up",
@@ -129,7 +131,7 @@ export function AssignmentStats() {
       iconColor: "text-purple-600",
     },
     {
-      label: "Bài quá hạn",
+      label: t("teacher.assignments.assignmentStats.overdueCount"),
       value: stats.overdue || "0",
       change: "-15%",
       trend: "down",
@@ -142,22 +144,22 @@ export function AssignmentStats() {
 
   const quickActions = [
     {
-      title: "Xem tất cả bài thi",
-      description: "Danh sách đầy đủ các bài đã giao",
+      title: t("teacher.assignments.assignmentStats.viewAll"),
+      description: t("teacher.assignments.assignmentStats.viewAllDesc"),
       icon: Eye,
       link: "/giao-vien/bai-tap",
       color: "from-blue-500 to-blue-600",
     },
     {
-      title: "Giao bài mới",
-      description: "Tạo assignment mới cho học sinh",
+      title: t("teacher.assignments.assignmentStats.createNew"),
+      description: t("teacher.assignments.assignmentStats.createNewDesc"),
       icon: Plus,
       link: "/giao-vien/bai-tap/giao-moi",
       color: "from-green-500 to-green-600",
     },
     {
-      title: "Báo cáo chi tiết",
-      description: "Xem phân tích và báo cáo đầy đủ",
+      title: t("teacher.assignments.assignmentStats.report"),
+      description: t("teacher.assignments.assignmentStats.reportDesc"),
       icon: FileText,
       link: "/giao-vien/bao-cao",
       color: "from-purple-500 to-purple-600",
@@ -170,15 +172,15 @@ export function AssignmentStats() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Thống kê giao bài 📈</h1>
-            <p className="text-gray-600 mt-1">Tổng quan và phân tích các bài thi đã giao</p>
+            <h1 className="text-3xl font-bold text-gray-900">{t("teacher.assignments.assignmentStats.heading")} 📈</h1>
+            <p className="text-gray-600 mt-1">{t("teacher.assignments.assignmentStats.subtitle")}</p>
           </div>
           <Link
             to="/giao-vien/bai-tap/giao-moi"
             className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 flex items-center gap-2 shadow-lg shadow-blue-500/30"
           >
             <Plus className="w-5 h-5" />
-            Giao bài mới
+            {t("teacher.assignments.assignmentStats.createNew")}
           </Link>
         </div>
 
@@ -220,7 +222,7 @@ export function AssignmentStats() {
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-blue-600" />
-              Phân bố theo đề thi
+              {t("teacher.assignments.assignmentStats.byExam")}
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={assignmentsByExam}>
@@ -250,7 +252,7 @@ export function AssignmentStats() {
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-green-600" />
-              Xu hướng giao bài (7 ngày qua)
+              {t("teacher.assignments.assignmentStats.trends")}
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={assignmentTrends}>
@@ -288,7 +290,7 @@ export function AssignmentStats() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Quick Actions */}
           <div className="lg:col-span-1 space-y-4">
-            <h3 className="text-lg font-bold text-gray-900">Thao tác nhanh</h3>
+            <h3 className="text-lg font-bold text-gray-900">{t("teacher.assignments.assignmentStats.quickActions")}</h3>
             {quickActions.map((action, index) => (
               <Link
                 key={index}
@@ -314,7 +316,7 @@ export function AssignmentStats() {
 
           {/* Recent Assignments */}
           <div className="lg:col-span-2 space-y-4">
-            <h3 className="text-lg font-bold text-gray-900">Bài thi gần đây</h3>
+            <h3 className="text-lg font-bold text-gray-900">{t("teacher.assignments.assignmentStats.recentAssignments")}</h3>
             <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 overflow-hidden">
               <div className="divide-y divide-gray-200">
                 {recentAssignments.map((assignment) => (
@@ -351,7 +353,7 @@ export function AssignmentStats() {
                           <p className="text-sm text-gray-600">
                             {assignment.completed}/{assignment.students}
                           </p>
-                          <p className="text-xs text-gray-500">Hoàn thành</p>
+                          <p className="text-xs text-gray-500">{t("teacher.assignments.assignmentStats.completedLabel")}</p>
                         </div>
                         <div className="w-16 h-16 relative">
                           <svg className="w-16 h-16 transform -rotate-90">

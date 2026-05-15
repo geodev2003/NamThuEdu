@@ -47,6 +47,7 @@ class ExamController extends Controller
                         $q->whereNull('ePurpose')
                           ->orWhere('ePurpose', '!=', 'practice');
                     })
+                    ->withCount('questions')
                     ->orderBy('eCreated_at', 'desc')
                     ->get();
 
@@ -84,6 +85,7 @@ class ExamController extends Controller
      */
     public function store(Request $request)
     {
+        
         $user = $request->user();
 
         if (!$user || $user->uRole !== 'teacher') {
@@ -1082,13 +1084,27 @@ class ExamController extends Controller
                 ], 404);
             }
 
-            // Delete existing questions for this part
-            Question::where('exam_id', $exam->eId)
-                   ->where('qPart', $partNumber)
-                   ->delete();
+            // Delete existing reading questions for this part (DON'T touch listening/writing)
+            $oldQs = Question::where('exam_id', $exam->eId)
+                ->where('qSkill', 'reading')
+                ->where('qPart', $partNumber)
+                ->get();
+            foreach ($oldQs as $oq) {
+                Answer::where('question_id', $oq->qId)->delete();
+                $oq->delete();
+            }
 
-            // Create content block for passage
-            $contentBlock = \App\Models\ContentBlock::create([
+            // Find or create content_block for this passage (avoid duplicates)
+            $contentBlock = \App\Models\ContentBlock::where('exam_id', $exam->eId)
+                ->where('block_type', 'passage')
+                ->get()
+                ->first(function ($b) use ($partNumber) {
+                    $meta = $b->metadata ?? [];
+                    return ($meta['part_number'] ?? null) == $partNumber
+                        && isset($meta['word_count']);
+                });
+
+            $blockData = [
                 'exam_id' => $exam->eId,
                 'block_type' => 'passage',
                 'content' => $request->passage,
@@ -1098,7 +1114,12 @@ class ExamController extends Controller
                     'word_count' => $request->wordCount,
                 ],
                 'display_order' => $partNumber,
-            ]);
+            ];
+            if ($contentBlock) {
+                $contentBlock->update($blockData);
+            } else {
+                $contentBlock = \App\Models\ContentBlock::create($blockData);
+            }
 
             // Create questions
             foreach ($request->questions as $questionData) {
@@ -1298,10 +1319,14 @@ class ExamController extends Controller
         // Organize data by parts
         $parts = [];
         for ($i = 1; $i <= 4; $i++) {
-            // FIXED: Filter by qSkill = 'reading' to avoid mixing with speaking/listening questions
+            // Filter by skill + part; NULL-part/skill questions belong to Part 1 only
             $partQuestions = $exam->questions
-                ->where('qPart', $i)
-                ->where('qSkill', 'reading')
+                ->filter(function($q) use ($i) {
+                    $skillMatch = $q->qSkill === 'reading' || $q->qSkill === null || $q->qSkill === '';
+                    $noPartSet  = ($q->qPart === null || $q->qPart === 0);
+                    $partMatch  = $noPartSet ? ($i === 1) : ($q->qPart == $i);
+                    return $skillMatch && $partMatch;
+                })
                 ->values();
             
             // FIXED: Filter content blocks to only get reading parts (those with word_count)
@@ -1786,7 +1811,7 @@ class ExamController extends Controller
      * Layout chuẩn VSTEP Listening (số section + số câu hỏi mỗi section)
      */
     private const LISTENING_LAYOUT = [
-        1 => ['sectionCount' => 8, 'questionsPerSection' => 1, 'questionStart' => 1,  'sectionLabel' => 'Announcement'],
+        1 => ['sectionCount' => 1, 'questionsPerSection' => 8, 'questionStart' => 1,  'sectionLabel' => 'Announcements'],
         2 => ['sectionCount' => 3, 'questionsPerSection' => 4, 'questionStart' => 9,  'sectionLabel' => 'Conversation'],
         3 => ['sectionCount' => 3, 'questionsPerSection' => 5, 'questionStart' => 21, 'sectionLabel' => 'Talk'],
     ];
@@ -1949,8 +1974,8 @@ class ExamController extends Controller
 
         $validator = Validator::make($request->all(), [
             'sectionName' => 'nullable|string',
-            'audioUrl' => 'required|string',
-            'audioDuration' => 'required|integer|min:1',
+            'audioUrl' => 'nullable|string',
+            'audioDuration' => 'nullable|integer|min:0',
             'transcript' => 'nullable|string',
             'questions' => "required|array|min:1|max:{$expectedQ}",
             'questions.*.questionNumber' => 'required|integer',
@@ -1978,18 +2003,21 @@ class ExamController extends Controller
             $allMatches = $this->findAllListeningSectionBlocks((int) $exam->eId, $partNumber, $sectionNumber);
             $existing = $this->findListeningSectionBlock((int) $exam->eId, $partNumber, $sectionNumber);
 
+            $audioUrl = $request->audioUrl ?? ($existing->content ?? '');
+            $audioDuration = $request->audioDuration ?? ($existing->metadata['audio_duration'] ?? 0);
+
             $metadata = [
                 'part_number' => $partNumber,
                 'section_number' => $sectionNumber,
                 'part_name' => "Part {$partNumber}",
                 'section_name' => $request->sectionName ?: ($existing->metadata['section_name'] ?? $defaultName),
-                'audio_duration' => $request->audioDuration,
-                'transcript' => $request->transcript,
+                'audio_duration' => $audioDuration,
+                'transcript' => $request->transcript ?? ($existing->metadata['transcript'] ?? ''),
             ];
 
             if ($existing) {
                 $existing->update([
-                    'content' => $request->audioUrl,
+                    'content' => $audioUrl,
                     'metadata' => $metadata,
                     'display_order' => $this->listeningDisplayOrder($partNumber, $sectionNumber),
                 ]);
@@ -1998,7 +2026,7 @@ class ExamController extends Controller
                 $contentBlock = \App\Models\ContentBlock::create([
                     'exam_id' => $exam->eId,
                     'block_type' => 'audio',
-                    'content' => $request->audioUrl,
+                    'content' => $audioUrl,
                     'metadata' => $metadata,
                     'display_order' => $this->listeningDisplayOrder($partNumber, $sectionNumber),
                 ]);
@@ -2604,13 +2632,26 @@ class ExamController extends Controller
                 ], 404);
             }
 
-            // Delete existing question for this task
-            Question::where('exam_id', $exam->eId)
-                   ->where('qPart', $taskNumber)
-                   ->delete();
+            // Delete existing writing question for this task (DON'T touch listening/reading)
+            $oldQs = Question::where('exam_id', $exam->eId)
+                ->where('qSkill', 'writing')
+                ->where('qPart', $taskNumber)
+                ->get();
+            foreach ($oldQs as $oq) {
+                Answer::where('question_id', $oq->qId)->delete();
+                $oq->delete();
+            }
 
-            // Create content block for prompt
-            $contentBlock = \App\Models\ContentBlock::create([
+            // Find or create content_block for this writing task (avoid duplicates)
+            $contentBlock = \App\Models\ContentBlock::where('exam_id', $exam->eId)
+                ->where('block_type', 'instruction')
+                ->get()
+                ->first(function ($b) use ($taskNumber) {
+                    $meta = $b->metadata ?? [];
+                    return ($meta['task_number'] ?? null) == $taskNumber;
+                });
+
+            $blockData = [
                 'exam_id' => $exam->eId,
                 'block_type' => 'instruction',
                 'content' => $request->prompt,
@@ -2621,7 +2662,12 @@ class ExamController extends Controller
                     'time_limit' => $request->timeLimit,
                 ],
                 'display_order' => $taskNumber,
-            ]);
+            ];
+            if ($contentBlock) {
+                $contentBlock->update($blockData);
+            } else {
+                $contentBlock = \App\Models\ContentBlock::create($blockData);
+            }
 
             // Create question (writing task)
             $question = Question::create([
@@ -2904,15 +2950,27 @@ class ExamController extends Controller
                 ]);
             }
 
-            // Delete existing content blocks and questions for this part
+            // Delete existing content blocks and questions for THIS Speaking part only.
+            // CRITICAL: filter by block_type='instruction' để không xoá Reading passage
+            // (cũng có metadata->part_number trùng) hoặc Listening audio.
             $existingBlocks = \App\Models\ContentBlock::where('exam_id', $exam->eId)
+                ->where('block_type', 'instruction')
                 ->whereJsonContains('metadata->part_number', $partNumber)
                 ->get();
-            
+
             foreach ($existingBlocks as $block) {
-                Question::where('content_block_id', $block->id)->delete();
+                // Chỉ xoá questions thuộc Speaking skill
+                Question::where('content_block_id', $block->id)
+                    ->where('qSkill', 'speaking')
+                    ->delete();
                 $block->delete();
             }
+
+            // Đồng thời xoá orphan Speaking questions của part này (không gắn block)
+            Question::where('exam_id', $exam->eId)
+                ->where('qSkill', 'speaking')
+                ->where('qPart', $partNumber)
+                ->delete();
 
             // Create content block for part
             $contentBlock = \App\Models\ContentBlock::create([

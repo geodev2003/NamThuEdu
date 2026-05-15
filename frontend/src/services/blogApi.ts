@@ -87,3 +87,41 @@ export const blogTypeApi = {
   getBlogTypes: () => api.get<{ status: string; data: BlogType[] }>('/teacher/blog-types'),
   createBlogType: (data: CreateBlogTypeDto) => api.post<{ status: string; data: BlogType; message: string }>('/teacher/blog-types', data),
 };
+
+// Public Blog (no auth required)
+export interface PublicPostFilters {
+  type?: string;
+  category?: number;
+  search?: string;
+  page?: number;
+  per_page?: number;
+}
+
+/* ── In-memory cache (TTL = 5 min) ──────────────────────────────── */
+const CACHE_TTL = 5 * 60 * 1000;
+const _cache = new Map<string, { data: unknown; ts: number }>();
+
+function cacheKey(url: string, params?: unknown): string {
+  return url + (params ? JSON.stringify(params) : "");
+}
+
+async function cachedGet(url: string, params?: unknown): Promise<unknown> {
+  const key = cacheKey(url, params);
+  const hit = _cache.get(key);
+  if (hit && Date.now() - hit.ts < CACHE_TTL) {
+    return hit.data;
+  }
+  const res = await api.get(url, params ? { params } : undefined);
+  _cache.set(key, { data: res, ts: Date.now() });
+  return res;
+}
+
+/** Call this after a mutation so the next read is always fresh */
+export function invalidatePublicBlogCache(): void {
+  _cache.clear();
+}
+
+export const publicBlogApi = {
+  getPosts: (params?: PublicPostFilters) => cachedGet('/public/posts', params),
+  getPost:  (slug: string)               => cachedGet(`/public/posts/${slug}`),
+};

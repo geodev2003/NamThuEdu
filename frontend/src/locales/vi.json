@@ -280,6 +280,96 @@
         "graded": "Đã chấm",
         "pending": "Chờ chấm",
         "completionRate": "Tỷ lệ hoàn thành"
+      },
+      "table": {
+        "student": "Học sinh",
+        "exam": "Đề thi",
+        "submittedAt": "Nộp lúc",
+        "score": "Điểm",
+        "status": "Trạng thái",
+        "actions": "Thao tác",
+        "new": "Mới",
+        "updatedAt": "Cập nhật lúc"
+      },
+      "refreshing": "Đang cập nhật...",
+      "detail": {
+        "title": "Chấm điểm chi tiết",
+        "back": "Quay lại",
+        "breadcrumb": "Chấm điểm",
+        "student": "Học sinh",
+        "exam": "Đề thi",
+        "attempt": "Lần thứ",
+        "submittedAt": "Nộp lúc",
+        "totalScore": "Điểm tổng",
+        "outOf": "trên",
+        "saveGrades": "Lưu điểm",
+        "saving": "Đang lưu...",
+        "saveDone": "Đã lưu điểm",
+        "skills": {
+          "listening": "Nghe",
+          "reading": "Đọc",
+          "writing": "Viết",
+          "speaking": "Nói"
+        },
+        "questionTypes": {
+          "multiple_choice": "Trắc nghiệm",
+          "essay": "Tự luận",
+          "fill_blank": "Điền khuyết",
+          "true_false": "Đúng/Sai"
+        },
+        "correct": "Đúng",
+        "incorrect": "Sai",
+        "studentAnswer": "Câu trả lời",
+        "correctAnswer": "Đáp án đúng",
+        "points": "điểm",
+        "feedback": "Nhận xét",
+        "feedbackPlaceholder": "Nhập nhận xét...",
+        "aiScore": "Điểm AI gợi ý",
+        "autoGraded": "Tự động chấm",
+        "manual": "Chấm tay",
+        "showAiSuggestion": "Xem gợi ý AI",
+        "hideAiSuggestion": "Ẩn gợi ý",
+        "question": "Câu",
+        "all": "Tất cả",
+        "subjective": "Tự luận",
+        "objective": "Trắc nghiệm",
+        "scoreBreakdown": "Điểm theo kỹ năng",
+        "generalInfo": "Thông tin chung"
+      },
+      "classReport": {
+        "title": "Báo cáo lớp",
+        "export": "Xuất báo cáo",
+        "selectClass": "Chọn lớp",
+        "selectExam": "Chọn đề thi",
+        "allClasses": "Tất cả lớp",
+        "allExams": "Tất cả đề thi",
+        "avgScore": "Điểm TB",
+        "highScore": "Cao nhất",
+        "lowScore": "Thấp nhất",
+        "passRate": "Tỷ lệ đạt",
+        "table": {
+          "student": "Học sinh",
+          "score": "Điểm",
+          "status": "Trạng thái",
+          "submittedAt": "Nộp lúc",
+          "actions": "Thao tác"
+        }
+      },
+      "statsPage": {
+        "title": "Thống kê chấm điểm",
+        "totalGraded": "Tổng đã chấm",
+        "pendingGrading": "Chờ chấm",
+        "avgTime": "Thời gian chấm TB",
+        "trend": "Xu hướng chấm điểm",
+        "byExam": "Theo đề thi",
+        "byClass": "Theo lớp"
+      },
+      "reviewModal": {
+        "title": "Xem lại bài nộp",
+        "close": "Đóng",
+        "feedback": "Nhận xét giáo viên",
+        "score": "Điểm",
+        "status": "Trạng thái review"
       }
     },
     "courses": {
@@ -300,6 +390,57 @@
         "activeCourses": "Đang hoạt động",
         "totalStudents": "Tổng học viên",
         "completionRate": "Tỷ lệ hoàn thành"
+      },
+      "table": {
+        "course": "Khóa học",
+        "students": "Học sinh",
+        "classes": "Lớp học",
+        "status": "Trạng thái",
+        "startDate": "Ngày bắt đầu",
+        "actions": "Thao tác"
+      },
+      "create": {
+        "title": "Tạo khóa học mới",
+        "back": "Quay lại",
+        "name": "Tên khóa học",
+        "namePlaceholder": "Nhập tên khóa học...",
+        "description": "Mô tả",
+        "level": "Cấp độ",
+        "category": "Danh mục",
+        "duration": "Thời lượng",
+        "submit": "Tạo khóa học",
+        "submitting": "Đang tạo...",
+        "success": "Đã tạo khóa học thành công",
+        "error": "Không thể tạo khóa học"
+      },
+      "edit": {
+        "title": "Chỉnh sửa khóa học",
+        "submit": "Lưu thay đổi",
+        "success": "Đã cập nhật khóa học",
+        "error": "Không thể cập nhật khóa học"
+      },
+      "detail": {
+        "title": "Chi tiết khóa học",
+        "back": "Quay lại",
+        "edit": "Chỉnh sửa",
+        "tabs": {
+          "overview": "Tổng quan",
+          "students": "Học sinh",
+          "exams": "Đề thi",
+          "stats": "Thống kê"
+        }
+      },
+      "manageStudents": {
+        "title": "Quản lý học sinh trong khóa học",
+        "add": "Thêm học sinh",
+        "remove": "Xóa khỏi khóa học",
+        "searchPlaceholder": "Tìm học sinh..."
+      },
+      "courseStats": {
+        "title": "Thống kê khóa học",
+        "avgScore": "Điểm trung bình",
+        "completionRate": "Tỷ lệ hoàn thành",
+        "totalSubmissions": "Tổng bài nộp"
       }
     },
     "classes": {
@@ -307,8 +448,8 @@
       "allCourses": "Tất cả khóa học",
       "allStatuses": "Tất cả trạng thái",
       "searchPlaceholder": "Tìm kiếm lớp học...",
-      "createClass": "Tạo lớp mới",
-      "editClass": "Chỉnh sửa lớp học",
+      "btnCreateClass": "Tạo lớp mới",
+      "btnEditClass": "Chỉnh sửa lớp học",
       "status": {
         "active": "Đang hoạt động",
         "inactive": "Tạm dừng"
@@ -317,6 +458,45 @@
         "totalClasses": "Tổng số lớp",
         "activeClasses": "Lớp đang hoạt động",
         "totalStudents": "Tổng số học sinh"
+      },
+      "table": {
+        "class": "Lớp học",
+        "course": "Khóa học",
+        "students": "Học sinh",
+        "schedule": "Lịch học",
+        "status": "Trạng thái",
+        "actions": "Thao tác"
+      },
+      "createClass": {
+        "title": "Tạo lớp mới",
+        "back": "Quay lại",
+        "name": "Tên lớp",
+        "namePlaceholder": "Nhập tên lớp...",
+        "course": "Khóa học",
+        "selectCourse": "Chọn khóa học",
+        "maxStudents": "Số học sinh tối đa",
+        "description": "Mô tả",
+        "submit": "Tạo lớp",
+        "submitting": "Đang tạo...",
+        "success": "Đã tạo lớp thành công",
+        "error": "Không thể tạo lớp"
+      },
+      "classStats": {
+        "title": "Thống kê lớp",
+        "avgScore": "Điểm trung bình",
+        "completionRate": "Tỷ lệ hoàn thành",
+        "activeStudents": "Học sinh đang học",
+        "totalAssignments": "Tổng bài đã giao"
+      },
+      "transferClass": {
+        "title": "Chuyển lớp",
+        "selectStudent": "Chọn học sinh",
+        "fromClass": "Lớp hiện tại",
+        "toClass": "Lớp mới",
+        "submit": "Chuyển lớp",
+        "submitting": "Đang chuyển...",
+        "success": "Đã chuyển lớp thành công",
+        "error": "Không thể chuyển lớp"
       }
     },
     "assignments": {
@@ -327,6 +507,76 @@
       "targetType": {
         "class": "Lớp học",
         "student": "Học sinh"
+      },
+      "table": {
+        "exam": "Đề thi",
+        "target": "Đối tượng",
+        "dueDate": "Hạn nộp",
+        "attempts": "Lượt làm",
+        "completed": "Hoàn thành",
+        "status": "Trạng thái",
+        "actions": "Thao tác"
+      },
+      "status": {
+        "active": "Đang hoạt động",
+        "expired": "Hết hạn",
+        "draft": "Nháp"
+      },
+      "create": {
+        "title": "Giao bài mới",
+        "back": "Quay lại",
+        "selectExam": "Chọn đề thi",
+        "selectTarget": "Chọn đối tượng",
+        "dueDate": "Hạn nộp",
+        "maxAttempts": "Số lần làm tối đa",
+        "instructions": "Hướng dẫn",
+        "instructionsPlaceholder": "Nhập hướng dẫn cho học sinh...",
+        "submit": "Giao bài",
+        "submitting": "Đang giao...",
+        "success": "Đã giao bài thành công!",
+        "error": "Không thể giao bài"
+      },
+      "progress": {
+        "title": "Tiến độ bài tập",
+        "back": "Quay lại",
+        "dueDate": "Hạn nộp",
+        "stats": {
+          "completed": "Đã hoàn thành",
+          "pending": "Chưa nộp",
+          "overdue": "Quá hạn",
+          "graded": "Đã chấm"
+        },
+        "table": {
+          "student": "Học sinh",
+          "status": "Trạng thái",
+          "score": "Điểm",
+          "submittedAt": "Nộp lúc",
+          "attempts": "Lần làm",
+          "actions": "Thao tác"
+        },
+        "sendReminder": "Gửi nhắc nhở",
+        "viewDetail": "Xem chi tiết"
+      },
+      "assignmentStats": {
+        "title": "Thống kê bài tập",
+        "totalAssigned": "Tổng bài đã giao",
+        "completionRate": "Tỷ lệ hoàn thành",
+        "avgScore": "Điểm trung bình",
+        "overdueRate": "Tỷ lệ trễ hạn"
+      },
+      "bulk": {
+        "title": "Giao bài hàng loạt",
+        "selectedCount": "Đã chọn {{count}} học sinh",
+        "submit": "Giao cho {{count}} học sinh"
+      },
+      "reminder": {
+        "title": "Gửi nhắc nhở",
+        "message": "Nội dung",
+        "messagePlaceholder": "Nhập nội dung nhắc nhở...",
+        "send": "Gửi",
+        "cancel": "Hủy",
+        "success": "Đã gửi nhắc nhở",
+        "error": "Không thể gửi nhắc nhở"
       }
     },
     "common": {
@@ -481,6 +731,306 @@
           "exportWait": "Vui lòng đợi {{seconds}} giây trước khi xuất lại",
           "filtersCleared": "Đã xóa bộ lọc"
         }
+      },
+      "addStudent": {
+        "title": "Thêm học sinh mới",
+        "back": "Quay lại",
+        "name": "Họ và tên",
+        "namePlaceholder": "Nhập họ và tên...",
+        "phone": "Số điện thoại",
+        "phonePlaceholder": "Nhập SĐT...",
+        "password": "Mật khẩu",
+        "ageGroup": "Nhóm tuổi",
+        "selectAgeGroup": "Chọn nhóm tuổi",
+        "course": "Khóa học",
+        "selectCourse": "Chọn khóa học",
+        "submit": "Thêm học sinh",
+        "submitting": "Đang thêm...",
+        "success": "Đã thêm học sinh thành công",
+        "error": "Không thể thêm học sinh"
+      },
+      "importStudents": {
+        "title": "Import học sinh",
+        "back": "Quay lại",
+        "downloadTemplate": "Tải file mẫu",
+        "uploadFile": "Tải file lên",
+        "uploadHint": "File Excel (.xlsx) tối đa 20MB",
+        "preview": "Xem trước",
+        "import": "Import",
+        "importing": "Đang import...",
+        "success": "Import thành công {{count}} học sinh",
+        "error": "Không thể import",
+        "dragDrop": "Kéo thả file vào đây hoặc",
+        "browse": "chọn file"
+      }
+    },
+    "monitoring": {
+      "title": "Giám sát trực tiếp",
+      "live": "LIVE",
+      "lastUpdated": "Cập nhật {{seconds}} giây trước",
+      "timeExpired": "Hết giờ",
+      "secondsAgo": "{{seconds}} giây trước",
+      "minutesAgo": "{{minutes}} phút trước",
+      "stats": {
+        "activeStudents": "Học sinh đang thi",
+        "totalSessions": "Tổng phiên hôm nay",
+        "avgCompletion": "Tỷ lệ hoàn thành TB",
+        "connectionIssues": "Vấn đề kết nối"
+      },
+      "filters": {
+        "searchPlaceholder": "Tìm học sinh...",
+        "allExams": "Tất cả đề thi",
+        "allClasses": "Tất cả lớp",
+        "activeOnly": "Chỉ đang hoạt động",
+        "showAll": "Tất cả phiên"
+      },
+      "session": {
+        "exam": "Đề thi",
+        "progress": "Tiến độ",
+        "timeLeft": "Thời gian còn",
+        "timeElapsed": "Đã làm",
+        "answers": "Câu đã trả lời",
+        "connection": "Kết nối",
+        "lastSeen": "Hoạt động gần nhất",
+        "disconnectCount": "Lần mất kết nối",
+        "viewDetail": "Xem chi tiết",
+        "sendMessage": "Gửi tin nhắn"
+      },
+      "connection": {
+        "connected": "Đang kết nối",
+        "disconnected": "Mất kết nối"
+      },
+      "viewMode": {
+        "grid": "Lưới",
+        "list": "Danh sách"
+      },
+      "empty": {
+        "title": "Không có phiên thi nào",
+        "subtitle": "Chưa có học sinh nào đang làm bài thi"
+      },
+      "loading": "Đang tải...",
+      "errorTitle": "Không thể tải dữ liệu",
+      "toast": {
+        "messageSent": "Tin nhắn đã được gửi"
+      },
+      "studentDetail": {
+        "title": "Chi tiết phiên thi",
+        "back": "Quay lại",
+        "connectionLog": "Lịch sử kết nối",
+        "answers": "Câu trả lời",
+        "performance": "Hiệu suất"
+      },
+      "connectionHistory": {
+        "title": "Lịch sử kết nối",
+        "event": "Sự kiện",
+        "timestamp": "Thời điểm",
+        "duration": "Thời gian",
+        "connected": "Kết nối",
+        "disconnected": "Mất kết nối"
+      },
+      "realtimeStats": {
+        "title": "Thống kê thời gian thực",
+        "activeSessions": "Phiên đang hoạt động",
+        "completedToday": "Hoàn thành hôm nay",
+        "avgScore": "Điểm trung bình"
+      }
+    },
+    "reports": {
+      "title": "Báo cáo",
+      "overview": {
+        "title": "Tổng quan báo cáo",
+        "subtitle": "Thống kê hiệu suất giảng dạy",
+        "dateRange": {
+          "7days": "7 ngày qua",
+          "30days": "30 ngày qua",
+          "90days": "90 ngày qua",
+          "thisYear": "Năm nay"
+        },
+        "stats": {
+          "totalStudents": "Tổng học viên",
+          "totalExams": "Tổng đề thi",
+          "gradedSubmissions": "Bài đã chấm",
+          "avgScore": "Điểm trung bình"
+        },
+        "loading": "Đang tải báo cáo...",
+        "error": "Không thể tải báo cáo",
+        "loadError": "Lỗi khi tải dữ liệu",
+        "connectionError": "Lỗi kết nối đến server"
+      },
+      "studentProgress": {
+        "title": "Tiến độ học sinh",
+        "selectStudent": "Chọn học sinh",
+        "selectClass": "Chọn lớp",
+        "period": "Khoảng thời gian",
+        "skillProgress": "Tiến độ kỹ năng",
+        "testHistory": "Lịch sử làm bài"
+      },
+      "analysis": {
+        "title": "Phân tích kết quả",
+        "filterExam": "Lọc theo đề thi",
+        "filterClass": "Lọc theo lớp",
+        "scoreDistribution": "Phân bố điểm",
+        "skillBreakdown": "Phân tích kỹ năng",
+        "timeAnalysis": "Phân tích thời gian"
+      },
+      "export": {
+        "title": "Xuất báo cáo",
+        "format": "Định dạng",
+        "dateRange": "Khoảng ngày",
+        "includeCharts": "Bao gồm biểu đồ",
+        "exportExcel": "Xuất Excel",
+        "exportPDF": "Xuất PDF",
+        "exporting": "Đang xuất...",
+        "success": "Xuất báo cáo thành công",
+        "error": "Không thể xuất báo cáo"
+      }
+    },
+    "exams": {
+      "title": "Ngân hàng đề",
+      "allExams": {
+        "title": "Tất cả đề thi",
+        "searchPlaceholder": "Tìm kiếm đề thi...",
+        "filterType": "Loại đề",
+        "filterStatus": "Trạng thái",
+        "allTypes": "Tất cả loại",
+        "allStatuses": "Tất cả trạng thái",
+        "loading": "Đang tải đề thi...",
+        "empty": "Chưa có đề thi nào",
+        "createFirst": "Tạo đề thi đầu tiên",
+        "questions": "câu hỏi",
+        "minutes": "phút",
+        "preview": "Xem trước",
+        "edit": "Chỉnh sửa",
+        "delete": "Xóa",
+        "duplicate": "Nhân bản",
+        "assign": "Giao bài"
+      },
+      "myExams": {
+        "title": "Đề thi của tôi",
+        "searchPlaceholder": "Tìm đề thi của tôi..."
+      },
+      "detail": {
+        "title": "Chi tiết đề thi",
+        "back": "Quay lại",
+        "edit": "Chỉnh sửa",
+        "preview": "Xem trước",
+        "assign": "Giao bài",
+        "delete": "Xóa",
+        "questions": "Câu hỏi",
+        "settings": "Cài đặt",
+        "stats": "Thống kê"
+      },
+      "create": {
+        "title": "Tạo đề thi mới",
+        "titlePlaceholder": "Nhập tên đề thi...",
+        "descPlaceholder": "Mô tả đề thi...",
+        "duration": "Thời gian làm bài",
+        "totalPoints": "Tổng điểm",
+        "save": "Lưu đề thi",
+        "publish": "Xuất bản",
+        "addQuestion": "Thêm câu hỏi",
+        "importQuestion": "Import câu hỏi"
+      },
+      "status": {
+        "draft": "Nháp",
+        "published": "Đã xuất bản",
+        "archived": "Lưu trữ"
+      },
+      "type": {
+        "general": "Tổng quát",
+        "vstep": "VSTEP",
+        "kids": "Kids",
+        "ielts": "IELTS",
+        "toeic": "TOEIC"
+      }
+    },
+    "settingsPage": {
+      "title": "Cài đặt",
+      "subtitle": "Quản lý thông tin cá nhân và tùy chỉnh hệ thống",
+      "tabs": {
+        "profile": "Hồ sơ cá nhân",
+        "account": "Tài khoản",
+        "notifications": "Thông báo",
+        "appearance": "Giao diện",
+        "language": "Ngôn ngữ",
+        "pdfCutter": "Cắt trang PDF"
+      },
+      "profile": {
+        "title": "Thông tin cá nhân",
+        "changeAvatar": "Đổi ảnh",
+        "name": "Họ và tên",
+        "email": "Email",
+        "phone": "Số điện thoại",
+        "address": "Địa chỉ",
+        "bio": "Giới thiệu bản thân",
+        "namePlaceholder": "Nhập họ và tên...",
+        "bioPlaceholder": "Viết vài dòng về bạn...",
+        "save": "Lưu thay đổi",
+        "saving": "Đang lưu...",
+        "saveSuccess": "Đã cập nhật thông tin thành công!",
+        "saveError": "Không thể cập nhật thông tin",
+        "loadError": "Không thể tải thông tin người dùng"
+      },
+      "account": {
+        "title": "Cài đặt tài khoản",
+        "changePassword": "Đổi mật khẩu",
+        "currentPassword": "Mật khẩu hiện tại",
+        "newPassword": "Mật khẩu mới",
+        "confirmPassword": "Xác nhận mật khẩu",
+        "save": "Đổi mật khẩu",
+        "success": "Đã đổi mật khẩu thành công",
+        "error": "Không thể đổi mật khẩu"
+      },
+      "notifications": {
+        "title": "Cài đặt thông báo",
+        "newSubmission": "Bài nộp mới",
+        "gradingReminder": "Nhắc nhở chấm điểm",
+        "systemNotifications": "Thông báo hệ thống",
+        "save": "Lưu cài đặt"
+      },
+      "appearance": {
+        "title": "Giao diện",
+        "theme": "Chủ đề màu",
+        "density": "Mật độ hiển thị"
+      },
+      "language": {
+        "title": "Ngôn ngữ & Khu vực",
+        "displayLanguage": "Ngôn ngữ hiển thị",
+        "timezone": "Múi giờ",
+        "dateFormat": "Định dạng ngày",
+        "save": "Lưu cài đặt"
+      },
+      "logout": {
+        "label": "Đăng xuất",
+        "confirm": "Bạn có chắc muốn đăng xuất?",
+        "yes": "Đăng xuất",
+        "no": "Hủy"
+      },
+      "loading": "Đang tải thông tin..."
+    },
+    "practice": {
+      "title": "Luyện tập",
+      "subtitle": "Quản lý các buổi luyện tập cho học sinh",
+      "tabs": {
+        "all": "Tất cả",
+        "byTopic": "Theo chủ đề",
+        "byTemplate": "Theo mẫu",
+        "random": "Ngẫu nhiên"
+      },
+      "createSession": "Tạo buổi luyện tập",
+      "sessionList": "Danh sách",
+      "comingSoon": "Tính năng đang phát triển",
+      "empty": {
+        "title": "Chưa có buổi luyện tập",
+        "subtitle": "Tạo buổi luyện tập đầu tiên cho học sinh"
+      },
+      "loading": "Đang tải...",
+      "session": {
+        "students": "học sinh",
+        "questions": "câu hỏi",
+        "duration": "phút",
+        "start": "Bắt đầu",
+        "viewResult": "Xem kết quả"
       }
     }
   },
@@ -1505,7 +2055,7 @@
       "btnChangeImage": "Đổi ảnh",
       "btnRemove": "Xóa",
       "uploadPrompt": "Click để chọn ảnh",
-      "uploadHint": "JPG, PNG, GIF, WebP (tối đa 5MB)",
+      "uploadHint": "JPG, PNG, GIF, WebP (tối đa 20MB)",
       "labelMetaDesc": "Mô tả meta",
       "metaDescPlaceholder": "Mô tả ngắn gọn về bài viết...",
       "labelKeywords": "Từ khóa",
@@ -1520,7 +2070,7 @@
       "titlePlaceholder": "Tiêu đề bài viết",
       "contentPreview": "Nội dung bài viết sẽ hiển thị ở đây...",
       "errorImageType": "Vui lòng chọn file ảnh (JPG, PNG, GIF, WebP)",
-      "errorImageSize": "Kích thước ảnh không được vượt quá 5MB",
+      "errorImageSize": "Kích thước ảnh không được vượt quá 20MB",
       "successImageUpload": "Đã tải ảnh lên thành công",
       "errorImageRead": "Không thể đọc file ảnh",
       "errorTitleRequired": "Vui lòng nhập tiêu đề bài viết",

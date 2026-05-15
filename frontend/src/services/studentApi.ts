@@ -1,16 +1,4 @@
 import { api } from './api';
-import { 
-  mockTestAssignments, 
-  mockSubmissions, 
-  mockProgress, 
-  mockPracticeTopics, 
-  mockNotifications 
-} from './mockData';
-
-// Check if we should use mock data (when backend is not available)
-const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true' || false;
-
-const mockDelay = (data: any) => new Promise(resolve => setTimeout(() => resolve({ data }), 500));
 
 export interface TestAssignment {
   assignment_id: number;
@@ -18,15 +6,63 @@ export interface TestAssignment {
   exam_title: string;
   exam_type: string;
   exam_skill: string;
+  exam_format?: string;
   exam_duration: number;
   total_questions: number;
   max_score: number;
   start_time: string;
   end_time: string;
+  deadline?: string | null;
   is_urgent: boolean;
   time_remaining: string;
   attempts_allowed: number;
   attempts_used: number;
+  status: 'pending' | 'in_progress' | 'completed';
+  // Status-specific
+  submission_id?: number | null;
+  score?: number | null;
+  submitted_at?: string | null;
+}
+
+export interface InProgressTest {
+  id: number;
+  submission_id: number;
+  assignment_id: number | null;
+  title: string;
+  type: string;
+  skill: string;
+  time_remaining: number;
+  total_duration: number;
+  started_at: string;
+}
+
+export interface TeacherReminder {
+  id: number;
+  assignment_id: number;
+  exam_id: number;
+  title: string;
+  type: string;
+  skill: string;
+  duration: number;
+  deadline: string;
+  days_until: number | null;
+  is_urgent: boolean;
+  message: string | null;
+  teacher_name: string | null;
+  sent_at: string;
+  read_at: string | null;
+}
+
+export interface UpcomingTest {
+  id: number;
+  assignment_id: number;
+  title: string;
+  type: string;
+  skill: string;
+  deadline: string;
+  duration: number;
+  is_urgent: boolean;
+  days_until: number;
 }
 
 export interface Submission {
@@ -85,12 +121,31 @@ export interface ProgressData {
   };
 }
 
+type TestsResponse = {
+  status: string;
+  data: {
+    pending: TestAssignment[];
+    in_progress: TestAssignment[];
+    completed: TestAssignment[];
+  };
+};
+
+export interface BrowseExam {
+  id: number;
+  title: string;
+  type: 'VSTEP' | 'IELTS';
+  skill: string;
+  duration: number;
+  description: string | null;
+  age_group: string | null;
+  questions_count: number;
+  created_at: string;
+}
+
 export const studentApi = {
-  // Tests
+  // Tests — always real backend
   getTests: (params?: { status?: string; type?: string; skill?: string }) =>
-    USE_MOCK_DATA 
-      ? mockDelay(mockTestAssignments)
-      : api.get<{ status: string; data: { pending: TestAssignment[]; in_progress: TestAssignment[]; completed: TestAssignment[] } }>('/student/tests', { params }),
+    api.get<TestsResponse>('/student/tests', { params }),
 
   getTestDetail: (id: number) =>
     api.get(`/student/tests/${id}`),
@@ -110,11 +165,9 @@ export const studentApi = {
   syncTestTime: (submissionId: number) =>
     api.post('/student/websocket/sync-time', { submission_id: submissionId }),
 
-  // Submissions
+  // Submissions — always real backend
   getSubmissions: (params?: { limit?: number; sort?: string; status?: string }) =>
-    USE_MOCK_DATA
-      ? mockDelay(mockSubmissions)
-      : api.get<{ status: string; data: { submissions: Submission[] } }>('/student/submissions', { params }),
+    api.get<{ status: string; data: { submissions: Submission[] } }>('/student/submissions', { params }),
 
   getSubmissionDetail: (id: number) =>
     api.get(`/student/submissions/${id}`),
@@ -122,14 +175,15 @@ export const studentApi = {
   getAnswers: (id: number) =>
     api.get(`/student/submissions/${id}/answers`),
 
+  getGradingStatus: (id: number) =>
+    api.get(`/student/submissions/${id}/grading-status`),
+
   compareSubmission: (id: number) =>
     api.get(`/student/submissions/${id}/compare`),
 
-  // Progress
+  // Progress — always real backend
   getProgress: () =>
-    USE_MOCK_DATA
-      ? mockDelay(mockProgress)
-      : api.get<{ status: string; data: ProgressData }>('/student/progress'),
+    api.get<{ status: string; data: ProgressData }>('/student/progress'),
 
   // Answer
   saveAnswer: (submissionId: number, data: { question_id: number; answer_id?: number; answer_text?: string; saAnswer_text?: string }) =>
@@ -140,9 +194,7 @@ export const studentApi = {
 
   // Practice
   getPracticeTopics: () =>
-    USE_MOCK_DATA
-      ? mockDelay(mockPracticeTopics)
-      : api.get('/student/practice/topics'),
+    api.get('/student/practice/topics'),
 
   getPracticeQuestions: (params: { topic_id?: number; skill?: string; difficulty?: string; count?: number }) =>
     api.get('/student/practice/questions', { params }),
@@ -158,9 +210,7 @@ export const studentApi = {
 
   // Notifications
   getNotifications: (params?: { page?: number; per_page?: number; urgent?: boolean; limit?: number }) =>
-    USE_MOCK_DATA
-      ? mockDelay(mockNotifications)
-      : api.get('/student/notifications', { params }),
+    api.get('/student/notifications', { params }),
 
   markNotificationRead: (id: number) =>
     api.put(`/student/notifications/${id}/read`),
@@ -171,12 +221,31 @@ export const studentApi = {
   deleteNotification: (id: number) =>
     api.delete(`/student/notifications/${id}`),
 
+  // Teacher reminders
+  getReminders: () =>
+    api.get('/student/reminders'),
+
+  markReminderRead: (id: number) =>
+    api.put(`/student/reminders/${id}/read`),
+
+  dismissReminder: (id: number) =>
+    api.delete(`/student/reminders/${id}`),
+
   // Dashboard specific APIs
   getInProgressTests: () =>
-    api.get('/student/tests/in-progress'),
+    api.get<{ status: string; data: InProgressTest[] }>('/student/tests/in-progress'),
 
   getUpcomingTests: (params?: { days?: number }) =>
-    api.get('/student/tests/upcoming', { params }),
+    api.get<{ status: string; data: UpcomingTest[] }>('/student/tests/upcoming', { params }),
+
+  getLeaderboard: (params?: { limit?: number }) =>
+    api.get('/student/gamification/leaderboard', { params }),
+
+  getGamificationOverview: () =>
+    api.get('/student/gamification/overview'),
+
+  getAchievements: () =>
+    api.get('/student/gamification/achievements'),
 
   getPracticeRecommendations: () =>
     api.get('/student/recommendations/practice'),
@@ -205,4 +274,40 @@ export const studentApi = {
 
   updateSettings: (data: any) =>
     api.put('/student/settings', data),
+
+  // Exam browser — public VSTEP/IELTS exams for adults
+  browseExams: (params?: { type?: 'VSTEP' | 'IELTS' }) =>
+    api.get<{ status: string; data: BrowseExam[] }>('/student/exams/browse', { params }),
+
+  // VSTEP direct exam — start by exam ID (no assignment needed)
+  startDirectVstepExam: (examId: number, resume = false) =>
+    api.post<{ status: string; data: { submissionId: number; timeRemaining: number } }>(`/student/exams/${examId}/start-direct${resume ? '?resume=1' : ''}`),
+
+  loadStudentVstepListening: (examId: number) =>
+    api.get(`/student/exams/${examId}/vstep/listening`),
+
+  loadStudentVstepReading: (examId: number) =>
+    api.get(`/student/exams/${examId}/vstep/reading`),
+
+  loadStudentVstepWriting: (examId: number) =>
+    api.get(`/student/exams/${examId}/vstep/writing`),
+
+  loadStudentVstepSpeaking: (examId: number) =>
+    api.get(`/student/exams/${examId}/vstep/speaking`),
+
+  uploadCheckinPhoto: (examId: number, blob: Blob) => {
+    const form = new FormData();
+    form.append('photo', blob, `checkin_${examId}.jpg`);
+    return api.post(`/student/exams/${examId}/checkin-photo`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  uploadSpeakingAudio: (submissionId: number, partNumber: number, blob: Blob) => {
+    const form = new FormData();
+    form.append('audio', blob, `speaking_${submissionId}_part${partNumber}.webm`);
+    return api.post(`/student/submissions/${submissionId}/speaking/${partNumber}/upload`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };

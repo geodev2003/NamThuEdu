@@ -1,0 +1,438 @@
+{
+  "landing": {
+    "header": {
+      "logo": "Nam Thu EDU",
+      "tagline": "Smart English Learning",
+      "searchPlaceholder": "Search courses, lessons, vocabulary, grammar...",
+      "login": "Login",
+      "register": "Register",
+      "registerNow": "Register Now",
+      "home": "Home",
+      "courses": "Courses",
+      "exams": "Exam Prep",
+      "schedule": "Schedule",
+      "contact": "Contact",
+      "coursesKids": "Kids (6-12 years)",
+      "coursesTeens": "Teens (13-17 years)",
+      "coursesAdults": "Adults (18+)",
+      "coursesCommunication": "Communication",
+      "examsIELTS": "IELTS",
+      "examsTOEIC": "TOEIC",
+      "examsCambridge": "Cambridge",
+      "examsVSTEP": "VSTEP",
+      "examsVSAT": "V-SAT",
+      "hotline": "Hotline",
+      "promotions": "Special Offers:",
+      "promotionGroup": "Group of 3+ students",
+      "promotionDisadvantaged": "Disadvantaged students",
+      "promotionMaterials": "Free materials"
+    },
+    "hero": {
+      "badge": "Top 1 online English learning platform in Vietnam",
+      "title": "Smart English Learning",
+      "titleHighlight": "with AI Technology",
+      "subtitle": "Age-adaptive interface, accurate AI pronunciation assessment, effective IELTS/TOEIC preparation. Suitable for all ages from 6-45 years old.",
+      "featureCommunication": "Real Communication",
+      "featureCommunicationDesc": "Speak confidently",
+      "featureGrades": "Grades 1-12",
+      "featureGradesDesc": "All levels",
+      "featureExams": "IELTS/TOEIC",
+      "featureExamsDesc": "International certificates",
+      "featureAI": "AI",
+      "featureAIDesc": "Smart",
+      "ctaRegister": "Register Now",
+      "ctaDemo": "Watch Demo",
+      "trustStudents": "students",
+      "trustRating": "rating",
+      "students": "Students",
+      "rating": "Rating"
+    },
+    "stats": {
+      "students": "Students",
+      "studentsSub": "Actively learning",
+      "teachers": "Teachers",
+      "teachersSub": "Certified instructors",
+      "courses": "Courses",
+      "coursesSub": "Currently open",
+      "exams": "Practice Tests",
+      "examsSub": "Published exams",
+      "satisfaction": "Satisfaction"
+    },
+    "why": {
+      "title": "Active learning, better results",
+      "items": {
+        "curriculum": {
+          "title": "Aligned to curriculum",
+          "desc": "Rich library of lessons & exercises aligned to VSTEP, IELTS and Cambridge standards"
+        },
+        "personalized": {
+          "title": "Personalized",
+          "desc": "Content matched to your level, helping you focus on weak areas"
+        },
+        "community": {
+          "title": "Connected community",
+          "desc": "Join Q&A discussions with teachers and fellow students"
+        },
+        "practice": {
+          "title": "Practice anytime",
+          "desc": "Take quizzes, mock tests and self-assess your proficiency"
+        }
+      }
+    },
+    "learningPaths": {
+      "title": "Choose Your Learning Path",
+      "subtitle": "Interface and content automatically adapt to age and proficiency level",
+      "kids": {
+        "name": "Kids (6-12 years)",
+        "description": "Learn English through games, vivid images, and fun songs",
+        "feature1": "Interactive games",
+        "feature2": "Vivid images",
+        "feature3": "Fun songs",
+        "feature4": "Standard pronunciation"
+      },
+      "teens": {
+        "name": "Teens (13-17 years)",
+        "description": "Cambridge exam prep, real communication, and modern video lessons",
+        "feature1": "Cambridge YLE/KET/PET",
+        "feature2": "Video lessons",
+        "feature3": "Speaking practice",
+        "feature4": "Gamification"
+      },
+      "adults": {
+        "name": "Adults (18+ years)",
+        "description": "IELTS, TOEIC, VSTEP and professional business English communication",
+        "feature1": "IELTS/TOEIC/VSTEP",
+        "feature2": "Business English",
+        "feature3": "Interview skills",
+        "feature4": "Professional"
+      },
+      "coursesCount": "courses",
+      "startNow": "Start Now"
+    },
+    "proficiency": {
+      "title": "English Proficiency Levels",
+      "beginner": "Beginner",
+      "beginnerDesc": "A1-A2: Start with foundations",
+      "intermediate": "Intermediate",
+      "intermediateDesc": "B1-B2: Communicate confidently",
+      "advanced": "Advanced",
+      "advancedDesc": "C1-C2: Native-like proficiency",
+      "examPrep": "Exam Prep",
+      "examPrepDesc": "IELTS, TOEIC, Cambridge, VSTEP"
+    },
+    "examPrep": {
+      "title": "International Certificate Preparation",
+      "subtitle": "Achieve high scores with effective learning methods and international standard tests",
+      "viewCourses": "View Courses"
+    },
+    "features": {
+      "title": "Key Features",
+      "adaptive": "Adaptive Learning",
+      "adaptiveDesc": "Interface and content automatically adjust to age",
+      "listening": "Listening & Speaking",
+      "listeningDesc": "AI pronunciation assessment and real communication",
+      "competition": "Competition & Ranking",
+      "competitionDesc": "Compete with friends, earn medals",
+      "video": "Video Lessons",
+      "videoDesc": "Learn through interactive videos with native teachers",
+      "preview": "Preview"
+    },
+    "cta": {
+      "title": "Start Your English Learning Journey",
+      "subtitle": "Register now to get 7 days free trial with age-adaptive interface",
+      "button": "Try Free for 7 Days",
+      "noCard": "No credit card required",
+      "cancelAnytime": "Cancel anytime"
+    },
+    "footer": {
+      "description": "NamThu is a smart English learning platform with age-adaptive interface. With modern teaching methods and curriculum from top experts, NamThu meets the needs of all learners.",
+      "followUs": "Follow NamThu on:",
+      "weRecommend": "We Recommend",
+      "aboutUs": "About NamThu",
+      "forStudents": "For Students & Parents",
+      "forTeachers": "For Teachers & Schools",
+      "parentApp": "Parent APP",
+      "resources": "Resources",
+      "helpCenter": "Help Center",
+      "userGuide": "User Guide",
+      "feedback": "Feedback about NamThu",
+      "askChannel": "Ask about NamThu",
+      "mobileApp": "Mobile App",
+      "downloadOn": "Download on the",
+      "appStore": "App Store",
+      "getItOn": "GET IT ON",
+      "googlePlay": "Google Play",
+      "copyright": "© 2013 - 2026 NAMTHU.VN",
+      "email": "Email:",
+      "contactUs": "Contact"
+    },
+    "testimonials": {
+      "title": "What Our Students Say",
+      "subtitle": "Thousands of students have achieved their English goals",
+      "kids": "Kids",
+      "teens": "Teens",
+      "adults": "Adults",
+      "result": "Result"
+    },
+    "demo": {
+      "title": "Try a Sample Lesson",
+      "subtitle": "Click the card to flip and see the Vietnamese meaning",
+      "clickToFlip": "Click to flip",
+      "reset": "Reset",
+      "note": "This is just 1 of 10,000+ vocabulary words and interactive lessons",
+      "example": "Example:"
+    },
+    "page": {
+      "learningPathsTitle": "Choose Your Learning Path",
+      "learningPathsSubtitle": "Interface and content automatically adapt to age and proficiency level",
+      "proficiencyTitle": "English Proficiency Levels",
+      "examPrepTitle": "International Certificate Preparation",
+      "examPrepSubtitle": "Achieve high scores with effective learning methods and international standard tests",
+      "featuresTitle": "Key Features",
+      "ctaTitle": "Start Your English Learning Journey",
+      "ctaSubtitle": "Register now to get 7 days free trial with age-adaptive interface"
+    },
+    "guest": {
+      "header": {
+        "logo": "NamThuEdu",
+        "menu": {
+          "features": "Features",
+          "paths": "Paths",
+          "testimonials": "Testimonials",
+          "faq": "FAQ"
+        },
+        "login": "Login",
+        "trial": "Start Free Trial"
+      },
+      "hero": {
+        "badge": "Leading English Learning Platform in Can Tho",
+        "title": "Learn English better with",
+        "titleHighlight": "personalized AI",
+        "subtitle": "NamThuEdu helps you learn the right focus, track clear progress, and reach your goals faster.",
+        "ctaTrial": "Start Free Trial",
+        "ctaDemo": "Watch Demo",
+        "headline": "Learn English",
+        "headlineHighlight": "the right way,",
+        "headlineLine2": "the right path",
+        "subheadline": "Prepare for VSTEP, IELTS, Cambridge — with teachers tracking your progress, auto-grading and detailed feedback after every test.",
+        "ctaStart": "Start Learning Now",
+        "ctaTests": "View Free Practice Tests",
+        "trust": {
+          "students": "50,000+ students",
+          "duration": "15 minutes/session",
+          "rating": "4.9 / 5",
+          "ratingLabel": "Rating"
+        },
+        "slogan": {
+          "p1": "Right Method",
+          "p2": "Right Path",
+          "p3": "Right Results"
+        }
+      },
+      "roles": {
+        "title": "One platform for every role",
+        "subtitle": "Choose the right portal to get started quickly.",
+        "items": {
+          "student": {
+            "title": "Student",
+            "desc": "Personalized learning path, daily practice, and clear progress tracking.",
+            "cta": "Start Free Trial"
+          },
+          "teacher": {
+            "title": "Teacher",
+            "desc": "Manage classes, create tests, track learners, and grade efficiently.",
+            "cta": "Go to Teacher Portal"
+          },
+          "admin": {
+            "title": "Administrator",
+            "desc": "Operate the system, control data, and manage secure permissions.",
+            "cta": "Go to Admin Portal"
+          }
+        }
+      },
+      "stats": {
+        "students": "Active students",
+        "rating": "Average rating",
+        "goal": "Goal completion"
+      },
+      "courses": {
+        "title": "Courses at our center",
+        "subtitle": "Live list of currently open courses from the center system.",
+        "loading": "Loading courses...",
+        "empty": "No open courses at the moment.",
+        "emptyFiltered": "No course matches the selected filter.",
+        "error": "Unable to load courses.",
+        "general": "General",
+        "noDescription": "No description available for this course.",
+        "time": "Duration",
+        "schedule": "Schedule",
+        "seats": "Max students",
+        "updating": "Updating",
+        "filters": {
+          "all": "All",
+          "ielts": "IELTS",
+          "toeic": "TOEIC",
+          "communication": "Communication",
+          "kids": "Kids"
+        }
+      },
+      "teachers": {
+        "title": "Featured teachers",
+        "subtitle": "Experienced, certified instructors who closely support learners.",
+        "items": {
+          "1": {
+            "name": "Ms. Minh Anh",
+            "role": "IELTS Instructor",
+            "cert": "Certificate: IELTS 8.0",
+            "exp": "Experience: 7+ years test preparation"
+          },
+          "2": {
+            "name": "Mr. Quang Hai",
+            "role": "TOEIC & Communication Coach",
+            "cert": "Certificate: TESOL",
+            "exp": "Experience: 10+ years teaching"
+          },
+          "3": {
+            "name": "Ms. Thuy Linh",
+            "role": "Kids English Specialist",
+            "cert": "Certificate: Cambridge TKT",
+            "exp": "Experience: 6+ years teaching kids"
+          }
+        }
+      },
+      "stickyContact": {
+        "hotline": "Hotline 0776.818.160",
+        "call": "Call",
+        "zalo": "Zalo",
+        "register": "Register consult"
+      },
+      "previewCard": {
+        "subtitle": "Learning Progress Board",
+        "recentScore": "Latest Test Score",
+        "studentTitle": "Student",
+        "studentDesc": "Kids \u00b7 Teens \u00b7 Adults",
+        "teacherTitle": "Teacher",
+        "teacherDesc": "Manage classes & students",
+        "badgeStudentsLabel": "Students",
+        "badgeRatingLabel": "Rating"
+      },
+      "tests": {
+        "title": "Try Practice Tests — No Registration Needed",
+        "subtitle": "Preview VSTEP and IELTS exam content updated continuously.",
+        "loading": "Loading practice tests...",
+        "cta": "View Test",
+        "defaultDesc": "Standard proficiency assessment test."
+      },
+      "paths": {
+        "title": "Goal-based learning paths",
+        "subtitle": "Pick your goal and get recommendations that match your level.",
+        "tabs": {
+          "ielts": "IELTS",
+          "toeic": "TOEIC",
+          "communication": "Communication",
+          "cambridge": "Cambridge",
+          "kids": "Kids"
+        },
+        "ielts": "Roadmap from band 4.5 to 6.5+ with mock tests and AI feedback.",
+        "toeic": "Roadmap from 450 to 750+ focused on Listening/Reading.",
+        "communication": "Daily speaking practice with real-world conversation scenarios.",
+        "cambridge": "Prepare for KET/PET/FCE with structured level-based tests.",
+        "kids": "Learn through games, audio, and visuals to keep kids engaged."
+      },
+      "features": {
+        "title": "Key Features",
+        "subtitle": "A complete learning experience powered by modern technology",
+        "items": {
+          "ai": {
+            "title": "Instant AI feedback",
+            "desc": "Get immediate feedback on Writing/Speaking to improve faster."
+          },
+          "report": {
+            "title": "Visual progress reports",
+            "desc": "Track strengths, weaknesses, and growth by week and month."
+          },
+          "path": {
+            "title": "Goal-focused roadmap",
+            "desc": "Focus on IELTS, TOEIC, communication, or academic English."
+          },
+          "community": {
+            "title": "Community Q&A",
+            "desc": "Ask questions and get support from teachers and fellow learners."
+          },
+          "competition": {
+            "title": "Knowledge Arena",
+            "desc": "Weekly competitions to boost motivation with a live leaderboard."
+          },
+          "quiz": {
+            "title": "Fun Challenges",
+            "desc": "Quick tasks, exciting rewards — learning that feels like play."
+          },
+          "exam": {
+            "title": "International Exam Prep",
+            "desc": "VSTEP, IELTS and Cambridge tests updated to the latest standards."
+          },
+          "progress": {
+            "title": "Progress Tracking",
+            "desc": "Visual dashboards showing strengths and weak skills per section."
+          },
+          "grading": {
+            "title": "Instant Grading",
+            "desc": "Automatic results right after submission with per-question feedback."
+          }
+        }
+      },
+      "testimonials": {
+        "title": "What learners say",
+        "items": {
+          "1": {
+            "name": "Linh Anh",
+            "role": "IELTS learner",
+            "text": "I improved by 1.0 band in 8 weeks thanks to the clear roadmap."
+          },
+          "2": {
+            "name": "Mr. Quang",
+            "role": "Teacher",
+            "text": "The class dashboard saves me a lot of time every week."
+          },
+          "3": {
+            "name": "Parent An",
+            "role": "Parent",
+            "text": "Tracking my child’s progress is much easier now."
+          }
+        }
+      },
+      "faq": {
+        "title": "Frequently asked questions",
+        "items": {
+          "1": {
+            "q": "Can I try before paying?",
+            "a": "Yes. You can start with a trial account to explore the interface and learning paths."
+          },
+          "2": {
+            "q": "Who is this platform for?",
+            "a": "NamThuEdu supports students, university learners, and working adults with tailored paths."
+          },
+          "3": {
+            "q": "Is there a dedicated teacher dashboard?",
+            "a": "Yes. The teacher portal supports class management, test creation, and progress tracking."
+          }
+        }
+      },
+      "ctaBanner": {
+        "title": "Join NamThuEdu Today!",
+        "subtitle": "Start learning smarter with a complete digital education ecosystem.",
+        "cta": "Try It Now",
+        "ctaContact": "Contact Us"
+      },
+      "cta": {
+        "title": "Ready to start your learning journey?",
+        "subtitle": "Create a trial account and experience it today.",
+        "button": "Start Free Trial"
+      },
+      "footer": {
+        "copyright": "© 2026 NamThuEdu. Modern knowledge architecture platform.",
+        "contact": "Hotline: 1900 6868 • support@namthuedu.vn"
+      }
+    }
+  }
+}

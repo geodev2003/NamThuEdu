@@ -9,12 +9,6 @@ const STUDENT_BASE_PATH = "/hoc-vien";
 
 type Q = { id: number; question: string; options: string[]; correct: number };
 
-const fallbackQuestions: Q[] = [
-  { id: 1, question: "Choose the correct synonym of 'rapid'.", options: ["slow", "quick", "late", "rare"], correct: 1 },
-  { id: 2, question: "Fill in: She ___ to school every day.", options: ["go", "goes", "gone", "going"], correct: 1 },
-  { id: 3, question: "Which sentence is grammatically correct?", options: ["He don't like tea.", "He doesn't likes tea.", "He doesn't like tea.", "He not like tea."], correct: 2 },
-];
-
 export function PracticeSession() {
   const { id } = useParams<{ id: string }>();
   const topicId = Number(id ?? 0);
@@ -28,7 +22,7 @@ export function PracticeSession() {
 
   const questions: Q[] = useMemo(() => {
     const raw = (data as any)?.data?.data?.questions;
-    if (!Array.isArray(raw) || raw.length === 0) return fallbackQuestions;
+    if (!Array.isArray(raw) || raw.length === 0) return [];
     return raw.slice(0, 10).map((q: any, idx: number) => ({
       id: Number(q?.id ?? q?.qId ?? idx + 1),
       question: String(q?.content ?? q?.qContent ?? `Question #${idx + 1}`),
@@ -66,6 +60,23 @@ export function PracticeSession() {
   });
 
   const answeredCount = Object.keys(answers).length;
+
+  if (questions.length === 0) {
+    return (
+      <div className="py-6 max-w-3xl mx-auto space-y-5">
+        <button
+          onClick={() => navigate(`${STUDENT_BASE_PATH}/luyen-tap`)}
+          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-800"
+        >
+          <ChevronLeft className="w-4 h-4" /> Quay lại luyện tập
+        </button>
+        <div className="rounded-3xl p-10 text-center" style={{ background: "#F5F3FF", border: "1.5px solid #E9D5FF" }}>
+          <p className="text-lg font-bold text-slate-700">Chưa có câu hỏi cho chủ đề này.</p>
+          <p className="text-sm text-slate-500 mt-2">Vui lòng chọn chủ đề khác hoặc thử lại sau.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="py-6 max-w-3xl mx-auto space-y-5">

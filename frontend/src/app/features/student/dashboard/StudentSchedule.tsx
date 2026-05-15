@@ -13,13 +13,7 @@ type ScheduleItem = {
 };
 
 function normalize(items: any[]): ScheduleItem[] {
-  if (!Array.isArray(items) || items.length === 0) {
-    return [
-      { id: "s1", title: "Luyện Listening theo chủ đề", type: "practice", date: "Hôm nay", start: "19:00", end: "19:30" },
-      { id: "s2", title: "Bài thi Reading mini mock", type: "test", date: "Ngày mai", start: "20:00", end: "21:00" },
-      { id: "s3", title: "Ôn tập Writing task 2", type: "lesson", date: "Thứ 6", start: "19:30", end: "20:15", done: true },
-    ];
-  }
+  if (!Array.isArray(items) || items.length === 0) return [];
   return items.slice(0, 8).map((it, idx) => ({
     id: String(it.id ?? idx + 1),
     title: String(it.title ?? it.name ?? "Buổi học"),
@@ -70,6 +64,12 @@ export function StudentSchedule() {
         <p className="text-sm text-slate-500 mt-2">Theo dõi buổi học, lịch luyện tập và bài thi sắp tới.</p>
       </div>
 
+      {schedule.length === 0 ? (
+        <div className="rounded-2xl bg-white p-8 text-center" style={{ border: "1.5px solid #F1F5F9" }}>
+          <Calendar className="w-10 h-10 mx-auto text-gray-300 mb-2" />
+          <p className="text-sm font-semibold text-slate-500">Không có bài thi hoặc buổi học nào sắp tới.</p>
+        </div>
+      ) : null}
       <div className="space-y-3">
         {schedule.map((item) => {
           const icon =

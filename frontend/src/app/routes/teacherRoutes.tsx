@@ -48,17 +48,18 @@ import { CreateAssignment } from "../features/teacher/assignments/CreateAssignme
 
 // Practice
 import { PracticeSessionList } from "../features/teacher/practice/PracticeSessionList";
+import { PracticeSessionDetail } from "../features/teacher/practice/PracticeSessionDetail";
+import { PracticeSessionEdit } from "../features/teacher/practice/PracticeSessionEdit";
 
 // Grading
+import { StudentVstepExamPage } from "../features/student/exams/StudentVstepExamPage";
 import { GradingQueue } from "../features/teacher/grading/GradingQueue";
 import { GradingDetail } from "../features/teacher/grading/GradingDetail";
-import { ClassReport } from "../features/teacher/grading/ClassReport";
 import { GradingStats } from "../features/teacher/grading/GradingStats";
 
 // Monitoring
 import { LiveMonitoring } from "../features/teacher/monitoring/LiveMonitoring";
 import { StudentDetail } from "../features/teacher/monitoring/StudentDetail";
-import { ConnectionHistory } from "../features/teacher/monitoring/ConnectionHistory";
 import { RealtimeStats } from "../features/teacher/monitoring/RealtimeStats";
 
 // Blog
@@ -119,11 +120,16 @@ export const teacherRoutes = {
     { path: "de-thi/import", Component: lazy(() => import("@/app/features/teacher/exams/ImportExam").then(m => ({ default: m.ImportExam }))) },
     { path: "de-thi/kids/tao-moi", Component: CreateKidsExam },
     { path: "de-thi/kids/tao-moi/:examId", Component: CreateKidsExam },
-    { path: "de-thi/vstep/reading/tao-moi", Component: CreateVstepReading }, // NEW: VSTEP Reading
-    { path: "de-thi/vstep/listening/tao-moi", Component: CreateVstepListening }, // NEW: VSTEP Listening
-    { path: "de-thi/vstep/writing/tao-moi", Component: CreateVstepWriting }, // NEW: VSTEP Writing
-    { path: "de-thi/vstep/speaking/tao-moi", Component: CreateVstepSpeaking }, // NEW: VSTEP Speaking
-    { path: "de-thi/vstep/full/tao-moi", Component: CreateVstepFull }, // NEW: VSTEP Full Test (4 skills)
+    { path: "de-thi/vstep/reading/tao-moi", Component: CreateVstepReading },
+    { path: "de-thi/vstep/reading/sua/:examId", Component: CreateVstepReading },
+    { path: "de-thi/vstep/listening/tao-moi", Component: CreateVstepListening },
+    { path: "de-thi/vstep/listening/sua/:examId", Component: CreateVstepListening },
+    { path: "de-thi/vstep/writing/tao-moi", Component: CreateVstepWriting },
+    { path: "de-thi/vstep/writing/sua/:examId", Component: CreateVstepWriting },
+    { path: "de-thi/vstep/speaking/tao-moi", Component: CreateVstepSpeaking },
+    { path: "de-thi/vstep/speaking/sua/:examId", Component: CreateVstepSpeaking },
+    { path: "de-thi/vstep/full/tao-moi", Component: CreateVstepFull },
+    { path: "de-thi/vstep/full/sua/:examId", Component: CreateVstepFull },
     { path: "de-thi/mau-de", Component: ExamTemplates },
     { path: "de-thi/cua-toi", Component: MyExams },
     { path: "de-thi/:examId", Component: ExamDetail },
@@ -145,17 +151,18 @@ export const teacherRoutes = {
     { path: "luyen-tap/theo-chu-de", Component: PracticeSessionList },
     { path: "luyen-tap/theo-mau", Component: PracticeSessionList },
     { path: "luyen-tap/ngau-nhien", Component: PracticeSessionList },
+    { path: "luyen-tap/:id", Component: PracticeSessionDetail },
+    { path: "luyen-tap/:id/chinh-sua", Component: PracticeSessionEdit },
 
     // Chấm bài
     { path: "cham-diem", Component: GradingQueue },
     { path: "cham-diem/:submissionId", Component: GradingDetail },
-    { path: "cham-diem/bao-cao-lop", Component: ClassReport },
+    { path: "xem-vstep/:examId", Component: StudentVstepExamPage },
     { path: "cham-diem/thong-ke", Component: GradingStats },
 
     // Giám sát trực tiếp
     { path: "giam-sat-truc-tiep", Component: LiveMonitoring },
     { path: "giam-sat-truc-tiep/:studentId", Component: StudentDetail },
-    { path: "giam-sat-truc-tiep/lich-su", Component: ConnectionHistory },
     { path: "giam-sat-truc-tiep/thong-ke", Component: RealtimeStats },
 
     // Blog & Bài viết

@@ -36,9 +36,9 @@ const PictureQuestionsEditor: React.FC<PictureQuestionsEditorProps> = ({
       return;
     }
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+    // Check file size (max 20MB)
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
       return;
     }
 
@@ -75,9 +75,9 @@ const PictureQuestionsEditor: React.FC<PictureQuestionsEditorProps> = ({
           return;
         }
 
-        // Check file size (max 5MB)
-        if (blob.size > 5 * 1024 * 1024) {
-          toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 5MB 😊');
+        // Check file size (max 20MB)
+        if (blob.size > 20 * 1024 * 1024) {
+          toast.error('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 20MB 😊');
           return;
         }
 

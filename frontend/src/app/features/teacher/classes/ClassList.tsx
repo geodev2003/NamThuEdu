@@ -73,13 +73,13 @@ export function ClassList() {
           if (result.status === 'success') {
             setClasses(result.data || []);
           } else {
-            setError('Không thể tải danh sách lớp học');
+            setError(t('teacher.classes.loadError'));
           }
         } else {
-          setError('Lỗi khi tải dữ liệu');
+          setError(t('teacher.classes.loadDataError'));
         }
       } catch (err) {
-        setError('Lỗi kết nối đến server');
+        setError(t('teacher.classes.connectionError'));
       } finally {
         setLoading(false);
       }
@@ -90,7 +90,7 @@ export function ClassList() {
 
   const statsData = [
     {
-      label: "Tổng số lớp",
+      label: t('teacher.classes.stats.totalClasses'),
       value: classes.length,
       change: 12.5,
       trend: "up",
@@ -98,7 +98,7 @@ export function ClassList() {
       color: "#EA580C",
     },
     {
-      label: "Lớp đang hoạt động",
+      label: t('teacher.classes.stats.activeClasses'),
       value: classes.filter(c => c.status === 'active').length,
       change: 8.3,
       trend: "up",
@@ -106,7 +106,7 @@ export function ClassList() {
       color: "#10B981",
     },
     {
-      label: "Tổng số học sinh",
+      label: t('teacher.classes.stats.totalStudents'),
       value: classes.reduce((sum, c) => sum + c.studentCount, 0),
       change: 15.2,
       trend: "up",
@@ -114,7 +114,7 @@ export function ClassList() {
       color: "#F59E0B",
     },
     {
-      label: "Sĩ số trung bình",
+      label: t('teacher.classes.stats.avgStudents'),
       value: classes.length > 0 ? Math.round(classes.reduce((sum, c) => sum + c.studentCount, 0) / classes.length) : 0,
       change: -2.1,
       trend: "down",
@@ -128,7 +128,7 @@ export function ClassList() {
       <div className="p-8 min-h-screen bg-gradient-to-br from-[#F9FAFB] to-[#F3F4F6] flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-[#EA580C] animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 font-semibold">Đang tải danh sách lớp học...</p>
+          <p className="text-gray-600 font-semibold">{t('teacher.classes.loading')}</p>
         </div>
       </div>
     );
@@ -146,7 +146,7 @@ export function ClassList() {
             onClick={() => window.location.reload()}
             className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
           >
-            Thử lại
+            {t('teacher.classes.retry')}
           </button>
         </div>
       </div>
@@ -163,8 +163,8 @@ export function ClassList() {
 
   const getStatusBadge = (status: string) => {
     const config = {
-      active: { label: "Đang hoạt động", color: "#10B981", bg: "#D1FAE5" },
-      inactive: { label: "Tạm dừng", color: "#6B7280", bg: "#F3F4F6" },
+      active: { label: t('teacher.classes.status.active'), color: "#10B981", bg: "#D1FAE5" },
+      inactive: { label: t('teacher.classes.status.inactive'), color: "#6B7280", bg: "#F3F4F6" },
     };
     const { label, color, bg } =
       config[status as keyof typeof config] || config.active;
@@ -191,10 +191,10 @@ export function ClassList() {
         <div className="flex items-center justify-between mb-2">
           <div>
             <h1 className="text-3xl font-bold text-[#111827] mb-2">
-              Danh sách lớp học
+              {t('teacher.classes.title')}
             </h1>
             <p className="text-[#6B7280] text-sm">
-              Dashboard &gt; Lớp học &gt; Danh sách
+              {t('teacher.classes.breadcrumb')}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -203,14 +203,14 @@ export function ClassList() {
               className="flex items-center gap-2 px-5 py-3 bg-white border-2 border-[#E5E7EB] text-[#374151] rounded-xl hover:border-[#EA580C] hover:bg-[#FFF7ED] transition-all font-semibold"
             >
               <BarChart3 className="w-5 h-5" />
-              Thống kê
+              {t('teacher.classes.btnStats')}
             </Link>
             <Link
               to="/giao-vien/lop-hoc/tao-moi"
               className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#EA580C] to-[#C2410C] text-white rounded-xl hover:shadow-xl hover:shadow-orange-500/30 hover:scale-105 transition-all font-bold"
             >
               <Plus className="w-5 h-5" />
-              Tạo lớp mới
+              {t('teacher.classes.btnCreateClass')}
             </Link>
           </div>
         </div>
@@ -262,7 +262,7 @@ export function ClassList() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9CA3AF]" />
             <input
               type="text"
-              placeholder="Tìm theo tên lớp, mã lớp, giáo viên..."
+              placeholder={t('teacher.classes.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-3.5 border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:border-transparent transition-all"
@@ -289,7 +289,7 @@ export function ClassList() {
 
           <button className="px-5 py-3.5 bg-[#EA580C] text-white rounded-xl hover:bg-[#C2410C] transition-all font-semibold flex items-center gap-2">
             <Filter className="w-5 h-5" />
-            Lọc
+            {t('teacher.classes.filter')}
           </button>
 
           {/* View Toggle */}
@@ -325,17 +325,17 @@ export function ClassList() {
             <Search className="w-8 h-8 text-gray-400" />
           </div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            Không tìm thấy lớp học
+            {t('teacher.classes.empty.title')}
           </h3>
           <p className="text-gray-600 mb-6">
-            Thử thay đổi bộ lọc hoặc tạo lớp học mới
+            {t('teacher.classes.empty.subtitle')}
           </p>
           <Link
             to="/giao-vien/lop-hoc/tao-moi"
             className="inline-flex items-center gap-2 px-6 py-3 bg-[#EA580C] text-white font-semibold rounded-xl hover:bg-[#C2410C] transition-all"
           >
             <Plus className="w-5 h-5" />
-            Tạo lớp học đầu tiên
+            {t('teacher.classes.empty.createFirst')}
           </Link>
         </div>
       )}
@@ -376,7 +376,7 @@ export function ClassList() {
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-[#6B7280] font-medium">
-                      Sĩ số
+                      {t('teacher.classes.grid.capacity')}
                     </span>
                     <span className="text-sm font-bold text-[#111827]">
                       {classItem.studentCount}/{classItem.maxStudents}
@@ -410,7 +410,7 @@ export function ClassList() {
               {/* Stats Row */}
               <div className="flex items-center gap-4 mb-4 p-3 bg-[#F9FAFB] rounded-xl">
                 <div className="flex-1 text-center">
-                  <p className="text-xs text-[#6B7280] mb-1">Điểm TB</p>
+                  <p className="text-xs text-[#6B7280] mb-1">{t('teacher.classes.grid.avgScore')}</p>
                   <p
                     className="text-lg font-bold"
                     style={{ color: getScoreColor(classItem.avgScore) }}
@@ -420,14 +420,14 @@ export function ClassList() {
                 </div>
                 <div className="w-px h-8 bg-[#E5E7EB]" />
                 <div className="flex-1 text-center">
-                  <p className="text-xs text-[#6B7280] mb-1">Điểm danh</p>
+                  <p className="text-xs text-[#6B7280] mb-1">{t('teacher.classes.grid.attendance')}</p>
                   <p className="text-lg font-bold text-[#10B981]">
                     {classItem.attendance}%
                   </p>
                 </div>
                 <div className="w-px h-8 bg-[#E5E7EB]" />
                 <div className="flex-1 text-center">
-                  <p className="text-xs text-[#6B7280] mb-1">Bài tập</p>
+                  <p className="text-xs text-[#6B7280] mb-1">{t('teacher.classes.grid.assignments')}</p>
                   <p className="text-lg font-bold text-[#EA580C]">
                     {classItem.assignments}
                   </p>
@@ -468,25 +468,25 @@ export function ClassList() {
                     />
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-[#6B7280] uppercase tracking-wider">
-                    Lớp học
+                    {t('teacher.classes.table.class')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-[#6B7280] uppercase tracking-wider">
-                    Khóa học
+                    {t('teacher.classes.table.course')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-[#6B7280] uppercase tracking-wider">
-                    Sĩ số
+                    {t('teacher.classes.table.students')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-[#6B7280] uppercase tracking-wider">
-                    Lịch học
+                    {t('teacher.classes.table.schedule')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-[#6B7280] uppercase tracking-wider">
-                    Điểm TB
+                    {t('teacher.classes.table.avgScore')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-[#6B7280] uppercase tracking-wider">
-                    Trạng thái
+                    {t('teacher.classes.table.status')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-[#6B7280] uppercase tracking-wider">
-                    Thao tác
+                    {t('teacher.classes.table.actions')}
                   </th>
                 </tr>
               </thead>
@@ -558,19 +558,19 @@ export function ClassList() {
           {/* Pagination */}
           <div className="px-6 py-4 border-t border-[#E5E7EB] flex items-center justify-between bg-[#F9FAFB]">
             <p className="text-sm text-[#6B7280]">
-              Hiển thị{" "}
-              <span className="font-bold text-[#111827]">1-{Math.min(filteredClasses.length, 10)}</span> trong{" "}
-              <span className="font-bold text-[#111827]">{filteredClasses.length}</span> lớp học
+              {t('teacher.classes.pagination.showing')}{" "}
+              <span className="font-bold text-[#111827]">1-{Math.min(filteredClasses.length, 10)}</span> {t('teacher.classes.pagination.of')}{" "}
+              <span className="font-bold text-[#111827]">{filteredClasses.length}</span> {t('teacher.classes.pagination.items')}
             </p>
             <div className="flex gap-2">
               <button className="px-4 py-2 border border-[#E5E7EB] rounded-lg hover:bg-white transition-all text-sm font-medium text-[#6B7280]">
-                Trước
+                {t('teacher.classes.pagination.previous')}
               </button>
               <button className="px-4 py-2 bg-[#EA580C] text-white rounded-lg font-medium text-sm">
                 1
               </button>
               <button className="px-4 py-2 border border-[#E5E7EB] rounded-lg hover:bg-white transition-all text-sm font-medium text-[#6B7280]">
-                Sau
+                {t('teacher.classes.pagination.next')}
               </button>
             </div>
           </div>

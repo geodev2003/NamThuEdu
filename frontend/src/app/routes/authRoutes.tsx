@@ -14,6 +14,7 @@ import { StudentRegister } from "../features/auth/student/StudentRegister";
 import { Navigate } from "react-router";
 import { LandingPage } from "../features/public";
 import { AuthLayout } from "../features/auth/shared/AuthLayout";
+import { AuthGuard } from "../../components/auth";
 
 // Teacher Auth
 import { TeacherLogin } from "../features/auth/teacher/TeacherLogin";
@@ -29,14 +30,34 @@ export const authRoutes = [
     Component: AuthLayout,
     children: [
       // ========== STUDENT AUTH ==========
-      { path: "/dang-nhap", Component: StudentLogin },
-      // { path: "/dang-ky", Component: StudentRegister }, // DISABLED: Students cannot self-register
+      {
+        path: "/dang-nhap",
+        element: (
+          <AuthGuard forRole="student">
+            <StudentLogin />
+          </AuthGuard>
+        ),
+      },
 
       // ========== TEACHER AUTH ==========
-      { path: "/giao-vien/dang-nhap", Component: TeacherLogin },
+      {
+        path: "/giao-vien/dang-nhap",
+        element: (
+          <AuthGuard forRole="teacher">
+            <TeacherLogin />
+          </AuthGuard>
+        ),
+      },
 
       // ========== ADMIN AUTH ==========
-      { path: "/admin/login", Component: AdminLogin },
+      {
+        path: "/admin/login",
+        element: (
+          <AuthGuard forRole="admin">
+            <AdminLogin />
+          </AuthGuard>
+        ),
+      },
       { path: "/admin/register", Component: () => <Navigate to="/admin/login" replace /> },
     ],
   },

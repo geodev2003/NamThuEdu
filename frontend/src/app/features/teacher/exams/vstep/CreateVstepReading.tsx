@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useNavigate, useSearchParams, useParams } from "react-router";
 import { ArrowLeft, Save, BookOpen, FileText, CheckCircle2 } from "lucide-react";
 import { useToast } from "../../../../../hooks/useToast";
 import { useTranslation } from "react-i18next";
 import { QuillEditor } from "../../../../../components/ui/QuillEditor";
 import { saveVstepPart, publishVstepExam, loadVstepExam } from "../../../../../services/vstepApi";
-import "react-quill/dist/quill.snow.css";
+import "react-quill-new/dist/quill.snow.css";
 
 interface Question {
   id: string;
@@ -47,9 +47,12 @@ export const CreateVstepReading = ({ examId: propExamId, onComplete, isFullTest 
   const { t } = useTranslation();
   const quillRef = useRef<any>(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  
+  const params = useParams();
+  const urlExamId = params.examId || searchParams.get('id');
+  const isEditMode = !!params.examId;
+
   // Initialize examId from props or URL
-  const initialExamId = propExamId || searchParams.get('id') || `vstep-reading-${Date.now()}`;
+  const initialExamId = propExamId || urlExamId || `vstep-reading-${Date.now()}`;
   const [examId, setExamId] = useState<string>(initialExamId);
   const [examTitle, setExamTitle] = useState<string>(t('vstep.reading.title'));
   const [isLoading, setIsLoading] = useState(false);
@@ -79,7 +82,7 @@ export const CreateVstepReading = ({ examId: propExamId, onComplete, isFullTest 
   // Initialize or load exam
   useEffect(() => {
     // Priority: propExamId (from Full Test) > URL param > generate new
-    const effectiveExamId = propExamId || searchParams.get('id');
+    const effectiveExamId = propExamId || urlExamId;
     
     if (effectiveExamId) {
       // Update examId state if different
@@ -87,8 +90,8 @@ export const CreateVstepReading = ({ examId: propExamId, onComplete, isFullTest 
         setExamId(effectiveExamId);
       }
       
-      // Update URL if not in Full Test mode and URL doesn't have ID
-      if (!isFullTest && !searchParams.get('id')) {
+      // Update URL if not in Full Test mode and URL doesn't have ID (skip if on /sua/:examId route)
+      if (!isFullTest && !params.examId && !searchParams.get('id')) {
         setSearchParams({ id: effectiveExamId }, { replace: true });
       }
       
@@ -168,7 +171,7 @@ export const CreateVstepReading = ({ examId: propExamId, onComplete, isFullTest 
           // Not an error - just means it's a new exam
         })
         .finally(() => setIsLoading(false));
-    } else if (!isFullTest) {
+    } else if (!isFullTest && !params.examId) {
       // No ID anywhere and not in Full Test, add generated ID to URL
       console.log('Adding exam ID to URL:', examId);
       setSearchParams({ id: examId }, { replace: true });
@@ -475,9 +478,15 @@ export const CreateVstepReading = ({ examId: propExamId, onComplete, isFullTest 
   const handleSave = async () => {
     console.log('handleSave called - examId:', examId);
 
-    // Validate all parts
+    // Validate parts (in edit mode, skip empty parts with no content)
     for (const part of parts) {
       const wc = countWords(part.passage);
+      const hasAnyQuestion = part.questions.some(q => q.questionText.trim());
+      const hasContent = part.passage.trim() || hasAnyQuestion;
+
+      // In edit mode, skip completely empty parts
+      if (isEditMode && !hasContent) continue;
+
       if (wc < part.wordCount[0] || wc > part.wordCount[1]) {
         error(t('vstep.reading.toast.invalidWordCount', { part: part.partNumber, current: wc, min: part.wordCount[0], max: part.wordCount[1] }));
         return;
@@ -520,11 +529,11 @@ export const CreateVstepReading = ({ examId: propExamId, onComplete, isFullTest 
       
       console.log('✅ Publish response:', response);
       
-      success(t('vstep.reading.toast.publishSuccess'));
+      success(isEditMode ? 'Cập nhật thành công!' : t('vstep.reading.toast.publishSuccess'));
       
-      // Navigate to practice list
+      // In edit mode go back, otherwise navigate to practice list
       setTimeout(() => {
-        navigate('/giao-vien/luyen-tap');
+        isEditMode ? navigate(-1) : navigate('/giao-vien/luyen-tap');
       }, 1500);
     } catch (err: any) {
       console.error('Publish error:', err);
@@ -569,7 +578,7 @@ export const CreateVstepReading = ({ examId: propExamId, onComplete, isFullTest 
                   className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Save className="w-4 h-4" />
-                  {isSaving ? t('vstep.reading.actions.publishing') : t('vstep.reading.actions.publish')}
+                  {isSaving ? (isEditMode ? 'Đang cập nhật...' : t('vstep.reading.actions.publishing')) : (isEditMode ? 'Xuất bản lại' : t('vstep.reading.actions.publish'))}
                 </button>
               </div>
             </div>
@@ -620,7 +629,7 @@ export const CreateVstepReading = ({ examId: propExamId, onComplete, isFullTest 
       </div>
 
       {/* Main Content - 2 Columns */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-hidden min-h-0">
         {isLoading ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-center">
@@ -629,8 +638,8 @@ export const CreateVstepReading = ({ examId: propExamId, onComplete, isFullTest 
             </div>
           </div>
         ) : (
-          <div className="max-w-[1800px] mx-auto px-6 py-6 min-h-full">
-            <div className="grid grid-cols-[40%_60%] gap-6" style={{ minHeight: '600px' }}>
+          <div className="max-w-[1800px] mx-auto px-6 py-6 h-full overflow-hidden">
+            <div className="grid grid-cols-[40%_60%] gap-6 h-full">
             {/* Left Column - Passage */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
               <div className="p-4 border-b border-gray-200 flex-shrink-0">
@@ -717,7 +726,7 @@ export const CreateVstepReading = ({ examId: propExamId, onComplete, isFullTest 
                   }
                 >
                   <Save className="w-3.5 h-3.5" />
-                  {savingPart === currentPart ? t('vstep.reading.actions.saving') : t('vstep.reading.actions.savePart')}
+                  {savingPart === currentPart ? (isEditMode ? 'Đang lưu...' : t('vstep.reading.actions.saving')) : (isEditMode ? `Cập nhật Part ${currentPart}` : t('vstep.reading.actions.savePart'))}
                 </button>
               </div>
               
@@ -755,7 +764,7 @@ export const CreateVstepReading = ({ examId: propExamId, onComplete, isFullTest 
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            <div className="flex-1 overflow-y-auto pt-2 px-4 pb-6 space-y-4">
               {currentPartData.questions.map((question) => (
                 <div key={question.id} id={`question-${question.id}`} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start gap-3">

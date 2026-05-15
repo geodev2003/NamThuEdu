@@ -3,8 +3,6 @@ import { Navigate, RouteObject, useLocation } from 'react-router';
 import { ProtectedRoute } from '../../components/auth';
 import { StudentLayout } from '../layouts/StudentLayout';
 import { KidsLayout } from '../layouts/KidsLayout';
-import { TeensLayout } from '../layouts/TeensLayout';
-import { AdultsLayout } from '../layouts/AdultsLayout';
 import { UnderConstruction } from '../components/shared';
 import { StudentProtectedRoute } from './StudentProtectedRoute';
 import { WaitingForClass } from '../features/student/WaitingForClass';
@@ -13,6 +11,8 @@ import { TakeExam } from '../features/student/exam';
 // ─── Age Group Dashboards ─────────────────────────────────────────────────────
 const KidsDashboard = lazy(() =>
   import('../features/student/kids/KidsDashboard').then(m => ({ default: m.KidsDashboard })));
+const KidsPractice = lazy(() =>
+  import('../features/student/kids/KidsPractice').then(m => ({ default: m.KidsPractice })));
 const TeensDashboard = lazy(() =>
   import('../features/student/teens/TeensDashboard').then(m => ({ default: m.TeensDashboard })));
 const AdultsDashboard = lazy(() =>
@@ -36,11 +36,16 @@ const StudentRewards = lazy(() =>
 const StudentSchedule = lazy(() =>
   import('../features/student/dashboard/StudentSchedule').then(m => ({ default: m.StudentSchedule })));
 
+const StudentExamBrowser = lazy(() =>
+  import('../features/student/exams/StudentExamBrowser').then(m => ({ default: m.StudentExamBrowser })));
+const StudentVstepExamPage = lazy(() =>
+  import('../features/student/exams/StudentVstepExamPage').then(m => ({ default: m.StudentVstepExamPage })));
+const VstepResultPage = lazy(() =>
+  import('../features/student/exams/VstepResultPage').then(m => ({ default: m.VstepResultPage })));
+
 // ─── New pages (gap-filled) ───────────────────────────────────────────────────
 const TestTaking = lazy(() =>
   import('../features/student/test-taking/TestTaking').then(m => ({ default: m.TestTaking })));
-const TestTakingVSTEP = lazy(() =>
-  import('../features/student/test-taking/TestTakingVSTEP').then(m => ({ default: m.TestTakingVSTEP })));
 const ExamLobby = lazy(() =>
   import('../features/student/test-taking/ExamLobby').then(m => ({ default: m.ExamLobby })));
 const ResultDetail = lazy(() =>
@@ -72,6 +77,29 @@ function LegacyStudentRedirect() {
   return <Navigate to={target} replace />;
 }
 
+/**
+ * Render dashboard phù hợp theo age_group của học viên hiện tại.
+ * Kids → redirect sang URL kids riêng (vì layout khác hoàn toàn).
+ * Teens / Adults → render dashboard tương ứng dưới StudentLayout chung.
+ * Mặc định / chưa phân nhóm → StudentDashboard cũ.
+ */
+function AdaptiveDashboard() {
+  const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : null;
+  const ageGroup = user?.age_group;
+
+  if (ageGroup === 'kids') {
+    return <Navigate to="/hoc-vien/kids" replace />;
+  }
+  if (ageGroup === 'adults') {
+    return <Suspense fallback={<LoadingFallback />}><AdultsDashboard /></Suspense>;
+  }
+  if (ageGroup === 'teens') {
+    return <Suspense fallback={<LoadingFallback />}><TeensDashboard /></Suspense>;
+  }
+  return <Suspense fallback={<LoadingFallback />}><StudentDashboard /></Suspense>;
+}
+
 // Protected Student Layout
 function ProtectedStudentLayout() {
   return (
@@ -92,23 +120,23 @@ function ProtectedKidsLayout() {
   );
 }
 
-// Protected Teens Layout
+// Protected Teens Layout (uses shared StudentLayout)
 function ProtectedTeensLayout() {
   return (
     <ProtectedRoute requiredRole="student">
       <StudentProtectedRoute ageGroup="teens">
-        <TeensLayout />
+        <StudentLayout />
       </StudentProtectedRoute>
     </ProtectedRoute>
   );
 }
 
-// Protected Adults Layout
+// Protected Adults Layout (uses shared StudentLayout)
 function ProtectedAdultsLayout() {
   return (
     <ProtectedRoute requiredRole="student">
       <StudentProtectedRoute ageGroup="adults">
-        <AdultsLayout />
+        <StudentLayout />
       </StudentProtectedRoute>
     </ProtectedRoute>
   );
@@ -121,7 +149,24 @@ export const studentRoutes: RouteObject = {
   children: [
     {
       index: true,
-      element: <Suspense fallback={<LoadingFallback />}><StudentDashboard /></Suspense>,
+      element: <AdaptiveDashboard />,
+    },
+    // Adult/professional endpoints (alias dưới /hoc-vien)
+    {
+      path: 'khoa-hoc',
+      element: <Suspense fallback={<LoadingFallback />}><TestList /></Suspense>,
+    },
+    {
+      path: 'thong-ke',
+      element: <Suspense fallback={<LoadingFallback />}><Progress /></Suspense>,
+    },
+    {
+      path: 'muc-tieu',
+      element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
+    },
+    {
+      path: 'chung-chi',
+      element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
     },
     {
       path: 'cho-xep-lop',
@@ -131,6 +176,10 @@ export const studentRoutes: RouteObject = {
     {
       path: 'lam-bai/:examId',
       element: <Suspense fallback={<LoadingFallback />}><TakeExam /></Suspense>,
+    },
+    {
+      path: 'de-thi',
+      element: <Suspense fallback={<LoadingFallback />}><StudentExamBrowser /></Suspense>,
     },
     // Legacy routes (shared functionality)
     {
@@ -174,12 +223,16 @@ export const studentRoutes: RouteObject = {
       element: <Suspense fallback={<LoadingFallback />}><TestTaking /></Suspense>,
     },
     {
-      path: 'lam-bai-vstep/:id',
-      element: <Suspense fallback={<LoadingFallback />}><TestTakingVSTEP /></Suspense>,
+      path: 'lam-bai-vstep/:examId',
+      element: <Suspense fallback={<LoadingFallback />}><StudentVstepExamPage /></Suspense>,
     },
     {
       path: 'ket-qua/:id',
       element: <Suspense fallback={<LoadingFallback />}><ResultDetail /></Suspense>,
+    },
+    {
+      path: 'ket-qua-vstep/:id',
+      element: <Suspense fallback={<LoadingFallback />}><VstepResultPage /></Suspense>,
     },
     {
       path: 'dap-an/:id',
@@ -229,6 +282,57 @@ export const kidsRoutes: RouteObject = {
       index: true,
       element: <Suspense fallback={<LoadingFallback />}><KidsDashboard /></Suspense>,
     },
+    // Practice (landing + sessions)
+    {
+      path: 'luyen-tap',
+      element: <Suspense fallback={<LoadingFallback />}><KidsPractice /></Suspense>,
+    },
+    {
+      path: 'luyen-tap/random',
+      element: <Suspense fallback={<LoadingFallback />}><PracticeSession /></Suspense>,
+    },
+    {
+      path: 'luyen-tap/mistakes',
+      element: <Suspense fallback={<LoadingFallback />}><PracticeSession /></Suspense>,
+    },
+    {
+      path: 'luyen-tap/new',
+      element: <Suspense fallback={<LoadingFallback />}><PracticeSession /></Suspense>,
+    },
+    {
+      path: 'luyen-tap/custom',
+      element: <Suspense fallback={<LoadingFallback />}><PracticeSession /></Suspense>,
+    },
+    {
+      path: 'luyen-tap/:id',
+      element: <Suspense fallback={<LoadingFallback />}><PracticeSession /></Suspense>,
+    },
+    // Tests (list + lobby + taking + results)
+    {
+      path: 'bai-tap',
+      element: <Suspense fallback={<LoadingFallback />}><TestList /></Suspense>,
+    },
+    {
+      path: 'phong-cho/:id',
+      element: <Suspense fallback={<LoadingFallback />}><ExamLobby /></Suspense>,
+    },
+    {
+      path: 'lam-bai/:id',
+      element: <Suspense fallback={<LoadingFallback />}><TestTaking /></Suspense>,
+    },
+    {
+      path: 'ket-qua/:id',
+      element: <Suspense fallback={<LoadingFallback />}><ResultDetail /></Suspense>,
+    },
+    {
+      path: 'dap-an/:id',
+      element: <Suspense fallback={<LoadingFallback />}><AnswerReview /></Suspense>,
+    },
+    {
+      path: 'lich-su',
+      element: <Suspense fallback={<LoadingFallback />}><TestHistory /></Suspense>,
+    },
+    // Kids-only / placeholder
     {
       path: 'hoc-bai',
       element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
@@ -240,6 +344,14 @@ export const kidsRoutes: RouteObject = {
     {
       path: 'thanh-tich',
       element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
+    },
+    {
+      path: 'thong-bao',
+      element: <Suspense fallback={<LoadingFallback />}><NotificationList /></Suspense>,
+    },
+    {
+      path: 'ho-so',
+      element: <Suspense fallback={<LoadingFallback />}><Profile /></Suspense>,
     },
     {
       path: 'cai-dat',
@@ -304,6 +416,10 @@ export const adultsRoutes: RouteObject = {
     {
       path: 'courses',
       element: <Suspense fallback={<LoadingFallback />}><TestList /></Suspense>,
+    },
+    {
+      path: 'de-thi',
+      element: <Suspense fallback={<LoadingFallback />}><StudentExamBrowser /></Suspense>,
     },
     {
       path: 'analytics',

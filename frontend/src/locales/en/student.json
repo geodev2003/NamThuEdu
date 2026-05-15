@@ -1,0 +1,253 @@
+{
+  "student": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "tests": "Tests",
+      "practice": "Practice",
+      "progress": "Progress",
+      "history": "History",
+      "notifications": "Notifications",
+      "profile": {
+        "student": "Student",
+        "myProfile": "My Profile",
+        "settings": "Settings",
+        "logout": "Logout"
+      },
+      "streak": {
+        "days": "days",
+        "keepGoing": "Keep it up!"
+      },
+      "language": "Language"
+    },
+    "dashboard": {
+      "greeting": {
+        "morning": "Good morning",
+        "afternoon": "Good afternoon",
+        "evening": "Good evening"
+      },
+      "loading": "Loading...",
+      "student": "Student",
+      "stats": {
+        "pendingTests": "Pending Tests",
+        "todayTests": "tests today",
+        "averageScore": "Average Score",
+        "testsCompleted": "tests completed",
+        "recentScore": "Recent Score",
+        "totalTests": "Total Tests",
+        "completed": "Completed"
+      },
+      "pendingAssignments": {
+        "title": "Pending Assignments",
+        "viewAll": "View All",
+        "empty": "No assignments yet",
+        "startTest": "Start Test"
+      },
+      "skills": {
+        "title": "Skills",
+        "description": "Skill assessment",
+        "highest": "Highest",
+        "needImprovement": "Need Improvement",
+        "noData": "No data yet"
+      },
+      "progress": {
+        "title": "Recent Progress",
+        "points": "points",
+        "noData": "No data yet"
+      },
+      "recentResults": {
+        "title": "Recent Results",
+        "viewAll": "All",
+        "noResults": "No results yet"
+      },
+      "quickPractice": {
+        "title": "Quick Practice"
+      },
+      "skillNames": {
+        "listening": "Listening",
+        "reading": "Reading",
+        "writing": "Writing",
+        "speaking": "Speaking"
+      }
+    },
+    "tests": {
+      "title": "My Tests",
+      "available": "Available Tests",
+      "inProgress": "In Progress",
+      "completed": "Completed",
+      "startTest": "Start Test",
+      "continueTest": "Continue",
+      "viewResult": "View Result",
+      "dueIn": "Due in {{time}}",
+      "urgent": "Urgent",
+      "attemptsLeft": "{{count}} attempts left"
+    },
+    "practice": {
+      "title": "Practice",
+      "subtitle": "Practice skills by topic",
+      "allSkills": "All Skills",
+      "startPractice": "Start Practice",
+      "continue": "Continue",
+      "quickStart": "Quick Start",
+      "random10": "Random 10 questions",
+      "recentMistakes": "Recent mistakes",
+      "unanswered": "Unanswered",
+      "custom": "Custom set"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "unreadCount": "{{count}} unread",
+      "markAllRead": "Mark all as read",
+      "deleteRead": "Delete read",
+      "tabs": {
+        "all": "All",
+        "assignments": "Assignments",
+        "results": "Results",
+        "reminders": "Reminders",
+        "messages": "Messages"
+      },
+      "actions": {
+        "markRead": "Mark as read",
+        "delete": "Delete notification"
+      },
+      "empty": {
+        "title": "No new notifications",
+        "subtitle": "You'll receive notifications when new assignments are posted"
+      }
+    },
+    "profile": {
+      "title": "Profile",
+      "tabs": {
+        "info": "Personal Info",
+        "goals": "Learning Goals",
+        "settings": "Settings",
+        "security": "Security",
+        "stats": "Statistics"
+      }
+    },
+    "settings": {
+      "theme": {
+        "title": "Theme Preference",
+        "description": "Choose the look and feel that works best for you. Your theme preference will be saved and synced across devices.",
+        "playful": {
+          "label": "Playful",
+          "description": "Bright, fun, and encouraging - perfect for young learners"
+        },
+        "dynamic": {
+          "label": "Dynamic",
+          "description": "Modern, energetic, and achievement-focused"
+        },
+        "professional": {
+          "label": "Professional",
+          "description": "Clean, efficient, and focused - optimized for serious learners"
+        },
+        "auto": {
+          "label": "Auto (Age-based)",
+          "description": "Automatically select theme based on your age"
+        },
+        "currentlyLabel": "Currently",
+        "tipTitle": "Tip",
+        "tipDescription": "Your selected theme will change the colors, fonts, spacing, and overall feel of the interface. Try different options to find what works best for you!"
+      }
+    },
+    "themeSelection": {
+      "title": "Choose Your Learning Style",
+      "subtitle": "Select the interface that works best for you",
+      "skipForNow": "Skip for now",
+      "confirmSelection": "Choose this theme",
+      "recommended": "Recommended for you",
+      "canChangeAnytime": "You can change your theme anytime in Settings",
+      "kids": {
+        "title": "Playful",
+        "description": "Vibrant interface with colorful images, perfect for young learners",
+        "ageRange": "Ages 6-12",
+        "feature1": "⭐ Stars and rewards",
+        "feature2": "🎮 Learning games",
+        "feature3": "🎨 Vibrant illustrations",
+        "feature4": "🏆 Friend leaderboards"
+      },
+      "teens": {
+        "title": "Dynamic",
+        "description": "Modern, energetic interface focused on achievements",
+        "ageRange": "Ages 13-17",
+        "feature1": "🔥 Streak tracking",
+        "feature2": "📊 Detailed statistics",
+        "feature3": "🏅 National leaderboards",
+        "feature4": "💪 Weekly challenges"
+      },
+      "adults": {
+        "title": "Professional",
+        "description": "Clean, efficient interface focused on learning outcomes",
+        "ageRange": "18+ years",
+        "feature1": "📈 Clear learning roadmap",
+        "feature2": "📊 Detailed progress reports",
+        "feature3": "🎯 IELTS/TOEIC/VSTEP goals",
+        "feature4": "📚 In-depth resources"
+      }
+    },
+    "examLobby": {
+      "title": "EXAM WAITING ROOM",
+      "defaultTitle": "VSTEP Integrated Test",
+      "subtitle": "Please check your camera, speaker/headphones, and microphone before receiving the test.",
+      "duration": "Test duration: {{minutes}} minutes",
+      "loadingExam": "Loading exam information...",
+      "sectionExamStructure": "EXAM STRUCTURE",
+      "skill1": "Skill 1: LISTENING - 3 parts (47 minutes)",
+      "skill2": "Skill 2: READING - 4 parts (60 minutes)",
+      "skill3": "Skill 3: WRITING - 2 parts (60 minutes)",
+      "skill4": "Skill 4: SPEAKING - 3 parts (12 minutes)",
+      "sectionDeviceCheck": "DEVICE CHECK",
+      "enableCamera": "Enable camera",
+      "testSpeaker": "Test speaker",
+      "testMic": "Test mic",
+      "recording": "Recording...",
+      "sectionReady": "READY STATUS",
+      "camera": "Camera",
+      "speaker": "Speaker",
+      "microphone": "Microphone",
+      "enterExam": "RECEIVE TEST",
+      "connecting": "Connecting...",
+      "mediaUnsupported": "Your browser does not support camera/microphone.",
+      "permissionGranted": "Camera and microphone permissions granted.",
+      "permissionRequired": "You must allow camera and microphone access before starting.",
+      "loadExamFailed": "Could not load exam details. You can still proceed with device checks.",
+      "startingSession": "Starting exam session...",
+      "sessionConnected": "Exam session connected successfully.",
+      "sessionFailed": "Failed to connect exam session.",
+      "alertMicPermission": "Cannot access microphone. Please allow permission and try again.",
+      "alertCameraMicPermission": "Please enable both camera and microphone before receiving the test.",
+      "alertSpeakerRequired": "Please test your speaker before receiving the test.",
+      "alertSessionFailed": "Cannot start exam session right now. Please try again in a few seconds."
+    },
+    "examTaking": {
+      "unansweredTitle": "There are unanswered questions",
+      "readyTitle": "Ready to submit",
+      "unansweredText": "You still have {{count}} unanswered questions.",
+      "answeredText": "You answered {{answered}}/{{total}} questions.",
+      "continue": "Continue",
+      "submitting": "Submitting...",
+      "submit": "Submit",
+      "alertMockMode": "Cannot connect to backend. Switched to Mock Mode for UI preview.",
+      "alertSubmitMock": "Mock Mode: Test submitted successfully (Local)",
+      "alertMicPermission": "Cannot access microphone. Please allow permission and try again.",
+      "answered": "Answered: {{answered}}/{{total}}",
+      "currentSkill": "Skill:",
+      "part": "Part",
+      "saving": "Saving...",
+      "saved": "Saved",
+      "listeningInstruction": "In this part, you will hear the audio once. Read the questions below and choose the best answer A, B, C, or D.",
+      "audioOneTime": "Audio (one-time playback)",
+      "audioFinished": "Playback completed",
+      "writePlaceholder": "Write your answer here...",
+      "stop": "Stop",
+      "record": "Record",
+      "play": "Play",
+      "recording": "Recording...",
+      "recorded": "Audio recorded",
+      "notRecorded": "No recording yet",
+      "speakingNote": "Optional notes for your response...",
+      "save": "Save",
+      "hideMenu": "Hide menu",
+      "showMenu": "Show menu"
+    }
+  }
+}

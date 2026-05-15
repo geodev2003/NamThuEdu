@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams, useLocation } from "react-router";
-import { ArrowLeft, BookOpen, Headphones, PenTool, Mic, CheckCircle2, Save, FileText, Clock, ChevronRight, Loader2 } from "lucide-react";
+import { useNavigate, useSearchParams, useLocation, useParams } from "react-router";
+import { ArrowLeft, BookOpen, Headphones, PenTool, Mic, CheckCircle2, Save, FileText, Clock, ChevronRight, Loader2, Upload } from "lucide-react";
 import { useToast } from "../../../../../hooks/useToast";
 import { useTranslation } from "react-i18next";
 import { teacherApi } from "../../../../../services/teacherApi";
@@ -10,6 +10,7 @@ import { CreateVstepReading } from "./CreateVstepReading";
 import { CreateVstepListening } from "./CreateVstepListening";
 import { CreateVstepWriting } from "./CreateVstepWriting";
 import { CreateVstepSpeaking } from "./CreateVstepSpeaking";
+import { VstepImportModal } from "./VstepImportModal";
 
 type SkillType = "reading" | "listening" | "writing" | "speaking";
 
@@ -30,13 +31,15 @@ export const CreateVstepFull = () => {
   const { success, error } = useToast();
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
+  const params = useParams();
 
   // Nhận title/description từ CreateExam (navigate state)
   const navState = (location.state as { title?: string; description?: string; duration?: number } | null) ?? {};
 
   // Step 0: basic info | Step 1: skill editing
   // Skip step 0 nếu đã có title từ CreateExam hoặc resume từ URL
-  const urlExamId = searchParams.get("id") || "";
+  // Support both /sua/:examId (new) and ?id= (legacy)
+  const urlExamId = params.examId || searchParams.get("id") || "";
   const isResuming = !!urlExamId && !urlExamId.startsWith("vstep-full-");
   const [step, setStep] = useState<0 | 1>(navState.title || isResuming ? 1 : 0);
   const [isCreating, setIsCreating] = useState(false);
@@ -49,6 +52,8 @@ export const CreateVstepFull = () => {
   const [currentSkill, setCurrentSkill] = useState<SkillType>("listening");
   const [completedSkills, setCompletedSkills] = useState<Set<SkillType>>(new Set());
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Real exam ID from API (after step 0 submit or from navigation state)
   const [realExamId, setRealExamId] = useState<string>(urlExamId || "");
@@ -123,9 +128,10 @@ export const CreateVstepFull = () => {
           listening: async () => {
             try {
               const response = await import("../../../../../services/vstepApi").then(m => m.loadVstepListeningExam(examId));
-              // Check if any part has actual questions
-              const hasQuestions = response.data?.parts?.some((part: any) => 
-                part.questions && part.questions.length > 0
+              // Listening structure: parts → sections → questions
+              const hasQuestions = response.data?.parts?.some((part: any) =>
+                (part.sections?.some((sec: any) => sec.questions?.length > 0))
+                || (part.questions?.length > 0) // fallback for legacy/flat shape
               );
               return response.status === "success" && hasQuestions;
             } catch {
@@ -193,7 +199,7 @@ export const CreateVstepFull = () => {
     };
 
     loadCompletedSkills();
-  }, [examId]);
+  }, [examId, reloadKey]);
 
   const handleCreateExam = async () => {
     if (!examTitle.trim()) return;
@@ -211,7 +217,7 @@ export const CreateVstepFull = () => {
       if (res.status === "success" && res.data) {
         const id = String(res.data.eId);
         setRealExamId(id);
-        navigate(`/giao-vien/de-thi/vstep/full/tao-moi?id=${id}`, { replace: true });
+        navigate(`/giao-vien/de-thi/vstep/full/sua/${id}`, { replace: true });
         setStep(1);
         success("Đề thi đã được tạo! Bắt đầu nhập nội dung.");
       } else {
@@ -240,7 +246,12 @@ export const CreateVstepFull = () => {
     }
     try {
       success(t('vstep.full.actions.publishSuccess'));
-      navigate("/giao-vien/luyen-tap");
+      // Chuyển sang trang chi tiết đề thi vừa tạo
+      if (realExamId && !realExamId.startsWith('vstep-full-')) {
+        navigate(`/giao-vien/de-thi/${realExamId}`);
+      } else {
+        navigate("/giao-vien/de-thi");
+      }
     } catch (err: any) {
       error(err.message || t('vstep.full.actions.publishError'));
     }
@@ -407,7 +418,7 @@ export const CreateVstepFull = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+    <div className="h-full flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50">
       {/* Header - Minimalist & Clean */}
       <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
         <div className="px-8 py-4">
@@ -431,8 +442,17 @@ export const CreateVstepFull = () => {
               </div>
             </div>
 
-            {/* Right: Progress Indicator */}
+            {/* Right: Import + Progress Indicator */}
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => setShowImportModal(true)}
+                disabled={!realExamId || realExamId.startsWith('vstep-full-')}
+                className="flex items-center gap-2 h-10 px-4 bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-lg text-sm font-semibold hover:from-orange-600 hover:to-rose-600 transition-all shadow-md hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Import nguyên đề (Listening, Reading, Writing)"
+              >
+                <Upload className="w-4 h-4" />
+                Import đề
+              </button>
               <div className="text-right">
                 <p className="text-sm font-semibold text-gray-900">
                   {completedSkills.size}/4 {t('vstep.full.progress.skills')}
@@ -481,17 +501,26 @@ export const CreateVstepFull = () => {
       </div>
 
       {/* Content Area - Render current skill component */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-hidden min-h-0">
         <CurrentComponent 
+          key={`${currentSkill}-${reloadKey}`}
           examId={examId}
           onComplete={() => handleSkillComplete(currentSkill)}
           isFullTest={true}
         />
       </div>
 
+      {/* Import Modal */}
+      <VstepImportModal
+        open={showImportModal}
+        examId={examId}
+        onClose={() => setShowImportModal(false)}
+        onSuccess={() => { success('Import đề thành công!'); setReloadKey(k => k + 1); }}
+      />
+
       {/* Fixed Bottom Action Bar - Clean & Minimal */}
       <div className="fixed bottom-0 left-64 right-0 bg-white border-t border-gray-200 shadow-lg z-50 transition-all duration-300">
-        <div className="px-8 py-4">
+        <div className="px-8 py-2">
           <div className="flex items-center justify-between">
             {/* Left: Progress Summary */}
             <div className="flex items-center gap-6">

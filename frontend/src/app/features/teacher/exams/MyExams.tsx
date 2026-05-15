@@ -221,6 +221,13 @@ export function MyExams() {
                 Từ mẫu đề
               </Link>
               <Link
+                to="/giao-vien/de-thi/import"
+                className="px-4 py-2.5 bg-white border border-indigo-300 text-indigo-700 rounded-lg hover:bg-indigo-50 transition-all flex items-center gap-2 font-medium"
+              >
+                <Download className="w-4 h-4" />
+                Import PDF
+              </Link>
+              <Link
                 to="/giao-vien/de-thi/tao-moi"
                 className="px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all flex items-center gap-2 font-medium shadow-lg shadow-orange-500/30"
               >

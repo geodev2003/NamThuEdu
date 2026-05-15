@@ -31,7 +31,9 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  Scissors,
 } from "lucide-react";
+import { PdfCutterTab } from "./PdfCutterTab";
 
 export function Settings() {
   usePageTitle(PAGE_TITLES.TEACHER_SETTINGS);
@@ -81,11 +83,12 @@ export function Settings() {
   }, []);
 
   const tabs = [
-    { id: "profile", label: "Hồ sơ cá nhân", icon: User },
-    { id: "account", label: "Tài khoản", icon: Shield },
-    { id: "notifications", label: "Thông báo", icon: Bell },
-    { id: "appearance", label: "Giao diện", icon: Palette },
-    { id: "language", label: "Ngôn ngữ", icon: Globe },
+    { id: "profile",       label: "Hồ sơ cá nhân", icon: User },
+    { id: "account",       label: "Tài khoản",     icon: Shield },
+    { id: "notifications", label: "Thông báo",     icon: Bell },
+    { id: "appearance",    label: "Giao diện",    icon: Palette },
+    { id: "language",      label: "Ngôn ngữ",    icon: Globe },
+    { id: "pdf-tools",     label: "Cắt trang PDF", icon: Scissors },
   ];
 
   const handleTabChange = (tabId: string) => {
@@ -131,7 +134,7 @@ export function Settings() {
           <div className="flex gap-6">
             {/* Sidebar Navigation */}
             <div
-              className={`flex-shrink-0 transition-all duration-300 ${
+              className={`flex-shrink-0 self-start sticky top-0 transition-all duration-300 ${
                 sidebarCollapsed ? "w-[70px]" : "w-[280px]"
               }`}
               style={{
@@ -215,6 +218,7 @@ export function Settings() {
               {activeTab === "notifications" && <NotificationsTab onSave={handleSave} />}
               {activeTab === "appearance" && <AppearanceTab onSave={handleSave} />}
               {activeTab === "language" && <LanguageTab currentLang={i18n.language} onSave={handleSave} />}
+              {activeTab === "pdf-tools" && <PdfCutterTab />}
             </div>
           </div>
         </div>

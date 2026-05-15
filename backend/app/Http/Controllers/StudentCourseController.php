@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ClassEnrollment;
 use App\Models\Classes;
 use App\Models\CourseEnrollment;
+use App\Models\TestAssignment;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class StudentCourseController extends Controller
@@ -92,23 +93,23 @@ class StudentCourseController extends Controller
         }
 
         $course = $enrollment->course;
+        $userClassId = $user->class_id;
         $classes = Classes::where('course', $course->cId)
             ->with('teacher:uId,uName')
             ->orderByDesc('cCreated_at')
             ->get()
-            ->map(function ($class) use ($user) {
-                $isEnrolled = ClassEnrollment::where('class_id', $class->cId)
-                    ->where('student_id', $user->uId)
-                    ->exists();
-
+            ->map(function ($class) use ($userClassId) {
+                $studentCount = User::where('uRole', 'student')
+                    ->where('class_id', $class->cId)
+                    ->count();
                 return [
                     'class_id' => $class->cId,
                     'class_name' => $class->cName,
                     'teacher' => $class->teacher ? $class->teacher->uName : null,
                     'description' => $class->cDescription,
                     'status' => $class->cStatus,
-                    'student_count' => $class->getStudentCount(),
-                    'is_enrolled' => $isEnrolled,
+                    'student_count' => $studentCount,
+                    'is_enrolled' => $userClassId === $class->cId,
                 ];
             });
 
@@ -154,40 +155,39 @@ class StudentCourseController extends Controller
             ], 401);
         }
 
-        $enrollments = ClassEnrollment::where('student_id', $user->uId)
-            ->with(['class.teacher:uId,uName', 'class.course:cId,cName,cSchedule'])
-            ->orderByDesc('enrolled_at')
-            ->get();
-
-        $classes = $enrollments->map(function ($enrollment) {
-            $class = $enrollment->class;
-            if (!$class) {
-                return null;
+        // Each student belongs to exactly one class via users.class_id
+        $classes = collect();
+        if ($user->class_id) {
+            $class = Classes::with(['teacher:uId,uName', 'course:cId,cName,cSchedule'])
+                ->find($user->class_id);
+            if ($class) {
+                $studentCount = User::where('uRole', 'student')
+                    ->where('class_id', $class->cId)
+                    ->count();
+                $classes->push([
+                    'class_id' => $class->cId,
+                    'class_name' => $class->cName,
+                    'teacher' => $class->teacher ? [
+                        'id' => $class->teacher->uId,
+                        'name' => $class->teacher->uName,
+                    ] : null,
+                    'course' => $class->course ? [
+                        'id' => $class->course->cId,
+                        'name' => $class->course->cName,
+                        'schedule' => $class->course->cSchedule,
+                    ] : null,
+                    'description' => $class->cDescription,
+                    'status' => $class->cStatus,
+                    'enrolled_at' => $user->created_at ?? null,
+                    'student_count' => $studentCount,
+                ]);
             }
-
-            return [
-                'class_id' => $class->cId,
-                'class_name' => $class->cName,
-                'teacher' => $class->teacher ? [
-                    'id' => $class->teacher->uId,
-                    'name' => $class->teacher->uName,
-                ] : null,
-                'course' => $class->course ? [
-                    'id' => $class->course->cId,
-                    'name' => $class->course->cName,
-                    'schedule' => $class->course->cSchedule,
-                ] : null,
-                'description' => $class->cDescription,
-                'status' => $class->cStatus,
-                'enrolled_at' => $enrollment->enrolled_at,
-                'student_count' => $class->getStudentCount(),
-            ];
-        })->filter()->values();
+        }
 
         return response()->json([
             'status' => 'success',
             'data' => [
-                'classes' => $classes,
+                'classes' => $classes->values(),
                 'total' => $classes->count(),
             ],
         ]);
@@ -203,11 +203,7 @@ class StudentCourseController extends Controller
             ], 401);
         }
 
-        $enrollment = ClassEnrollment::where('student_id', $user->uId)
-            ->where('class_id', $id)
-            ->first();
-
-        if (!$enrollment) {
+        if ((int)$user->class_id !== (int)$id) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Bạn chưa tham gia lớp học này.'
@@ -223,17 +219,12 @@ class StudentCourseController extends Controller
             ], 404);
         }
 
-        $classmates = ClassEnrollment::where('class_id', $id)
-            ->where('student_id', '!=', $user->uId)
-            ->with('student:uId,uName')
+        $classmates = User::where('uRole', 'student')
+            ->where('class_id', $id)
+            ->where('uId', '!=', $user->uId)
+            ->select('uId', 'uName')
             ->get()
-            ->map(function ($item) {
-                return $item->student ? [
-                    'id' => $item->student->uId,
-                    'name' => $item->student->uName,
-                ] : null;
-            })
-            ->filter()
+            ->map(fn($u) => ['id' => $u->uId, 'name' => $u->uName])
             ->values();
 
         return response()->json([
@@ -256,7 +247,7 @@ class StudentCourseController extends Controller
                     ] : null,
                 ],
                 'enrollment' => [
-                    'enrolled_at' => $enrollment->enrolled_at,
+                    'enrolled_at' => $user->created_at ?? null,
                 ],
                 'classmates' => $classmates,
                 'classmate_count' => $classmates->count(),
@@ -299,6 +290,36 @@ class StudentCourseController extends Controller
             ->filter()
             ->values();
 
+        // Real upcoming tests within the week range
+        $classIds = $user->class_id ? [$user->class_id] : [];
+        $upcomingTests = TestAssignment::with(['exam:eId,eTitle,eType,eSkill,eDuration_minutes'])
+            ->where(function ($q) use ($user, $classIds) {
+                $q->where(function ($s) use ($user) {
+                    $s->where('taTarget_type', 'student')->where('taTarget_id', $user->uId);
+                })->orWhere(function ($s) use ($classIds) {
+                    $s->where('taTarget_type', 'class')->whereIn('taTarget_id', $classIds);
+                });
+            })
+            ->whereNotNull('taDeadline')
+            ->whereBetween('taDeadline', [$startOfWeek, $endOfWeek])
+            ->orderBy('taDeadline', 'asc')
+            ->get()
+            ->map(function ($a) {
+                if (!$a->exam) return null;
+                return [
+                    'type'          => 'test',
+                    'assignment_id' => $a->taId,
+                    'exam_id'       => $a->exam->eId,
+                    'name'          => $a->exam->eTitle,
+                    'exam_type'     => $a->exam->eType,
+                    'skill'         => $a->exam->eSkill,
+                    'duration'      => $a->exam->eDuration_minutes,
+                    'deadline'      => $a->taDeadline,
+                ];
+            })
+            ->filter()
+            ->values();
+
         return response()->json([
             'status' => 'success',
             'data' => [
@@ -308,8 +329,8 @@ class StudentCourseController extends Controller
                     'offset' => $weekOffset,
                 ],
                 'courses' => $courses,
-                'upcoming_tests' => [],
-                'test_count' => 0,
+                'upcoming_tests' => $upcomingTests,
+                'test_count' => $upcomingTests->count(),
             ],
         ]);
     }

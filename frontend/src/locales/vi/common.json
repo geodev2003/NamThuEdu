@@ -1,0 +1,37 @@
+{
+  "appName": "NamThuEdu",
+  "common": {
+    "loading": "Đang tải...",
+    "error": "Đã có lỗi xảy ra",
+    "success": "Thành công",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "edit": "Sửa",
+    "view": "Xem",
+    "back": "Quay lại",
+    "next": "Tiếp theo",
+    "previous": "Trước",
+    "submit": "Nộp bài",
+    "start": "Bắt đầu",
+    "continue": "Tiếp tục",
+    "finish": "Hoàn thành",
+    "search": "Tìm kiếm",
+    "filter": "Lọc",
+    "sort": "Sắp xếp",
+    "all": "Tất cả"
+  },
+  "difficulty": {
+    "all": "Tất cả",
+    "easy": "Dễ",
+    "medium": "Trung bình",
+    "hard": "Khó"
+  },
+  "status": {
+    "pending": "Đang chờ",
+    "inProgress": "Đang làm",
+    "completed": "Hoàn thành",
+    "graded": "Đã chấm",
+    "expired": "Hết hạn"
+  }
+}

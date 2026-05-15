@@ -32,12 +32,9 @@ type TestType = 'all' | 'IELTS' | 'VSTEP' | 'TOEIC';
 type TestFormat = 'all' | 'FULL_4_SKILLS' | 'MINI_MOCK' | 'DIAGNOSTIC';
 type ViewMode = 'grid' | 'list';
 
-// Modern Blue/Cyan Theme
-const PRIMARY = "#0EA5E9"; // Sky Blue
-const PRIMARY_LIGHT = "#E0F2FE"; // Light Sky
-const PRIMARY_MID = "#38BDF8"; // Bright Sky
-const ACCENT = "#06B6D4"; // Cyan
-const ACCENT_LIGHT = "#CFFAFE"; // Light Cyan
+// Theme palettes — kids gets rose/pink (matches KidsLayout), others get sky/cyan
+const THEME_KIDS    = { PRIMARY: '#F43F5E', PRIMARY_LIGHT: '#FFE4E6', PRIMARY_MID: '#FB7185', ACCENT: '#EC4899', ACCENT_LIGHT: '#FCE7F3' };
+const THEME_DEFAULT = { PRIMARY: '#7C3AED', PRIMARY_LIGHT: '#EDE9FE', PRIMARY_MID: '#8B5CF6', ACCENT: '#7C3AED', ACCENT_LIGHT: '#EDE9FE' };
 const STUDENT_BASE_PATH = "/hoc-vien";
 
 function mergeVstepIntoSingleTest(items: any[]) {
@@ -98,10 +95,28 @@ export function TestList() {
     }),
   });
 
+  // Hide VSTEP/IELTS/TOEIC for kids (Cambridge YL audience)
+  const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+  const ageGroup = userStr ? (JSON.parse(userStr)?.age_group as string) : '';
+  const isKids = ageGroup === 'kids';
+
+  // Theme palette switches based on age group
+  const { PRIMARY, PRIMARY_LIGHT, PRIMARY_MID, ACCENT } = isKids ? THEME_KIDS : THEME_DEFAULT;
+
+  // URL base — keep kids in /hoc-vien/kids/* namespace
+  const BASE = isKids ? '/hoc-vien/kids' : STUDENT_BASE_PATH;
+
+  const isAdultLevelExam = (t: any) => {
+    const s = String(t.exam_type || '').toLowerCase() + ' ' + String(t.exam_title || '').toLowerCase();
+    return s.includes('vstep') || s.includes('ielts') || s.includes('toeic');
+  };
+
   const allTests = (data as any)?.data?.data;
-  const pending = (allTests?.pending || []).map((t: any) => ({ ...t, status: 'pending' }));
-  const inProgress = (allTests?.in_progress || []).map((t: any) => ({ ...t, status: 'in_progress' }));
-  const completed = (allTests?.completed || []).map((t: any) => ({ ...t, status: 'completed' }));
+  const filterKids = (arr: any[]) => (isKids ? arr.filter((t: any) => !isAdultLevelExam(t)) : arr);
+
+  const pending    = filterKids((allTests?.pending     || []).map((t: any) => ({ ...t, status: 'pending'     })));
+  const inProgress = filterKids((allTests?.in_progress || []).map((t: any) => ({ ...t, status: 'in_progress' })));
+  const completed  = filterKids((allTests?.completed   || []).map((t: any) => ({ ...t, status: 'completed'   })));
 
   const normalizedTests = mergeVstepIntoSingleTest([...pending, ...inProgress, ...completed]);
 
@@ -133,230 +148,155 @@ export function TestList() {
   const hasActiveFilters = type !== 'all' || format !== 'all' || search !== '';
 
   return (
-    <div className="py-6 space-y-6 max-w-[1600px] mx-auto">
-      
-      {/* Hero Section with Stats */}
-      <div className="relative overflow-hidden rounded-3xl p-8"
-           style={{
-             background: `linear-gradient(135deg, ${PRIMARY} 0%, ${PRIMARY_MID} 50%, ${ACCENT} 100%)`,
-           }}>
-        {/* Decorative circles */}
-        <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-20"
-             style={{ background: "rgba(255,255,255,0.3)" }} />
-        <div className="absolute -bottom-8 -left-8 w-36 h-36 rounded-full opacity-10"
-             style={{ background: "rgba(255,255,255,0.5)" }} />
-        
-        <div className="relative">
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <h1 style={{ fontSize: 32, fontWeight: 900, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1.2 }}>
-                Bài tập của tôi
-              </h1>
-              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.8)", marginTop: 8 }}>
-                Quản lý và hoàn thành các bài tập được giao
-              </p>
+    <div className="min-h-screen" style={{ background: "#F8F7FF" }}>
+
+      {/* ══ Hero ══════════════════════════════════════════════════════════════ */}
+      <div
+        className="relative overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #1E0B4B 0%, #3B1B8F 45%, #1D4ED8 100%)" }}
+      >
+        {/* Orbs */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/3 w-80 h-80 rounded-full opacity-20"
+            style={{ background: "radial-gradient(circle, #A78BFA, transparent)", transform: "translateY(-50%)" }} />
+          <div className="absolute bottom-0 right-1/4 w-64 h-64 rounded-full opacity-15"
+            style={{ background: "radial-gradient(circle, #60A5FA, transparent)", transform: "translateY(40%)" }} />
+        </div>
+
+        <div className="relative z-10 px-8 lg:px-16 py-10">
+          {/* Title + view toggle */}
+          <div className="flex items-start justify-between mb-8">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg"
+                style={{ background: "linear-gradient(135deg, #7C3AED, #8B5CF6)" }}>
+                <ClipboardList className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <p className="text-purple-300 text-sm font-semibold tracking-widest uppercase mb-1">Bài tập được giao</p>
+                <h1 className="text-3xl font-extrabold text-white tracking-tight leading-tight">Bài tập của tôi</h1>
+                <p className="text-purple-200 text-sm mt-1 font-medium">Quản lý và hoàn thành các bài tập được giao</p>
+              </div>
             </div>
-            
-            {/* View Mode Toggle */}
-            <div className="flex items-center gap-2 p-1 rounded-xl" style={{ background: "rgba(255,255,255,0.15)" }}>
-              <button
-                onClick={() => setViewMode('grid')}
-                className="p-2 rounded-lg transition-all"
-                style={{
-                  background: viewMode === 'grid' ? "rgba(255,255,255,0.25)" : "transparent",
-                  color: "#fff",
-                }}
-              >
-                <Grid3x3 className="w-5 h-5" />
+            {/* View toggle */}
+            <div className="flex items-center gap-1 p-1 rounded-xl flex-shrink-0"
+              style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
+              <button onClick={() => setViewMode('grid')}
+                className="p-2.5 rounded-lg transition-all"
+                style={{ background: viewMode === 'grid' ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff" }}>
+                <Grid3x3 className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className="p-2 rounded-lg transition-all"
-                style={{
-                  background: viewMode === 'list' ? "rgba(255,255,255,0.25)" : "transparent",
-                  color: "#fff",
-                }}
-              >
-                <List className="w-5 h-5" />
+              <button onClick={() => setViewMode('list')}
+                className="p-2.5 rounded-lg transition-all"
+                style={{ background: viewMode === 'list' ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff" }}>
+                <List className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Stats */}
+          <div className="flex items-center gap-3 flex-wrap">
             {[
-              { label: "Tổng bài tập", value: stats.total, icon: ClipboardList, color: "#fff" },
-              { label: "Chưa làm", value: stats.pending, icon: Clock, color: "#FCD34D" },
-              { label: "Cần gấp", value: stats.urgent, icon: AlertCircle, color: "#FCA5A5" },
-              { label: "Hoàn thành", value: stats.completed, icon: Award, color: "#86EFAC" },
-            ].map((stat) => (
-              <div key={stat.label}
-                   className="p-4 rounded-2xl backdrop-blur-sm"
-                   style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                       style={{ background: "rgba(255,255,255,0.2)" }}>
-                    <stat.icon className="w-5 h-5" style={{ color: stat.color }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 24, fontWeight: 900, color: "#fff", lineHeight: 1 }}>
-                      {stat.value}
-                    </div>
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 2 }}>
-                      {stat.label}
-                    </div>
-                  </div>
-                </div>
+              { label: "Tổng bài tập", value: stats.total,     color: "#7DD3FC" },
+              { label: "Chưa làm",    value: stats.pending,   color: "#FCD34D" },
+              { label: "Cần gấp",     value: stats.urgent,    color: "#FCA5A5" },
+              { label: "Hoàn thành",  value: stats.completed, color: "#86EFAC" },
+            ].map((s) => (
+              <div key={s.label} className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl"
+                style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.15)" }}>
+                <span className="text-xl font-extrabold" style={{ color: s.color }}>
+                  {isLoading ? "—" : s.value}
+                </span>
+                <span className="text-xs font-semibold text-purple-200">{s.label}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
-        {tabs.map(tab => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setStatus(tab.key as TestStatus)}
-              className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl transition-all whitespace-nowrap group"
-              style={{
-                background: status === tab.key ? PRIMARY : "#fff",
-                color: status === tab.key ? "#fff" : "#6B7280",
-                border: `2px solid ${status === tab.key ? PRIMARY : "#E0F2FE"}`,
-                fontWeight: 700,
-                fontSize: 15,
-                boxShadow: status === tab.key ? `0 8px 24px ${PRIMARY}30` : "0 2px 8px rgba(0,0,0,0.04)",
-              }}
-              onMouseEnter={(e) => {
-                if (status !== tab.key) {
-                  e.currentTarget.style.background = PRIMARY_LIGHT;
-                  e.currentTarget.style.borderColor = `${PRIMARY}40`;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (status !== tab.key) {
-                  e.currentTarget.style.background = "#fff";
-                  e.currentTarget.style.borderColor = "#E0F2FE";
-                }
-              }}
-            >
-              <Icon className="w-5 h-5" />
-              {tab.label}
-              {tab.count > 0 && (
-                <span
-                  className="px-2.5 py-1 rounded-full"
+      {/* ══ Sticky Filter Bar ═════════════════════════════════════════════════ */}
+      <div className="sticky top-0 z-20 px-8 lg:px-16 py-3"
+        style={{ background: "rgba(248,247,255,0.93)", backdropFilter: "blur(16px)", borderBottom: "1px solid #DDD6FE" }}>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          {/* Status tabs */}
+          <div className="flex items-center gap-1 p-1 rounded-xl flex-shrink-0"
+            style={{ background: "#fff", border: "1.5px solid #DDD6FE" }}>
+            {tabs.map(tab => {
+              const Icon = tab.icon;
+              const active = status === tab.key;
+              return (
+                <button key={tab.key} onClick={() => setStatus(tab.key as TestStatus)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-bold transition-all duration-200"
                   style={{
-                    background: status === tab.key ? "rgba(255,255,255,0.25)" : "#F3F4F6",
-                    color: status === tab.key ? "#fff" : "#374151",
-                    fontSize: 13,
-                    fontWeight: 800,
-                  }}
-                >
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Search & Filters Bar */}
-      <div className="sticky top-[73px] z-30 bg-white/95 backdrop-blur-xl rounded-2xl p-4"
-           style={{ border: "2px solid #E0F2FE", boxShadow: "0 4px 24px rgba(14,165,233,0.08)" }}>
-        
-        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: "#9CA3AF" }} />
-            <input
-              type="text"
-              placeholder="Tìm kiếm bài tập..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-12 pr-4 py-3.5 rounded-xl transition-all"
-              style={{ fontSize: 15, background: "#F9FAFB", border: "2px solid transparent", color: "#1F1344", fontWeight: 500 }}
-              onFocus={(e) => {
-                e.currentTarget.style.background = "#fff";
-                e.currentTarget.style.borderColor = PRIMARY;
-                e.currentTarget.style.boxShadow = `0 0 0 4px ${PRIMARY}15`;
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.background = "#F9FAFB";
-                e.currentTarget.style.borderColor = "transparent";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            />
+                    background: active ? PRIMARY : "transparent",
+                    color: active ? "#fff" : "#6B7280",
+                    boxShadow: active ? `0 2px 10px ${PRIMARY}50` : "none",
+                  }}>
+                  <Icon className="w-3.5 h-3.5" />
+                  {tab.label}
+                  {!isLoading && tab.count > 0 && (
+                    <span className="text-xs rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 font-bold"
+                      style={{
+                        background: active ? "rgba(255,255,255,0.22)" : PRIMARY_LIGHT,
+                        color: active ? "#fff" : PRIMARY,
+                      }}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Filter Toggle Button (Mobile) */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="lg:hidden flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl font-bold transition-all"
-            style={{ background: showFilters ? PRIMARY : "#F3F4F6", color: showFilters ? "#fff" : "#374151" }}
-          >
-            <Filter className="w-5 h-5" />
-            Bộ lọc
-            {hasActiveFilters && (
-              <span className="w-2 h-2 rounded-full bg-red-500" />
-            )}
-          </button>
+          {/* Search */}
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input type="text" placeholder="Tìm kiếm bài tập..."
+              value={search} onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl outline-none text-sm font-medium"
+              style={{ background: "#fff", border: "1.5px solid #DDD6FE", color: "#1A1040",
+                boxShadow: "0 1px 4px rgba(124,58,237,0.08)" }} />
+          </div>
 
-          {/* Filters (Desktop always visible, Mobile toggle) */}
-          <div className={`flex items-center gap-3 ${showFilters ? 'flex' : 'hidden lg:flex'}`}>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value as TestType)}
-              className="px-5 py-3.5 rounded-xl outline-none transition-all cursor-pointer font-semibold"
-              style={{ fontSize: 14, background: type !== 'all' ? PRIMARY_LIGHT : "#F9FAFB", border: `2px solid ${type !== 'all' ? PRIMARY : "#E0F2FE"}`, color: type !== 'all' ? PRIMARY : "#374151" }}
-            >
+          {/* Filters */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <select value={type} onChange={(e) => setType(e.target.value as TestType)}
+              className="px-3 py-2.5 rounded-xl outline-none text-sm font-semibold cursor-pointer"
+              style={{ background: "#fff", border: "1.5px solid #DDD6FE", color: type !== 'all' ? PRIMARY : "#374151" }}>
               <option value="all">Tất cả loại</option>
               <option value="IELTS">IELTS</option>
               <option value="VSTEP">VSTEP</option>
               <option value="TOEIC">TOEIC</option>
             </select>
-
-            <select
-              value={format}
-              onChange={(e) => setFormat(e.target.value as TestFormat)}
-              className="px-5 py-3.5 rounded-xl outline-none transition-all cursor-pointer font-semibold"
-              style={{ fontSize: 14, background: format !== 'all' ? PRIMARY_LIGHT : "#F9FAFB", border: `2px solid ${format !== 'all' ? PRIMARY : "#E0F2FE"}`, color: format !== 'all' ? PRIMARY : "#374151" }}
-            >
+            <select value={format} onChange={(e) => setFormat(e.target.value as TestFormat)}
+              className="px-3 py-2.5 rounded-xl outline-none text-sm font-semibold cursor-pointer"
+              style={{ background: "#fff", border: "1.5px solid #DDD6FE", color: format !== 'all' ? PRIMARY : "#374151" }}>
               <option value="all">Tất cả dạng</option>
-              <option value="FULL_4_SKILLS">Full 4 kỹ năng</option>
-              <option value="MINI_MOCK">Mini mock</option>
+              <option value="FULL_4_SKILLS">Full 4 Skills</option>
+              <option value="MINI_MOCK">Mini Mock</option>
               <option value="DIAGNOSTIC">Diagnostic</option>
             </select>
-
             {hasActiveFilters && (
-              <button
-                onClick={() => {
-                  setType('all');
-                  setFormat('all');
-                  setSearch('');
-                }}
-                className="flex items-center gap-2 px-4 py-3.5 rounded-xl font-bold transition-all hover:bg-red-50"
-                style={{ color: "#EF4444", border: "2px solid #FEE2E2" }}
-              >
-                <X className="w-4 h-4" />
-                Xóa lọc
+              <button onClick={() => { setType('all'); setFormat('all'); setSearch(''); }}
+                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-sm transition-all hover:bg-red-50"
+                style={{ color: "#EF4444", border: "1.5px solid #FEE2E2", background: "#fff" }}>
+                <X className="w-3.5 h-3.5" />
+                Xóa
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Results Count */}
-      {!isLoading && (
-        <div className="flex items-center justify-between">
-          <p style={{ fontSize: 14, color: "#6B7280", fontWeight: 600 }}>
-            Hiển thị <span style={{ color: PRIMARY, fontWeight: 800 }}>{filteredTests.length}</span> bài tập
-            {hasActiveFilters && <span> (đã lọc)</span>}
+      {/* ══ Content ═══════════════════════════════════════════════════════════ */}
+      <div className="px-8 lg:px-16 py-8">
+        {/* Results count */}
+        {!isLoading && (
+          <p className="text-sm text-gray-500 mb-6">
+            Hiển thị{" "}
+            <span className="font-bold" style={{ color: PRIMARY }}>{filteredTests.length}</span>{" "}
+            bài tập{hasActiveFilters && " (đã lọc)"}
           </p>
-        </div>
-      )}
+        )}
 
       {/* Main Content */}
       {isLoading ? (
@@ -364,8 +304,8 @@ export function TestList() {
           ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5"
           : "space-y-4"}>
           {[1,2,3,4,5,6,7,8].map((i) => (
-            <div key={i} className={viewMode === 'grid' ? "h-80" : "h-32"} 
-                 style={{ background: "#F9FAFB", borderRadius: 24, border: "2px solid #E0F2FE" }}>
+            <div key={i} className={`animate-pulse ${viewMode === 'grid' ? "h-80" : "h-32"}`} 
+                 style={{ background: "#F9FAFB", borderRadius: 24, border: "2px solid #EDE9FE" }}>
               <div className="animate-pulse h-full" />
             </div>
           ))}
@@ -373,7 +313,7 @@ export function TestList() {
       ) : filteredTests.length === 0 ? (
         <div className="text-center py-24 bg-white rounded-3xl" style={{ border: "2px dashed #E5E7EB" }}>
            <div className="w-24 h-24 rounded-3xl mx-auto flex items-center justify-center mb-6"
-                style={{ background: `linear-gradient(135deg, ${PRIMARY_LIGHT}, #BAE6FD)` }}>
+                style={{ background: `linear-gradient(135deg, ${PRIMARY_LIGHT}, #C7D2FE)` }}>
               <CheckCircle className="w-12 h-12" style={{ color: PRIMARY }} />
            </div>
            <h3 style={{ fontSize: 22, fontWeight: 900, color: "#1F1344", marginBottom: 8 }}>
@@ -413,18 +353,18 @@ export function TestList() {
                 <div key={test.assignment_id} 
                      className="relative bg-white rounded-3xl p-6 transition-all duration-300 group"
                      style={{
-                        border: "2px solid #E0F2FE",
-                        boxShadow: "0 4px 20px rgba(14,165,233,0.04)"
+                        border: "1.5px solid #F0F0F8",
+                        boxShadow: "0 4px 20px rgba(124,58,237,0.06)"
                      }}
                      onMouseEnter={(e) => {
                         e.currentTarget.style.transform = "translateY(-4px)";
-                        e.currentTarget.style.boxShadow = `0 16px 40px ${color}20`;
-                        e.currentTarget.style.borderColor = `${color}60`;
+                        e.currentTarget.style.boxShadow = `0 16px 40px rgba(124,58,237,0.14)`;
+                        e.currentTarget.style.borderColor = `rgba(124,58,237,0.25)`;
                      }}
                      onMouseLeave={(e) => {
                         e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.boxShadow = "0 4px 20px rgba(14,165,233,0.04)";
-                        e.currentTarget.style.borderColor = "#E0F2FE";
+                        e.currentTarget.style.boxShadow = "0 4px 20px rgba(124,58,237,0.06)";
+                        e.currentTarget.style.borderColor = "#F0F0F8";
                      }}>
                    
                    {/* Urgent Badge */}
@@ -469,7 +409,7 @@ export function TestList() {
                    </div>
 
                    {/* Stats Grid */}
-                   <div className="space-y-3 mb-5 p-4 rounded-2xl" style={{ background: "#F9FAFB" }}>
+                   <div className="space-y-3 mb-5 p-4 rounded-2xl" style={{ background: "#F8F7FF" }}>
                       <div className="flex items-center justify-between">
                          <span className="flex items-center gap-2 text-sm font-medium" style={{ color: "#6B7280" }}>
                            <ClipboardList className="w-4 h-4" /> Câu hỏi
@@ -509,7 +449,7 @@ export function TestList() {
 
                    {/* Action Button */}
                    {isCompleted ? (
-                      <Link to={`${STUDENT_BASE_PATH}/ket-qua/${test.submission_id}`}
+                      <Link to={`${BASE}/ket-qua/${test.submission_id}`}
                             className="w-full flex justify-between items-center px-5 py-4 rounded-xl font-bold transition-all hover:scale-[1.02]"
                             style={{ background: "#F0FDF4", color: "#16A34A", border: "2px solid #86EFAC" }}>
                          <span className="flex items-center gap-2">
@@ -519,7 +459,7 @@ export function TestList() {
                          <ArrowRight className="w-5 h-5" />
                       </Link>
                    ) : (
-                      <Link to={`${STUDENT_BASE_PATH}/phong-cho/${test.assignment_id}`}
+                      <Link to={`${BASE}/phong-cho/${test.assignment_id}`}
                             className={`w-full flex justify-between items-center px-5 py-4 rounded-xl font-bold transition-all ${canStart ? 'hover:scale-[1.02]' : 'opacity-50 cursor-not-allowed'}`}
                             style={{ background: color, color: "#fff", boxShadow: `0 4px 16px ${color}40` }}
                             onClick={(e) => !canStart && e.preventDefault()}>
@@ -550,16 +490,16 @@ export function TestList() {
                 <div key={test.assignment_id}
                      className="relative bg-white rounded-2xl p-5 transition-all duration-300 group"
                      style={{
-                        border: "2px solid #E0F2FE",
-                        boxShadow: "0 2px 12px rgba(14,165,233,0.04)"
+                        border: "1.5px solid #F0F0F8",
+                        boxShadow: "0 2px 12px rgba(124,58,237,0.06)"
                      }}
                      onMouseEnter={(e) => {
-                        e.currentTarget.style.boxShadow = `0 8px 24px ${color}15`;
-                        e.currentTarget.style.borderColor = `${color}40`;
+                        e.currentTarget.style.boxShadow = `0 8px 24px rgba(124,58,237,0.12)`;
+                        e.currentTarget.style.borderColor = `rgba(124,58,237,0.22)`;
                      }}
                      onMouseLeave={(e) => {
-                        e.currentTarget.style.boxShadow = "0 2px 12px rgba(14,165,233,0.04)";
-                        e.currentTarget.style.borderColor = "#E0F2FE";
+                        e.currentTarget.style.boxShadow = "0 2px 12px rgba(124,58,237,0.06)";
+                        e.currentTarget.style.borderColor = "#F0F0F8";
                      }}>
                   
                   <div className="flex items-center gap-5">
@@ -629,14 +569,14 @@ export function TestList() {
                     {/* Action Button */}
                     <div className="flex-shrink-0">
                       {isCompleted ? (
-                        <Link to={`${STUDENT_BASE_PATH}/ket-qua/${test.submission_id}`}
+                        <Link to={`${BASE}/ket-qua/${test.submission_id}`}
                               className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold transition-all hover:scale-105"
                               style={{ background: "#F0FDF4", color: "#16A34A" }}>
                            <CheckCircle className="w-5 h-5" />
                            Xem kết quả
                         </Link>
                       ) : (
-                        <Link to={`${STUDENT_BASE_PATH}/phong-cho/${test.assignment_id}`}
+                        <Link to={`${BASE}/phong-cho/${test.assignment_id}`}
                               className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold transition-all ${canStart ? 'hover:scale-105' : 'opacity-50 cursor-not-allowed'}`}
                               style={{ background: color, color: "#fff" }}
                               onClick={(e) => !canStart && e.preventDefault()}>
@@ -651,6 +591,7 @@ export function TestList() {
            })}
         </div>
       )}
+      </div>
     </div>
   );
 }

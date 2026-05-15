@@ -140,7 +140,7 @@ const ExamCard = ({ test }: { test: TestItem }) => {
 
       {/* Action */}
       <Link
-        to={canStart ? `/hoc-vien/phong-cho/${test.assignment_id}` : '#'}
+        to={canStart ? `/hoc-vien/kids/phong-cho/${test.assignment_id}` : '#'}
         onClick={e => !canStart && e.preventDefault()}
         className={`w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors
           ${canStart
@@ -218,10 +218,10 @@ export function KidsDashboard() {
   const kidsTests = tests.filter(isKidsExam);
 
   const SKILLS = [
-    { Icon: Headphones, label: 'Nghe',     desc: 'Luyện nghe hiểu', link: '/hoc-vien/luyen-tap?skill=listening' },
-    { Icon: BookOpen,   label: 'Đọc',      desc: 'Luyện đọc hiểu',  link: '/hoc-vien/luyen-tap?skill=reading' },
-    { Icon: PenLine,    label: 'Viết',     desc: 'Luyện viết câu',  link: '/hoc-vien/luyen-tap?skill=writing' },
-    { Icon: Mic,        label: 'Nói',      desc: 'Luyện phát âm',   link: '/hoc-vien/luyen-tap?skill=speaking' },
+    { Icon: Headphones, label: 'Nghe',     desc: 'Luyện nghe hiểu', link: '/hoc-vien/kids/luyen-tap' },
+    { Icon: BookOpen,   label: 'Đọc',      desc: 'Luyện đọc hiểu',  link: '/hoc-vien/kids/luyen-tap' },
+    { Icon: PenLine,    label: 'Viết',     desc: 'Luyện viết câu',  link: '/hoc-vien/kids/luyen-tap' },
+    { Icon: Mic,        label: 'Nói',      desc: 'Luyện phát âm',   link: '/hoc-vien/kids/luyen-tap' },
   ];
 
   return (
@@ -254,7 +254,7 @@ export function KidsDashboard() {
           title="Bài thi của em"
           subtitle={kidsTests.length > 0 ? `${kidsTests.length} bài đang chờ em làm` : undefined}
           action={
-            <Link to="/hoc-vien/bai-tap"
+            <Link to="/hoc-vien/kids/bai-tap"
                   className="inline-flex items-center gap-1 text-sm font-semibold text-rose-600 hover:text-rose-700">
               Xem tất cả
               <ChevronRight className="w-4 h-4" />
@@ -338,7 +338,7 @@ export function KidsDashboard() {
           <Section
             title="Kết quả gần đây"
             action={
-              <Link to="/hoc-vien/lich-su"
+              <Link to="/hoc-vien/kids/lich-su"
                     className="inline-flex items-center gap-1 text-sm font-semibold text-rose-600 hover:text-rose-700">
                 <span className="hidden sm:inline">Xem tất cả</span>
                 <span className="sm:hidden">Xem</span>
@@ -356,7 +356,7 @@ export function KidsDashboard() {
                 return (
                   <Link
                     key={sub.sId}
-                    to={`/hoc-vien/ket-qua/${sub.sId}`}
+                    to={`/hoc-vien/kids/ket-qua/${sub.sId}`}
                     className="flex items-center gap-3 sm:gap-4 py-3 first:pt-0 last:pb-0 hover:bg-slate-50/50 -mx-2 px-2 rounded-lg transition-colors"
                   >
                     <div className="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">

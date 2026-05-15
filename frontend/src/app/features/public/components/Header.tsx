@@ -1,12 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { GraduationCap, Phone, Mail, Star, Menu, X, ChevronDown } from "lucide-react";
+import { motion, useAnimation } from "framer-motion";
+import { GraduationCap, Phone, Mail, MapPin, Menu, X, ChevronDown } from "lucide-react";
 
 export function Header() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [coursesDropdownOpen, setCoursesDropdownOpen] = useState(false);
   const [mobileCoursesOpen, setMobileCoursesOpen] = useState(false);
+  const loginAnim = useAnimation();
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const visible = (e as CustomEvent<{ visible: boolean }>).detail.visible;
+      if (!visible) {
+        loginAnim.start({
+          scale: [1, 1.12, 0.96, 1.06, 1],
+          transition: { duration: 0.55, ease: "easeInOut" },
+        });
+      }
+    };
+    window.addEventListener("blog-cta-visible", handler);
+    return () => window.removeEventListener("blog-cta-visible", handler);
+  }, [loginAnim]);
 
   return (
     <>
@@ -31,15 +47,16 @@ export function Header() {
             </a>
           </div>
 
-          {/* Right: Social Proof */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-              <span className="font-semibold">4.8/5</span>
-            </div>
-            <span className="text-slate-400">|</span>
-            <span>1 triệu+ học viên</span>
-          </div>
+          {/* Right: Address */}
+          <a
+            href="https://maps.google.com/?q=Hẻm+387K1,+14B,+Trần+Nam+Phú,+Cần+Thơ"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 transition-colors hover:text-orange-600"
+          >
+            <MapPin className="h-3 w-3 flex-shrink-0 text-orange-500" />
+            <span className="font-medium">Hẻm 387K1, 14B, Trần Nam Phú, Cần Thơ</span>
+          </a>
         </div>
       </div>
 
@@ -116,12 +133,12 @@ export function Header() {
             >
               Tính năng
             </a>
-            <a
-              href="#blog"
+            <button
+              onClick={() => navigate("/bai-viet")}
               className="cursor-pointer transition-all duration-200 hover:text-orange-600"
             >
               Bài viết
-            </a>
+            </button>
             <a
               href="#pricing"
               className="cursor-pointer transition-all duration-200 hover:text-orange-600"
@@ -148,12 +165,14 @@ export function Header() {
             </button>
 
             {/* Desktop CTA */}
-            <button
+            <motion.button
+              animate={loginAnim}
+              data-blog-login="true"
               onClick={() => navigate("/dang-nhap")}
               className="cursor-pointer rounded-xl border border-orange-200 px-5 py-2 text-sm font-semibold text-orange-600 transition-colors hover:bg-orange-50"
             >
               Đăng nhập
-            </button>
+            </motion.button>
           </div>
         </div>
       </header>
@@ -231,13 +250,12 @@ export function Header() {
               >
                 Tính năng
               </a>
-              <a
-                href="#blog"
-                onClick={() => setMobileMenuOpen(false)}
-                className="cursor-pointer rounded-lg p-3 font-medium transition-all duration-200 hover:bg-orange-50"
+              <button
+                onClick={() => { setMobileMenuOpen(false); navigate("/bai-viet"); }}
+                className="cursor-pointer rounded-lg p-3 text-left font-medium transition-all duration-200 hover:bg-orange-50 w-full"
               >
                 Bài viết
-              </a>
+              </button>
               <a
                 href="#pricing"
                 onClick={() => setMobileMenuOpen(false)}

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle, ShieldCheck, ChevronDown } from 'lucide-react';
+import { Lock, Eye, EyeOff, AlertCircle, ShieldCheck, ChevronDown } from 'lucide-react';
 import { studentApi } from '../../../../services/studentApi';
+import { useToastContext } from '../../../../contexts/ToastContext';
 
 type Form = {
   current_password: string;
@@ -10,9 +11,11 @@ type Form = {
 };
 
 const inputBase =
-  'w-full px-3.5 py-2.5 pr-10 rounded-lg border border-slate-200 text-sm text-slate-900 ' +
+  'w-full px-3.5 py-2.5 pr-10 rounded-lg border text-sm text-slate-900 ' +
   'placeholder:text-slate-400 transition-colors ' +
-  'focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100';
+  'focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100';
+
+const inputStyle = { borderColor: '#E8E4F9' };
 
 const labelBase = 'block text-xs font-semibold text-slate-700 mb-1.5';
 
@@ -51,6 +54,7 @@ type Props = {
 };
 
 export function PasswordChangeCard({ defaultExpanded = false }: Props = {}) {
+  const toast = useToastContext();
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [form, setForm] = useState<Form>({
     current_password: '',
@@ -58,16 +62,12 @@ export function PasswordChangeCard({ defaultExpanded = false }: Props = {}) {
     new_password_confirmation: '',
   });
   const [show, setShow] = useState({ curr: false, new: false, confirm: false });
-  const [okMessage, setOkMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
 
   const mutation = useMutation({
     mutationFn: () => studentApi.changePassword(form),
     onSuccess: () => {
-      setOkMessage('Đổi mật khẩu thành công');
-      setErrorMessage('');
+      toast.success('Đổi mật khẩu thành công');
       setForm({ current_password: '', new_password: '', new_password_confirmation: '' });
-      setTimeout(() => setOkMessage(''), 3000);
     },
     onError: (err: any) => {
       const errors = err?.response?.data?.errors;
@@ -76,8 +76,7 @@ export function PasswordChangeCard({ defaultExpanded = false }: Props = {}) {
         firstError ||
         err?.response?.data?.message ||
         'Mật khẩu hiện tại không đúng. Vui lòng thử lại.';
-      setErrorMessage(String(msg));
-      setOkMessage('');
+      toast.error(String(msg));
     },
   });
 
@@ -124,8 +123,8 @@ export function PasswordChangeCard({ defaultExpanded = false }: Props = {}) {
         aria-expanded={expanded}
         aria-controls="password-change-body"
       >
-        <div className="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center flex-shrink-0">
-          <ShieldCheck className="w-5 h-5 text-rose-600" />
+        <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0">
+          <ShieldCheck className="w-5 h-5 text-violet-600" />
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="text-base sm:text-lg font-bold text-slate-900">Đổi mật khẩu</h2>
@@ -155,6 +154,7 @@ export function PasswordChangeCard({ defaultExpanded = false }: Props = {}) {
                 id={field.key}
                 type={field.show ? 'text' : 'password'}
                 className={inputBase}
+                style={inputStyle}
                 placeholder={field.placeholder}
                 value={form[field.key]}
                 onChange={(e) =>
@@ -192,27 +192,13 @@ export function PasswordChangeCard({ defaultExpanded = false }: Props = {}) {
           </div>
         ))}
 
-        {/* Feedback */}
-        {okMessage && (
-          <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
-            <CheckCircle2 className="w-4 h-4" />
-            {okMessage}
-          </div>
-        )}
-        {errorMessage && (
-          <div className="flex items-center gap-2 text-sm font-medium text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">
-            <AlertCircle className="w-4 h-4" />
-            {errorMessage}
-          </div>
-        )}
-
         {/* Submit */}
         <div className="flex justify-end pt-2">
           <button
             type="submit"
             disabled={!canSubmit}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold
-                       bg-rose-500 text-white hover:bg-rose-600 active:scale-[0.98] transition-all
+                       bg-violet-600 text-white hover:bg-violet-700 active:scale-[0.98] transition-all
                        disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Lock className="w-4 h-4" />

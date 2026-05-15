@@ -1,0 +1,232 @@
+{
+  "vstep": {
+    "full": {
+      "title": "VSTEP Full Test",
+      "subtitle": "Create full 4-skill test: Reading • Listening • Writing • Speaking",
+      "skills": {
+        "reading": "Reading",
+        "listening": "Listening",
+        "writing": "Writing",
+        "speaking": "Speaking"
+      },
+      "progress": {
+        "skills": "skills",
+        "completed": "completed",
+        "remaining": "{{count}} skills remaining"
+      },
+      "actions": {
+        "back": "Back",
+        "publish": "Publish Full Test",
+        "publishSuccess": "VSTEP Full Test published successfully!",
+        "publishError": "Error publishing test",
+        "completeAll": "Please complete all 4 skills before publishing ({{completed}}/4)",
+        "skillCompleted": "{{skill}} completed!"
+      },
+      "examId": "Exam ID"
+    },
+    "reading": {
+      "title": "New VSTEP Reading Test",
+      "subtitle": "4 Parts - 40 questions - 60 minutes",
+      "examIdLabel": "ID",
+      "parts": {
+        "1": {
+          "description": "Short Text"
+        },
+        "2": {
+          "description": "Descriptive Text"
+        },
+        "3": {
+          "description": "Argumentative Text"
+        },
+        "4": {
+          "description": "Academic Text"
+        }
+      },
+      "partTab": {
+        "words": "words",
+        "questions": "questions"
+      },
+      "passage": {
+        "title": "Passage",
+        "placeholder": "Enter passage here...",
+        "wordCount": "words",
+        "wordRange": "({{min}}-{{max}} words)"
+      },
+      "questions": {
+        "title": "Questions",
+        "count": "({{completed}}/10 questions)",
+        "label": "Question",
+        "placeholder": "Enter question...",
+        "answerPlaceholder": "Option {{option}}",
+        "tip": "💡 Tip:",
+        "tipText": "Double-click an answer field to set it as the correct answer",
+        "doubleClickTitle": "Double-click to set as correct answer"
+      },
+      "actions": {
+        "savePart": "Save Part",
+        "saving": "Saving...",
+        "publish": "Publish",
+        "publishing": "Publishing...",
+        "needQuestion": "Please complete at least 1 question"
+      },
+      "loading": "Loading exam...",
+      "toast": {
+        "loadSuccess": "Exam loaded successfully",
+        "savePartSuccess": "Part {{part}} saved ({{count}} questions){{warning}}",
+        "savePartError": "Cannot save Part {{part}}",
+        "publishSuccess": "Exam published successfully!",
+        "publishError": "Cannot publish exam. Please try again.",
+        "noQuestion": "Part {{part}}: Please complete at least 1 question",
+        "invalidWordCount": "Part {{part}}: Invalid word count ({{current}}/{{min}}-{{max}})",
+        "missingQuestion": "Part {{part}}, Question {{num}}: Question text is missing",
+        "missingOptions": "Part {{part}}, Question {{num}}: Please fill in all 4 options",
+        "wordCountLow": " ⚠️ Passage is {{count}} words short ({{current}}/{{min}}-{{max}})",
+        "wordCountHigh": " ⚠️ Passage is {{count}} words over limit ({{current}}/{{min}}-{{max}})",
+        "noPassage": " ⚠️ No passage entered"
+      }
+    },
+    "listening": {
+      "title": "New VSTEP Listening Test",
+      "subtitle": "3 Parts - 35 questions - 40 minutes",
+      "examIdLabel": "ID",
+      "parts": {
+        "1": {
+          "description": "Announcements"
+        },
+        "2": {
+          "description": "Dialogues"
+        },
+        "3": {
+          "description": "Lectures"
+        }
+      },
+      "partTab": {
+        "questions": "questions"
+      },
+      "audio": {
+        "title": "Audio",
+        "uploadLabel": "Upload Audio File",
+        "uploadClick": "Click to select audio file",
+        "uploadHint": "MP3, WAV, or other audio formats",
+        "duration": "✓ Duration: {{duration}}",
+        "transcriptLabel": "Transcript (Optional)",
+        "transcriptPlaceholder": "Enter audio transcript (optional)..."
+      },
+      "questions": {
+        "title": "Questions",
+        "count": "({{completed}}/{{total}} questions)",
+        "label": "Question",
+        "placeholder": "Enter question...",
+        "answerPlaceholder": "Option {{option}}",
+        "tip": "💡 Tip:",
+        "tipText": "Double-click an answer field to set it as the correct answer"
+      },
+      "actions": {
+        "savePart": "Save Part",
+        "saving": "Saving...",
+        "publish": "Publish",
+        "publishing": "Publishing..."
+      },
+      "loading": "Loading exam...",
+      "toast": {
+        "loadSuccess": "Exam loaded successfully",
+        "audioError": "Please select an audio file",
+        "audioSuccess": "Audio loaded ({{duration}})",
+        "savePartSuccess": "Part {{part}} saved ({{count}} questions)",
+        "savePartError": "Cannot save Part {{part}}",
+        "noQuestion": "Part {{part}}: Please complete at least 1 question",
+        "noAudio": "Part {{part}}: Please upload an audio file",
+        "missingAudio": "Part {{part}}: No audio uploaded",
+        "missingQuestion": "Part {{part}}, Question {{num}}: Question text is missing",
+        "missingOptions": "Part {{part}}, Question {{num}}: Please fill in all 4 options",
+        "publishSuccess": "Exam published successfully!",
+        "publishError": "Cannot publish exam. Please try again."
+      }
+    },
+    "writing": {
+      "title": "New VSTEP Writing Test",
+      "subtitle": "2 Tasks - 60 minutes",
+      "examIdLabel": "ID",
+      "tasks": {
+        "1": {
+          "description": "Email/Letter"
+        },
+        "2": {
+          "description": "Essay"
+        }
+      },
+      "taskTab": {
+        "words": "words",
+        "minutes": "minutes"
+      },
+      "prompt": {
+        "title": "Prompt",
+        "placeholder": "Enter the writing prompt here...",
+        "requirement": "Required: {{words}} words",
+        "time": "Time: {{minutes}} minutes"
+      },
+      "actions": {
+        "saveTask": "Save Task",
+        "saving": "Saving...",
+        "publish": "Publish",
+        "publishing": "Publishing..."
+      },
+      "loading": "Loading exam...",
+      "toast": {
+        "loadSuccess": "Exam loaded successfully",
+        "saveTaskSuccess": "Task {{task}} saved",
+        "saveTaskError": "Cannot save Task {{task}}",
+        "noPrompt": "Task {{task}}: Please enter the prompt",
+        "missingPrompt": "Task {{task}}: Prompt is missing",
+        "publishSuccess": "Exam published successfully!",
+        "publishError": "Cannot publish exam. Please try again."
+      }
+    },
+    "speaking": {
+      "title": "New VSTEP Speaking Test",
+      "subtitle": "3 Parts - 12 minutes",
+      "examIdLabel": "ID",
+      "parts": {
+        "1": {
+          "description": "Interview"
+        },
+        "2": {
+          "description": "Long Turn"
+        },
+        "3": {
+          "description": "Discussion"
+        }
+      },
+      "partTab": {
+        "minutes": "minutes"
+      },
+      "questions": {
+        "title": "Questions",
+        "count": "({{completed}}/{{total}} questions)",
+        "label": "Question",
+        "placeholder": "Enter question...",
+        "prepTime": "Preparation time (seconds)",
+        "responseTime": "Response time (seconds)",
+        "addQuestion": "Add question",
+        "deleteTitle": "Delete question",
+        "timeLabel": "Time: {{minutes}} minutes"
+      },
+      "actions": {
+        "savePart": "Save Part",
+        "saving": "Saving...",
+        "publish": "Publish",
+        "publishing": "Publishing..."
+      },
+      "loading": "Loading exam...",
+      "toast": {
+        "loadSuccess": "Exam loaded successfully",
+        "savePartSuccess": "Part {{part}} saved ({{count}} questions)",
+        "savePartError": "Cannot save Part {{part}}",
+        "noQuestion": "Part {{part}}: Please add at least 1 question",
+        "missingQuestion": "Part {{part}}: No questions added",
+        "publishSuccess": "Exam published successfully!",
+        "publishError": "Cannot publish exam. Please try again."
+      }
+    }
+  }
+}

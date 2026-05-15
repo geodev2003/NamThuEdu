@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router";
 import {
   ChevronRight,
@@ -310,9 +310,8 @@ export function ConnectionHistory() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {connectionEvents.map((event) => (
-                <>
+                <React.Fragment key={event.id}>
                   <tr
-                    key={event.id}
                     className="hover:bg-blue-50/50 transition-colors cursor-pointer"
                     onClick={() => toggleRow(event.id)}
                   >
@@ -399,7 +398,7 @@ export function ConnectionHistory() {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               ))}
             </tbody>
           </table>

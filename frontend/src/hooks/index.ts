@@ -4,7 +4,7 @@ export { useAgeGroupSync } from "./useAgeGroupSync";
 export { useDebounce } from "./useDebounce";
 export { useLocalStorage } from "./useLocalStorage";
 export { usePageTitle, PAGE_TITLES } from "./usePageTitle";
-export { useTeacherApi } from "./useTeacherApi";
+export { useApiQuery, useApiMutation, useOptimisticUpdate } from "./useTeacherApi";
 export { useTheme } from "./useTheme";
 export { usePracticeSessions, usePracticeTemplates } from './usePracticeSessions';
 export { useClassReport } from './useClassReport';

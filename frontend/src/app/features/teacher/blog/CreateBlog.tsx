@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { useBlog } from '../../../../hooks/useBlog';
 import { generateSlug } from '../../../../utils/slugUtils';
 import { useToast } from '../../../../hooks/useToast';
@@ -9,7 +9,8 @@ import { useToast } from '../../../../hooks/useToast';
 export function CreateBlog() {
   const navigate = useNavigate();
   const { createBlog, loading } = useBlog();
-  const { showToast } = useToast();
+  const toast = useToast();
+  const showToast = (msg: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => toast[type](msg);
   
   const [formData, setFormData] = useState({
     blogName: '',
@@ -49,8 +50,8 @@ export function CreateBlog() {
       });
       
       showToast(
-        status === 'draft' 
-          ? 'Lưu nháp thành công' 
+        status === 'draft'
+          ? 'Lưu nháp thành công'
           : 'Gửi bài viết duyệt thành công',
         'success'
       );

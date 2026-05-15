@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { X, Upload, User, Key, Copy, Eye, EyeOff, Clock, CheckCircle2, RefreshCw } from "lucide-react";
 import { getApiUrl, getAssetUrl } from "../../../../utils/apiConfig";
 import { useToast } from "../../../../hooks/useToast";
@@ -16,6 +18,7 @@ interface EditStudentModalProps {
 }
 
 export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toastProp }: EditStudentModalProps) {
+  const { t } = useTranslation();
   // Use toast from props if available, otherwise create local instance
   const localToast = useToast();
   const toast = toastProp || { 
@@ -155,13 +158,13 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
       // Validate file type
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml'];
       if (!validTypes.includes(file.type)) {
-        toast.error('Vui lòng chọn file ảnh hợp lệ (JPG, PNG, GIF, WEBP, BMP, SVG)');
+        toast.error(t('teacher.students.editStudent.toast.invalidImage'));
         return;
       }
 
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Kích thước file không được vượt quá 5MB');
+      // Validate file size (max 20MB)
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error(t('teacher.students.editStudent.toast.imageTooLarge'));
         return;
       }
 
@@ -183,7 +186,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
       setTimeout(() => setCopiedPassword(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
-      toast.error('Không thể copy mật khẩu');
+      toast.error(t('teacher.students.editStudent.toast.copyError'));
     }
   };
 
@@ -211,14 +214,14 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
         // Show more helpful error message
         const errorMsg = data.message || 'Mật khẩu không khả dụng.';
         if (errorMsg.includes('không khả dụng')) {
-          toast.error('Mật khẩu không khả dụng. Học viên này được tạo trước khi có tính năng lưu mật khẩu. Vui lòng liên hệ quản trị viên để cập nhật mật khẩu mặc định.');
+          toast.error(t('teacher.students.editStudent.toast.passwordUnavailable'));
         } else {
           toast.error(errorMsg);
         }
       }
     } catch (error) {
       console.error('Error viewing password:', error);
-      toast.error('Có lỗi xảy ra khi xem mật khẩu');
+      toast.error(t('teacher.students.editStudent.toast.viewPasswordError'));
     } finally {
       setLoadingPassword(false);
     }
@@ -251,7 +254,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
                          hasDobChanged || hasAgeGroupChanged || hasStatusChanged || hasAvatarChanged;
 
     if (!hasAnyChange) {
-      toast.warning(`Không có gì thay đổi cho học viên "${student.name}"`);
+      toast.warning(t('teacher.students.editStudent.toast.noChange', { name: student.name }));
       onClose(); // Close modal immediately
       return;
     }
@@ -262,14 +265,14 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
       const token = localStorage.getItem('auth_token');
       
       if (!token) {
-        toast.error('Vui lòng đăng nhập lại');
+        toast.error(t('teacher.students.editStudent.toast.loginRequired'));
         setLoading(false);
         return;
       }
 
       // Create FormData for multipart/form-data
       const formDataToSend = new FormData();
-      formDataToSend.append('_method', 'PUT'); // Laravel method spoofing for file uploads
+      formDataToSend.append('_method', 'PUT'); // Laravel method spoofing (PHP doesn't parse multipart PUT)
       formDataToSend.append('uName', formData.name);
       formDataToSend.append('uPhone', formData.phone);
       formDataToSend.append('uEmail', formData.email || '');
@@ -282,7 +285,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
       }
 
       const response = await fetch(getApiUrl(`teacher/student/${student.id}`), {
-        method: 'POST', // Use POST with _method=PUT for file uploads
+        method: 'POST', // POST + _method=PUT for file upload compatibility
         headers: {
           'Authorization': `Bearer ${token}`,
           // Don't set Content-Type, let browser set it with boundary
@@ -296,33 +299,46 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
         onClose();
       } else {
         const errorData = await response.json();
-        toast.error(errorData.message || "Có lỗi xảy ra khi cập nhật học viên");
+        console.error('Update failed:', response.status, errorData);
+        toast.error(errorData.message || t('teacher.students.editStudent.toast.updateError'));
       }
     } catch (error) {
       console.error('Error updating student:', error);
-      toast.error("Có lỗi xảy ra khi cập nhật học viên");
+      toast.error(t('teacher.students.editStudent.toast.updateError'));
     } finally {
       setLoading(false);
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <AnimatePresence>
+      {isOpen && (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+    >
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/80"
+      <div
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
         onClick={onClose}
       />
-      
+
       {/* Dialog */}
-      <div className="relative bg-white rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+      <motion.div
+        className="relative bg-white rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        initial={{ opacity: 0, scale: 0.93, y: 14 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+      >
         {/* Header */}
         <div className="flex flex-col space-y-1.5 p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold leading-none tracking-tight">
-              Chỉnh sửa học viên
+              {t('teacher.students.editStudent.title')}
             </h2>
             <button
               onClick={onClose}
@@ -333,7 +349,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
             </button>
           </div>
           <p className="text-sm text-gray-500">
-            Cập nhật thông tin học viên. Nhấn lưu khi hoàn tất.
+            {t('teacher.students.editStudent.subtitle')}
           </p>
         </div>
 
@@ -343,7 +359,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
             {/* Avatar Upload */}
             <div className="space-y-2">
               <label className="text-sm font-medium leading-none">
-                Ảnh đại diện
+                {t('teacher.students.editStudent.avatar')}
               </label>
               <div className="flex items-center gap-4">
                 {/* Avatar Preview */}
@@ -368,7 +384,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
                     className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-950 focus-visible:ring-offset-2 border border-gray-300 bg-white hover:bg-gray-100 h-10 px-4 py-2 cursor-pointer"
                   >
                     <Upload className="w-4 h-4" />
-                    Chọn ảnh mới
+                    {t('teacher.students.editStudent.chooseNewPhoto')}
                   </label>
                   <input
                     id="avatar-upload"
@@ -378,7 +394,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
                     className="hidden"
                   />
                   <p className="text-xs text-gray-500 mt-2">
-                    JPG, PNG, GIF, WEBP, BMP, SVG (Max 5MB)
+                    JPG, PNG, GIF, WEBP, BMP, SVG (Max 20MB)
                   </p>
                 </div>
               </div>
@@ -387,7 +403,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
             {/* Name */}
             <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Họ và tên <span className="text-red-500">*</span>
+                {t('teacher.students.editStudent.name')} <span className="text-red-500">*</span>
               </label>
               <input
                 id="name"
@@ -395,7 +411,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="Nhập họ và tên"
+                placeholder={t('teacher.students.editStudent.name')}
                 required
               />
             </div>
@@ -404,7 +420,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label htmlFor="phone" className="text-sm font-medium leading-none">
-                  Số điện thoại <span className="text-red-500">*</span>
+                  {t('teacher.students.editStudent.phone')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="phone"
@@ -435,7 +451,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
             {/* Date of Birth */}
             <div className="space-y-2">
               <label htmlFor="dob" className="text-sm font-medium leading-none">
-                Ngày sinh <span className="text-red-500">*</span>
+                {t('teacher.students.editStudent.dob')} <span className="text-red-500">*</span>
               </label>
               <input
                 id="dob"
@@ -451,7 +467,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label htmlFor="ageGroup" className="text-sm font-medium leading-none">
-                  Nhóm lớp
+                  {t('teacher.students.editStudent.ageGroup')}
                 </label>
                 <select
                   id="ageGroup"
@@ -459,15 +475,15 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
                   onChange={(e) => setFormData({ ...formData, ageGroup: e.target.value })}
                   className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
                 >
-                  <option value="kids">👶 Trẻ em (6-12)</option>
-                  <option value="teens">🎓 Thiếu niên (13-17)</option>
-                  <option value="adults">👔 Người lớn (18+)</option>
+                  <option value="kids">{t('teacher.students.editStudent.ageGroupOptions.kids')}</option>
+                  <option value="teens">{t('teacher.students.editStudent.ageGroupOptions.teens')}</option>
+                  <option value="adults">{t('teacher.students.editStudent.ageGroupOptions.adults')}</option>
                 </select>
               </div>
 
               <div className="space-y-2">
                 <label htmlFor="status" className="text-sm font-medium leading-none">
-                  Trạng thái
+                  {t('teacher.students.editStudent.statusLabel')}
                 </label>
                 <select
                   id="status"
@@ -475,102 +491,99 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
                 >
-                  <option value="active">✅ Đang học</option>
-                  <option value="inactive">⏸️ Tạm nghỉ</option>
+                  <option value="active">{t('teacher.students.editStudent.statusOptions.active')}</option>
+                  <option value="inactive">{t('teacher.students.editStudent.statusOptions.inactive')}</option>
                 </select>
               </div>
             </div>
 
             {/* Password Management Section */}
-            <div className="space-y-3 pt-4 border-t border-gray-200">
-              <div className="flex items-center justify-between">
+            <div className="pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Key className="w-4 h-4 text-blue-600" />
-                  <label className="text-sm font-medium leading-none">
-                    Xem mật khẩu
-                  </label>
+                  <div className="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center">
+                    <Key className="w-3.5 h-3.5 text-orange-500" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">
+                    {t('teacher.students.editStudent.viewPassword')}
+                  </span>
                 </div>
                 <button
                   type="button"
                   onClick={handleViewPassword}
                   disabled={loadingPassword}
-                  className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 h-9 px-3 py-2"
+                  className="inline-flex items-center gap-1.5 rounded-lg text-xs font-medium border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 hover:border-orange-300 transition-all h-8 px-3 disabled:opacity-50 disabled:pointer-events-none"
                 >
                   {loadingPassword ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      Đang tải...
-                    </>
+                    <><RefreshCw className="w-3.5 h-3.5 animate-spin" />{t('teacher.students.editStudent.password.loading')}</>
                   ) : (
-                    <>
-                      <Eye className="w-4 h-4" />
-                      Xem mật khẩu
-                    </>
+                    <><Eye className="w-3.5 h-3.5" />{t('teacher.students.editStudent.viewPassword')}</>
                   )}
                 </button>
               </div>
 
-              {showPasswordSection && currentPassword && (
-                <div className="bg-blue-50 border border-blue-200 rounded-md p-4 space-y-3 animate-in fade-in duration-200">
-                  <div className="flex items-start gap-2">
-                    <div className="flex-shrink-0 mt-0.5">
-                      {timeLeft > 0 ? (
-                        <Clock className="w-4 h-4 text-blue-600" />
-                      ) : (
-                        <CheckCircle2 className="w-4 h-4 text-green-600" />
-                      )}
-                    </div>
-                    <div className="flex-1 space-y-2">
-                      <p className="text-sm font-medium text-blue-900">
-                        {timeLeft > 0 
-                          ? `Mật khẩu (ẩn sau ${timeLeft}s)` 
-                          : 'Mật khẩu đã được ẩn'}
-                      </p>
-                      
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-white border border-blue-300 rounded-md px-3 py-2 font-mono text-sm">
-                          {showPassword ? currentPassword : '••••••••••••'}
+              <AnimatePresence>
+                {showPasswordSection && currentPassword && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                    transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                    className="rounded-xl border border-orange-100 bg-gradient-to-br from-orange-50/60 to-amber-50/40 p-4"
+                  >
+                    {/* Timer bar */}
+                    {timeLeft > 0 && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <Clock className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                        <div className="flex-1 h-1 bg-orange-100 rounded-full overflow-hidden">
+                          <motion.div
+                            className="h-full bg-orange-400 rounded-full"
+                            initial={{ width: '100%' }}
+                            animate={{ width: `${(timeLeft / 5) * 100}%` }}
+                            transition={{ duration: 1, ease: 'linear' }}
+                          />
                         </div>
-                        
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 border border-blue-300 bg-white hover:bg-blue-50 h-10 w-10"
-                          title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                        >
-                          {showPassword ? (
-                            <EyeOff className="w-4 h-4 text-blue-700" />
-                          ) : (
-                            <Eye className="w-4 h-4 text-blue-700" />
-                          )}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleCopyPassword}
-                          className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 border border-blue-300 bg-white hover:bg-blue-50 h-10 px-3"
-                        >
-                          {copiedPassword ? (
-                            <>
-                              <CheckCircle2 className="w-4 h-4 text-green-600" />
-                              <span className="text-green-700">Đã copy</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-4 h-4 text-blue-700" />
-                              <span className="text-blue-700">Copy</span>
-                            </>
-                          )}
-                        </button>
+                        <span className="text-xs text-orange-500 font-medium tabular-nums w-4">{timeLeft}s</span>
                       </div>
+                    )}
 
-                      <p className="text-xs text-blue-700">
-                        ⚠️ Mật khẩu chỉ hiển thị một lần. Vui lòng copy và gửi cho học viên ngay.
-                      </p>
+                    {/* Password row */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 flex items-center bg-white border border-orange-100 rounded-lg px-3 h-10 shadow-sm">
+                        <span className="flex-1 font-mono text-sm tracking-wider text-gray-800 select-all">
+                          {showPassword ? currentPassword : '•'.repeat(Math.min(currentPassword.length, 12))}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="h-10 w-10 rounded-lg border border-orange-100 bg-white hover:bg-orange-50 flex items-center justify-center transition-colors shadow-sm"
+                      >
+                        {showPassword
+                          ? <EyeOff className="w-4 h-4 text-orange-400" />
+                          : <Eye className="w-4 h-4 text-orange-400" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCopyPassword}
+                        className="h-10 rounded-lg border px-3 flex items-center gap-1.5 text-xs font-medium transition-all shadow-sm bg-white"
+                        style={{ borderColor: copiedPassword ? '#bbf7d0' : '#fed7aa', color: copiedPassword ? '#16a34a' : '#ea580c' }}
+                      >
+                        {copiedPassword
+                          ? <><CheckCircle2 className="w-3.5 h-3.5" />{t('teacher.students.editStudent.password.copied')}</>
+                          : <><Copy className="w-3.5 h-3.5" />Copy</>}
+                      </button>
                     </div>
-                  </div>
-                </div>
-              )}
+
+                    {!timeLeft && (
+                      <p className="mt-2.5 text-xs text-gray-400 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-gray-300" />
+                        {t('teacher.students.editStudent.password.warning')}
+                      </p>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
@@ -581,18 +594,20 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
               onClick={onClose}
               className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-gray-300 bg-white hover:bg-gray-100 h-10 px-4 py-2"
             >
-              Hủy
+              {t('teacher.students.editStudent.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading}
               className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-orange-600 text-white hover:bg-orange-700 h-10 px-4 py-2"
             >
-              {loading ? "Đang lưu..." : "Lưu thay đổi"}
+              {loading ? t('teacher.students.editStudent.saving') : t('teacher.students.editStudent.save')}
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

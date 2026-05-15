@@ -20,6 +20,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import { getKidsExams, deleteKidsExam } from "../../../../services/kidsExamApi";
+import { api } from "../../../../services/api";
 
 interface KidsExam {
   eId: number;
@@ -28,13 +29,16 @@ interface KidsExam {
   eDuration: number | null;
   eStatus: string;
   eCreated_at: string;
-  kids_exam_config: {
+  eType?: string;
+  eSkill?: string;
+  age_group?: string;
+  kids_exam_config?: {
     exam_type: string;
     mode: string;
     level: string;
     age_range: string;
   };
-  questions: any[];
+  questions?: any[];
 }
 
 export function AllExams() {
@@ -57,8 +61,21 @@ export function AllExams() {
     try {
       setLoading(true);
       setError(null);
-      const data = await getKidsExams();
-      setExams(data);
+      // Fetch song song: Kids exams + tất cả exams (VSTEP, IELTS, ...)
+      const [kidsRes, allRes] = await Promise.all([
+        getKidsExams().catch(() => []),
+        api.get("/teacher/exams").then((r) => r.data?.data || []).catch(() => []),
+      ]);
+      const kidsList: KidsExam[] = Array.isArray(kidsRes) ? kidsRes : (kidsRes?.data || []);
+      const allList: KidsExam[] = Array.isArray(allRes) ? allRes : [];
+      // Merge & dedupe theo eId (kids exam có thêm kids_exam_config)
+      const map = new Map<number, KidsExam>();
+      allList.forEach((e) => map.set(e.eId, e));
+      kidsList.forEach((e) => map.set(e.eId, { ...map.get(e.eId), ...e }));
+      const merged = Array.from(map.values()).sort(
+        (a, b) => new Date(b.eCreated_at).getTime() - new Date(a.eCreated_at).getTime()
+      );
+      setExams(merged);
     } catch (err: any) {
       console.error("Failed to load exams:", err);
       setError(err.message || "Không thể tải danh sách đề thi");
@@ -69,11 +86,17 @@ export function AllExams() {
 
   const handleDelete = async (examId: number) => {
     try {
-      await deleteKidsExam(examId);
-      setExams(exams.filter(e => e.eId !== examId));
+      const exam = exams.find((e) => e.eId === examId);
+      if (exam?.eType && exam.eType !== "GENERAL") {
+        // VSTEP / IELTS ... dùng endpoint exam thường
+        await api.delete(`/teacher/exams/${examId}`);
+      } else {
+        await deleteKidsExam(examId);
+      }
+      setExams(exams.filter((e) => e.eId !== examId));
       setDeleteConfirm(null);
     } catch (err: any) {
-      alert("Không thể xóa đề thi: " + err.message);
+      alert("Không thể xóa đề thi: " + (err.response?.data?.message || err.message));
     }
   };
 
@@ -85,8 +108,12 @@ export function AllExams() {
     // Age group filter
     let matchesAgeGroup = filterAgeGroup === "all";
     if (!matchesAgeGroup) {
-      const examAgeGroup = exam.kids_exam_config?.age_range || "all";
-      if (filterAgeGroup === "kids") {
+      // Prefer exam.age_group field, fallback to kids_exam_config.age_range
+      const examAgeGroup = (exam as any).age_group || exam.kids_exam_config?.age_range || "all";
+      // "all" age group matches every filter — applies to everyone
+      if (examAgeGroup === "all") {
+        matchesAgeGroup = true;
+      } else if (filterAgeGroup === "kids") {
         matchesAgeGroup = examAgeGroup === "kids" || examAgeGroup.includes("6-8") || examAgeGroup.includes("8-11") || examAgeGroup.includes("9-12");
       } else if (filterAgeGroup === "teens") {
         matchesAgeGroup = examAgeGroup === "teens" || examAgeGroup.includes("13-17");
@@ -130,11 +157,8 @@ export function AllExams() {
   };
 
   // Get exam type display info
-  const getExamTypeInfo = (examType: string | undefined) => {
-    if (!examType) {
-      return { label: "Chưa phân loại", color: "#6B7280" };
-    }
-    
+  const getExamTypeInfo = (exam: KidsExam) => {
+    const examType = exam.kids_exam_config?.exam_type;
     const types: Record<string, { label: string; color: string }> = {
       yle_starters: { label: "Starters", color: "#EA580C" },
       yle_movers: { label: "Movers", color: "#F97316" },
@@ -145,8 +169,33 @@ export function AllExams() {
       business: { label: "Business", color: "#F59E0B" },
       general: { label: "Tổng hợp", color: "#6B7280" },
     };
-    
-    return types[examType.toLowerCase()] || { label: examType, color: "#6B7280" };
+    if (examType && types[examType.toLowerCase()]) return types[examType.toLowerCase()];
+
+    // Fallback theo eType (VSTEP, IELTS, GENERAL...)
+    if (exam.eType === "VSTEP") {
+      const skill = (exam.eSkill || "").toLowerCase();
+      if (skill === "mixed") return { label: "VSTEP Full", color: "#7C3AED" };
+      if (skill === "listening") return { label: "VSTEP Listening", color: "#0EA5E9" };
+      if (skill === "reading") return { label: "VSTEP Reading", color: "#10B981" };
+      if (skill === "writing") return { label: "VSTEP Writing", color: "#F59E0B" };
+      if (skill === "speaking") return { label: "VSTEP Speaking", color: "#EC4899" };
+      return { label: "VSTEP", color: "#7C3AED" };
+    }
+    if (exam.eType === "IELTS") return { label: "IELTS", color: "#3B82F6" };
+    if (examType) return { label: examType, color: "#6B7280" };
+    return { label: "Chưa phân loại", color: "#6B7280" };
+  };
+
+  // Đường dẫn chỉnh sửa tuỳ theo loại đề
+  const getEditLink = (exam: KidsExam) => {
+    if (exam.eType === "VSTEP") {
+      const skill = (exam.eSkill || "").toLowerCase();
+      if (skill === "mixed") return `/giao-vien/de-thi/vstep/full/sua/${exam.eId}`;
+      if (skill && ["listening", "reading", "writing", "speaking"].includes(skill))
+        return `/giao-vien/de-thi/vstep/${skill}/sua/${exam.eId}`;
+      return `/giao-vien/de-thi/${exam.eId}`;
+    }
+    return `/giao-vien/de-thi/kids/tao-moi/${exam.eId}`;
   };
 
   return (
@@ -414,17 +463,22 @@ export function AllExams() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {paginatedExams.map((exam) => {
-              const typeInfo = getExamTypeInfo(exam.kids_exam_config?.exam_type);
+              const typeInfo = getExamTypeInfo(exam);
               return (
                 <div
                   key={exam.eId}
-                  className="group bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 p-5 hover:border-orange-300 hover:shadow-lg transition-all cursor-pointer"
+                  className="group relative bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 p-5 hover:border-orange-300 hover:shadow-lg transition-all cursor-pointer"
                 >
+                  {/* ID badge top-right corner */}
+                  <span className="absolute top-2 right-2 text-[10px] font-mono font-semibold text-gray-400 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded">
+                    #{exam.eId}
+                  </span>
+
                   {/* Header */}
-                  <div className="flex items-start justify-between mb-3">
-                    <span 
+                  <div className="flex items-start justify-between mb-3 pr-12">
+                    <span
                       className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold"
-                      style={{ 
+                      style={{
                         backgroundColor: `${typeInfo.color}15`,
                         color: typeInfo.color
                       }}
@@ -454,7 +508,7 @@ export function AllExams() {
                   <div className="flex items-center gap-4 mb-3 text-xs text-gray-500">
                     <div className="flex items-center gap-1.5">
                       <FileText className="w-3.5 h-3.5" />
-                      <span>{exam.questions?.length || 0} câu</span>
+                      <span>{(exam as any).questions_count ?? exam.questions?.length ?? 0} câu</span>
                     </div>
                     {exam.eDuration && (
                       <div className="flex items-center gap-1.5">
@@ -473,14 +527,18 @@ export function AllExams() {
                   {/* Actions */}
                   <div className="flex items-center gap-2">
                     <Link
-                      to={`/giao-vien/de-thi/kids/tao-moi/${exam.eId}`}
+                      to={getEditLink(exam)}
                       className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium"
                     >
                       <Edit className="w-3.5 h-3.5" />
                       Sửa
                     </Link>
                     <Link
-                      to={`/giao-vien/de-thi/${exam.eId}/xem`}
+                      to={
+                        exam.eType === "VSTEP"
+                          ? `/giao-vien/de-thi/${exam.eId}/vstep`
+                          : `/giao-vien/de-thi/${exam.eId}/xem`
+                      }
                       className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-lg hover:from-orange-700 hover:to-orange-600 transition-all text-sm font-medium shadow-sm"
                     >
                       <Eye className="w-3.5 h-3.5" />

@@ -25,9 +25,11 @@ type ProfileData = {
 };
 
 const inputBase =
-  'w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-900 ' +
+  'w-full px-3.5 py-2.5 rounded-lg border text-sm text-slate-900 ' +
   'placeholder:text-slate-400 transition-colors ' +
-  'focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100';
+  'focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100';
+
+const inputStyle = { borderColor: '#E8E4F9' };
 
 const labelBase = 'block text-xs font-semibold text-slate-700 mb-1.5';
 
@@ -135,8 +137,8 @@ export function AccountInfoCard({ defaultExpanded = true }: Props = {}) {
         aria-expanded={expanded}
         aria-controls="account-info-body"
       >
-        <div className="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center flex-shrink-0">
-          <User className="w-5 h-5 text-rose-600" />
+        <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0">
+          <User className="w-5 h-5 text-violet-600" />
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="text-base sm:text-lg font-bold text-slate-900">Thông tin tài khoản</h2>
@@ -157,8 +159,8 @@ export function AccountInfoCard({ defaultExpanded = true }: Props = {}) {
       <div className="flex items-center gap-4 pb-5 mb-5 border-b border-slate-100">
         <div className="relative">
           <div
-            className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-rose-400 via-pink-500 to-orange-400
-                       text-white flex items-center justify-center text-xl sm:text-2xl font-bold shadow-md shadow-rose-200/60"
+            className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-500
+                       text-white flex items-center justify-center text-xl sm:text-2xl font-bold shadow-md shadow-violet-200/60"
           >
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt={profile.uName} className="w-full h-full rounded-2xl object-cover" />
@@ -183,7 +185,7 @@ export function AccountInfoCard({ defaultExpanded = true }: Props = {}) {
             onClick={() => fileInputRef.current?.click()}
             disabled={avatarMutation.isPending}
             className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white border border-slate-200
-                       text-slate-600 hover:text-rose-600 hover:border-rose-300 flex items-center justify-center
+                       text-slate-600 hover:text-violet-600 hover:border-violet-300 flex items-center justify-center
                        transition-colors shadow-sm disabled:opacity-50"
             title="Đổi ảnh đại diện"
           >
@@ -223,6 +225,7 @@ export function AccountInfoCard({ defaultExpanded = true }: Props = {}) {
               id="uName"
               type="text"
               className={inputBase}
+              style={inputStyle}
               placeholder="Nhập họ và tên"
               value={form.uName}
               onChange={(e) => setForm((f) => ({ ...f, uName: e.target.value }))}
@@ -238,6 +241,7 @@ export function AccountInfoCard({ defaultExpanded = true }: Props = {}) {
               <select
                 id="uGender"
                 className={inputBase}
+                style={inputStyle}
                 value={form.uGender}
                 onChange={(e) => setForm((f) => ({ ...f, uGender: Number(e.target.value) as 0 | 1 }))}
               >
@@ -251,6 +255,7 @@ export function AccountInfoCard({ defaultExpanded = true }: Props = {}) {
                 id="uDoB"
                 type="date"
                 className={inputBase}
+                style={inputStyle}
                 value={form.uDoB}
                 onChange={(e) => setForm((f) => ({ ...f, uDoB: e.target.value }))}
                 max={new Date().toISOString().split('T')[0]}
@@ -265,6 +270,7 @@ export function AccountInfoCard({ defaultExpanded = true }: Props = {}) {
               id="uAddress"
               type="text"
               className={inputBase}
+              style={inputStyle}
               placeholder="Tỉnh/Thành phố, Quận/Huyện..."
               value={form.uAddress}
               onChange={(e) => setForm((f) => ({ ...f, uAddress: e.target.value }))}
@@ -281,6 +287,7 @@ export function AccountInfoCard({ defaultExpanded = true }: Props = {}) {
             <textarea
               id="bio"
               className={`${inputBase} resize-none`}
+              style={inputStyle}
               placeholder="Vài dòng về bạn..."
               rows={3}
               maxLength={500}
@@ -296,7 +303,7 @@ export function AccountInfoCard({ defaultExpanded = true }: Props = {}) {
               type="submit"
               disabled={updateMutation.isPending}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold
-                         bg-rose-500 text-white hover:bg-rose-600 active:scale-[0.98] transition-all
+                         bg-violet-600 text-white hover:bg-violet-700 active:scale-[0.98] transition-all
                          disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />

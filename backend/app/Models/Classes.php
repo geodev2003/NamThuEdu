@@ -45,15 +45,9 @@ class Classes extends Model
         return $this->belongsTo(Classes::class, 'course', 'cId');
     }
 
-    public function enrollments()
-    {
-        return $this->hasMany(ClassEnrollment::class, 'class_id', 'cId');
-    }
-
     public function students()
     {
-        return $this->belongsToMany(User::class, 'class_enrollments', 'class_id', 'student_id', 'cId', 'uId')
-                    ->withPivot('enrolled_at');
+        return $this->hasMany(User::class, 'class_id', 'cId')->where('uRole', 'student');
     }
 
     public function transfersFrom()
@@ -89,11 +83,11 @@ class Classes extends Model
      */
     public function getStudentCount()
     {
-        return $this->enrollments()->count();
+        return $this->students()->count();
     }
 
     public function hasStudent($studentId)
     {
-        return $this->enrollments()->where('student_id', $studentId)->exists();
+        return $this->students()->where('uId', $studentId)->exists();
     }
 }

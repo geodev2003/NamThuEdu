@@ -25,8 +25,11 @@ use App\Http\Controllers\TestGamificationController;
 use App\Http\Controllers\GamificationTestController;
 use App\Http\Controllers\StudentAnalyticsController;
 use App\Http\Controllers\FileUploadController;
+use App\Http\Controllers\AddressProxyController;
 use App\Http\Controllers\AgeGroupContentController;
 use App\Http\Controllers\AdminSystemController;
+use App\Http\Controllers\MonitoringController;
+use App\Http\Controllers\PushController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,6 +41,17 @@ use App\Http\Controllers\AdminSystemController;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
+
+/* ========= PUSH NOTIFICATIONS ========= */
+Route::get('/push/vapid-public-key', [PushController::class, 'vapidPublicKey']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/push/subscribe', [PushController::class, 'subscribe']);
+    Route::delete('/push/unsubscribe', [PushController::class, 'unsubscribe']);
+});
+
+/* ========= ADDRESS PROXY (public) ========= */
+Route::get('/address/provinces', [AddressProxyController::class, 'provinces']);
+Route::get('/address/provinces/{code}/communes', [AddressProxyController::class, 'communes']);
 
 /* ========= AUTH ========= */
 Route::post('/login', [AuthController::class, 'login']);
@@ -73,6 +87,27 @@ Route::get('/health', function () {
 // Public categories (không cần auth)
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/public/courses', [CourseController::class, 'publicCourses']);
+
+// Public blog endpoints (no auth required)
+Route::get('/public/posts', [BlogController::class, 'publicIndex']);
+Route::get('/public/posts/{slug}', [BlogController::class, 'publicShow']);
+Route::get('/public/stats', function () {
+    return response()->json([
+        'status' => 'success',
+        'data' => [
+            'students' => \App\Models\User::where('uRole', 'student')
+                            ->where('uStatus', 'active')
+                            ->whereNull('uDeleted_at')
+                            ->count(),
+            'teachers' => \App\Models\User::where('uRole', 'teacher')
+                            ->where('uStatus', 'active')
+                            ->whereNull('uDeleted_at')
+                            ->count(),
+            'courses'  => \App\Models\Course::where('cStatus', 'active')->count(),
+            'exams'    => \App\Models\Exam::where('eStatus', 'published')->count(),
+        ]
+    ]);
+});
 
 // Test upload endpoint (for development only)
 Route::post('/test/upload/audio', [FileUploadController::class, 'uploadAudio']);
@@ -117,9 +152,11 @@ Route::middleware('auth:sanctum')->group(function () {
         // Student Management
         Route::get('/students', [UserController::class, 'teacherStudents']);
         Route::get('/students/deleted', [UserController::class, 'getDeletedStudents']); // Get deleted students
+        Route::get('/student/check-phone', [UserController::class, 'checkPhoneUnique']);
         Route::get('/student/{id}', [UserController::class, 'getStudentById']);
         Route::post('/student', [UserController::class, 'storeStudent']);
         Route::put('/student/{id}', [UserController::class, 'update']);
+        Route::post('/student/{id}', [UserController::class, 'update']); // _method=PUT spoofing for file uploads
         Route::delete('/student/{id}', [UserController::class, 'destroyStudent']); // Soft delete
         Route::post('/student/{id}/restore', [UserController::class, 'restoreStudent']); // Restore deleted
         Route::get('/student/{id}/view-password', [UserController::class, 'viewStudentPassword']); // View password
@@ -270,6 +307,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/assignments/{id}/reminders', [TestAssignmentController::class, 'sendReminders']);
         Route::get('/assignments/statistics', [TestAssignmentController::class, 'statistics']);
         
+        // VSTEP exam structure (for teacher review mode)
+        Route::get('/exams/{examId}/vstep/listening', [StudentTestController::class, 'loadVstepListening']);
+        Route::get('/exams/{examId}/vstep/reading',   [StudentTestController::class, 'loadVstepReading']);
+        Route::get('/exams/{examId}/vstep/writing',   [StudentTestController::class, 'loadVstepWriting']);
+        Route::get('/exams/{examId}/vstep/speaking',  [StudentTestController::class, 'loadVstepSpeaking']);
+
+        // Live Monitoring
+        Route::get('/dashboard/active-sessions', [MonitoringController::class, 'activeSessions']);
+        Route::get('/dashboard/monitoring-stats', [MonitoringController::class, 'stats']);
+        Route::get('/dashboard/recent-starts',   [MonitoringController::class, 'recentStarts']);
+        Route::post('/dashboard/cleanup-expired',  [MonitoringController::class, 'cleanupExpired']);
+        Route::get('/dashboard/statistics',        [MonitoringController::class, 'statistics']);
+
         // Grading
         Route::get('/submissions', [GradingController::class, 'index']);
         Route::get('/submissions/{id}', [GradingController::class, 'show']);
@@ -285,7 +335,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard/performance-data', [App\Http\Controllers\TeacherDashboardController::class, 'getPerformanceData']);
         Route::get('/dashboard/recent-activities', [App\Http\Controllers\TeacherDashboardController::class, 'getRecentActivities']);
         Route::get('/dashboard/test-statistics/{examId}', [App\Http\Controllers\TeacherDashboardController::class, 'getTestStatistics']);
-        Route::get('/dashboard/active-sessions', [App\Http\Controllers\TeacherDashboardController::class, 'getActiveSessions']);
+        // Route::get('/dashboard/active-sessions', [...]) // replaced by MonitoringController
         Route::post('/dashboard/send-message', [App\Http\Controllers\TeacherDashboardController::class, 'sendMessageToStudent']);
         Route::get('/dashboard/connection-logs/{submissionId}', [App\Http\Controllers\TeacherDashboardController::class, 'getConnectionLogs']);
         
@@ -306,19 +356,40 @@ Route::middleware('auth:sanctum')->group(function () {
     
     /* ======== STUDENT ROUTES ========= */
     Route::middleware('role:student')->prefix('student')->group(function () {
-        // Test Taking
+        // Exam browser (VSTEP/IELTS public exams for adults)
+        Route::get('/exams/browse', [StudentTestController::class, 'browseExams']);
+
+        // VSTEP direct exam (start by exam ID without assignment)
+        Route::post('/exams/{examId}/start-direct',   [StudentTestController::class, 'startDirectExam']);
+        Route::get('/exams/{examId}/vstep/listening', [StudentTestController::class, 'loadVstepListening']);
+        Route::get('/exams/{examId}/vstep/reading',   [StudentTestController::class, 'loadVstepReading']);
+        Route::get('/exams/{examId}/vstep/writing',   [StudentTestController::class, 'loadVstepWriting']);
+        Route::get('/exams/{examId}/vstep/speaking',  [StudentTestController::class, 'loadVstepSpeaking']);
+        Route::post('/submissions/{submissionId}/speaking/{partNumber}/upload', [StudentTestController::class, 'uploadSpeakingAudio'])->where(['submissionId' => '[0-9]+', 'partNumber' => '[0-9]+']);
+        Route::post('/exams/{examId}/checkin-photo', [StudentTestController::class, 'uploadCheckinPhoto'])->where('examId', '[0-9]+');
+
+        // Test Taking — specific routes FIRST (before parametric /tests/{id})
         Route::get('/tests', [StudentTestController::class, 'index']);
-        Route::get('/tests/{id}', [StudentTestController::class, 'show']);
-        Route::get('/tests/{id}/resume', [StudentTestController::class, 'resume']);
-        Route::post('/tests/{id}/start', [StudentTestController::class, 'start']);
-        Route::post('/tests/{submissionId}/answer', [StudentTestController::class, 'answer'])->middleware('throttle:120,1');
-        Route::post('/tests/{submissionId}/submit', [StudentTestController::class, 'submit'])->middleware('throttle:30,1');
-        
-        // Dashboard specific endpoints
         Route::get('/tests/in-progress', [StudentTestController::class, 'inProgressTests']);
         Route::get('/tests/upcoming', [StudentTestController::class, 'upcomingTests']);
+        // Parametric routes — constrain {id} to digits to avoid matching string slugs
+        Route::get('/tests/{id}', [StudentTestController::class, 'show'])->where('id', '[0-9]+');
+        Route::get('/tests/{id}/resume', [StudentTestController::class, 'resume'])->where('id', '[0-9]+');
+        Route::post('/tests/{id}/start', [StudentTestController::class, 'start'])->where('id', '[0-9]+');
+        Route::post('/tests/{submissionId}/answer', [StudentTestController::class, 'answer'])->where('submissionId', '[0-9]+')->middleware('throttle:120,1');
+        Route::post('/tests/{submissionId}/submit', [StudentTestController::class, 'submit'])->where('submissionId', '[0-9]+')->middleware('throttle:30,1');
+
+        // Other dashboard endpoints
         Route::get('/recommendations/practice', [StudentTestController::class, 'practiceRecommendations']);
         Route::get('/notifications', [StudentTestController::class, 'getNotifications']);
+        Route::put('/notifications/read-all', [StudentTestController::class, 'markAllNotificationsRead']);
+        Route::put('/notifications/{id}/read', [StudentTestController::class, 'markNotificationRead']);
+        Route::delete('/notifications/{id}', [StudentTestController::class, 'deleteNotification']);
+
+        // Teacher reminders (student-facing)
+        Route::get('/reminders', [StudentTestController::class, 'getReminders']);
+        Route::put('/reminders/{id}/read', [StudentTestController::class, 'markReminderRead']);
+        Route::delete('/reminders/{id}', [StudentTestController::class, 'dismissReminder']);
         
         // WebSocket Real-time Features
         Route::post('/websocket/connect', [App\Http\Controllers\TestWebSocketController::class, 'connect']);
@@ -329,6 +400,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Submission History & Results Analysis
         Route::get('/submissions', [StudentTestController::class, 'submissions']);
         Route::get('/submissions/{id}', [StudentTestController::class, 'submissionDetail']);
+        Route::get('/submissions/{id}/grading-status', [StudentTestController::class, 'getGradingStatus']);
         Route::get('/submissions/{id}/answers', [StudentTestController::class, 'submissionAnswers']);
         Route::get('/submissions/{id}/compare', [StudentTestController::class, 'compareSubmission']);
         
@@ -352,13 +424,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/classes/{id}', [StudentCourseController::class, 'getClassDetail']);
         Route::get('/schedule', [StudentCourseController::class, 'getSchedule']);
         
-        // Practice & Self-study
+        // Practice & Self-study — specific routes FIRST
         Route::get('/practice', [StudentPracticeController::class, 'index']);
+        Route::get('/practice/topics', [StudentPracticeController::class, 'getTopics']);
+        Route::get('/practice/questions', [StudentPracticeController::class, 'getQuestions']);
         Route::get('/practice/history', [StudentPracticeController::class, 'history']);
-        Route::get('/practice/{id}', [StudentPracticeController::class, 'show']);
-        Route::post('/practice/{id}/start', [StudentPracticeController::class, 'start']);
-        Route::post('/practice/{submissionId}/answer', [StudentPracticeController::class, 'answer']);
-        Route::post('/practice/{submissionId}/complete', [StudentPracticeController::class, 'complete']);
+        Route::post('/practice/sessions', [StudentPracticeController::class, 'createSession']);
+        Route::post('/practice/sessions/{submissionId}/answer', [StudentPracticeController::class, 'answer'])->where('submissionId', '[0-9]+');
+        Route::post('/practice/sessions/{submissionId}/complete', [StudentPracticeController::class, 'complete'])->where('submissionId', '[0-9]+');
+        // Parametric routes — constrain {id} to digits
+        Route::get('/practice/{id}', [StudentPracticeController::class, 'show'])->where('id', '[0-9]+');
+        Route::post('/practice/{id}/start', [StudentPracticeController::class, 'start'])->where('id', '[0-9]+');
+        Route::post('/practice/{submissionId}/answer', [StudentPracticeController::class, 'answer'])->where('submissionId', '[0-9]+');
+        Route::post('/practice/{submissionId}/complete', [StudentPracticeController::class, 'complete'])->where('submissionId', '[0-9]+');
         
         // Gamification & Rewards
         Route::prefix('gamification')->group(function () {
@@ -368,6 +446,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/achievements', [StudentGamificationController::class, 'getAchievements']);
             Route::get('/stats', [StudentGamificationController::class, 'getStats']);
             Route::get('/streak', [StudentGamificationController::class, 'getStreak']);
+            Route::get('/leaderboard', [StudentGamificationController::class, 'getLeaderboard']);
         });
         
         // Lesson/Exam/Practice Completion (with Gamification)

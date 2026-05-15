@@ -262,7 +262,7 @@ export function CreateCourse() {
                         Kéo thả ảnh hoặc click để chọn
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
-                        PNG, JPG, WebP (Tỷ lệ 16:9, tối đa 5MB)
+                        PNG, JPG, WebP (Tỷ lệ 16:9, tối đa 20MB)
                       </p>
                     </div>
                   </div>
