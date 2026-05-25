@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+import { getAuthToken } from '../utils/authStorage';
 
 // API Base URL from environment
 const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
@@ -25,7 +26,7 @@ const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Attach authentication token
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -1389,7 +1390,54 @@ export const teacherApi = {
     },
   },
 
-  reports: {},
+  reports: {
+    /**
+     * Get students progress across all classes
+     * @param params - Query parameters for filtering and sorting
+     * @returns Students progress data with summary statistics
+     */
+    async getStudentsProgress(params?: {
+      class_id?: number;
+      search?: string;
+      sort_by?: 'name' | 'score' | 'progress' | 'attendance';
+      sort_order?: 'asc' | 'desc';
+    }): Promise<ApiResponse<{
+      summary: {
+        totalStudents: number;
+        avgScore: number;
+        completionRate: number;
+        avgAttendance: number;
+        changes: {
+          students: number;
+          score: number;
+          completion: number;
+          attendance: number;
+        };
+      };
+      students: Array<{
+        uId: number;
+        uName: string;
+        uEmail: string;
+        uPhone: string;
+        uAvatar: string | null;
+        uClass_id: number;
+        className: string;
+        testsCompleted: number;
+        totalTests: number;
+        avgScore: number;
+        attendanceRate: number;
+        lastActivity: string;
+        lastActivityDate: string | null;
+        scoreTrend: 'up' | 'down' | 'stable';
+        scoreTrendValue: number;
+      }>;
+    }>> {
+      const response = await apiClient.get('/teacher/students/progress', {
+        params
+      });
+      return response.data;
+    },
+  },
   
   /**
    * User Profile Module
@@ -1411,6 +1459,29 @@ export const teacherApi = {
      */
     async updateProfile(data: any): Promise<ApiResponse<any>> {
       const response = await apiClient.put<ApiResponse<any>>('/user/profile', data);
+      return response.data;
+    },
+
+    /**
+     * Upload avatar image
+     * @param formData - FormData containing avatar file
+     * @returns Success response with avatar URL
+     */
+    async uploadAvatar(formData: FormData): Promise<ApiResponse<any>> {
+      const response = await apiClient.post<ApiResponse<any>>('/user/avatar', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    },
+
+    /**
+     * Remove avatar image
+     * @returns Success response
+     */
+    async removeAvatar(): Promise<ApiResponse<any>> {
+      const response = await apiClient.delete<ApiResponse<any>>('/user/avatar');
       return response.data;
     },
 

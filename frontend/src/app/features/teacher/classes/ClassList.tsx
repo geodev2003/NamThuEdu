@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getAuthToken } from '../../../../utils/authStorage';
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
@@ -60,7 +61,7 @@ export function ClassList() {
     const fetchClasses = async () => {
       setLoading(true);
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/classes`, {
           headers: {
             'Authorization': `Bearer ${token}`,

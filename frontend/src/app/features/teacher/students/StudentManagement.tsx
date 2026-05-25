@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { getAuthToken } from "../../../../utils/authStorage";
 import { useTranslation } from "react-i18next";
 import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
 import Swal from 'sweetalert2';
@@ -106,7 +107,7 @@ export function StudentManagement() {
 
   const fetchStudentStats = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       
       if (!token) {
         return;
@@ -170,7 +171,7 @@ export function StudentManagement() {
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       
       if (!token) {
         toast.error(t('teacher.students.management.toast.loginRequired'));
@@ -259,7 +260,7 @@ export function StudentManagement() {
   const fetchDeletedStudents = async () => {
     setLoadingDeleted(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       
       if (!token) {
         toast.error(t('teacher.students.management.toast.loginRequired'));
@@ -379,7 +380,7 @@ export function StudentManagement() {
 
     if (result.isConfirmed) {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         
         if (!token) {
           toast.error(t('teacher.students.management.toast.loginRequired'));
@@ -440,7 +441,7 @@ export function StudentManagement() {
 
     if (result.isConfirmed) {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         
         if (!token) {
           toast.error(t('teacher.students.management.toast.loginRequired'));
@@ -557,7 +558,7 @@ export function StudentManagement() {
 
     if (result.isConfirmed) {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         
         if (!token) {
           toast.error(t('teacher.students.management.toast.loginRequired'));
@@ -641,7 +642,7 @@ export function StudentManagement() {
 
     if (result.isConfirmed) {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         
         if (!token) {
           toast.error(t('teacher.students.management.toast.loginRequired'));

@@ -6,6 +6,7 @@ import { Button } from "../ui/button";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { logout } from "../../../services/authApi";
 import { api } from "../../../services/api";
+import { getAuthUser } from "../../../utils/authStorage";
 
 interface HeaderProps {
   breadcrumb: string | string[];
@@ -50,10 +51,47 @@ export function Header({ breadcrumb, action }: HeaderProps) {
   const seenIdsRef  = useRef<Set<number> | null>(null);
   const pollRef     = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const userStr  = localStorage.getItem("user");
-  const user     = userStr ? JSON.parse(userStr) : null;
-  const userName = user?.name || user?.uName || "Giáo viên";
-  const userRole = user?.role || user?.uRole || "";
+  const user     = getAuthUser();
+  const userName = (user?.name as string) || (user?.uName as string) || "Giáo viên";
+  const userRole = (user?.role as string) || (user?.uRole as string) || "";
+  const userAvatar = (user?.avatar_url as string) || (user?.avatar as string) || "";
+  
+  // Helper function to get full avatar URL
+  const getAvatarUrl = (avatar: string) => {
+    if (!avatar) return '';
+    // If already a full URL, return as is
+    if (avatar.startsWith('http://') || avatar.startsWith('https://')) {
+      return avatar;
+    }
+    // If relative path, prepend backend URL from .env
+    const baseUrl = import.meta.env.VITE_API_BASE_URL;
+    if (!baseUrl) {
+      console.error('VITE_API_BASE_URL is not defined in .env');
+      return '';
+    }
+    return avatar.startsWith('/') ? `${baseUrl}${avatar}` : `${baseUrl}/${avatar}`;
+  };
+  
+  // State to track avatar updates
+  const [currentAvatar, setCurrentAvatar] = useState(getAvatarUrl(userAvatar));
+  
+  // Listen for storage changes to update avatar
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const updatedUser = getAuthUser();
+      const newAvatar = (updatedUser?.avatar_url as string) || (updatedUser?.avatar as string) || '';
+      setCurrentAvatar(getAvatarUrl(newAvatar));
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    // Also listen for custom event from Settings page
+    window.addEventListener('avatarUpdated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('avatarUpdated', handleStorageChange);
+    };
+  }, []);
 
   const fetchRecentStarts = () => {
     if (userRole !== "teacher") return;
@@ -113,12 +151,12 @@ export function Header({ breadcrumb, action }: HeaderProps) {
   };
 
   return (
-    <div className="h-20 bg-white border-b border-[#E5E7EB] px-8 flex items-center justify-between flex-shrink-0">
+    <div className="h-20 bg-white border-b border-indigo-100 px-8 flex items-center justify-between flex-shrink-0">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2">
         {crumbs.map((crumb, index) => (
           <span key={index} className="flex items-center gap-2">
-            {index > 0 && <ChevronRight className="w-4 h-4 text-[#9CA3AF]" />}
+            {index > 0 && <ChevronRight className="w-4 h-4 text-indigo-300" />}
             <span
               className={index === crumbs.length - 1 ? "text-[#1F2937] font-semibold" : "text-[#6B7280]"}
               style={{ fontSize: "14px" }}
@@ -134,8 +172,8 @@ export function Header({ breadcrumb, action }: HeaderProps) {
         {action && (
           <Button
             onClick={action.onClick}
-            className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white h-10 px-5 rounded-lg shadow-sm flex items-center gap-2 transition-colors active:scale-[0.98]"
-            style={{ fontSize: "14px", fontWeight: 500 }}
+            className="text-white h-10 px-5 rounded-lg shadow-sm flex items-center gap-2 transition-colors active:scale-[0.98]"
+            style={{ fontSize: "14px", fontWeight: 500, background: 'linear-gradient(135deg,#4F46E5,#4338CA)', boxShadow: '0 4px 12px rgba(79,70,229,0.35)' }}
           >
             <Plus className="w-4 h-4" />
             {action.label}
@@ -148,10 +186,10 @@ export function Header({ breadcrumb, action }: HeaderProps) {
         <div className="relative" ref={bellRef}>
           <button
             onClick={handleBellClick}
-            className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-[#F3F4F6] transition-colors relative"
+            className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-indigo-50 transition-colors relative"
             aria-label={t("header.notifications")}
           >
-            <Bell className={`w-5 h-5 ${unread > 0 ? "text-blue-600" : "text-[#6B7280]"}`} />
+            <Bell className={`w-5 h-5 ${unread > 0 ? "text-indigo-600" : "text-slate-500"}`} />
             {unread > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center px-1 border-2 border-white">
                 {unread > 9 ? "9+" : unread}
@@ -167,7 +205,7 @@ export function Header({ breadcrumb, action }: HeaderProps) {
                   <Link
                     to="/giao-vien/giam-sat-truc-tiep"
                     onClick={() => setBellOpen(false)}
-                    className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                    className="text-xs text-indigo-600 hover:underline flex items-center gap-1"
                   >
                     Xem tất cả <ExternalLink className="w-3 h-3" />
                   </Link>
@@ -194,7 +232,7 @@ export function Header({ breadcrumb, action }: HeaderProps) {
                           <span className="font-medium text-slate-700 truncate">{n.exam_title}</span>
                         </p>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                          <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
                             {n.exam_type}
                           </span>
                           <span className="text-xs text-slate-400">{fmtAgo(n.elapsed_min)}</span>
@@ -211,7 +249,7 @@ export function Header({ breadcrumb, action }: HeaderProps) {
                   <Link
                     to="/giao-vien/giam-sat-truc-tiep"
                     onClick={() => setBellOpen(false)}
-                    className="text-xs text-blue-600 font-semibold hover:underline flex items-center justify-center gap-1"
+                    className="text-xs text-indigo-600 font-semibold hover:underline flex items-center justify-center gap-1"
                   >
                     Mở trang giám sát trực tiếp <ExternalLink className="w-3 h-3" />
                   </Link>
@@ -226,10 +264,22 @@ export function Header({ breadcrumb, action }: HeaderProps) {
           <button
             onClick={() => setProfileOpen((prev) => !prev)}
             className={`flex items-center gap-2 rounded-[20px] px-3 py-1.5 transition-colors ${
-              profileOpen ? "bg-[#EFF6FF]" : "hover:bg-[#F3F4F6]"
+              profileOpen ? "bg-indigo-50" : "hover:bg-indigo-50/50"
             }`}
           >
-            <div className="w-8 h-8 bg-[#2563EB] rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+            {currentAvatar ? (
+              <img
+                src={currentAvatar}
+                alt={userName}
+                className="w-8 h-8 rounded-full object-cover flex-shrink-0 border-2 border-indigo-200"
+                onError={(e) => {
+                  // Fallback to initials if image fails to load
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                }}
+              />
+            ) : null}
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 ${currentAvatar ? 'hidden' : ''}`} style={{ background: 'linear-gradient(135deg,#6366F1,#4338CA)' }}>
               {getInitials(userName)}
             </div>
             <span className="text-[#374151] hidden md:block max-w-[120px] truncate" style={{ fontSize: "14px", fontWeight: 500 }}>

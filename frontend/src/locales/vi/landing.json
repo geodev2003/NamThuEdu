@@ -164,7 +164,55 @@
       "googlePlay": "Google Play",
       "copyright": "© 2013 - 2026 NAMTHU.VN",
       "email": "Email:",
-      "contactUs": "Liên hệ"
+      "contactUs": "Liên hệ",
+      "brand": {
+        "tagline": "Học thông minh hơn",
+        "description": "Trung tâm tiếng Anh uy tín tại Cần Thơ. Phát triển kỹ năng tiếng Anh toàn diện cho học sinh từ lớp 1-12 và luyện thi quốc tế.",
+        "rating": "4.8/5",
+        "students": "1 triệu+ học viên"
+      },
+      "courses": {
+        "title": "Khóa học",
+        "items": [
+          "Tiếng Anh giao tiếp",
+          "Tiếng Anh học sinh (Lớp 1-12)",
+          "Luyện thi Cambridge (Starters, Movers, Flyers)",
+          "Luyện thi KET, PET",
+          "Luyện thi IELTS",
+          "Luyện thi VSTEP, V-SAT (ĐHCT)"
+        ]
+      },
+      "contact": {
+        "title": "Liên hệ",
+        "hotlineLabel": "Hotline",
+        "hotline": "0776 818 160",
+        "hotlineHref": "tel:0776818160",
+        "emailLabel": "Email",
+        "emailVal": "hello@namthu.vn",
+        "emailHref": "mailto:hello@namthu.vn",
+        "addressLabel": "Địa chỉ",
+        "address": "Hẻm 387K1, 14B, Trần Nam Phú, Cần Thơ",
+        "addressHref": "https://maps.google.com/?q=Hẻm+387K1,+14B,+Trần+Nam+Phú,+Cần+Thơ",
+        "scheduleLabel": "Lịch học",
+        "schedule": "Linh hoạt theo học viên — liên hệ giáo viên để biết thêm"
+      },
+      "support": {
+        "title": "Hỗ trợ & Ưu đãi",
+        "register": "Đăng ký học",
+        "consult": "Tư vấn khóa học",
+        "faq": "Câu hỏi thường gặp",
+        "promoTitle": "Không ai bị bỏ lại phía sau",
+        "promos": [
+          "Học viên hoàn cảnh khó khăn — giảm học phí trực tiếp",
+          "Nhóm 3 bạn cùng đăng ký — 1 bạn học miễn phí",
+          "Tài liệu — miễn phí trọn đời"
+        ]
+      },
+      "bottom": {
+        "copyright": "NamThu Education. Đồng hành cùng bạn trên hành trình học tiếng Anh.",
+        "privacy": "Chính sách bảo mật",
+        "terms": "Điều khoản sử dụng"
+      }
     },
     "testimonials": {
       "title": "Học viên nói gì về chúng tôi",
@@ -432,6 +480,110 @@
       "footer": {
         "copyright": "© 2026 NamThuEdu. Nền tảng kiến trúc tri thức hiện đại.",
         "contact": "Hotline: 1900 6868 • support@namthuedu.vn"
+      }
+    },
+    "features_page": {
+      "seo": {
+        "title": "Tính năng | NamThuEdu",
+        "description": "Khám phá các tính năng học tiếng Anh tại NamThuEdu: đề thi VSTEP chuẩn Bộ GD&ĐT, lộ trình cá nhân hóa, giáo viên phản hồi trong 24h."
+      },
+      "hero": {
+        "eyebrow": "— Est. 2022 · Cần Thơ —",
+        "headline1": "Học tiếng Anh",
+        "headline2": "như đi học thật",
+        "sub": "Nền tảng học tiếng Anh toàn diện — đề thi chuẩn VSTEP, lộ trình cá nhân và giáo viên phản hồi trong 24 giờ.",
+        "ctaPrimary": "Bắt đầu miễn phí",
+        "ctaSecondary": "Xem bài viết →"
+      },
+      "commitments": [
+        "Phản hồi bài Writing & Speaking trong vòng 24 giờ — không để bạn chờ đợi.",
+        "Giáo viên đồng hành xuyên suốt khóa học, không chỉ dạy rồi để bạn tự xoay.",
+        "Học phí rõ ràng từ đầu, không phát sinh chi phí ẩn hay gói upsell."
+      ],
+      "manifesto": {
+        "eyebrow": "Tính năng",
+        "title": "Mọi thứ bạn cần",
+        "titleSub": "để chinh phục tiếng Anh",
+        "items": [
+          { "num": "01", "title": "Đề thi chuẩn VSTEP", "desc": "Ngân hàng đề Bộ GD&ĐT đầy đủ 4 kỹ năng Nghe – Nói – Đọc – Viết, cập nhật liên tục theo chuẩn mới nhất." },
+          { "num": "02", "title": "Lộ trình cá nhân hóa", "desc": "Bài kiểm tra đầu vào xác định trình độ, tự động đề xuất lộ trình học tối ưu theo mục tiêu của từng học viên." },
+          { "num": "03", "title": "Giáo viên tận tâm", "desc": "Chấm bài Writing và nhận xét Speaking trong 24 giờ. Giáo viên hỗ trợ trực tiếp, không để học viên học một mình." },
+          { "num": "04", "title": "Theo dõi tiến độ", "desc": "Biểu đồ điểm số từng kỹ năng, thời gian học và điểm mạnh/yếu hiện rõ — biết mình đang đứng ở đâu." },
+          { "num": "05", "title": "Kho bài viết phong phú", "desc": "Ngữ pháp, từ vựng, mẹo thi từ đội ngũ giáo viên — đọc miễn phí, không cần đăng ký." },
+          { "num": "06", "title": "Học mọi lúc, mọi nơi", "desc": "Giao diện tối ưu cho điện thoại lẫn máy tính. Không cần cài ứng dụng, truy cập ngay trên trình duyệt." }
+        ]
+      },
+      "comparison": {
+        "eyebrow": "Tại sao chọn NamThuEdu",
+        "title": "Chúng tôi được thiết kế để giải quyết những khó khăn thật sự",
+        "leftTitle": "Học viên thường gặp",
+        "rightTitle": "NamThuEdu làm khác",
+        "traditional": [
+          "Không biết mình nên bắt đầu từ đâu",
+          "Nộp bài xong phải chờ lâu mới có nhận xét",
+          "Học theo nhóm, dễ bị bỏ lại nếu chậm hơn",
+          "Khó biết mình đang thực sự tiến bộ không",
+          "Không rõ tổng chi phí, lo phát sinh thêm"
+        ],
+        "namthu": [
+          "Học linh hoạt theo lịch của bạn",
+          "Phản hồi Writing/Speaking trong 24h",
+          "Lộ trình riêng theo trình độ đầu vào",
+          "Dashboard tiến độ trực quan, real-time",
+          "Học phí hợp lý, rõ ràng từ đầu"
+        ]
+      },
+      "quote": {
+        "text": "Giáo dục không phải đổ đầy một cái thùng, mà là thắp lên một ngọn lửa.",
+        "attribution": "W. B. Yeats"
+      },
+      "faq": {
+        "eyebrow": "Câu hỏi thường gặp",
+        "items": [
+          { "q": "NamThuEdu phù hợp với ai?", "a": "Học viên muốn thi VSTEP B1–C1, IELTS, hoặc học tiếng Anh giao tiếp. Đặc biệt phù hợp với học sinh, sinh viên và người đi làm tại Cần Thơ." },
+          { "q": "Tôi có thể học thử trước khi đăng ký không?", "a": "Có. Kho bài viết và một số đề mẫu được mở miễn phí để bạn trải nghiệm trước khi quyết định." },
+          { "q": "Học phí như thế nào?", "a": "Học phí linh hoạt theo khóa học và mục tiêu. Liên hệ trực tiếp để được tư vấn lộ trình và báo giá phù hợp." }
+        ]
+      },
+      "cta": {
+        "ornament": "Sẵn sàng bắt đầu?",
+        "title": "Đến lớp với chúng tôi.",
+        "sub": "Đăng ký ngay hôm nay để được tư vấn lộ trình học miễn phí.",
+        "primary": "Đăng ký ngay",
+        "phone": "Gọi tư vấn: 0776 818 160"
+      }
+    },
+    "legal": {
+      "lastUpdated": "Cập nhật lần cuối",
+      "date": "20/05/2026",
+      "understood": "Đã hiểu",
+      "contactNote": "Mọi thắc mắc vui lòng gửi email đến",
+      "contactOr": "hoặc gọi hotline",
+      "privacy": {
+        "title": "Chính sách bảo mật",
+        "intro": "NamThu Education cam kết bảo vệ quyền riêng tư của bạn. Tài liệu này mô tả cách chúng tôi thu thập, sử dụng và bảo vệ thông tin cá nhân.",
+        "contactSuffix": "chính sách bảo mật",
+        "sections": [
+          { "title": "1. Thông tin chúng tôi thu thập", "body": "Khi bạn đăng ký tài khoản hoặc sử dụng dịch vụ NamThuEdu, chúng tôi có thể thu thập: họ tên, địa chỉ email, số điện thoại, thông tin thiết bị và dữ liệu học tập (tiến độ, điểm số, lịch sử bài thi). Chúng tôi chỉ thu thập thông tin cần thiết để cung cấp và cải thiện dịch vụ." },
+          { "title": "2. Mục đích sử dụng thông tin", "body": "Thông tin của bạn được sử dụng để: tạo và quản lý tài khoản học viên, theo dõi tiến độ học tập, gửi thông báo liên quan đến khóa học, hỗ trợ kỹ thuật, và cải thiện chất lượng nền tảng. Chúng tôi không sử dụng dữ liệu cá nhân cho mục đích quảng cáo của bên thứ ba." },
+          { "title": "3. Bảo mật dữ liệu", "body": "NamThuEdu áp dụng các biện pháp bảo mật tiêu chuẩn ngành: mã hóa HTTPS, lưu trữ mật khẩu bằng bcrypt, hạn chế quyền truy cập nội bộ theo vai trò. Tuy nhiên, không có hệ thống nào đảm bảo an toàn tuyệt đối — bạn có trách nhiệm bảo vệ thông tin đăng nhập của mình." },
+          { "title": "4. Chia sẻ thông tin", "body": "Chúng tôi không bán hoặc cho thuê thông tin cá nhân của bạn. Thông tin chỉ được chia sẻ với giáo viên phụ trách lớp học của bạn, và trong trường hợp pháp luật yêu cầu. Phụ huynh của học sinh dưới 18 tuổi có quyền yêu cầu xem thông tin học tập." },
+          { "title": "5. Quyền của bạn", "body": "Bạn có quyền: truy cập và chỉnh sửa thông tin cá nhân, yêu cầu xóa tài khoản, từ chối nhận email thông báo (trừ email bắt buộc về tài khoản). Để thực hiện các quyền này, vui lòng liên hệ hello@namthu.vn." },
+          { "title": "6. Cookie và dữ liệu phiên", "body": "NamThuEdu sử dụng cookie để duy trì phiên đăng nhập và ghi nhớ tùy chọn ngôn ngữ. Bạn có thể tắt cookie trong trình duyệt, nhưng điều này có thể ảnh hưởng đến trải nghiệm sử dụng." }
+        ]
+      },
+      "terms": {
+        "title": "Điều khoản sử dụng",
+        "intro": "Vui lòng đọc kỹ các điều khoản sau trước khi sử dụng nền tảng học tập NamThuEdu. Việc sử dụng dịch vụ đồng nghĩa với việc bạn chấp nhận các điều khoản này.",
+        "contactSuffix": "điều khoản",
+        "sections": [
+          { "title": "1. Chấp nhận điều khoản", "body": "Bằng cách tạo tài khoản hoặc sử dụng nền tảng NamThuEdu, bạn đồng ý tuân thủ các điều khoản này. Nếu bạn không đồng ý, vui lòng không sử dụng dịch vụ. Chúng tôi có thể cập nhật điều khoản và sẽ thông báo qua email khi có thay đổi quan trọng." },
+          { "title": "2. Tài khoản người dùng", "body": "Mỗi học viên chỉ được tạo một tài khoản. Bạn chịu trách nhiệm bảo mật mật khẩu và mọi hoạt động từ tài khoản của mình. Tài khoản không được chuyển nhượng hoặc chia sẻ. Học sinh dưới 13 tuổi cần có sự đồng ý của phụ huynh." },
+          { "title": "3. Nội dung và sở hữu trí tuệ", "body": "Toàn bộ nội dung trên NamThuEdu (bài học, đề thi, tài liệu, giao diện) là tài sản của NamThu Education và được bảo vệ bởi luật sở hữu trí tuệ. Bạn được phép sử dụng cho mục đích học tập cá nhân. Nghiêm cấm sao chép, phân phối lại hoặc sử dụng thương mại mà không có sự cho phép bằng văn bản." },
+          { "title": "4. Học phí và thanh toán", "body": "Học phí được thông báo trước khi đăng ký. Chúng tôi có thể điều chỉnh học phí và sẽ thông báo trước ít nhất 30 ngày. Chính sách hoàn tiền: trong vòng 7 ngày đầu nếu bạn chưa hoàn thành hơn 20% khóa học, bạn có thể yêu cầu hoàn tiền toàn bộ." },
+          { "title": "5. Hành vi bị cấm", "body": "Nghiêm cấm: gian lận trong bài thi, chia sẻ đề thi ra ngoài, sử dụng tài khoản người khác, đăng nội dung xúc phạm, spam hoặc cố gắng xâm nhập hệ thống. Vi phạm có thể dẫn đến khóa tài khoản vĩnh viễn mà không hoàn tiền." },
+          { "title": "6. Giới hạn trách nhiệm", "body": "NamThuEdu cung cấp dịch vụ theo hiện trạng và không đảm bảo hoạt động liên tục 100%. Chúng tôi không chịu trách nhiệm về thiệt hại gián tiếp phát sinh từ việc sử dụng hoặc không thể sử dụng dịch vụ. Trách nhiệm tối đa không vượt quá học phí bạn đã thanh toán trong 3 tháng gần nhất." }
+        ]
       }
     }
   }

@@ -106,10 +106,10 @@ export function PracticeSessionList() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-8 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 font-semibold">Đang tải bài luyện tập...</p>
+          <Loader2 className="w-10 h-10 text-indigo-500 animate-spin mx-auto mb-3" />
+          <p className="text-slate-500 text-sm">Đang tải bài luyện tập...</p>
         </div>
       </div>
     );
@@ -117,15 +117,16 @@ export function PracticeSessionList() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-8 flex items-center justify-center">
-        <div className="text-center bg-white rounded-2xl p-8 border border-red-200">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-8 h-8 text-red-600" />
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="text-center bg-white rounded-2xl p-8 border border-red-100 shadow-sm">
+          <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-7 h-7 text-red-500" />
           </div>
-          <p className="text-red-600 font-semibold mb-2">{error}</p>
+          <p className="text-slate-700 font-semibold mb-1">Lỗi khi tải dữ liệu</p>
+          <p className="text-slate-400 text-sm mb-4">{error}</p>
           <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
+            onClick={refetch}
+            className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
           >
             Thử lại
           </button>
@@ -135,284 +136,210 @@ export function PracticeSessionList() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-[#F8FAFC] p-4 px-6">
+      <div className="space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900">Bài luyện tập</h1>
-            <p className="text-gray-600 mt-1">Quản lý và tạo bài luyện tập cho học sinh</p>
+            <h1 className="text-xl font-bold text-slate-800">Bài luyện tập</h1>
+            <p className="text-sm text-slate-500 mt-0.5">Quản lý và tạo bài luyện tập cho học sinh</p>
           </div>
-          <button className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center gap-2">
-            <Plus className="w-5 h-5" />
+          <button
+            onClick={() => navigate('/giao-vien/luyen-tap/tao-moi')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-white text-sm font-medium shadow-sm hover:opacity-90 transition-opacity"
+            style={{ background: 'linear-gradient(135deg,#4F46E5,#4338CA)' }}
+          >
+            <Plus className="w-4 h-4" />
             Tạo bài luyện tập
           </button>
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white rounded-2xl p-6 border border-blue-100 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <FileText className="w-5 h-5 text-blue-600" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: 'Bài luyện tập', value: statistics?.total ?? sessions.length, icon: FileText, bg: 'bg-indigo-50', ic: 'text-indigo-600', val: 'text-indigo-700' },
+            { label: 'Đang hoạt động', value: statistics?.active_count ?? 0, icon: CheckCircle, bg: 'bg-emerald-50', ic: 'text-emerald-600', val: 'text-emerald-700' },
+            { label: 'Bài mới tạo', value: statistics?.recent_count ?? 0, icon: Calendar, bg: 'bg-purple-50', ic: 'text-purple-600', val: 'text-purple-700' },
+            { label: 'Loại khác nhau', value: statistics?.by_type ? Object.keys(statistics.by_type).length : 0, icon: TrendingUp, bg: 'bg-orange-50', ic: 'text-orange-500', val: 'text-orange-600' },
+          ].map((card, i) => (
+            <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 hover:border-indigo-200 hover:shadow-sm transition-all">
+              <div className={`w-9 h-9 rounded-lg ${card.bg} flex items-center justify-center mb-3`}>
+                <card.icon className={`w-[18px] h-[18px] ${card.ic}`} />
               </div>
-              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
-                Tổng số
-              </span>
+              <p className={`text-2xl font-bold ${card.val}`}>{card.value}</p>
+              <p className="text-xs font-semibold text-slate-600 mt-0.5">{card.label}</p>
             </div>
-            <p className="text-3xl font-bold text-gray-900 mb-1">{statistics?.total || sessions.length}</p>
-            <p className="text-sm text-gray-600">Bài luyện tập</p>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 border border-green-100 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-              </div>
-              <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                Hoạt động
-              </span>
-            </div>
-            <p className="text-3xl font-bold text-gray-900 mb-1">{statistics?.active_count || 0}</p>
-            <p className="text-sm text-gray-600">Đang hoạt động</p>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 border border-purple-100 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Calendar className="w-5 h-5 text-purple-600" />
-              </div>
-              <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
-                Gần đây
-              </span>
-            </div>
-            <p className="text-3xl font-bold text-gray-900 mb-1">{statistics?.recent_count || 0}</p>
-            <p className="text-sm text-gray-600">Bài mới tạo</p>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 border border-orange-100 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <TrendingUp className="w-5 h-5 text-orange-600" />
-              </div>
-              <span className="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded-full">
-                Loại
-              </span>
-            </div>
-            <p className="text-3xl font-bold text-gray-900 mb-1">
-              {statistics?.by_type ? Object.keys(statistics.by_type).length : 0}
-            </p>
-            <p className="text-sm text-gray-600">Loại khác nhau</p>
-          </div>
+          ))}
         </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            {/* Search */}
-            <div className="md:col-span-4">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm bài luyện tập..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
+        {/* Filter bar */}
+        <div className="bg-white rounded-xl border border-gray-200 px-4 py-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[180px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm bài luyện tập..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
+              />
             </div>
-
-            {/* Type Filter */}
-            <div className="md:col-span-2">
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">Tất cả loại</option>
-                <option value="topic_based">Theo chủ đề</option>
-                <option value="template_based">Template</option>
-                <option value="random">Ngẫu nhiên</option>
-                <option value="skill_based">Theo kỹ năng</option>
-              </select>
-            </div>
-
-            {/* Skill Filter */}
-            <div className="md:col-span-2">
-              <select
-                value={filterSkill}
-                onChange={(e) => setFilterSkill(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">Tất cả kỹ năng</option>
-                <option value="listening">Listening</option>
-                <option value="reading">Reading</option>
-                <option value="writing">Writing</option>
-                <option value="speaking">Speaking</option>
-              </select>
-            </div>
-
-            {/* Purpose Filter */}
-            <div className="md:col-span-2">
-              <select
-                value={filterPurpose}
-                onChange={(e) => setFilterPurpose(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">Mục đích</option>
-                <option value="review">Ôn tập</option>
-                <option value="practice">Luyện tập</option>
-                <option value="drill">Rèn luyện</option>
-                <option value="mock_test">Thi thử</option>
-                <option value="homework">BTVN</option>
-              </select>
-            </div>
-
-            {/* Difficulty Filter */}
-            <div className="md:col-span-1">
-              <select
-                value={filterDifficulty}
-                onChange={(e) => setFilterDifficulty(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">Độ khó</option>
-                <option value="easy">Dễ</option>
-                <option value="medium">TB</option>
-                <option value="hard">Khó</option>
-                <option value="mixed">Mix</option>
-              </select>
-            </div>
-
-            {/* View Toggle */}
-            <div className="md:col-span-1 flex gap-2">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`flex-1 p-3 rounded-xl border-2 transition-all ${
-                  viewMode === "grid"
-                    ? "border-blue-500 bg-blue-50 text-blue-600"
-                    : "border-gray-200 bg-white text-gray-400 hover:border-gray-300"
-                }`}
-              >
-                <Grid3x3 className="w-5 h-5 mx-auto" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`flex-1 p-3 rounded-xl border-2 transition-all ${
-                  viewMode === "list"
-                    ? "border-blue-500 bg-blue-50 text-blue-600"
-                    : "border-gray-200 bg-white text-gray-400 hover:border-gray-300"
-                }`}
-              >
-                <List className="w-5 h-5 mx-auto" />
-              </button>
+            <select value={filterType} onChange={(e) => setFilterType(e.target.value)}
+              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+              <option value="all">Tất cả loại</option>
+              <option value="topic_based">Theo chủ đề</option>
+              <option value="template_based">Template</option>
+              <option value="random">Ngẫu nhiên</option>
+              <option value="skill_based">Theo kỹ năng</option>
+            </select>
+            <select value={filterSkill} onChange={(e) => setFilterSkill(e.target.value)}
+              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+              <option value="all">Tất cả kỹ năng</option>
+              <option value="listening">Listening</option>
+              <option value="reading">Reading</option>
+              <option value="writing">Writing</option>
+              <option value="speaking">Speaking</option>
+            </select>
+            <select value={filterPurpose} onChange={(e) => setFilterPurpose(e.target.value)}
+              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+              <option value="all">Mục đích</option>
+              <option value="review">Ôn tập</option>
+              <option value="practice">Luyện tập</option>
+              <option value="drill">Rèn luyện</option>
+              <option value="mock_test">Thi thử</option>
+              <option value="homework">BTVN</option>
+            </select>
+            <select value={filterDifficulty} onChange={(e) => setFilterDifficulty(e.target.value)}
+              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+              <option value="all">Độ khó</option>
+              <option value="easy">Dễ</option>
+              <option value="medium">TB</option>
+              <option value="hard">Khó</option>
+            </select>
+            <div className="ml-auto flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+              <button onClick={() => setViewMode('grid')} className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}><Grid3x3 className="w-4 h-4" /></button>
+              <button onClick={() => setViewMode('list')} className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}><List className="w-4 h-4" /></button>
             </div>
           </div>
         </div>
 
         {/* Sessions Grid */}
-        <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
+        <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-3'}>
           {filteredSessions.map((session) => {
             const typeConfig = getTypeConfig(session.ps_type as PracticeType);
             const skillConfig = session.ps_target_skill ? getSkillConfig(session.ps_target_skill as Skill) : null;
             const difficultyConfig = session.ps_difficulty ? getDifficultyConfig(session.ps_difficulty as Difficulty) : null;
             const TypeIcon = typeConfig.icon;
             const SkillIcon = skillConfig?.icon;
+            const assignCount = session.assignment_count ?? 0;
 
             return (
               <div
                 key={session.ps_id}
-                className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 group"
+                className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-indigo-200 hover:shadow-md transition-all duration-200 group"
               >
-                <div className="p-6 space-y-4">
+                <div className="p-5 space-y-3">
                   {/* Header */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className={`px-3 py-1 ${typeConfig.badgeClass} text-xs font-semibold rounded-lg flex items-center gap-1.5`}>
-                          <TypeIcon className="w-3.5 h-3.5" />
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className={`px-2.5 py-1 ${typeConfig.badgeClass} text-xs font-semibold rounded-md flex items-center gap-1`}>
+                          <TypeIcon className="w-3 h-3" />
                           {typeConfig.label}
                         </span>
                         {!session.ps_is_active && (
-                          <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg">
-                            Không hoạt động
+                          <span className="px-2 py-1 bg-slate-100 text-slate-500 text-xs font-medium rounded-md">Không hoạt động</span>
+                        )}
+                        {assignCount > 0 && (
+                          <span className="px-2 py-1 bg-indigo-50 text-indigo-600 text-xs font-semibold rounded-md">
+                            {assignCount} lần giao
                           </span>
                         )}
                       </div>
-                      <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2 mb-2">
+                      <h3 className="text-sm font-bold text-slate-800 group-hover:text-indigo-600 transition-colors line-clamp-2">
                         {session.ps_title}
                       </h3>
                       {session.ps_description && (
-                        <p className="text-sm text-gray-600 line-clamp-2">{session.ps_description}</p>
+                        <p className="text-xs text-slate-500 line-clamp-2 mt-1">{session.ps_description}</p>
                       )}
                     </div>
-                    <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                      <MoreVertical className="w-5 h-5 text-gray-400" />
+                    <button className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0">
+                      <MoreVertical className="w-4 h-4 text-slate-400" />
                     </button>
                   </div>
 
-                  {/* Meta Info */}
-                  <div className="flex items-center gap-4 text-sm flex-wrap">
+                  {/* Meta badges */}
+                  <div className="flex items-center gap-2 flex-wrap">
                     {skillConfig && SkillIcon && (
-                      <div className={`flex items-center gap-1.5 ${skillConfig.textClass}`}>
-                        <SkillIcon className="w-4 h-4" />
-                        <span className="font-medium">{skillConfig.label}</span>
+                      <div className={`flex items-center gap-1 ${skillConfig.textClass} text-xs font-medium`}>
+                        <SkillIcon className="w-3.5 h-3.5" />
+                        {skillConfig.label}
                       </div>
                     )}
                     {difficultyConfig && (
-                      <div className={`px-2 py-1 ${difficultyConfig.badgeClass} text-xs font-semibold rounded-lg`}>
+                      <span className={`px-2 py-0.5 ${difficultyConfig.badgeClass} text-xs font-semibold rounded-md`}>
                         {difficultyConfig.label}
-                      </div>
+                      </span>
                     )}
                     {session.ps_purpose && (
-                      <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg">
+                      <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-md">
                         {getPurposeLabel(session.ps_purpose as Purpose)}
                       </span>
                     )}
                   </div>
 
-                  {/* Details */}
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                  {/* Details row */}
+                  <div className="flex items-center gap-3 text-xs text-slate-400">
                     {session.ps_duration_minutes && (
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        <span>{session.ps_duration_minutes} phút</span>
-                      </div>
+                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{session.ps_duration_minutes} phút</span>
                     )}
                     {session.ps_question_count && (
-                      <div className="flex items-center gap-1">
-                        <FileText className="w-4 h-4" />
-                        <span>{session.ps_question_count} câu</span>
-                      </div>
+                      <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" />{session.ps_question_count} câu</span>
                     )}
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      <span>{new Date(session.ps_created_at).toLocaleDateString("vi-VN")}</span>
-                    </div>
+                    <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{new Date(session.ps_created_at).toLocaleDateString('vi-VN')}</span>
                   </div>
 
-                  {/* Exam Info */}
+                  {/* Exam link */}
                   {session.exam && (
-                    <div className="pt-4 border-t border-gray-100">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Đề thi liên kết</span>
-                        <span className="font-semibold text-blue-600">{session.exam.eTitle}</span>
-                      </div>
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-xs text-slate-500">Đề thi liên kết</span>
+                      <span className="text-xs font-semibold text-indigo-600 truncate ml-2 max-w-[180px]">{session.exam.eTitle}</span>
                     </div>
                   )}
 
                   {/* Actions */}
-                  <div className="grid grid-cols-4 gap-2 pt-4">
-                    <button onClick={() => navigate(`/giao-vien/luyen-tap/${session.ps_id}`)} className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors flex items-center justify-center" title="Xem">
+                  <div className="grid grid-cols-4 gap-2 pt-1">
+                    <button
+                      onClick={() => navigate(`/giao-vien/luyen-tap/${session.ps_id}`)}
+                      className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-colors flex items-center justify-center"
+                      title="Xem chi tiết"
+                    >
                       <Eye className="w-4 h-4" />
                     </button>
-                    <button className="p-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg transition-colors flex items-center justify-center" title="Giao bài">
+                    <button
+                      onClick={() => session.exam && navigate(`/giao-vien/bai-tap/giao-moi?exam_id=${session.exam.eId}`)}
+                      disabled={!session.exam}
+                      className={`p-2 rounded-lg transition-colors flex items-center justify-center ${
+                        session.exam
+                          ? 'bg-orange-50 hover:bg-orange-100 text-orange-600'
+                          : 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                      }`}
+                      title={session.exam ? 'Giao bài cho học sinh' : 'Không có đề thi liên kết'}
+                    >
                       <Send className="w-4 h-4" />
                     </button>
-                    <button className="p-2 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-lg transition-colors flex items-center justify-center" title="Sao chép">
+                    <button
+                      className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-lg transition-colors flex items-center justify-center"
+                      title="Sao chép"
+                    >
                       <Copy className="w-4 h-4" />
                     </button>
-                    <button className="p-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg transition-colors flex items-center justify-center" title="Chỉnh sửa">
+                    <button
+                      onClick={() => navigate(`/giao-vien/luyen-tap/${session.ps_id}/chinh-sua`)}
+                      className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-lg transition-colors flex items-center justify-center"
+                      title="Chỉnh sửa"
+                    >
                       <Edit className="w-4 h-4" />
                     </button>
                   </div>
@@ -424,19 +351,16 @@ export function PracticeSessionList() {
 
         {/* Empty State */}
         {filteredSessions.length === 0 && (
-          <div className="text-center py-16 bg-white rounded-2xl border border-gray-200">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-              <Search className="w-8 h-8 text-gray-400" />
+          <div className="text-center py-14 bg-white rounded-xl border border-gray-200">
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-indigo-50 rounded-full mb-4">
+              <Search className="w-7 h-7 text-indigo-400" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Không tìm thấy bài luyện tập
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Thử thay đổi bộ lọc hoặc tạo bài luyện tập mới
-            </p>
+            <h3 className="text-base font-semibold text-slate-800 mb-1">Không tìm thấy bài luyện tập</h3>
+            <p className="text-sm text-slate-400 mb-5">Thử thay đổi bộ lọc hoặc tạo bài luyện tập mới</p>
             <button
-              onClick={() => navigate("/giao-vien/de-thi/tao-moi")}
-              className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl transition-all">
+              onClick={() => navigate('/giao-vien/luyen-tap/tao-moi')}
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+            >
               Tạo bài luyện tập đầu tiên
             </button>
           </div>

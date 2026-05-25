@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getAuthToken } from '../../../../utils/authStorage';
 import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import {
@@ -12,6 +13,9 @@ import {
   AlertCircle,
   BarChart3,
   Send,
+  TrendingUp,
+  Calendar,
+  ChevronRight,
 } from "lucide-react";
 import { Header } from "../../../components/shared/Header";
 import { api } from "../../../../services/api";
@@ -51,7 +55,7 @@ export function AssignmentList() {
     const fetchAssignments = async () => {
       setLoading(true);
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         if (!token) {
           setError(t('teacher.assignments.loginRequired'));
           setLoading(false);
@@ -96,40 +100,14 @@ export function AssignmentList() {
     fetchAssignments();
   }, [targetFilter]); // Re-fetch when filter changes
 
-  const stats = [
-    {
-      label: t("teacher.assignments.stats.total"),
-      value: assignments.length,
-      icon: BarChart3,
-      color: "from-blue-500 to-blue-600",
-      bgColor: "bg-blue-50",
-      iconColor: "text-blue-600",
-    },
-    {
-      label: t("teacher.assignments.stats.toClass"),
-      value: assignments.filter((a) => a.targetType === "class").length,
-      icon: Users,
-      color: "from-green-500 to-green-600",
-      bgColor: "bg-green-50",
-      iconColor: "text-green-600",
-    },
-    {
-      label: t("teacher.assignments.stats.toIndividual"),
-      value: assignments.filter((a) => a.targetType === "student").length,
-      icon: User,
-      color: "from-purple-500 to-purple-600",
-      bgColor: "bg-purple-50",
-      iconColor: "text-purple-600",
-    },
-    {
-      label: t("teacher.assignments.stats.overdue"),
-      value: assignments.filter((a) => a.isOverdue).length,
-      icon: AlertCircle,
-      color: "from-red-500 to-red-600",
-      bgColor: "bg-red-50",
-      iconColor: "text-red-600",
-    },
-  ];
+  const overdueCount = assignments.filter((a) => a.isOverdue).length;
+  const thisWeekCount = assignments.filter((a) => {
+    const created = a.deadline ? new Date(a.deadline) : null;
+    const startOfWeek = new Date();
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    return created && created >= startOfWeek;
+  }).length;
 
   const filteredAssignments = assignments.filter((assignment) => {
     const matchesSearch =
@@ -180,27 +158,37 @@ export function AssignmentList() {
             </div>
           )}
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {stats.map((stat, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 mb-2">{stat.label}</p>
-                    <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-                  </div>
-                  <div
-                    className={`w-12 h-12 ${stat.bgColor} rounded-xl flex items-center justify-center`}
-                  >
-                    <stat.icon className={`w-6 h-6 ${stat.iconColor}`} />
-                  </div>
-                </div>
+          {/* Compact info strip */}
+          {!loading && (
+            <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-5 py-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-semibold">
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  {assignments.length} bài tập
+                </span>
+                {overdueCount > 0 && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs font-semibold">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    {overdueCount} quá hạn
+                  </span>
+                )}
+                {thisWeekCount > 0 && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 text-xs font-semibold">
+                    <Calendar className="w-3.5 h-3.5" />
+                    {thisWeekCount} tuần này
+                  </span>
+                )}
               </div>
-            ))}
-          </div>
+              <Link
+                to="/giao-vien/bai-tap/thong-ke"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-600 text-xs font-medium hover:bg-indigo-50 transition-colors"
+              >
+                <TrendingUp className="w-3.5 h-3.5" />
+                Xem thống kê chi tiết
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          )}
 
           {/* Filters */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">

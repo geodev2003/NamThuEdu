@@ -163,57 +163,108 @@ export function ResultsAnalysis() {
       </div>
 
       {/* Exam Selector */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-4 mb-6">
+      <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-6 shadow-sm">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Chọn bài thi để phân tích
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
+              Bài thi
             </label>
             <select
               value={selectedExam}
               onChange={(e) => setSelectedExam(e.target.value)}
-              className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full md:w-auto min-w-[320px] px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:border-[#FF8C42] focus:ring-2 focus:ring-[#FF8C42]/20 transition-all cursor-pointer hover:border-gray-300"
             >
               <option value="exam1">IELTS Reading Practice Test #1</option>
               <option value="exam2">TOEFL Listening Mock Test</option>
               <option value="exam3">Cambridge FCE Writing Assessment</option>
             </select>
           </div>
-          <div className="flex gap-2">
-            <button className="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all">
+          <div className="flex gap-3">
+            <button className="px-5 py-2.5 bg-gray-50 text-gray-700 font-semibold rounded-xl hover:bg-gray-100 border border-gray-200 transition-all text-sm">
               So sánh
             </button>
-            <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-500/30">
+            <button className="px-5 py-2.5 bg-gradient-to-r from-[#FF8C42] to-[#FF6B35] text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-orange-500/30 transition-all text-sm">
               Xuất báo cáo
             </button>
           </div>
         </div>
       </div>
 
-      {/* Exam Info Card */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 mb-6 text-white">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold mb-2">IELTS Reading Practice Test #1</h2>
-            <div className="flex flex-wrap items-center gap-4 text-sm">
-              <span className="flex items-center gap-1">
-                <FileText className="w-4 h-4" />
-                40 câu hỏi
-              </span>
-              <span className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                60 phút
-              </span>
-              <span className="flex items-center gap-1">
-                <Users className="w-4 h-4" />
-                125 bài nộp
-              </span>
+      {/* Exam Info Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Exam Title Card */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-50 text-purple-700 rounded-lg text-xs font-semibold mb-3">
+                <FileText className="w-3.5 h-3.5" />
+                IELTS Reading
+              </div>
+              <h2 className="text-lg font-bold text-gray-900 mb-1">Practice Test #1</h2>
+              <p className="text-sm text-gray-500">Đề thi thử IELTS Reading</p>
             </div>
           </div>
-          <div className="bg-white/20 backdrop-blur-sm rounded-xl px-6 py-3">
-            <p className="text-sm opacity-90 mb-1">Điểm trung bình</p>
-            <p className="text-4xl font-bold">7.5</p>
+        </div>
+
+        {/* Questions Card */}
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl border border-blue-200 p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-500 rounded-lg">
+              <FileText className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <p className="text-xs text-blue-600 font-medium">Tổng câu hỏi</p>
+              <p className="text-2xl font-bold text-blue-900">40</p>
+            </div>
           </div>
+        </div>
+
+        {/* Duration Card */}
+        <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl border border-orange-200 p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-orange-500 rounded-lg">
+              <Clock className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <p className="text-xs text-orange-600 font-medium">Thời gian</p>
+              <p className="text-2xl font-bold text-orange-900">60 phút</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Stats Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Users className="w-4 h-4 text-gray-500" />
+            <p className="text-xs text-gray-500 font-medium">Bài nộp</p>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">125</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className="w-4 h-4 text-green-500" />
+            <p className="text-xs text-gray-500 font-medium">Điểm TB</p>
+          </div>
+          <p className="text-2xl font-bold text-green-600">7.5</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Award className="w-4 h-4 text-yellow-500" />
+            <p className="text-xs text-gray-500 font-medium">Cao nhất</p>
+          </div>
+          <p className="text-2xl font-bold text-yellow-600">9.5</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <CheckCircle className="w-4 h-4 text-blue-500" />
+            <p className="text-xs text-gray-500 font-medium">Tỷ lệ đạt</p>
+          </div>
+          <p className="text-2xl font-bold text-blue-600">82%</p>
         </div>
       </div>
 
@@ -328,19 +379,27 @@ export function ResultsAnalysis() {
       </div>
 
       {/* Section Performance */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6 mb-6">
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
         <h3 className="text-lg font-bold text-gray-900 mb-4">Hiệu suất theo phần thi</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="space-y-3">
           {sectionPerformance.map((section) => (
-            <div key={section.section} className="bg-gray-50 rounded-xl p-4">
-              <h4 className="font-semibold text-gray-900 mb-2">{section.section}</h4>
-              <div className="flex items-baseline gap-2 mb-3">
-                <span className="text-3xl font-bold text-blue-600">{section.avgScore}</span>
-                <span className="text-sm text-gray-600">/ 10</span>
+            <div key={section.section} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all">
+              {/* Section Name */}
+              <div className="w-32">
+                <h4 className="font-semibold text-gray-900">{section.section}</h4>
+                <p className="text-xs text-gray-500">{section.questions} câu hỏi</p>
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Tỷ lệ đạt</span>
+              
+              {/* Score */}
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold text-blue-600">{section.avgScore}</span>
+                <span className="text-sm text-gray-500">/ 10</span>
+              </div>
+              
+              {/* Progress Bar */}
+              <div className="flex-1">
+                <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                  <span>Tỷ lệ đạt</span>
                   <span className="font-semibold text-gray-900">{section.successRate}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
@@ -349,7 +408,6 @@ export function ResultsAnalysis() {
                     style={{ width: `${section.successRate}%` }}
                   />
                 </div>
-                <div className="text-xs text-gray-600">{section.questions} câu hỏi</div>
               </div>
             </div>
           ))}

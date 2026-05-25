@@ -4,13 +4,26 @@
  * Based on NamThu Education banner and header
  */
 
+import { useState } from 'react';
 import { GraduationCap, Phone, Mail, MapPin, Clock, Facebook, Youtube, Star, Users } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
+import { useToast } from '../../../../hooks/useToast';
+import { ToastContainer } from '../../../../components/ui/ToastContainer';
+import { LegalModal } from './LegalModal';
 
 export function Footer() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const f = 'landing.footer';
+  const { toasts, removeToast, info } = useToast();
+  const [legalModal, setLegalModal] = useState<'privacy' | 'terms' | null>(null);
+
+  const courses = t(`${f}.courses.items`, { returnObjects: true }) as string[];
+  const promos  = t(`${f}.support.promos`,  { returnObjects: true }) as string[];
 
   return (
+    <>
     <footer className="bg-gray-900 text-gray-300">
       {/* Main Footer Content */}
       <div className="mx-auto max-w-7xl px-4 py-12">
@@ -24,50 +37,31 @@ export function Footer() {
               <div className="flex flex-col">
                 <span className="text-lg font-bold text-white">NamThuEdu</span>
                 <span className="text-[10px] leading-none text-gray-400">
-                  Học thông minh hơn
+                  {t(`${f}.brand.tagline`)}
                 </span>
               </div>
             </div>
-            
-            <p className="mb-6 max-w-sm text-sm leading-relaxed text-gray-400">
-              Trung tâm tiếng Anh uy tín tại Cần Thơ. Phát triển kỹ năng tiếng Anh toàn diện cho học sinh từ lớp 1-12 và luyện thi quốc tế.
-            </p>
 
-            {/* Social Proof */}
-            <div className="mb-4 flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-1">
-                <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                <span className="font-semibold text-white">4.8/5</span>
-              </div>
-              <span className="text-gray-600">|</span>
-              <div className="flex items-center gap-1">
-                <Users className="h-4 w-4 text-orange-400" />
-                <span>1 triệu+ học viên</span>
-              </div>
-            </div>
+            <p className="mb-6 max-w-sm text-sm leading-relaxed text-gray-400">
+              {t(`${f}.brand.description`)}
+            </p>
 
             {/* Social Links */}
             <div className="flex items-center gap-3">
-              <a
-                href="https://facebook.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-orange-600 shadow-md transition-all hover:from-orange-600 hover:to-orange-700"
-              >
+              <button
+                onClick={() => {
+                  info('Đang chuyển đến trang Facebook của NamThuEdu...');
+                  setTimeout(() => window.open('https://www.facebook.com/profile.php?id=61573591333617', '_blank', 'noopener,noreferrer'), 600);
+                }}
+                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-orange-600 shadow-md transition-all hover:from-orange-600 hover:to-orange-700">
                 <Facebook className="h-4 w-4 text-white" />
-              </a>
-              <a
-                href="https://youtube.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-orange-600 shadow-md transition-all hover:from-orange-600 hover:to-orange-700"
-              >
+              </button>
+              <a href="https://youtube.com" target="_blank" rel="noopener noreferrer"
+                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-orange-600 shadow-md transition-all hover:from-orange-600 hover:to-orange-700">
                 <Youtube className="h-4 w-4 text-white" />
               </a>
-              <a
-                href="mailto:hello@namthu.vn"
-                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-orange-600 shadow-md transition-all hover:from-orange-600 hover:to-orange-700"
-              >
+              <a href={t(`${f}.contact.emailHref`)}
+                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-orange-600 shadow-md transition-all hover:from-orange-600 hover:to-orange-700">
                 <Mail className="h-4 w-4 text-white" />
               </a>
             </div>
@@ -75,84 +69,63 @@ export function Footer() {
 
           {/* Column 2: Courses */}
           <div>
-            <h3 className="mb-4 text-sm font-bold text-white">Khóa học</h3>
+            <h3 className="mb-4 text-sm font-bold text-white">{t(`${f}.courses.title`)}</h3>
             <ul className="space-y-2.5 text-sm">
-              <li>
-                <a href="#giao-tiep" className="cursor-pointer text-gray-400 transition-colors hover:text-orange-400">
-                  Tiếng Anh giao tiếp
-                </a>
-              </li>
-              <li>
-                <a href="#hoc-sinh" className="cursor-pointer text-gray-400 transition-colors hover:text-orange-400">
-                  Tiếng Anh học sinh (Lớp 1-12)
-                </a>
-              </li>
-              <li>
-                <a href="#cambridge" className="cursor-pointer text-gray-400 transition-colors hover:text-orange-400">
-                  Luyện thi Cambridge (Starters, Movers, Flyers)
-                </a>
-              </li>
-              <li>
-                <a href="#ket-pet" className="cursor-pointer text-gray-400 transition-colors hover:text-orange-400">
-                  Luyện thi KET, PET
-                </a>
-              </li>
-              <li>
-                <a href="#ielts" className="cursor-pointer text-gray-400 transition-colors hover:text-orange-400">
-                  Luyện thi IELTS
-                </a>
-              </li>
-              <li>
-                <a href="#vstep" className="cursor-pointer text-gray-400 transition-colors hover:text-orange-400">
-                  Luyện thi VSTEP, V-SAT (ĐHCT)
-                </a>
-              </li>
+              {courses.map((name) => (
+                <li key={name}>
+                  <button onClick={() => navigate('/dang-nhap')}
+                    className="cursor-pointer text-left text-gray-400 transition-colors hover:text-orange-400">
+                    {name}
+                  </button>
+                </li>
+              ))}
             </ul>
           </div>
 
           {/* Column 3: Contact */}
           <div>
-            <h3 className="mb-4 text-sm font-bold text-white">Liên hệ</h3>
+            <h3 className="mb-4 text-sm font-bold text-white">{t(`${f}.contact.title`)}</h3>
             <ul className="space-y-3 text-sm">
               <li>
-                <a
-                  href="tel:0776818160"
-                  className="flex cursor-pointer items-start gap-2 text-gray-400 transition-colors hover:text-orange-400"
-                >
+                <a href={t(`${f}.contact.hotlineHref`)}
+                  className="flex cursor-pointer items-start gap-2 text-gray-400 transition-colors hover:text-orange-400">
                   <Phone className="mt-0.5 h-4 w-4 flex-shrink-0" />
                   <div>
-                    <div className="font-semibold text-white">Hotline</div>
-                    <div>0776 818 160</div>
+                    <div className="font-semibold text-white">{t(`${f}.contact.hotlineLabel`)}</div>
+                    <div>{t(`${f}.contact.hotline`)}</div>
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a href={t(`${f}.contact.emailHref`)}
+                  className="flex cursor-pointer items-start gap-2 text-gray-400 transition-colors hover:text-orange-400">
+                  <Mail className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <div>
+                    <div className="font-semibold text-white">{t(`${f}.contact.emailLabel`)}</div>
+                    <div>{t(`${f}.contact.emailVal`)}</div>
                   </div>
                 </a>
               </li>
               <li>
                 <a
-                  href="mailto:hello@namthu.vn"
+                  href={t(`${f}.contact.addressHref`)}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex cursor-pointer items-start gap-2 text-gray-400 transition-colors hover:text-orange-400"
                 >
-                  <Mail className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                  <div>
-                    <div className="font-semibold text-white">Email</div>
-                    <div>hello@namthu.vn</div>
-                  </div>
-                </a>
-              </li>
-              <li>
-                <div className="flex items-start gap-2 text-gray-400">
                   <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" />
                   <div>
-                    <div className="font-semibold text-white">Địa chỉ</div>
-                    <div>Hẻm 387K1, 14B, Trần Nam Phú, Cần Thơ</div>
+                    <div className="font-semibold text-white">{t(`${f}.contact.addressLabel`)}</div>
+                    <div>{t(`${f}.contact.address`)}</div>
                   </div>
-                </div>
+                </a>
               </li>
               <li>
                 <div className="flex items-start gap-2 text-gray-400">
                   <Clock className="mt-0.5 h-4 w-4 flex-shrink-0" />
                   <div>
-                    <div className="font-semibold text-white">Lịch học</div>
-                    <div>Tối thứ 2 - thứ 7, Chủ nhật</div>
+                    <div className="font-semibold text-white">{t(`${f}.contact.scheduleLabel`)}</div>
+                    <div>{t(`${f}.contact.schedule`)}</div>
                   </div>
                 </div>
               </li>
@@ -161,35 +134,47 @@ export function Footer() {
 
           {/* Column 4: Support & Promotions */}
           <div>
-            <h3 className="mb-4 text-sm font-bold text-white">Hỗ trợ & Ưu đãi</h3>
+            <h3 className="mb-4 text-sm font-bold text-white">{t(`${f}.support.title`)}</h3>
             <ul className="space-y-2.5 text-sm">
               <li>
                 <button
-                  onClick={() => navigate('/dang-ky')}
-                  className="cursor-pointer text-gray-400 transition-colors hover:text-orange-400"
-                >
-                  Đăng ký học
+                  onClick={() => window.dispatchEvent(new CustomEvent('openContactFAB'))}
+                  className="cursor-pointer text-gray-400 transition-colors hover:text-orange-400">
+                  {t(`${f}.support.register`)}
                 </button>
               </li>
               <li>
-                <a href="#tu-van" className="cursor-pointer text-gray-400 transition-colors hover:text-orange-400">
-                  Tư vấn khóa học
-                </a>
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('openContactFAB'))}
+                  className="cursor-pointer text-gray-400 transition-colors hover:text-orange-400">
+                  {t(`${f}.support.consult`)}
+                </button>
               </li>
               <li>
-                <a href="#faq" className="cursor-pointer text-gray-400 transition-colors hover:text-orange-400">
-                  Câu hỏi thường gặp
-                </a>
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('openContactFAB'))}
+                  className="cursor-pointer text-gray-400 transition-colors hover:text-orange-400">
+                  {t(`${f}.support.faq`)}
+                </button>
               </li>
             </ul>
 
-            {/* Promotions Box */}
-            <div className="mt-6 rounded-lg border border-orange-500/20 bg-orange-500/10 p-4">
-              <div className="mb-2 text-xs font-bold text-orange-400">🎁 Ưu đãi hấp dẫn</div>
-              <ul className="space-y-1.5 text-xs text-gray-400">
-                <li>• Nhóm đăng ký từ 3 học viên</li>
-                <li>• Học viên khó khăn</li>
-                <li>• Miễn phí tài liệu</li>
+            {/* Humanitarian note */}
+            <div className="mt-6 border-l-2 border-red-500/40 pl-3">
+              <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-red-400/80">
+                <span>♥</span>
+                {t(`${f}.support.promoTitle`)}
+              </p>
+              <ul className="space-y-1.5">
+                {promos.map((item) => {
+                  const [bold, rest] = item.split(" — ");
+                  return (
+                    <li key={item} className="text-xs leading-snug text-gray-500">
+                      <span className="text-gray-400">{bold}</span>
+                      {rest && <span className="text-gray-600"> — {rest}</span>}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>
@@ -201,20 +186,26 @@ export function Footer() {
         <div className="mx-auto max-w-7xl px-4 py-6">
           <div className="flex flex-col items-center justify-between gap-4 text-sm text-gray-500 md:flex-row">
             <div className="text-center md:text-left">
-              © {new Date().getFullYear()} NamThu Education. Đồng hành cùng bạn trên hành trình học tiếng Anh.
+              © {new Date().getFullYear()} {t(`${f}.bottom.copyright`)}
             </div>
-
             <div className="flex items-center gap-6">
-              <a href="#privacy" className="cursor-pointer transition-colors hover:text-orange-400">
-                Chính sách bảo mật
-              </a>
-              <a href="#terms" className="cursor-pointer transition-colors hover:text-orange-400">
-                Điều khoản sử dụng
-              </a>
+              <button onClick={() => navigate('/ve-chung-toi')} className="cursor-pointer transition-colors hover:text-orange-400">
+                Về chúng tôi
+              </button>
+              <button onClick={() => setLegalModal('privacy')} className="cursor-pointer transition-colors hover:text-orange-400">
+                {t(`${f}.bottom.privacy`)}
+              </button>
+              <button onClick={() => setLegalModal('terms')} className="cursor-pointer transition-colors hover:text-orange-400">
+                {t(`${f}.bottom.terms`)}
+              </button>
             </div>
           </div>
         </div>
       </div>
     </footer>
+
+      <ToastContainer toasts={toasts} onClose={removeToast} />
+      <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />
+    </>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getApiUrl } from '../utils/apiConfig';
+import { getAuthToken } from '../utils/authStorage';
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -30,7 +31,7 @@ async function subscribeToPush(): Promise<boolean> {
       });
     }
 
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     if (!token) return false;
 
     const subJson = subscription.toJSON();

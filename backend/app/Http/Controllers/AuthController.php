@@ -192,7 +192,7 @@ class AuthController extends Controller
         if ($user->uStatus !== 'active') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Tài khoản chưa được kích hoạt'
+                'message' => 'Tài khoản đang bị khoá. Vui lòng liên hệ quản trị viên để được hỗ trợ.'
             ], 403);
         }
 

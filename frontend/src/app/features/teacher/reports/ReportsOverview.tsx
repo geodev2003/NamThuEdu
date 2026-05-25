@@ -1,27 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
-import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
+import { usePageTitle, PAGE_TITLES } from "@/hooks/usePageTitle";
+import { useTeacherReports } from "@/hooks/useTeacherReports";
 import {
   Users,
   BookOpen,
-  CheckCircle,
-  TrendingUp,
   FileText,
-  Clock,
-  AlertCircle,
+  TrendingUp,
   Award,
-  Calendar,
-  Download,
-  BarChart3,
-  PieChart,
-  Activity,
-  ChevronRight,
+  AlertCircle,
   Loader2,
+  Download,
 } from "lucide-react";
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
   PieChart as RePieChart,
@@ -29,60 +20,32 @@ import {
   Cell,
   BarChart,
   Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 
 export function ReportsOverview() {
   usePageTitle(PAGE_TITLES.TEACHER_REPORTS);
   const { t } = useTranslation();
-  const [dateRange, setDateRange] = useState("30days");
-  const [reportsData, setReportsData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState("30days");
+  const { data: reportsData, loading, error, refetch } = useTeacherReports(period);
 
-  useEffect(() => {
-    const fetchReportsData = async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem('auth_token');
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/teacher/reports/overview`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success') {
-            setReportsData(result.data);
-          } else {
-            setError(t('teacher.reports.overview.error'));
-          }
-        } else {
-          setError(t('teacher.reports.overview.loadError'));
-        }
-      } catch (err) {
-        setError(t('teacher.reports.overview.connectionError'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchReportsData();
-  }, [dateRange]);
+  const handlePeriodChange = (newPeriod: string) => {
+    setPeriod(newPeriod);
+    refetch(newPeriod);
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F5F7' }}>
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 font-semibold">{t('teacher.reports.overview.loading')}</p>
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" style={{ color: '#FF8C42' }} />
+          <p className="text-slate-600 font-medium">Đang tải báo cáo...</p>
         </div>
       </div>
     );
@@ -90,430 +53,388 @@ export function ReportsOverview() {
 
   if (error || !reportsData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 flex items-center justify-center">
-        <div className="text-center bg-white rounded-2xl p-8 border border-red-200">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-8 h-8 text-red-600" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F5F7' }}>
+        <div className="text-center bg-white rounded-2xl p-8" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+          <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-rose-600" />
           </div>
-          <p className="text-red-600 font-semibold mb-2">{error || t('teacher.reports.overview.notFound')}</p>
+          <p className="text-rose-600 font-semibold mb-2">{error || "Không thể tải dữ liệu"}</p>
           <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
+            onClick={() => refetch()}
+            className="px-6 py-2.5 text-white font-semibold rounded-xl hover:scale-[1.02] transition-transform"
+            style={{ background: '#FF8C42', boxShadow: '0 4px 12px rgba(255,140,66,0.25)' }}
           >
-            {t('teacher.reports.overview.retry')}
+            Thử lại
           </button>
         </div>
       </div>
     );
   }
 
-  const performanceData = reportsData.performanceData || [
-    { date: "T2", score: 65, submissions: 12 },
-    { date: "T3", score: 68, submissions: 15 },
-    { date: "T4", score: 72, submissions: 18 },
-    { date: "T5", score: 70, submissions: 14 },
-    { date: "T6", score: 75, submissions: 20 },
-    { date: "T7", score: 78, submissions: 22 },
-    { date: "CN", score: 80, submissions: 25 },
-  ];
-  
-  const submissionStatus = reportsData.submissionStatus || [
-    { name: t('teacher.reports.overview.charts.submissionStatus.items.graded'), value: 245, color: "#10B981" },
-    { name: t('teacher.reports.overview.charts.submissionStatus.items.pending'), value: 38, color: "#F59E0B" },
-    { name: t('teacher.reports.overview.charts.submissionStatus.items.inProgress'), value: 15, color: "#3B82F6" },
-  ];
-  
-  const recentActivities = reportsData.recentActivities || [
-    {
-      id: "1",
-      type: "completed",
-      student: "Nguyễn Văn A",
-      action: "hoàn thành bài thi IELTS Reading",
-      score: 8.5,
-      time: "5 phút trước",
-      icon: CheckCircle,
-      color: "text-green-600",
-      bg: "bg-green-100",
-    },
-    {
-      id: "2",
-      type: "submission",
-      student: "Trần Thị B",
-      action: "nộp bài TOEFL Listening",
-      time: "12 phút trước",
-      icon: FileText,
-      color: "text-blue-600",
-      bg: "bg-blue-100",
-    },
-    {
-      id: "3",
-      type: "improvement",
-      student: "Lớp A1",
-      action: "tăng điểm TB lên 7.5 (+0.8)",
-      time: "1 giờ trước",
-      icon: TrendingUp,
-      color: "text-purple-600",
-      bg: "bg-purple-100",
-    },
-    {
-      id: "4",
-      type: "completed",
-      student: "Phạm Văn C",
-      action: "hoàn thành Cambridge FCE",
-      score: 7.0,
-      time: "2 giờ trước",
-      icon: Award,
-      color: "text-orange-600",
-      bg: "bg-orange-100",
-    },
-  ];
+  const { overview, activity_timeline, exams_by_type, top_classes, top_students, classes_need_attention, score_trend, insights } = reportsData;
+
+  // Prepare chart data
+  const activityData = activity_timeline.map(item => ({
+    date: new Date(item.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+    submissions: item.submissions,
+    graded: item.graded,
+    active: item.active_students
+  }));
+
+  const examTypeData = Object.entries(exams_by_type).map(([type, count]) => ({
+    name: type.charAt(0).toUpperCase() + type.slice(1),
+    value: count as number
+  })).filter(item => item.value > 0);
+
+  const COLORS = ['#FF8C42', '#10B981', '#F59E0B', '#8B5CF6', '#2563EB'];
+
+  const scoreTrendData = score_trend.map(item => ({
+    date: new Date(item.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+    score: item.avg_score
+  }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">
+    <div className="min-h-screen p-6" style={{ background: '#F5F5F7' }}>
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('teacher.reports.overview.header')}</h1>
-            <p className="text-gray-600">{t('teacher.reports.overview.subheader')}</p>
+            <h1 className="text-2xl font-bold text-slate-900 mb-1 tracking-tight">Báo cáo tổng quan 📊</h1>
+            <p className="text-sm text-slate-500">Thống kê và phân tích hoạt động giảng dạy</p>
           </div>
 
-          {/* Date Range Selector */}
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="7days">{t('teacher.reports.overview.dateRange.7days')}</option>
-            <option value="30days">{t('teacher.reports.overview.dateRange.30days')}</option>
-            <option value="90days">{t('teacher.reports.overview.dateRange.90days')}</option>
-            <option value="year">{t('teacher.reports.overview.dateRange.thisYear')}</option>
-          </select>
-        </div>
+          <div className="flex gap-3">
+            {/* Period Selector */}
+            <select
+              value={period}
+              onChange={(e) => handlePeriodChange(e.target.value)}
+              className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 transition-all"
+              style={{ '--tw-ring-color': '#FF8C42' } as React.CSSProperties}
+            >
+              <option value="7days">7 ngày</option>
+              <option value="30days">30 ngày</option>
+              <option value="90days">90 ngày</option>
+              <option value="year">Năm nay</option>
+            </select>
 
-        {/* Navigation Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          <Link
-            to="/giao-vien/bao-cao"
-            className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg whitespace-nowrap"
-          >
-            {t('teacher.reports.overview.tabs.overview')}
-          </Link>
-          <Link
-            to="/giao-vien/bao-cao/tien-do-students"
-            className="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg hover:bg-gray-50 whitespace-nowrap"
-          >
-            {t('teacher.reports.overview.tabs.studentProgress')}
-          </Link>
-          <Link
-            to="/giao-vien/bao-cao/phan-tich"
-            className="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg hover:bg-gray-50 whitespace-nowrap"
-          >
-            {t('teacher.reports.overview.tabs.analysis')}
-          </Link>
-          <Link
-            to="/giao-vien/bao-cao/xuat-bao-cao"
-            className="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg hover:bg-gray-50 whitespace-nowrap"
-          >
-            {t('teacher.reports.overview.tabs.export')}
-          </Link>
-        </div>
-      </div>
-
-      {/* Key Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {/* Total Students */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-start justify-between mb-3">
-            <div className="p-3 bg-blue-100 rounded-xl">
-              <Users className="w-6 h-6 text-blue-600" />
-            </div>
-            <span className="flex items-center gap-1 text-green-600 text-sm font-semibold">
-              <TrendingUp className="w-4 h-4" />
-              +12%
-            </span>
-          </div>
-          <p className="text-sm text-gray-600 mb-1">{t('teacher.reports.overview.metrics.totalStudents')}</p>
-          <p className="text-3xl font-bold text-gray-900">156</p>
-        </div>
-
-        {/* Active Courses */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-start justify-between mb-3">
-            <div className="p-3 bg-purple-100 rounded-xl">
-              <BookOpen className="w-6 h-6 text-purple-600" />
-            </div>
-            <span className="flex items-center gap-1 text-green-600 text-sm font-semibold">
-              <TrendingUp className="w-4 h-4" />
-              +3
-            </span>
-          </div>
-          <p className="text-sm text-gray-600 mb-1">{t('teacher.reports.overview.metrics.activeCourses')}</p>
-          <p className="text-3xl font-bold text-gray-900">12</p>
-        </div>
-
-        {/* Completion Rate */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-start justify-between mb-3">
-            <div className="p-3 bg-green-100 rounded-xl">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-            </div>
-            <span className="flex items-center gap-1 text-green-600 text-sm font-semibold">
-              <TrendingUp className="w-4 h-4" />
-              +5%
-            </span>
-          </div>
-          <p className="text-sm text-gray-600 mb-1">{t('teacher.reports.overview.metrics.completionRate')}</p>
-          <p className="text-3xl font-bold text-gray-900">85.2%</p>
-        </div>
-
-        {/* Average Score */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-start justify-between mb-3">
-            <div className="p-3 bg-orange-100 rounded-xl">
-              <Award className="w-6 h-6 text-orange-600" />
-            </div>
-            <span className="flex items-center gap-1 text-green-600 text-sm font-semibold">
-              <TrendingUp className="w-4 h-4" />
-              +0.8
-            </span>
-          </div>
-          <p className="text-sm text-gray-600 mb-1">{t('teacher.reports.overview.metrics.avgScore')}</p>
-          <p className="text-3xl font-bold text-gray-900">7.5</p>
-        </div>
-      </div>
-
-      {/* Quick Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-3">
-            <FileText className="w-5 h-5 text-gray-500" />
-            <div>
-              <p className="text-xs text-gray-600">{t('teacher.reports.overview.quickStats.gradedThisWeek')}</p>
-              <p className="text-xl font-bold text-gray-900">87</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-orange-500" />
-            <div>
-              <p className="text-xs text-gray-600">{t('teacher.reports.overview.quickStats.pendingGrading')}</p>
-              <p className="text-xl font-bold text-orange-600">38</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-3">
-            <Activity className="w-5 h-5 text-gray-500" />
-            <div>
-              <p className="text-xs text-gray-600">{t('teacher.reports.overview.quickStats.recentActivities')}</p>
-              <p className="text-xl font-bold text-gray-900">124</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-3">
-            <Clock className="w-5 h-5 text-gray-500" />
-            <div>
-              <p className="text-xs text-gray-600">{t('teacher.reports.overview.quickStats.avgGradingTime')}</p>
-              <p className="text-xl font-bold text-gray-900">12 phút</p>
-            </div>
+            {/* Export Button */}
+            <button 
+              className="px-4 py-2.5 text-white font-semibold rounded-xl hover:scale-[1.02] transition-transform flex items-center gap-2"
+              style={{ background: '#FF8C42', boxShadow: '0 4px 12px rgba(255,140,66,0.25)' }}
+            >
+              <Download className="w-4 h-4" />
+              Export PDF
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Performance Over Time */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">{t('teacher.reports.overview.charts.performance.title')}</h3>
-              <p className="text-sm text-gray-600">{t('teacher.reports.overview.charts.performance.subtitle')}</p>
-            </div>
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <BarChart3 className="w-5 h-5 text-blue-600" />
+      {/* Top Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+        {/* Students */}
+        <div 
+          className="bg-white rounded-2xl p-5 hover:scale-[1.02] transition-transform duration-200"
+          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#FFF4E6' }}>
+              <Users className="w-5 h-5" style={{ color: '#FF8C42' }} />
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={250}>
-            <AreaChart data={performanceData}>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Học viên</p>
+          <p className="text-2xl font-bold text-slate-900">{overview.total_students}</p>
+          {overview.growth.students !== 0 && (
+            <p className="text-xs text-emerald-600 mt-1 font-semibold">+{overview.growth.students}</p>
+          )}
+        </div>
+
+        {/* Classes */}
+        <div 
+          className="bg-white rounded-2xl p-5 hover:scale-[1.02] transition-transform duration-200"
+          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#F0FDF4' }}>
+              <BookOpen className="w-5 h-5" style={{ color: '#10B981' }} />
+            </div>
+          </div>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Lớp học</p>
+          <p className="text-2xl font-bold text-slate-900">{overview.total_classes}</p>
+        </div>
+
+        {/* Exams */}
+        <div 
+          className="bg-white rounded-2xl p-5 hover:scale-[1.02] transition-transform duration-200"
+          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#EFF6FF' }}>
+              <FileText className="w-5 h-5" style={{ color: '#2563EB' }} />
+            </div>
+          </div>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Đề thi</p>
+          <p className="text-2xl font-bold text-slate-900">{overview.total_exams}</p>
+        </div>
+
+        {/* Submissions */}
+        <div 
+          className="bg-white rounded-2xl p-5 hover:scale-[1.02] transition-transform duration-200"
+          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#F5F3FF' }}>
+              <TrendingUp className="w-5 h-5" style={{ color: '#8B5CF6' }} />
+            </div>
+          </div>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Bài nộp</p>
+          <p className="text-2xl font-bold text-slate-900">{overview.total_submissions}</p>
+          {overview.growth.submissions !== 0 && (
+            <p className="text-xs text-emerald-600 mt-1 font-semibold">+{overview.growth.submissions}</p>
+          )}
+        </div>
+
+        {/* Avg Score */}
+        <div 
+          className="bg-white rounded-2xl p-5 hover:scale-[1.02] transition-transform duration-200"
+          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#FFF4E6' }}>
+              <Award className="w-5 h-5" style={{ color: '#FF8C42' }} />
+            </div>
+          </div>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Điểm TB</p>
+          <p className="text-2xl font-bold text-slate-900">{overview.avg_score}</p>
+          {overview.growth.avg_score !== 0 && (
+            <p className={`text-xs mt-1 font-semibold ${overview.growth.avg_score > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {overview.growth.avg_score > 0 ? '+' : ''}{overview.growth.avg_score}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Charts Row 1 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* Area Chart - Activity Timeline (2/3) */}
+        <div 
+          className="lg:col-span-2 bg-white rounded-2xl p-6 hover:scale-[1.01] transition-transform duration-200"
+          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+        >
+          <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5" style={{ color: '#FF8C42' }} />
+            Hoạt động theo thời gian
+          </h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart data={activityData}>
               <defs>
-                <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2563EB" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
+                <linearGradient id="colorSubmissions" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#FF8C42" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#FF8C42" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="colorGraded" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="date" stroke="#6B7280" fontSize={12} />
-              <YAxis stroke="#6B7280" fontSize={12} />
+              <XAxis dataKey="date" tick={{ fill: "#64748B", fontSize: 12 }} />
+              <YAxis tick={{ fill: "#64748B", fontSize: 12 }} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "white",
                   border: "1px solid #E5E7EB",
-                  borderRadius: "8px",
+                  borderRadius: "12px",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
                 }}
               />
-              <Area
-                type="monotone"
-                dataKey="score"
-                stroke="#2563EB"
-                strokeWidth={2}
-                fill="url(#colorScore)"
-              />
+              <Area type="monotone" dataKey="submissions" stroke="#FF8C42" strokeWidth={2} fillOpacity={1} fill="url(#colorSubmissions)" />
+              <Area type="monotone" dataKey="graded" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#colorGraded)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Submissions by Status */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">{t('teacher.reports.overview.charts.submissionStatus.title')}</h3>
-              <p className="text-sm text-gray-600">{t('teacher.reports.overview.charts.submissionStatus.total')} {submissionStatus.reduce((sum, s) => sum + s.value, 0)}</p>
-            </div>
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <PieChart className="w-5 h-5 text-purple-600" />
-            </div>
-          </div>
-          <div className="flex items-center justify-center">
-            <ResponsiveContainer width="100%" height={250}>
-              <RePieChart>
-                <Pie
-                  data={submissionStatus}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {submissionStatus.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </RePieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex items-center justify-center gap-6 mt-4">
-            {submissionStatus.map((item) => (
-              <div key={item.name} className="flex items-center gap-2">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: item.color }}
-                />
-                <span className="text-sm text-gray-700">{item.name}: <strong>{item.value}</strong></span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Activities */}
-        <div className="lg:col-span-2 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">{t('teacher.reports.overview.activities.title')}</h3>
-            <Link
-              to="/giao-vien/bao-cao/tien-do-students"
-              className="text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center gap-1"
-            >
-              {t('teacher.reports.overview.activities.viewAll')}
-              <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {recentActivities.map((activity) => (
-              <div
-                key={activity.id}
-                className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all"
+        {/* Donut Chart - Exams by Type (1/3) */}
+        <div 
+          className="bg-white rounded-2xl p-6 hover:scale-[1.01] transition-transform duration-200"
+          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+        >
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Phân bổ theo loại đề</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <RePieChart>
+              <Pie
+                data={examTypeData}
+                cx="50%"
+                cy="50%"
+                innerRadius={50}
+                outerRadius={80}
+                paddingAngle={5}
+                dataKey="value"
               >
-                <div className={`p-2 ${activity.bg} rounded-lg`}>
-                  <activity.icon className={`w-4 h-4 ${activity.color}`} />
+                {examTypeData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </RePieChart>
+          </ResponsiveContainer>
+          <div className="mt-4 space-y-2">
+            {examTypeData.map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                  <span className="text-slate-700">{item.name}</span>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm text-gray-900">
-                    <span className="font-semibold">{activity.student}</span>{" "}
-                    {activity.action}
-                  </p>
-                  <p className="text-xs text-gray-500">{activity.time}</p>
-                </div>
-                {activity.score && (
-                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-lg">
-                    {activity.score}
-                  </span>
-                )}
+                <span className="font-semibold text-slate-900">{item.value}</span>
               </div>
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Quick Actions */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">{t('teacher.reports.overview.quickActions.title')}</h3>
-          <div className="space-y-3">
-            <Link
-              to="/giao-vien/cham-diem/bao-cao-lop"
-              className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl hover:from-blue-100 hover:to-blue-200 transition-all group"
-            >
-              <div className="p-2 bg-blue-600 rounded-lg">
-                <Users className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900">{t('teacher.reports.overview.quickActions.classReport.title')}</p>
-                <p className="text-xs text-gray-600">{t('teacher.reports.overview.quickActions.classReport.subtitle')}</p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600" />
-            </Link>
+      {/* Charts Row 2 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Bar Chart - Top Classes */}
+        <div 
+          className="bg-white rounded-2xl p-6 hover:scale-[1.01] transition-transform duration-200"
+          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+        >
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Top 5 lớp học</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={top_classes.slice(0, 5)} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis type="number" tick={{ fill: "#64748B", fontSize: 12 }} />
+              <YAxis dataKey="class_name" type="category" tick={{ fill: "#64748B", fontSize: 12 }} width={80} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "white",
+                  border: "1px solid #E5E7EB",
+                  borderRadius: "12px",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+                }}
+              />
+              <Bar dataKey="total_submissions" fill="#FF8C42" radius={[0, 6, 6, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
 
-            <Link
-              to="/giao-vien/bao-cao/phan-tich"
-              className="flex items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl hover:from-purple-100 hover:to-purple-200 transition-all group"
-            >
-              <div className="p-2 bg-purple-600 rounded-lg">
-                <BarChart3 className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900">{t('teacher.reports.overview.quickActions.analysis.title')}</p>
-                <p className="text-xs text-gray-600">{t('teacher.reports.overview.quickActions.analysis.subtitle')}</p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-purple-600" />
-            </Link>
+        {/* Line Chart - Score Trend */}
+        <div 
+          className="bg-white rounded-2xl p-6 hover:scale-[1.01] transition-transform duration-200"
+          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+        >
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Xu hướng điểm TB</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={scoreTrendData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis dataKey="date" tick={{ fill: "#64748B", fontSize: 12 }} />
+              <YAxis domain={[0, 10]} tick={{ fill: "#64748B", fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "white",
+                  border: "1px solid #E5E7EB",
+                  borderRadius: "12px",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+                }}
+              />
+              <Line type="monotone" dataKey="score" stroke="#FF8C42" strokeWidth={2} dot={{ fill: "#FF8C42", r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
 
-            <Link
-              to="/giao-vien/bao-cao/xuat-bao-cao"
-              className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-xl hover:from-green-100 hover:to-green-200 transition-all group"
-            >
-              <div className="p-2 bg-green-600 rounded-lg">
-                <Download className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900">{t('teacher.reports.overview.quickActions.exportPDF.title')}</p>
-                <p className="text-xs text-gray-600">{t('teacher.reports.overview.quickActions.exportPDF.subtitle')}</p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-green-600" />
-            </Link>
+      {/* Tables Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Top Students */}
+        <div 
+          className="bg-white rounded-2xl overflow-hidden hover:scale-[1.01] transition-transform duration-200"
+          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+        >
+          <div className="px-6 py-4 border-b border-slate-200">
+            <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+              <Award className="w-5 h-5" style={{ color: '#FF8C42' }} />
+              Top học viên
+            </h3>
           </div>
+          <div className="p-6">
+            <div className="space-y-3">
+              {top_students.slice(0, 10).map((student, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white"
+                      style={{ background: 'linear-gradient(135deg, #FF8C42, #FF6B35)' }}
+                    >
+                      {idx + 1}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-900">{student.student_name}</p>
+                      <p className="text-xs text-slate-500">{student.class_name} • {student.total_submissions} bài</p>
+                    </div>
+                  </div>
+                  <span className="text-lg font-bold" style={{ color: '#FF8C42' }}>{student.avg_score}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
 
-          {/* Insights Box */}
-          <div className="mt-6 p-4 bg-gradient-to-br from-orange-50 to-yellow-50 border border-orange-200 rounded-xl">
-            <div className="flex items-start gap-2 mb-2">
-              <TrendingUp className="w-5 h-5 text-orange-600 mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-orange-900">{t('teacher.reports.overview.insights.title')}</p>
-                <p className="text-xs text-orange-700 mt-1">
-                  {t('teacher.reports.overview.insights.description')}
-                </p>
-              </div>
+        {/* Classes Need Attention */}
+        <div 
+          className="bg-white rounded-2xl overflow-hidden hover:scale-[1.01] transition-transform duration-200"
+          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+        >
+          <div className="px-6 py-4 border-b border-slate-200">
+            <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" style={{ color: '#F59E0B' }} />
+              Lớp cần quan tâm
+            </h3>
+          </div>
+          <div className="p-6">
+            <div className="space-y-3">
+              {classes_need_attention.map((cls, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                  <div>
+                    <p className="font-semibold text-slate-900 text-sm">{cls.class_name}</p>
+                    <p className="text-xs text-slate-500">{cls.reason}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-lg text-sm font-bold">
+                      {cls.pending_count}
+                    </span>
+                    <p className="text-xs text-slate-500 mt-1">Avg: {cls.avg_score}</p>
+                  </div>
+                </div>
+              ))}
+              {classes_need_attention.length === 0 && (
+                <p className="text-center text-slate-500 py-8">Tất cả lớp đều ổn định 👍</p>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Insights Panel */}
+      {insights.length > 0 && (
+        <div 
+          className="bg-white rounded-2xl p-6"
+          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+        >
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">💡 Insights</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {insights.map((insight, idx) => {
+              const bgColor = insight.type === 'warning' ? 'bg-orange-50' : insight.type === 'success' ? 'bg-emerald-50' : 'bg-blue-50';
+              const borderColor = insight.type === 'warning' ? 'border-orange-200' : insight.type === 'success' ? 'border-emerald-200' : 'border-blue-200';
+              const textColor = insight.type === 'warning' ? 'text-orange-700' : insight.type === 'success' ? 'text-emerald-700' : 'text-blue-700';
+              
+              return (
+                <div key={idx} className={`p-4 rounded-xl border ${bgColor} ${borderColor}`}>
+                  <p className={`text-sm ${textColor}`}>{insight.message}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

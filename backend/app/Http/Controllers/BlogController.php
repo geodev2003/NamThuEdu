@@ -866,6 +866,210 @@ class BlogController extends Controller
     }
 
     /**
+     * @OA\Get(
+     *     path="/teacher/blogs/statistics",
+     *     tags={"Blog Management"},
+     *     summary="Get blog statistics",
+     *     description="Get comprehensive blog statistics for the authenticated teacher",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="period",
+     *         in="query",
+     *         required=false,
+     *         @OA\Schema(type="string", enum={"7", "30", "90", "365", "all"}, default="30")
+     *     ),
+     *     @OA\Response(response=200, description="Statistics retrieved successfully"),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     * 
+     * GET /api/teacher/blogs/statistics
+     * Lấy thống kê blog của teacher
+     */
+    public function statistics(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $period = $request->get('period', '30');
+        
+        // Calculate date range
+        $dateFrom = null;
+        if ($period !== 'all') {
+            $dateFrom = now()->subDays((int)$period);
+        }
+
+        // Base query for teacher's posts
+        $baseQuery = Post::where('pAuthor_id', $user->uId)
+                        ->whereNull('pDeleted_at');
+
+        // Overview statistics
+        $totalPosts = (clone $baseQuery)->count();
+        $totalViews = (clone $baseQuery)->sum('pView') ?? 0;
+        $totalLikes = (clone $baseQuery)->sum('pLike') ?? 0;
+        $totalComments = 0; // TODO: Add comments table later
+
+        // Previous period for comparison
+        $prevDateFrom = null;
+        $prevDateTo = null;
+        if ($period !== 'all') {
+            $prevDateTo = now()->subDays((int)$period);
+            $prevDateFrom = now()->subDays((int)$period * 2);
+        }
+
+        // Calculate changes
+        $prevPosts = Post::where('pAuthor_id', $user->uId)
+                        ->whereNull('pDeleted_at')
+                        ->when($prevDateFrom, fn($q) => $q->whereBetween('pCreated_at', [$prevDateFrom, $prevDateTo]))
+                        ->count();
+        
+        $prevViews = Post::where('pAuthor_id', $user->uId)
+                        ->whereNull('pDeleted_at')
+                        ->when($prevDateFrom, fn($q) => $q->whereBetween('pCreated_at', [$prevDateFrom, $prevDateTo]))
+                        ->sum('pView') ?? 0;
+
+        $prevLikes = Post::where('pAuthor_id', $user->uId)
+                        ->whereNull('pDeleted_at')
+                        ->when($prevDateFrom, fn($q) => $q->whereBetween('pCreated_at', [$prevDateFrom, $prevDateTo]))
+                        ->sum('pLike') ?? 0;
+
+        // Calculate percentage changes
+        $postsChange = $prevPosts > 0 ? round((($totalPosts - $prevPosts) / $prevPosts) * 100) : 0;
+        $viewsChange = $prevViews > 0 ? round((($totalViews - $prevViews) / $prevViews) * 100) : 0;
+        $likesChange = $prevLikes > 0 ? round((($totalLikes - $prevLikes) / $prevLikes) * 100) : 0;
+
+        // Views over time (last 10 data points)
+        $viewsOverTime = [];
+        $days = $period === 'all' ? 30 : min((int)$period, 30);
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $date = now()->subDays($i);
+            $views = Post::where('pAuthor_id', $user->uId)
+                        ->whereNull('pDeleted_at')
+                        ->whereDate('pCreated_at', '<=', $date)
+                        ->sum('pView') ?? 0;
+            
+            $viewsOverTime[] = [
+                'date' => $date->format('d/m'),
+                'views' => $views
+            ];
+        }
+
+        // Posts by category
+        $postsByCategory = Post::where('pAuthor_id', $user->uId)
+                              ->whereNull('pDeleted_at')
+                              ->selectRaw('pType, COUNT(*) as count')
+                              ->groupBy('pType')
+                              ->get()
+                              ->map(function($item) {
+                                  $colors = [
+                                      'grammar' => '#8B5CF6',
+                                      'tips' => '#06B6D4',
+                                      'vocabulary' => '#F59E0B',
+                                      'teaching' => '#10B981',
+                                      'news' => '#EF4444',
+                                  ];
+                                  return [
+                                      'category' => ucfirst($item->pType),
+                                      'count' => $item->count,
+                                      'color' => $colors[$item->pType] ?? '#64748B'
+                                  ];
+                              });
+
+        // Top performing posts
+        $topPosts = Post::where('pAuthor_id', $user->uId)
+                       ->whereNull('pDeleted_at')
+                       ->orderByDesc('pView')
+                       ->limit(5)
+                       ->get()
+                       ->map(function($post) {
+                           return [
+                               'id' => $post->pId,
+                               'title' => $post->pTitle,
+                               'views' => $post->pView ?? 0,
+                               'likes' => $post->pLike ?? 0,
+                               'comments' => 0, // TODO: Add comments
+                               'status' => $post->pStatus
+                           ];
+                       });
+
+        // Category performance
+        $categoryPerformance = Post::where('pAuthor_id', $user->uId)
+                                  ->whereNull('pDeleted_at')
+                                  ->selectRaw('pType, COUNT(*) as posts, SUM(pView) as views, SUM(pLike) as likes')
+                                  ->groupBy('pType')
+                                  ->get()
+                                  ->map(function($item) {
+                                      $icons = [
+                                          'grammar' => 'Type',
+                                          'tips' => 'Lightbulb',
+                                          'vocabulary' => 'BookMarked',
+                                          'teaching' => 'GraduationCap',
+                                          'news' => 'Newspaper',
+                                      ];
+                                      $colors = [
+                                          'grammar' => '#8B5CF6',
+                                          'tips' => '#06B6D4',
+                                          'vocabulary' => '#F59E0B',
+                                          'teaching' => '#10B981',
+                                          'news' => '#EF4444',
+                                      ];
+                                      $engagement = $item->views > 0 
+                                          ? round((($item->likes) / $item->views) * 100, 1)
+                                          : 0;
+                                      
+                                      return [
+                                          'category' => ucfirst($item->pType),
+                                          'icon' => $icons[$item->pType] ?? 'BookOpen',
+                                          'color' => $colors[$item->pType] ?? '#64748B',
+                                          'posts' => $item->posts,
+                                          'views' => $item->views ?? 0,
+                                          'engagement' => $engagement
+                                      ];
+                                  });
+
+        // Engagement metrics
+        $avgViews = $totalPosts > 0 ? round($totalViews / $totalPosts) : 0;
+        $engagementRate = $totalViews > 0 ? round((($totalLikes) / $totalViews) * 100, 1) : 0;
+        $activeCount = Post::where('pAuthor_id', $user->uId)
+                          ->where('pStatus', 'active')
+                          ->whereNull('pDeleted_at')
+                          ->count();
+        $publishRate = $totalPosts > 0 ? round(($activeCount / $totalPosts) * 100) : 0;
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'overview' => [
+                    'totalPosts' => $totalPosts,
+                    'totalViews' => $totalViews,
+                    'totalLikes' => $totalLikes,
+                    'totalComments' => $totalComments,
+                    'changes' => [
+                        'posts' => $postsChange,
+                        'views' => $viewsChange,
+                        'likes' => $likesChange,
+                        'comments' => 0
+                    ]
+                ],
+                'viewsOverTime' => $viewsOverTime,
+                'postsByCategory' => $postsByCategory,
+                'topPosts' => $topPosts,
+                'categoryPerformance' => $categoryPerformance,
+                'engagement' => [
+                    'avgViews' => $avgViews,
+                    'engagementRate' => $engagementRate,
+                    'publishRate' => $publishRate
+                ]
+            ]
+        ]);
+    }
+
+    /**
      * GET /api/public/posts
      * Danh sách bài viết đã duyệt (không cần auth)
      */

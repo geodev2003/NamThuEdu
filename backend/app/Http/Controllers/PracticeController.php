@@ -76,6 +76,14 @@ class PracticeController extends Controller
         $sessions = $query->orderBy('ps_created_at', 'desc')
                          ->paginate($request->get('per_page', 15));
 
+        // Append assignment_count — number of TestAssignments linked via exam_id
+        $sessions->getCollection()->transform(function ($session) {
+            $session->assignment_count = $session->ps_exam_id
+                ? \App\Models\TestAssignment::where('exam_id', $session->ps_exam_id)->count()
+                : 0;
+            return $session;
+        });
+
         return response()->json([
             'status' => 'success',
             'data' => $sessions

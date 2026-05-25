@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { getAuthToken } from '../../../../utils/authStorage';
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router";
 import {
@@ -107,7 +108,7 @@ export function AddStudent() {
 
     phoneDebounceRef.current = setTimeout(async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/teacher/student/check-phone?phone=${encodeURIComponent(phone)}`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -214,7 +215,7 @@ export function AddStudent() {
     setIsLoading(true);
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       
       // Create FormData for multipart/form-data
       const formDataToSend = new FormData();

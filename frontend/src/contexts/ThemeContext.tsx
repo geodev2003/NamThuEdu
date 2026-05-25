@@ -5,6 +5,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { getAuthToken } from '../utils/authStorage';
 import { Theme, ThemePreference } from '../themes/types';
 import { AgeGroup, calculateAgeGroup } from '../utils/ageDetection';
 import {
@@ -67,7 +68,7 @@ export function ThemeProvider({
   // Initialize theme from localStorage or auth
   useEffect(() => {
     const initializeTheme = async () => {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
 
       if (token) {
         try {

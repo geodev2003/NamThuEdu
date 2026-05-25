@@ -3222,4 +3222,200 @@ class UserController extends Controller
         }
     }
 
+    /**
+     * POST /api/user/avatar
+     * Upload avatar for current user
+     */
+    public function uploadAvatar(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'avatar' => 'required|image|mimes:jpeg,jpg,png,gif,webp,bmp,svg|max:20480', // Max 20MB
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $validator->errors()->first()
+            ], 400);
+        }
+
+        try {
+            // Delete old avatar if exists
+            if ($user->avatar_url && file_exists(public_path($user->avatar_url))) {
+                unlink(public_path($user->avatar_url));
+            }
+
+            // Upload new avatar
+            $avatar = $request->file('avatar');
+            $avatarName = time() . '_' . uniqid() . '.' . $avatar->getClientOriginalExtension();
+            $avatar->move(public_path('uploads/avatars'), $avatarName);
+            $avatarPath = 'uploads/avatars/' . $avatarName;
+
+            // Update user avatar_url
+            $user->avatar_url = $avatarPath;
+            $user->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Avatar uploaded successfully',
+                'data' => [
+                    'avatar_url' => url($avatarPath)
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to upload avatar: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * DELETE /api/user/avatar
+     * Remove avatar for current user
+     */
+    public function removeAvatar(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+
+        try {
+            // Delete avatar file if exists
+            if ($user->avatar_url && file_exists(public_path($user->avatar_url))) {
+                unlink(public_path($user->avatar_url));
+            }
+
+            // Clear avatar_url in database
+            $user->avatar_url = null;
+            $user->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Avatar removed successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to remove avatar: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/user/profile
+     * Get current user profile
+     */
+    public function getProfile(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'id' => $user->uId,
+                'name' => $user->uName,
+                'phone' => $user->uPhone,
+                'email' => $user->uEmail,
+                'avatar' => $user->avatar_url ? url($user->avatar_url) : null,
+                'role' => $user->uRole,
+                'address' => $user->uAddress,
+                'dob' => $user->uDoB,
+                'gender' => $user->uGender,
+            ]
+        ]);
+    }
+
+    /**
+     * PUT /api/user/profile
+     * Update current user profile
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|required|string|max:150',
+            'email' => 'sometimes|nullable|email|max:255',
+            'phone' => 'sometimes|required|string|unique:users,uPhone,' . $user->uId . ',uId',
+            'address' => 'sometimes|nullable|string',
+            'bio' => 'sometimes|nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $validator->errors()->first()
+            ], 400);
+        }
+
+        try {
+            if ($request->has('name')) {
+                $user->uName = $request->name;
+            }
+            if ($request->has('email')) {
+                $user->uEmail = $request->email;
+            }
+            if ($request->has('phone')) {
+                $user->uPhone = $request->phone;
+            }
+            if ($request->has('address')) {
+                $user->uAddress = $request->address;
+            }
+            if ($request->has('bio')) {
+                $user->bio = $request->bio;
+            }
+
+            $user->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Profile updated successfully',
+                'data' => [
+                    'id' => $user->uId,
+                    'name' => $user->uName,
+                    'phone' => $user->uPhone,
+                    'email' => $user->uEmail,
+                    'address' => $user->uAddress,
+                    'bio' => $user->bio,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update profile: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

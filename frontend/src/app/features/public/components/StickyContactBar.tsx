@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { MessageCircle, PhoneCall, X, Headphones } from "lucide-react";
+import { useNavigate } from "react-router";
+import { MessageCircle, PhoneCall, X, Facebook, UserPlus } from "lucide-react";
 
 type StickyContactBarProps = {
   onRegisterConsult: () => void;
@@ -8,8 +9,25 @@ type StickyContactBarProps = {
 
 export function StickyContactBar({ onRegisterConsult }: StickyContactBarProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [hiddenByMenu, setHiddenByMenu] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setIsOpen(true);
+    window.addEventListener('openContactFAB', handler);
+    return () => window.removeEventListener('openContactFAB', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const open = (e as CustomEvent<{ open: boolean }>).detail.open;
+      setHiddenByMenu(open);
+    };
+    window.addEventListener('mobileMenuChange', handler);
+    return () => window.removeEventListener('mobileMenuChange', handler);
+  }, []);
 
   const handleClose = () => {
     setIsClosing(true);
@@ -28,13 +46,27 @@ export function StickyContactBar({ onRegisterConsult }: StickyContactBarProps) {
   };
 
   return (
-    <div className="fixed bottom-24 right-6 z-50">
+    <>
+      {/* Backdrop — click outside to close */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={handleClose}
+        />
+      )}
+
+    <div
+      className="fixed bottom-24 right-6 z-50 transition-all duration-300"
+      style={hiddenByMenu ? { opacity: 0, pointerEvents: 'none', transform: 'scale(0.8)' } : { opacity: 1, pointerEvents: 'auto', transform: 'scale(1)' }}
+    >
       {/* Options Menu - Appears when open */}
       {isOpen && (
         <>
-          {/* Option 1: Hotline - Top */}
+          {/* Option 1: Hotline via Zalo - Top */}
           <a
-            href="tel:0776818160"
+            href="https://zalo.me/0776818160"
+            target="_blank"
+            rel="noreferrer"
             className="absolute bottom-24 right-4 flex items-center gap-3 cursor-pointer transition-all duration-300"
             onClick={handleClose}
             style={{
@@ -49,9 +81,9 @@ export function StickyContactBar({ onRegisterConsult }: StickyContactBarProps) {
             </div>
           </a>
 
-          {/* Option 2: Zalo - Middle Left */}
+          {/* Option 2: Facebook - Middle Left */}
           <a
-            href="https://zalo.me"
+            href="https://www.facebook.com/profile.php?id=61573591333617"
             target="_blank"
             rel="noreferrer"
             className="absolute bottom-10 right-16 flex items-center gap-3 cursor-pointer transition-all duration-300"
@@ -60,20 +92,20 @@ export function StickyContactBar({ onRegisterConsult }: StickyContactBarProps) {
               animation: isClosing ? 'scaleOut 0.3s ease-in 0.05s forwards' : 'scaleIn 0.3s ease-out 0.1s both',
             }}
           >
-            <span className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-sky-600 shadow-lg whitespace-nowrap">
-              {t("landing.guest.stickyContact.zalo")}
+            <span className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-blue-600 shadow-lg whitespace-nowrap">
+              Facebook
             </span>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-sky-500 shadow-lg transition-transform hover:scale-110">
-              <MessageCircle className="h-6 w-6 text-white" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 shadow-lg transition-transform hover:scale-110">
+              <Facebook className="h-6 w-6 text-white" />
             </div>
           </a>
 
-          {/* Option 3: Register - Bottom Left */}
+          {/* Option 3: Login - Bottom Left */}
           <button
             type="button"
             onClick={() => {
               handleClose();
-              setTimeout(() => onRegisterConsult(), 300);
+              setTimeout(() => navigate('/dang-nhap'), 300);
             }}
             className="absolute -bottom-6 right-20 flex items-center gap-3 cursor-pointer transition-all duration-300"
             style={{
@@ -81,10 +113,10 @@ export function StickyContactBar({ onRegisterConsult }: StickyContactBarProps) {
             }}
           >
             <span className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-orange-600 shadow-lg whitespace-nowrap">
-              {t("landing.guest.stickyContact.register")}
+              Đăng ký ngay
             </span>
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-orange-600 shadow-lg transition-transform hover:scale-110">
-              <Headphones className="h-6 w-6 text-white" />
+              <UserPlus className="h-6 w-6 text-white" />
             </div>
           </button>
         </>
@@ -131,5 +163,6 @@ export function StickyContactBar({ onRegisterConsult }: StickyContactBarProps) {
         }
       `}</style>
     </div>
+    </>
   );
 }

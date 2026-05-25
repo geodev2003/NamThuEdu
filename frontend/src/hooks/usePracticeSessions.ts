@@ -14,6 +14,7 @@ export interface PracticeSession {
   ps_topic?: string;
   ps_is_active: boolean;
   ps_created_at: string;
+  assignment_count?: number;
   exam?: {
     eId: number;
     eTitle: string;

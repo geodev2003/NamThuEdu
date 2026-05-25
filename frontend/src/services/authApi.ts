@@ -32,6 +32,7 @@ export interface UserProfile {
   date_of_birth?: string;
   theme_preference: ThemePreference;
   theme_updated_at?: string;
+  class_id?: number | null;
 }
 
 export interface AuthResponse {

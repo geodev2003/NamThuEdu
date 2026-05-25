@@ -389,6 +389,64 @@ export const adminApi = {
     return response.data;
   },
 
+  async getAdminProfile() {
+    const response = await api.get<ApiResponse<{
+      id: number; name: string; phone: string; email: string;
+      role: string; created_at: string | null; last_login: string | null;
+    }>>("/admin/profile");
+    return unwrap(response.data);
+  },
+
+  async updateAdminProfile(payload: { name?: string; email?: string }) {
+    const response = await api.put<ApiResponse<{ name: string; email: string }>>("/admin/profile", payload);
+    return unwrap(response.data);
+  },
+
+  async getAdminSessions() {
+    const response = await api.get<ApiResponse<Array<{
+      id: number; name: string; is_current: boolean;
+      created_at: string; last_used_at: string;
+    }>>>("/admin/profile/sessions");
+    return unwrap(response.data) || [];
+  },
+
+  async revokeSession(id: number) {
+    const response = await api.delete<ApiResponse<unknown>>(`/admin/profile/sessions/${id}`);
+    return response.data;
+  },
+
+  async revokeAllSessions() {
+    const response = await api.delete<ApiResponse<unknown>>("/admin/profile/sessions");
+    return response.data;
+  },
+
+  async changePassword(currentPassword: string, newPassword: string, confirmPassword: string) {
+    const response = await api.post<ApiResponse<unknown>>("/user/change-password", {
+      current_password: currentPassword,
+      new_password: newPassword,
+      new_password_confirmation: confirmPassword,
+    });
+    return response.data;
+  },
+
+  // Legal content
+  async getLegalContent() {
+    const response = await api.get<ApiResponse<{ legal_vi: unknown; legal_en: unknown }>>("/admin/system/settings");
+    const data = unwrap(response.data) as Record<string, unknown>;
+    return {
+      legal_vi: data.legal_vi ? JSON.parse(data.legal_vi as string) : null,
+      legal_en: data.legal_en ? JSON.parse(data.legal_en as string) : null,
+    };
+  },
+
+  async updateLegalContent(lang: "vi" | "en", content: unknown) {
+    const key = `legal_${lang}`;
+    const response = await api.post<ApiResponse<unknown>>("/admin/system/settings", {
+      [key]: JSON.stringify(content),
+    });
+    return response.data;
+  },
+
   // Notifications
   async getNotifications() {
     const response = await api.get<ApiResponse<Array<{ id: number; title: string; body: string; is_read: boolean; time: string }>>>("/admin/system/notifications");

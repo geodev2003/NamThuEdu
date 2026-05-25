@@ -16,8 +16,11 @@ import {
   Database,
   Zap,
   ServerCrash,
+  Search,
+  ChevronRight,
 } from "lucide-react";
 import { logout } from "../../services/authApi";
+import { NotificationDropdown } from "../features/admin/components/NotificationDropdown";
 
 interface NavItem {
   label: string;
@@ -35,7 +38,6 @@ const adminNav: NavItem[] = [
     icon: GraduationCap,
     submenu: [
       { label: "Danh sách giáo viên", href: "/admin/teachers" },
-      { label: "Thêm giáo viên", href: "/admin/teachers/new" },
       { label: "Phân công lớp", href: "/admin/teachers/assignments" },
     ],
   },
@@ -100,15 +102,35 @@ const ADMIN_ACCENT_LIGHT = "#FEF3C7";
 const ADMIN_BG = "#F8FAFC";
 const ADMIN_ACTIVE_BG = "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)";
 
+const AVATAR_PRESETS_LAYOUT = [
+  { id: "amber",  gradient: "linear-gradient(135deg,#F59E0B,#EF4444)" },
+  { id: "blue",   gradient: "linear-gradient(135deg,#2563EB,#7C3AED)" },
+  { id: "green",  gradient: "linear-gradient(135deg,#10B981,#0284C7)" },
+  { id: "purple", gradient: "linear-gradient(135deg,#8B5CF6,#EC4899)" },
+  { id: "red",    gradient: "linear-gradient(135deg,#EF4444,#F97316)" },
+  { id: "teal",   gradient: "linear-gradient(135deg,#0D9488,#2563EB)" },
+];
+const getAvatarGradient = () => {
+  const id = localStorage.getItem("admin_avatar_color") ?? "amber";
+  return AVATAR_PRESETS_LAYOUT.find((p) => p.id === id)?.gradient ?? AVATAR_PRESETS_LAYOUT[0].gradient;
+};
+
 export function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
+  const [avatarGradient, setAvatarGradient] = useState(getAvatarGradient);
 
   const handleLogout = async () => {
     await logout();
     navigate("/admin/login", { replace: true });
   };
+
+  useEffect(() => {
+    const handler = () => setAvatarGradient(getAvatarGradient());
+    window.addEventListener("admin_avatar_changed", handler);
+    return () => window.removeEventListener("admin_avatar_changed", handler);
+  }, []);
 
   useEffect(() => {
     for (const item of adminNav) {
@@ -131,111 +153,54 @@ export function AdminLayout() {
     <div className="flex h-screen" style={{ background: ADMIN_BG }}>
       {/* Sidebar */}
       <aside
-        className="w-[272px] h-screen flex flex-col flex-shrink-0 border-r"
-        style={{ background: "#FFFFFF", borderColor: "#E2E8F0" }}
+        className="w-64 h-screen flex flex-col flex-shrink-0 relative overflow-hidden"
+        style={{ background: "linear-gradient(180deg, #0F172A 0%, #1E293B 100%)" }}
       >
-        {/* Logo */}
-        <div
-          className="h-20 flex items-center px-6 border-b"
-          style={{ borderColor: "#E2E8F0" }}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className="w-11 h-11 rounded-xl flex items-center justify-center relative overflow-hidden"
-              style={{
-                background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
-                boxShadow: "0 4px 12px rgba(15,23,42,0.25)",
-              }}
-            >
-              <Shield className="w-6 h-6 text-white" strokeWidth={2.5} />
-              <div
-                className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full"
-                style={{ background: "linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)" }}
-              />
-            </div>
-            <div className="flex flex-col">
-              <span
-                className="leading-none"
-                style={{ fontSize: 17, fontWeight: 700, color: ADMIN, letterSpacing: "-0.02em" }}
-              >
-                NamThu Edu
-              </span>
-              <span
-                className="leading-none mt-0.5"
-                style={{ fontSize: 11, fontWeight: 600, color: ADMIN_ACCENT }}
-              >
-                Admin Console
-              </span>
-            </div>
+        {/* Subtle background texture */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
+          style={{ backgroundImage: "linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)", backgroundSize: "32px 32px" }} />
+        {/* Amber glow top-right */}
+        <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full pointer-events-none"
+          style={{ background: "radial-gradient(circle, rgba(245,158,11,0.12), transparent)" }} />
+
+        {/* ── Logo ── */}
+        <div className="relative z-10 flex items-center gap-3 px-5 h-[68px] flex-shrink-0"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "linear-gradient(135deg, #F59E0B, #D97706)", boxShadow: "0 3px 10px rgba(245,158,11,0.35)" }}>
+            <Shield className="w-5 h-5 text-white" strokeWidth={2.5} />
+          </div>
+          <div>
+            <p className="leading-none font-bold text-white" style={{ fontSize: 15, letterSpacing: "-0.01em" }}>NamThu Edu</p>
+            <p className="leading-none mt-0.5 font-semibold" style={{ fontSize: 10, color: "#F59E0B" }}>Admin Console</p>
+          </div>
+          {/* live dot */}
+          <div className="ml-auto flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
           </div>
         </div>
 
-        {/* Admin profile */}
-        <div className="px-4 py-4">
-          <div
-            className="rounded-xl p-4 flex items-center gap-3"
-            style={{ background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)" }}
-          >
-            <div
-              className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center border-2"
-              style={{
-                background: "linear-gradient(135deg, #F59E0B, #EF4444)",
-                borderColor: "rgba(255,255,255,0.2)",
-                fontSize: 15,
-                fontWeight: 700,
-                color: "#FFFFFF",
-                boxShadow: "0 2px 8px rgba(245,158,11,0.4)",
-              }}
-            >
+        {/* ── Profile ── */}
+        <div className="relative z-10 px-4 pt-4 pb-3 flex-shrink-0">
+          <div className="flex items-center gap-3 rounded-xl px-3 py-3"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold text-white"
+              style={{ background: "linear-gradient(135deg, #F59E0B, #EF4444)", boxShadow: "0 2px 8px rgba(245,158,11,0.35)" }}>
               AD
             </div>
             <div className="flex-1 min-w-0">
-              <p
-                className="truncate"
-                style={{ fontSize: 14, fontWeight: 700, color: "#FFFFFF", marginBottom: 2 }}
-              >
-                Administrator
-              </p>
-              <p
-                className="flex items-center gap-1"
-                style={{ fontSize: 12, fontWeight: 500, color: ADMIN_ACCENT }}
-              >
-                <Shield className="w-3.5 h-3.5 flex-shrink-0" />
-                Super Admin
-              </p>
-              <div className="flex items-center gap-1 mt-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                <span style={{ fontSize: 11, color: "#10B981", fontWeight: 500 }}>
-                  Đang hoạt động
-                </span>
+              <p className="font-semibold text-white truncate" style={{ fontSize: 13 }}>Administrator</p>
+              <div className="flex items-center gap-1 mt-0.5">
+                <Shield className="w-3 h-3 flex-shrink-0" style={{ color: ADMIN_ACCENT }} />
+                <span style={{ fontSize: 11, color: ADMIN_ACCENT, fontWeight: 500 }}>Super Admin</span>
               </div>
             </div>
+            <div className="w-2 h-2 rounded-full bg-[#10B981] flex-shrink-0" />
           </div>
         </div>
 
-        {/* Quick stats strip */}
-        <div className="px-4 pb-3">
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: "GV", val: "24", icon: GraduationCap },
-              { label: "HV", val: "1.2K", icon: Users },
-              { label: "Sự cố", val: "0", icon: ServerCrash },
-            ].map((s) => (
-              <div
-                key={s.label}
-                className="flex flex-col items-center py-2 rounded-lg"
-                style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}
-              >
-                <s.icon className="w-3.5 h-3.5 mb-0.5" style={{ color: "#64748B" }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: ADMIN }}>{s.val}</span>
-                <span style={{ fontSize: 10, color: "#94A3B8" }}>{s.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 px-4 py-2 overflow-y-auto space-y-0.5">
+        {/* ── Nav ── */}
+        <nav className="relative z-10 flex-1 px-3 pb-2 overflow-y-auto space-y-0.5">
           {adminNav.map((item) => {
             const active = isActive(item);
             const expanded = expandedMenu === item.label;
@@ -246,83 +211,45 @@ export function AdminLayout() {
               return (
                 <div key={item.label}>
                   <button
-                    onClick={() =>
-                      setExpandedMenu(expanded ? null : item.label)
-                    }
-                    className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200"
+                    onClick={() => setExpandedMenu(expanded ? null : item.label)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150 relative"
                     style={{
-                      background: active ? ADMIN_ACTIVE_BG : "transparent",
-                      color: active ? "#FFFFFF" : "#64748B",
-                      fontSize: 14,
-                      fontWeight: 500,
+                      background: active ? "rgba(245,158,11,0.12)" : "transparent",
+                      color: active ? "#FFFFFF" : "#94A3B8",
+                      fontSize: 13.5,
+                      fontWeight: active ? 600 : 500,
                     }}
-                    onMouseEnter={(e) => {
-                      if (!active) {
-                        e.currentTarget.style.background = "#F1F5F9";
-                        e.currentTarget.style.color = ADMIN;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!active) {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "#64748B";
-                      }
-                    }}
+                    onMouseEnter={(e) => { if (!active) { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#E2E8F0"; } }}
+                    onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94A3B8"; } }}
                   >
-                    <Icon
-                      className="w-5 h-5 flex-shrink-0"
-                      style={{ color: active ? ADMIN_ACCENT : "#64748B" }}
-                    />
+                    {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ background: ADMIN_ACCENT }} />}
+                    <Icon className="w-4.5 h-4.5 flex-shrink-0" style={{ color: active ? ADMIN_ACCENT : "#475569" }} />
                     <span className="flex-1 text-left">{item.label}</span>
-                    {item.indicator === "online" && (
-                      <div className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
-                    )}
+                    {item.indicator === "online" && <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />}
                     {item.badge && (
-                      <span
-                        className="px-2 py-0.5 rounded-full text-white"
-                        style={{ background: "#EF4444", fontSize: 11, fontWeight: 700 }}
-                      >
+                      <span className="px-1.5 py-0.5 rounded-full text-white" style={{ background: "#EF4444", fontSize: 10, fontWeight: 700 }}>
                         {item.badge}
                       </span>
                     )}
-                    <ChevronDown
-                      className="w-4 h-4 transition-transform duration-200"
-                      style={{
-                        transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-                        color: active ? "#94A3B8" : "#CBD5E1",
-                      }}
-                    />
+                    <ChevronDown className="w-3.5 h-3.5 transition-transform duration-200 flex-shrink-0"
+                      style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", color: "#475569" }} />
                   </button>
-                  <div
-                    className="overflow-hidden transition-all duration-300"
-                    style={{ maxHeight: expanded ? 300 : 0, opacity: expanded ? 1 : 0 }}
-                  >
-                    <div className="pl-8 pr-4 py-1 space-y-0.5">
+                  <div className="overflow-hidden transition-all duration-300"
+                    style={{ maxHeight: expanded ? 300 : 0, opacity: expanded ? 1 : 0 }}>
+                    <div className="pl-9 pr-3 py-1 space-y-0.5">
                       {item.submenu!.map((sub) => {
                         const subActive = isSubActive(sub.href);
                         return (
-                          <Link
-                            key={sub.href}
-                            to={sub.href}
-                            className="block px-4 py-2 rounded-lg transition-all duration-150"
+                          <Link key={sub.href} to={sub.href}
+                            className="block px-3 py-2 rounded-lg transition-all duration-150"
                             style={{
-                              background: subActive ? ADMIN_ACCENT_LIGHT : "transparent",
-                              color: subActive ? "#92400E" : "#64748B",
-                              fontSize: 13,
-                              fontWeight: subActive ? 600 : 500,
+                              background: subActive ? "rgba(245,158,11,0.15)" : "transparent",
+                              color: subActive ? "#FCD34D" : "#64748B",
+                              fontSize: 12.5,
+                              fontWeight: subActive ? 600 : 400,
                             }}
-                            onMouseEnter={(e) => {
-                              if (!subActive) {
-                                e.currentTarget.style.background = "#F8FAFC";
-                                e.currentTarget.style.color = ADMIN;
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (!subActive) {
-                                e.currentTarget.style.background = "transparent";
-                                e.currentTarget.style.color = "#64748B";
-                              }
-                            }}
+                            onMouseEnter={(e) => { if (!subActive) { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#CBD5E1"; } }}
+                            onMouseLeave={(e) => { if (!subActive) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#64748B"; } }}
                           >
                             {sub.label}
                           </Link>
@@ -335,39 +262,22 @@ export function AdminLayout() {
             }
 
             return (
-              <Link
-                key={item.label}
-                to={item.href!}
-                className="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200"
+              <Link key={item.label} to={item.href!}
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150 relative"
                 style={{
-                  background: active ? ADMIN_ACTIVE_BG : "transparent",
-                  color: active ? "#FFFFFF" : "#64748B",
-                  fontSize: 14,
-                  fontWeight: 500,
+                  background: active ? "rgba(245,158,11,0.12)" : "transparent",
+                  color: active ? "#FFFFFF" : "#94A3B8",
+                  fontSize: 13.5,
+                  fontWeight: active ? 600 : 500,
                 }}
-                onMouseEnter={(e) => {
-                  if (!active) {
-                    e.currentTarget.style.background = "#F1F5F9";
-                    e.currentTarget.style.color = ADMIN;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!active) {
-                    e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.color = "#64748B";
-                  }
-                }}
+                onMouseEnter={(e) => { if (!active) { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#E2E8F0"; } }}
+                onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94A3B8"; } }}
               >
-                <Icon
-                  className="w-5 h-5 flex-shrink-0"
-                  style={{ color: active ? ADMIN_ACCENT : "#64748B" }}
-                />
+                {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ background: ADMIN_ACCENT }} />}
+                <Icon className="w-4.5 h-4.5 flex-shrink-0" style={{ color: active ? ADMIN_ACCENT : "#475569" }} />
                 <span className="flex-1">{item.label}</span>
                 {item.badge && (
-                  <span
-                    className="px-2 py-0.5 rounded-full text-white"
-                    style={{ background: "#EF4444", fontSize: 11, fontWeight: 700 }}
-                  >
+                  <span className="px-1.5 py-0.5 rounded-full text-white" style={{ background: "#EF4444", fontSize: 10, fontWeight: 700 }}>
                     {item.badge}
                   </span>
                 )}
@@ -376,38 +286,117 @@ export function AdminLayout() {
           })}
         </nav>
 
-        {/* Bottom */}
-        <div
-          className="px-4 py-4 border-t"
-          style={{ borderColor: "#E2E8F0" }}
-        >
-          <div
-            className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3"
-            style={{ background: "#F0FDF4", border: "1px solid #BBF7D0" }}
-          >
-            <Database className="w-4 h-4" style={{ color: "#10B981" }} />
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 700, color: "#065F46" }}>
-                Server: Online
-              </p>
-              <p style={{ fontSize: 10, color: "#10B981" }}>Uptime 99.8% • 12ms</p>
+        {/* ── Bottom ── */}
+        <div className="relative z-10 px-4 py-4 flex-shrink-0"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          {/* Server status */}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3"
+            style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
+            <Database className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#10B981" }} />
+            <div className="flex-1 min-w-0">
+              <p style={{ fontSize: 11, fontWeight: 700, color: "#10B981" }}>Server: Online</p>
+              <p style={{ fontSize: 10, color: "#34D399" }}>Uptime 99.8% • 12ms</p>
             </div>
-            <Zap className="w-3.5 h-3.5 ml-auto" style={{ color: "#10B981" }} />
+            <Zap className="w-3 h-3 flex-shrink-0" style={{ color: "#10B981" }} />
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-2.5 rounded-xl w-full transition-all hover:bg-[#FEE2E2]"
-            style={{ fontSize: 14, fontWeight: 500, color: "#EF4444" }}
+          {/* Logout */}
+          <button onClick={handleLogout}
+            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl w-full transition-all duration-150"
+            style={{ fontSize: 13.5, fontWeight: 500, color: "#94A3B8" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.1)"; e.currentTarget.style.color = "#FCA5A5"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94A3B8"; }}
           >
-            <LogOut className="w-5 h-5" />
+            <LogOut className="w-4.5 h-4.5 flex-shrink-0" />
             <span>Đăng xuất</span>
           </button>
         </div>
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-y-auto">
-        <Outlet />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top bar */}
+        <header className="flex-shrink-0 flex items-center gap-4 px-6 bg-white"
+          style={{ height: 60, borderBottom: "1px solid #E2E8F0", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+
+          {/* Left: breadcrumb */}
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-1 h-5 rounded-full flex-shrink-0" style={{ background: "linear-gradient(180deg, #F59E0B, #D97706)" }} />
+            <span style={{ fontSize: 11, color: "#94A3B8" }}>Admin</span>
+            <ChevronRight className="h-3 w-3 flex-shrink-0" style={{ color: "#CBD5E1" }} />
+            <span className="font-semibold truncate" style={{ fontSize: 14, color: "#0F172A" }}>
+              {location.pathname === "/admin" || location.pathname === "/admin/dashboard" ? "Tổng quan" :
+               location.pathname.startsWith("/admin/teachers") ? "Giáo viên" :
+               location.pathname.startsWith("/admin/students") ? "Học viên" :
+               location.pathname.startsWith("/admin/courses") ? "Khóa học" :
+               location.pathname.startsWith("/admin/content") ? "Nội dung" :
+               location.pathname.startsWith("/admin/reports") ? "Báo cáo" :
+               location.pathname.startsWith("/admin/system") ? "Hệ thống" :
+               location.pathname.startsWith("/admin/notifications") ? "Thông báo" :
+               location.pathname.startsWith("/admin/settings") ? "Cài đặt" :
+               location.pathname.startsWith("/admin/profile") ? "Hồ sơ" : "Admin"}
+            </span>
+          </div>
+
+          {/* Center: search */}
+          <div className="flex-1 max-w-xs">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: "#94A3B8" }} />
+              <input
+                type="text"
+                placeholder="Tìm kiếm..."
+                className="w-full pl-9 pr-4 py-2 rounded-lg text-sm outline-none transition-all"
+                style={{
+                  background: "#F8FAFC",
+                  border: "1px solid #E2E8F0",
+                  fontSize: 13,
+                  color: "#334155",
+                }}
+                onFocus={(e) => { e.target.style.borderColor = "#F59E0B"; e.target.style.background = "#FFFBEB"; }}
+                onBlur={(e) => { e.target.style.borderColor = "#E2E8F0"; e.target.style.background = "#F8FAFC"; }}
+              />
+            </div>
+          </div>
+
+          {/* Right: actions + profile */}
+          <div className="flex items-center gap-2 ml-auto">
+            {/* System status */}
+            <div className="hidden sm:flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
+              style={{ background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
+              <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+              <span style={{ fontSize: 11, color: "#065F46", fontWeight: 600 }}>Hệ thống Online</span>
+            </div>
+
+            {/* Date */}
+            <span className="hidden md:block" style={{ fontSize: 12, color: "#94A3B8" }}>
+              {new Date().toLocaleDateString("vi-VN", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })}
+            </span>
+
+            <div className="h-5 w-px" style={{ background: "#E2E8F0" }} />
+
+            {/* Bell — notification dropdown */}
+            <NotificationDropdown />
+
+            <div className="h-5 w-px" style={{ background: "#E2E8F0" }} />
+
+            {/* Admin profile chip */}
+            <Link to="/admin/profile"
+              className="flex items-center gap-2 rounded-xl px-3 py-1.5 cursor-pointer transition-all no-underline"
+              style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#FFFBEB"; (e.currentTarget as HTMLAnchorElement).style.borderColor = "#FDE68A"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#F8FAFC"; (e.currentTarget as HTMLAnchorElement).style.borderColor = "#E2E8F0"; }}>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                style={{ background: avatarGradient }}>AD</div>
+              <div className="hidden sm:block">
+                <p style={{ fontSize: 12, fontWeight: 600, color: "#0F172A", lineHeight: 1.2 }}>Administrator</p>
+                <p style={{ fontSize: 10, color: "#F59E0B", fontWeight: 500 }}>Super Admin</p>
+              </div>
+              <ChevronDown className="h-3 w-3 flex-shrink-0" style={{ color: "#94A3B8" }} />
+            </Link>
+          </div>
+        </header>
+        <div className="flex-1 overflow-y-auto">
+          <Outlet />
+        </div>
       </div>
     </div>
   );

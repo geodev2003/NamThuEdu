@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   ArrowLeft, Search, Calendar, Clock, Users, School,
   CheckCircle2, AlertCircle, Send, BookOpen, ChevronRight,
@@ -77,6 +77,8 @@ function initials(name: string) {
 
 export function CreateAssignment() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const preselectedExamId = searchParams.get('exam_id');
 
   const [step, setStep] = useState(1);
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
@@ -102,7 +104,7 @@ export function CreateAssignment() {
       .then((res: any) => {
         const list = res?.data?.data ?? res?.data ?? [];
         const arr = Array.isArray(list) ? list : [];
-        setExams(arr.map((e: any) => ({
+        const mapped: Exam[] = arr.map((e: any) => ({
           id: String(e.eId ?? e.id),
           title: e.eTitle ?? e.title ?? "—",
           type: e.eType ?? e.type ?? "—",
@@ -111,11 +113,20 @@ export function CreateAssignment() {
           purpose: e.ePurpose ?? e.purpose,
           skill: e.eSkill ?? e.skill,
           ageGroup: e.age_group,
-        })));
+        }));
+        setExams(mapped);
+        // Auto-select exam if exam_id param present
+        if (preselectedExamId) {
+          const found = mapped.find(e => e.id === preselectedExamId);
+          if (found) {
+            setSelectedExam(found);
+            setStep(2);
+          }
+        }
       })
       .catch(() => setExams([]))
       .finally(() => setLoadingExams(false));
-  }, []);
+  }, [preselectedExamId]);
 
   useEffect(() => {
     setLoadingTargets(true);

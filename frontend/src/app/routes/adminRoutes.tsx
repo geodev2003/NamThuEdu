@@ -20,8 +20,8 @@ import { AdminServerHealthPage } from "../features/admin/system/AdminServerHealt
 import { AdminBackupPage } from "../features/admin/system/AdminBackupPage";
 import { AdminNotificationsPage } from "../features/admin/notifications/AdminNotificationsPage";
 import { AdminSettingsPage } from "../features/admin/settings/AdminSettingsPage";
+import { AdminProfilePage } from "../features/admin/profile/AdminProfilePage";
 import { Navigate } from "react-router";
-import { AdminTeacherCreatePage } from "../features/admin/teachers/AdminTeacherCreatePage";
 import { AdminTeacherAssignmentsPage } from "../features/admin/teachers/AdminTeacherAssignmentsPage";
 import { AdminStudentRegistrationsPage } from "../features/admin/students/AdminStudentRegistrationsPage";
 import { AdminStudentComplaintsPage } from "../features/admin/students/AdminStudentComplaintsPage";
@@ -35,7 +35,7 @@ export const adminRoutes = {
 
     // Giáo viên
     { path: "teachers", Component: AdminTeachersPage },
-    { path: "teachers/new", Component: AdminTeacherCreatePage },
+    { path: "teachers/new", Component: () => <Navigate to="/admin/teachers" replace /> },
     { path: "teachers/assignments", Component: AdminTeacherAssignmentsPage },
 
     // Học viên
@@ -65,6 +65,7 @@ export const adminRoutes = {
     // Thông báo & Cài đặt
     { path: "notifications", Component: AdminNotificationsPage },
     { path: "settings", Component: AdminSettingsPage },
+    { path: "profile", Component: AdminProfilePage },
 
     // Legacy redirects (old URLs)
     { path: "giao-vien", Component: () => <Navigate to="/admin/teachers" replace /> },

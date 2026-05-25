@@ -145,6 +145,48 @@
       "pending": "Chờ duyệt",
       "active": "Đã xuất bản",
       "inactive": "Từ chối"
+    },
+    "public": {
+      "types": {
+        "grammar": "Ngữ pháp",
+        "tips": "Mẹo học",
+        "vocabulary": "Từ vựng",
+        "teaching": "Giảng dạy",
+        "news": "Tin tức"
+      },
+      "list": {
+        "pageTabTitle": "Bài viết — NamThuEdu",
+        "seoTitle": "Bài viết & Kiến thức Tiếng Anh | NamThuEdu",
+        "seoDescription": "Tổng hợp bài viết học tiếng Anh, ngữ pháp, từ vựng, mẹo thi VSTEP và IELTS từ đội ngũ giáo viên NamThuEdu tại Cần Thơ.",
+        "pageTitle": "Bài viết & Kiến thức",
+        "totalPosts": "{{count}} bài viết",
+        "searchPlaceholder": "Tìm bài viết…",
+        "filterAll": "Tất cả",
+        "readMore": "Đọc tiếp",
+        "views": "lượt đọc",
+        "readTime": "phút đọc",
+        "readTimeShort": "phút",
+        "emptyTitle": "Chưa có bài viết nào",
+        "emptyDesc": "Các bài viết sẽ xuất hiện tại đây",
+        "emptySearch": "Không tìm thấy kết quả phù hợp",
+        "clearSearch": "Xóa tìm kiếm",
+        "ctaTitle": "Muốn học trực tiếp cùng giáo viên?",
+        "ctaDesc": "Đăng ký để được tư vấn lộ trình học phù hợp với mục tiêu của bạn",
+        "ctaButton": "Bắt đầu ngay"
+      },
+      "detail": {
+        "breadcrumbHome": "Trang chủ",
+        "breadcrumbPosts": "Bài viết",
+        "views": "lượt xem",
+        "notFound": "Không tìm thấy bài viết",
+        "backToList": "Quay lại danh sách",
+        "backLink": "Quay lại danh sách bài viết",
+        "relatedPosts": "Bài viết liên quan",
+        "seeAllPosts": "Xem tất cả bài viết",
+        "ctaTitle": "Học tiếng Anh\ncùng giáo viên?",
+        "ctaDesc": "Lộ trình cá nhân hóa theo trình độ và mục tiêu của bạn",
+        "ctaButton": "Bắt đầu ngay"
+      }
     }
   }
 }
