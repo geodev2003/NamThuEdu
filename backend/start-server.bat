@@ -1,0 +1,3 @@
+@echo off
+echo Starting Laravel Backend on Port 3000...
+php artisan serve --port=3000

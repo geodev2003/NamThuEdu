@@ -145,6 +145,48 @@
       "pending": "Pending",
       "active": "Published",
       "inactive": "Rejected"
+    },
+    "public": {
+      "types": {
+        "grammar": "Grammar",
+        "tips": "Study Tips",
+        "vocabulary": "Vocabulary",
+        "teaching": "Teaching",
+        "news": "News"
+      },
+      "list": {
+        "pageTabTitle": "Articles — NamThuEdu",
+        "seoTitle": "Articles & English Knowledge | NamThuEdu",
+        "seoDescription": "English learning articles on grammar, vocabulary, VSTEP and IELTS tips from NamThuEdu teachers in Can Tho.",
+        "pageTitle": "Articles & Knowledge",
+        "totalPosts": "{{count}} articles",
+        "searchPlaceholder": "Search articles\u2026",
+        "filterAll": "All",
+        "readMore": "Read more",
+        "views": "views",
+        "readTime": "min read",
+        "readTimeShort": "min",
+        "emptyTitle": "No articles yet",
+        "emptyDesc": "Articles will appear here",
+        "emptySearch": "No matching results found",
+        "clearSearch": "Clear search",
+        "ctaTitle": "Want to learn with a teacher?",
+        "ctaDesc": "Register to get a personalized learning roadmap tailored to your goals",
+        "ctaButton": "Get started"
+      },
+      "detail": {
+        "breadcrumbHome": "Home",
+        "breadcrumbPosts": "Articles",
+        "views": "views",
+        "notFound": "Article not found",
+        "backToList": "Back to list",
+        "backLink": "Back to article list",
+        "relatedPosts": "Related articles",
+        "seeAllPosts": "See all articles",
+        "ctaTitle": "Learn English\nwith a teacher?",
+        "ctaDesc": "Personalized roadmap based on your level and goals",
+        "ctaButton": "Get started"
+      }
     }
   }
 }

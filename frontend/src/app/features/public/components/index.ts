@@ -10,3 +10,4 @@ export { DemoFlashcard } from './DemoFlashcard';
 export { Footer } from './Footer';
 export { ParticlesBackground } from './ParticlesBackground';
 export { ParticlesBackgroundWhite } from './ParticlesBackgroundWhite';
+export { CourseTypesSection } from './CourseTypesSection';

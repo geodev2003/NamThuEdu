@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
 import { Header } from "../../../components/shared/Header";
@@ -32,8 +32,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Scissors,
+  FileText,
 } from "lucide-react";
 import { PdfCutterTab } from "./PdfCutterTab";
+import { LegalContentTab } from "./LegalContentTab";
 
 export function Settings() {
   usePageTitle(PAGE_TITLES.TEACHER_SETTINGS);
@@ -89,6 +91,7 @@ export function Settings() {
     { id: "appearance",    label: "Giao diện",    icon: Palette },
     { id: "language",      label: "Ngôn ngữ",    icon: Globe },
     { id: "pdf-tools",     label: "Cắt trang PDF", icon: Scissors },
+    { id: "legal",         label: "Nội dung pháp lý", icon: FileText },
   ];
 
   const handleTabChange = (tabId: string) => {
@@ -219,6 +222,7 @@ export function Settings() {
               {activeTab === "appearance" && <AppearanceTab onSave={handleSave} />}
               {activeTab === "language" && <LanguageTab currentLang={i18n.language} onSave={handleSave} />}
               {activeTab === "pdf-tools" && <PdfCutterTab />}
+              {activeTab === "legal" && <LegalContentTab toast={toast} />}
             </div>
           </div>
         </div>
@@ -235,6 +239,9 @@ function ProfileTab({ userName, userEmail, userProfile, onSave, loading, toast }
     address: userProfile?.address || '',
     bio: userProfile?.bio || '',
   });
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (userProfile) {
@@ -245,8 +252,94 @@ function ProfileTab({ userName, userEmail, userProfile, onSave, loading, toast }
         address: userProfile.address || '',
         bio: userProfile.bio || '',
       });
+      if (userProfile.avatar) {
+        setAvatarPreview(userProfile.avatar);
+      }
     }
   }, [userProfile, userName, userEmail]);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Vui lòng chọn file ảnh');
+      return;
+    }
+
+    // Validate file size (max 20MB)
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Kích thước ảnh không được vượt quá 20MB');
+      return;
+    }
+
+    // Preview image
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to server
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('avatar', file);
+      
+      const response = await teacherApi.user.uploadAvatar(formData);
+      
+      // Get avatar URL from response
+      const avatarUrl = response.data?.avatar_url || response.avatar_url;
+      
+      // Update localStorage with new avatar URL
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        user.avatar_url = avatarUrl;
+        user.avatar = avatarUrl;
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+      
+      // Update preview
+      setAvatarPreview(avatarUrl);
+      
+      // Dispatch custom event to notify Sidebar
+      window.dispatchEvent(new Event('avatarUpdated'));
+      
+      toast.success('Đã tải ảnh lên thành công!');
+    } catch (error) {
+      console.error('Failed to upload avatar:', error);
+      toast.error('Không thể tải ảnh lên');
+      setAvatarPreview(null);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    try {
+      await teacherApi.user.removeAvatar();
+      setAvatarPreview(null);
+      
+      // Update localStorage
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        user.avatar_url = null;
+        user.avatar = null;
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+      
+      // Dispatch custom event to notify Sidebar
+      window.dispatchEvent(new Event('avatarUpdated'));
+      
+      toast.success('Đã xóa ảnh đại diện!');
+    } catch (error) {
+      console.error('Failed to remove avatar:', error);
+      toast.error('Không thể xóa ảnh đại diện');
+    }
+  };
 
   const handleSubmit = async () => {
     try {
@@ -278,18 +371,41 @@ function ProfileTab({ userName, userEmail, userProfile, onSave, loading, toast }
         </h3>
         <div className="flex items-center gap-6">
           <div className="relative">
-            <div
-              className="w-24 h-24 rounded-full flex items-center justify-center text-white"
-              style={{
-                background: "linear-gradient(135deg, #EA580C 0%, #C2410C 100%)",
-                fontSize: "32px",
-                fontWeight: 700,
-              }}
+            {avatarPreview ? (
+              <img
+                src={avatarPreview}
+                alt="Avatar"
+                className="w-24 h-24 rounded-full object-cover border-2 border-[#E5E7EB]"
+              />
+            ) : (
+              <div
+                className="w-24 h-24 rounded-full flex items-center justify-center text-white"
+                style={{
+                  background: "linear-gradient(135deg, #EA580C 0%, #C2410C 100%)",
+                  fontSize: "32px",
+                  fontWeight: 700,
+                }}
+              >
+                NT
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarChange}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="absolute bottom-0 right-0 w-8 h-8 bg-[#EA580C] rounded-full flex items-center justify-center text-white hover:bg-[#C2410C] transition-colors border-2 border-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              NT
-            </div>
-            <button className="absolute bottom-0 right-0 w-8 h-8 bg-[#EA580C] rounded-full flex items-center justify-center text-white hover:bg-[#C2410C] transition-colors border-2 border-white">
-              <Camera className="w-4 h-4" />
+              {uploading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Camera className="w-4 h-4" />
+              )}
             </button>
           </div>
           <div>
@@ -303,15 +419,28 @@ function ProfileTab({ userName, userEmail, userProfile, onSave, loading, toast }
               Giáo viên
             </p>
             <div className="flex gap-3">
-              <button className="h-9 px-4 bg-[#EA580C] text-white rounded-lg hover:bg-[#C2410C] transition-colors">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="h-9 px-4 bg-[#EA580C] text-white rounded-lg hover:bg-[#C2410C] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <span style={{ fontSize: "14px", fontWeight: 500 }}>
-                  Tải ảnh lên
+                  {uploading ? 'Đang tải...' : 'Tải ảnh lên'}
                 </span>
               </button>
-              <button className="h-9 px-4 bg-[#F3F4F6] text-[#6B7280] rounded-lg hover:bg-[#E5E7EB] transition-colors">
-                <span style={{ fontSize: "14px", fontWeight: 500 }}>Xóa</span>
-              </button>
+              {avatarPreview && (
+                <button
+                  onClick={handleRemoveAvatar}
+                  disabled={uploading}
+                  className="h-9 px-4 bg-[#F3F4F6] text-[#6B7280] rounded-lg hover:bg-[#E5E7EB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span style={{ fontSize: "14px", fontWeight: 500 }}>Xóa</span>
+                </button>
+              )}
             </div>
+            <p className="text-[#9CA3AF] mt-2" style={{ fontSize: "12px" }}>
+              JPG, PNG hoặc GIF. Tối đa 20MB.
+            </p>
           </div>
         </div>
       </div>

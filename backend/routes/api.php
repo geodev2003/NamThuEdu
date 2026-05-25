@@ -12,6 +12,7 @@ use App\Http\Controllers\ExamController;
 use App\Http\Controllers\ExamTemplateController;
 use App\Http\Controllers\TestAssignmentController;
 use App\Http\Controllers\GradingController;
+use App\Http\Controllers\TeacherReportController;
 use App\Http\Controllers\StudentTestController;
 use App\Http\Controllers\TestController;
 use App\Http\Controllers\SystemReportController;
@@ -86,6 +87,9 @@ Route::get('/health', function () {
 
 // Public categories (không cần auth)
 Route::get('/categories', [CategoryController::class, 'index']);
+
+// Public legal content (không cần auth)
+Route::get('/legal-content', [AdminSystemController::class, 'getLegalContent']);
 Route::get('/public/courses', [CourseController::class, 'publicCourses']);
 
 // Public blog endpoints (no auth required)
@@ -126,7 +130,10 @@ Route::middleware('auth:sanctum')->group(function () {
     
     /* ======== AGE GROUP & THEME ROUTES ========= */
     Route::prefix('user')->group(function () {
-        Route::get('/profile', [AuthController::class, 'profile']);
+        Route::get('/profile', [UserController::class, 'getProfile']);
+        Route::put('/profile', [UserController::class, 'updateProfile']);
+        Route::post('/avatar', [UserController::class, 'uploadAvatar']);
+        Route::delete('/avatar', [UserController::class, 'removeAvatar']);
         Route::get('/age-group', [AgeGroupController::class, 'getAgeGroup']);
         Route::post('/age-group', [AgeGroupController::class, 'updateAgeGroup']);
         Route::get('/theme-preference', [AgeGroupController::class, 'getThemePreference']);
@@ -167,6 +174,7 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // Blog Management
         Route::get('/blogs', [BlogController::class, 'index']);
+        Route::get('/blogs/statistics', [BlogController::class, 'statistics']); // Must be before {id}
         Route::post('/blogs', [BlogController::class, 'store']);
         Route::get('/blogs/{id}', [BlogController::class, 'show']);
         Route::put('/blogs/{id}', [BlogController::class, 'update']);
@@ -328,6 +336,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/submissions/{id}/detailed-grade', [GradingController::class, 'detailedGrade']);
         Route::get('/classes/{classId}/report', [GradingController::class, 'classReport']);
         Route::get('/grading/statistics', [GradingController::class, 'gradingStatistics']);
+
+        // Teacher Reports
+        Route::get('/reports/overview', [TeacherReportController::class, 'overview']);
+        Route::get('/reports/student-progress', [TeacherReportController::class, 'studentProgress']);
+        Route::get('/students/progress', [TeacherReportController::class, 'studentsProgress']); // NEW: All students progress
         
         // Real-time Dashboard & Monitoring
         Route::get('/dashboard/overview', [App\Http\Controllers\TeacherDashboardController::class, 'getDashboardOverview']);
@@ -536,6 +549,15 @@ Route::middleware('auth:sanctum')->group(function () {
         // Statistics
         Route::get('/content/statistics', [BlogController::class, 'contentStatistics']);
         Route::get('/templates/statistics', [ExamTemplateController::class, 'templateStatistics']);
+        // Admin Profile
+        Route::prefix('profile')->group(function () {
+            Route::get('/',          [AdminSystemController::class, 'getProfile']);
+            Route::put('/',          [AdminSystemController::class, 'updateProfile']);
+            Route::get('/sessions',  [AdminSystemController::class, 'getSessions']);
+            Route::delete('/sessions/{id}', [AdminSystemController::class, 'revokeSession']);
+            Route::delete('/sessions',      [AdminSystemController::class, 'revokeAllSessions']);
+        });
+
         // System Settings & Notifications
         Route::prefix('system')->group(function () {
             Route::get('/settings', [AdminSystemController::class, 'getSettings']);

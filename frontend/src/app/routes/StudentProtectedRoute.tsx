@@ -1,5 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
+import { getAuthToken, getAuthUser, clearAuthData } from '../../utils/authStorage';
 
 interface StudentProtectedRouteProps {
   ageGroup: 'kids' | 'teens' | 'adults';
@@ -10,30 +11,28 @@ export const StudentProtectedRoute: React.FC<StudentProtectedRouteProps> = ({
   ageGroup, 
   children 
 }) => {
-  const userStr = localStorage.getItem('user');
-  const token = localStorage.getItem('auth_token');
-  
+  const token = getAuthToken();
+  const user = getAuthUser();
+
   // Not logged in
-  if (!token || !userStr) {
+  if (!token || !user) {
     return <Navigate to="/dang-nhap" replace />;
   }
   
   try {
-    const user = JSON.parse(userStr);
     
     // Not a student
-    if (user.role !== 'student') {
+    if ((user.role as string) !== 'student') {
       return <Navigate to="/" replace />;
     }
     
     // No class assigned yet
-    if (!user.class_id) {
+    if (!user.class_id as unknown) {
       return <Navigate to="/hoc-vien/cho-xep-lop" replace />;
     }
     
     // Wrong age group - redirect to correct dashboard
-    // Fallback to 'teens' nếu age_group thiếu (data cũ)
-    const userAgeGroup = user.age_group || 'teens';
+    const userAgeGroup = (user.age_group as string) || 'teens';
     if (userAgeGroup !== ageGroup) {
       return <Navigate to={`/hoc-vien/${userAgeGroup}`} replace />;
     }
@@ -43,8 +42,7 @@ export const StudentProtectedRoute: React.FC<StudentProtectedRouteProps> = ({
     
   } catch (error) {
     // Invalid user data
-    localStorage.removeItem('user');
-    localStorage.removeItem('auth_token');
+    clearAuthData();
     return <Navigate to="/dang-nhap" replace />;
   }
 };

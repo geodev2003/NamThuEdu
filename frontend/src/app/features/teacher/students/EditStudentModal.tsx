@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getAuthToken } from '../../../../utils/authStorage';
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { X, Upload, User, Key, Copy, Eye, EyeOff, Clock, CheckCircle2, RefreshCw } from "lucide-react";
@@ -193,7 +194,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
   const handleViewPassword = async () => {
     setLoadingPassword(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       
       const response = await fetch(getApiUrl(`teacher/student/${student.id}/view-password`), {
         method: 'GET',
@@ -262,7 +263,7 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       
       if (!token) {
         toast.error(t('teacher.students.editStudent.toast.loginRequired'));

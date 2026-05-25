@@ -9,6 +9,7 @@ import viAuth from "./locales/vi/auth.json";
 import viBlog from "./locales/vi/blog.json";
 import viLanding from "./locales/vi/landing.json";
 import viVstep from "./locales/vi/vstep.json";
+import viAdmin from "./locales/vi/admin.json";
 
 // ── English ────────────────────────────────────────────────────────────────
 import enCommon from "./locales/en/common.json";
@@ -18,6 +19,7 @@ import enAuth from "./locales/en/auth.json";
 import enBlog from "./locales/en/blog.json";
 import enLanding from "./locales/en/landing.json";
 import enVstep from "./locales/en/vstep.json";
+import enAdmin from "./locales/en/admin.json";
 
 i18n
   .use(initReactI18next)
@@ -32,6 +34,7 @@ i18n
           ...viBlog,
           ...viLanding,
           ...viVstep,
+          ...viAdmin,
         },
       },
       en: {
@@ -43,6 +46,7 @@ i18n
           ...enBlog,
           ...enLanding,
           ...enVstep,
+          ...enAdmin,
         },
       },
     },

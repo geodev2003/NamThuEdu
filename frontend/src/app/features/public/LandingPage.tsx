@@ -10,6 +10,7 @@ import {
   StatsSection,
   TestimonialsSection,
   ParticlesBackground,
+  CourseTypesSection,
 } from "./components";
 import {
   ArrowRight,
@@ -79,10 +80,56 @@ export function LandingPage() {
                 </div>
 
                 {/* Headline */}
-                <h1 className="text-4xl font-extrabold leading-tight text-slate-900 lg:text-5xl xl:text-6xl">
+                <h1 className="text-4xl font-extrabold leading-tight text-slate-900 lg:text-5xl xl:text-6xl" style={{ fontFamily: "'Playpen Sans', 'Baloo 2', cursive" }}>
                   {t('landing.guest.hero.headline')}{" "}
-                  <span className="bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
+                  <span className="relative inline-block" style={{ color: "rgba(15,23,42,0.18)" }}>
                     {t('landing.guest.hero.headlineHighlight')}
+                    {/* Orange text reveal overlay — clips left→right in sync with underline */}
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-0 bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent whitespace-nowrap"
+                      style={{
+                        animation: "textRevealLoop 3.2s cubic-bezier(0.4,0,0.2,1) 0.3s infinite",
+                      }}
+                    >
+                      {t('landing.guest.hero.headlineHighlight')}
+                    </span>
+                    {/* Underline SVG */}
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 220 10"
+                      className="absolute -bottom-1 left-0 w-full"
+                      preserveAspectRatio="none"
+                    >
+                      <path
+                        d="M3 7 C45 2, 95 8, 140 5 C170 3, 195 7, 217 4"
+                        stroke="#F97316"
+                        strokeWidth="2.5"
+                        fill="none"
+                        strokeLinecap="round"
+                        style={{
+                          strokeDasharray: 300,
+                          strokeDashoffset: 300,
+                          animation: "drawUnderlineLoop 3.2s cubic-bezier(0.4,0,0.2,1) 0.3s infinite",
+                        }}
+                      />
+                    </svg>
+                    <style>{`
+                      @keyframes drawUnderlineLoop {
+                        0%   { stroke-dashoffset: 300; opacity: 0.8; }
+                        40%  { stroke-dashoffset: 0;   opacity: 0.8; }
+                        70%  { stroke-dashoffset: 0;   opacity: 0.8; }
+                        88%  { stroke-dashoffset: 0;   opacity: 0; }
+                        100% { stroke-dashoffset: 300; opacity: 0; }
+                      }
+                      @keyframes textRevealLoop {
+                        0%   { clip-path: inset(0 100% 0 0); opacity: 1; }
+                        40%  { clip-path: inset(0 0% 0 0);   opacity: 1; }
+                        70%  { clip-path: inset(0 0% 0 0);   opacity: 1; }
+                        88%  { clip-path: inset(0 0% 0 0);   opacity: 0; }
+                        100% { clip-path: inset(0 100% 0 0); opacity: 0; }
+                      }
+                    `}</style>
                   </span>
                   <br />
                   {t('landing.guest.hero.headlineLine2')}
@@ -97,16 +144,22 @@ export function LandingPage() {
                 <div className="flex flex-col gap-4 sm:flex-row">
                   <button
                     onClick={() => navigate("/dang-nhap")}
-                    className="cursor-pointer flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-8 py-4 text-base font-bold text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:from-orange-600 hover:to-amber-600 hover:shadow-xl"
+                    className="cursor-pointer relative overflow-hidden group flex items-center justify-center gap-2 rounded-xl border-2 border-orange-500 bg-gradient-to-r from-orange-500 to-amber-500 px-8 py-4 text-base font-bold text-white shadow-lg transition-all duration-200 hover:shadow-xl"
                   >
-                    {t('landing.guest.hero.ctaStart')}
-                    <ArrowRight className="h-5 w-5" />
+                    <span className="absolute inset-0 bg-white -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-in-out" />
+                    <span className="relative z-10 flex items-center gap-2 group-hover:text-orange-600 transition-colors duration-300">
+                      {t('landing.guest.hero.ctaStart')}
+                      <ArrowRight className="h-5 w-5" />
+                    </span>
                   </button>
                   <a
                     href="#tests"
-                    className="cursor-pointer flex items-center justify-center gap-2 rounded-xl border-2 border-orange-200 bg-white px-8 py-4 text-base font-bold text-orange-600 shadow-sm transition-all duration-200 hover:border-orange-300 hover:bg-orange-50"
+                    className="cursor-pointer relative overflow-hidden group flex items-center justify-center gap-2 rounded-xl border-2 border-orange-400 bg-white px-8 py-4 text-base font-bold text-orange-600 shadow-sm transition-all duration-200"
                   >
-                    {t('landing.guest.hero.ctaTests')}
+                    <span className="absolute inset-0 bg-gradient-to-r from-orange-500 to-amber-500 -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-in-out" />
+                    <span className="relative z-10 group-hover:text-white transition-colors duration-300">
+                      {t('landing.guest.hero.ctaTests')}
+                    </span>
                   </a>
                 </div>
 
@@ -117,7 +170,7 @@ export function LandingPage() {
 
                   {(['p1', 'p2', 'p3'] as const).map((key, idx) => (
                     <React.Fragment key={key}>
-                      <span className="px-3 text-xs font-semibold tracking-widest text-amber-800 uppercase">
+                      <span className="px-3 text-xs font-semibold tracking-widest text-amber-800 uppercase" style={{ fontFamily: "'Montserrat', sans-serif" }}>
                         {t(`landing.guest.hero.slogan.${key}`)}
                       </span>
                       {idx < 2 && (
@@ -172,15 +225,16 @@ export function LandingPage() {
                       </div>
                     ))}
 
-                    {/* Latest score */}
-                    <div className="mt-3 flex items-center justify-between rounded-xl border border-orange-100 bg-orange-50 p-3">
-                      <div>
-                        <p className="text-xs text-slate-500">{t('landing.guest.previewCard.recentScore')}</p>
-                        <p className="text-xl font-bold text-slate-800">8.5 / 10</p>
+                    {/* Motivational streak banner */}
+                    <div className="mt-3 flex items-center gap-3 rounded-xl border border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 p-3">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-amber-500 text-lg shadow-sm">
+                        🔥
                       </div>
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-amber-500">
-                        <Award className="h-6 w-6 text-white" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-orange-600">Luyện tập mỗi ngày</p>
+                        <p className="truncate text-xs text-slate-500">Tiến bộ rõ rệt sau mỗi buổi học</p>
                       </div>
+                      <TrendingUp className="h-4 w-4 flex-shrink-0 text-orange-400" />
                     </div>
                   </div>
 
@@ -188,29 +242,29 @@ export function LandingPage() {
                   <div className="space-y-2 px-5 pb-5">
                     <button
                       onClick={() => navigate("/dang-nhap")}
-                      className="cursor-pointer flex w-full items-center gap-3 rounded-xl border-2 border-blue-100 bg-blue-50 p-3 text-left transition-all duration-200 hover:border-blue-200 hover:bg-blue-100"
+                      className="group cursor-pointer flex w-full items-center gap-3 rounded-xl border-2 border-blue-100 bg-blue-50 p-3 text-left transition-all duration-200 hover:border-blue-300 hover:bg-blue-100 hover:scale-[1.02] hover:shadow-md active:scale-[0.98]"
                     >
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500">
+                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 transition-transform duration-200 group-hover:scale-110">
                         <Users className="h-4 w-4 text-white" />
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 transition-transform duration-200 group-hover:translate-x-0.5">
                         <p className="text-sm font-bold text-blue-700">{t('landing.guest.previewCard.studentTitle')}</p>
                         <p className="text-xs text-slate-500">{t('landing.guest.previewCard.studentDesc')}</p>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-blue-400" />
+                      <ChevronRight className="h-4 w-4 text-blue-400 transition-transform duration-200 group-hover:translate-x-1" />
                     </button>
                     <button
                       onClick={() => navigate("/giao-vien/dang-nhap")}
-                      className="cursor-pointer flex w-full items-center gap-3 rounded-xl border-2 border-purple-100 bg-purple-50 p-3 text-left transition-all duration-200 hover:border-purple-200 hover:bg-purple-100"
+                      className="group cursor-pointer flex w-full items-center gap-3 rounded-xl border-2 border-purple-100 bg-purple-50 p-3 text-left transition-all duration-200 hover:border-purple-300 hover:bg-purple-100 hover:scale-[1.02] hover:shadow-md active:scale-[0.98]"
                     >
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 transition-transform duration-200 group-hover:scale-110">
                         <GraduationCap className="h-4 w-4 text-white" />
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 transition-transform duration-200 group-hover:translate-x-0.5">
                         <p className="text-sm font-bold text-purple-700">{t('landing.guest.previewCard.teacherTitle')}</p>
                         <p className="text-xs text-slate-500">{t('landing.guest.previewCard.teacherDesc')}</p>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-purple-400" />
+                      <ChevronRight className="h-4 w-4 text-purple-400 transition-transform duration-200 group-hover:translate-x-1" />
                     </button>
                   </div>
                 </div>
@@ -233,6 +287,9 @@ export function LandingPage() {
 
         {/* ── STATS ────────────────────────────────────────────────────────── */}
         <StatsSection />
+
+        {/* ── COURSES ──────────────────────────────────────────────────────── */}
+        <CourseTypesSection />
 
         {/* ── TESTS ────────────────────────────────────────────────────────── */}
         <section id="tests" className="bg-gray-50 px-4 py-16">
@@ -343,17 +400,23 @@ export function LandingPage() {
             <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <button
                 onClick={() => navigate("/dang-nhap")}
-                className="cursor-pointer flex items-center gap-2 rounded-xl bg-orange-500 px-7 py-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-orange-600 hover:shadow-lg hover:shadow-orange-900/30"
+                className="cursor-pointer relative overflow-hidden group flex items-center gap-2 rounded-xl border-2 border-orange-500 bg-orange-500 px-7 py-3 text-sm font-semibold text-white transition-all duration-200 hover:shadow-lg hover:shadow-orange-900/30"
               >
-                {t('landing.guest.ctaBanner.cta')}
-                <ArrowRight className="h-4 w-4" />
+                <span className="absolute inset-0 bg-white -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-in-out" />
+                <span className="relative z-10 flex items-center gap-2 group-hover:text-orange-600 transition-colors duration-300">
+                  {t('landing.guest.ctaBanner.cta')}
+                  <ArrowRight className="h-4 w-4" />
+                </span>
               </button>
               <a
                 href="tel:0776818160"
-                className="cursor-pointer flex items-center gap-2 rounded-xl border border-gray-700 px-7 py-3 text-sm font-medium text-gray-300 transition-all duration-200 hover:border-gray-500 hover:text-white"
+                className="cursor-pointer relative overflow-hidden group flex items-center gap-2 rounded-xl border border-gray-600 bg-transparent px-7 py-3 text-sm font-medium text-gray-300 transition-all duration-200"
               >
-                <Phone className="h-4 w-4" />
-                {t('landing.guest.ctaBanner.ctaContact')}
+                <span className="absolute inset-0 bg-gradient-to-r from-orange-500 to-amber-500 -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-in-out" />
+                <span className="relative z-10 flex items-center gap-2 group-hover:text-white transition-colors duration-300">
+                  <Phone className="h-4 w-4" />
+                  {t('landing.guest.ctaBanner.ctaContact')}
+                </span>
               </a>
             </div>
           </div>

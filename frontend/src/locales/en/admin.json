@@ -1,0 +1,44 @@
+{
+  "admin": {
+    "dashboard": {
+      "loading": "Loading dashboard...",
+      "loadError": "Failed to load admin dashboard.",
+      "greetMorning": "Good morning",
+      "greetAfternoon": "Good afternoon",
+      "greetEvening": "Good evening",
+      "greetSuffix": ", Admin 👋",
+      "title": "Admin Console",
+      "subtitle": "NamThu Education system overview",
+      "systemOnline": "System Online",
+      "cards": {
+        "teachers": "Total teachers",
+        "teachersSub": "{{count}} active",
+        "students": "Total students",
+        "studentsSub": "{{count}} new this week",
+        "courses": "Active courses",
+        "coursesSub": "{{count}} enrollments",
+        "submissions": "Submissions today",
+        "submissionsSub": "Exams: {{count}}"
+      },
+      "trendsTitle": "Activity trends",
+      "contentTypeTitle": "Content types",
+      "recentActivity": "Recent activity",
+      "viewLogs": "View logs",
+      "realtime": "Realtime",
+      "activity": {
+        "submissions": "{{count}} new submissions today",
+        "posts": "{{count}} new posts",
+        "enrollments": "{{count}} new enrollments",
+        "pendingPosts": "{{count}} posts pending review"
+      },
+      "alertsTitle": "Action required",
+      "alerts": {
+        "posts": "{{count}} posts pending review",
+        "exams": "{{count}} exams pending review",
+        "lockedUsers": "{{count}} accounts locked",
+        "completionRate": "Assignment completion rate {{rate}}%"
+      },
+      "serverHealth": "Server Health"
+    }
+  }
+}

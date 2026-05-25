@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getAuthToken } from '../../../../utils/authStorage';
 import { Link, useNavigate, useParams } from "react-router";
 import { TemplateGuide } from "./TemplateGuide";
 import { useSidebar } from "../../../../contexts/SidebarContext";
@@ -716,12 +717,12 @@ export function CreateExam() {
   const getSkillColors = (skill: string) => {
     const colors = {
       listening: {
-        bg: 'bg-blue-50',
-        border: 'border-blue-500',
-        text: 'text-blue-700',
-        icon: 'bg-blue-100',
-        hover: 'hover:bg-blue-100',
-        active: 'bg-blue-100 border-blue-500'
+        bg: 'bg-indigo-50',
+        border: 'border-indigo-500',
+        text: 'text-indigo-700',
+        icon: 'bg-indigo-100',
+        hover: 'hover:bg-indigo-100',
+        active: 'bg-indigo-100 border-indigo-500'
       },
       reading: {
         bg: 'bg-emerald-50',
@@ -837,7 +838,7 @@ export function CreateExam() {
         }))
       });
       
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const endpoint = token ? '/teacher/upload/audio' : '/test/upload/audio';
       console.log('📡 Endpoint:', endpoint, '🔑 Has token:', !!token);
 
@@ -1196,7 +1197,7 @@ export function CreateExam() {
     
     // Skill-based colors (soft palette)
     const questionColors = {
-      listening: { bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-500', text: 'text-blue-700', ring: 'focus:ring-blue-500 focus:border-blue-500' },
+      listening: { bg: 'bg-indigo-50', border: 'border-indigo-200', badge: 'bg-indigo-500', text: 'text-indigo-700', ring: 'focus:ring-indigo-500 focus:border-indigo-500' },
       reading: { bg: 'bg-emerald-50', border: 'border-emerald-200', badge: 'bg-emerald-500', text: 'text-emerald-700', ring: 'focus:ring-emerald-500 focus:border-emerald-500' },
       writing: { bg: 'bg-amber-50', border: 'border-amber-200', badge: 'bg-amber-500', text: 'text-amber-700', ring: 'focus:ring-amber-500 focus:border-amber-500' },
       speaking: { bg: 'bg-purple-50', border: 'border-purple-200', badge: 'bg-purple-500', text: 'text-purple-700', ring: 'focus:ring-purple-500 focus:border-purple-500' },
@@ -1258,15 +1259,15 @@ export function CreateExam() {
 
           {/* Listening: Transcript only (audio is at Part level) */}
           {question.skill === "listening" && (
-            <div className="space-y-4 bg-blue-50/50 rounded-xl p-6 border border-blue-100">
-              <div className="bg-blue-100 border border-blue-300 rounded-lg p-4 mb-4">
+            <div className="space-y-4 bg-indigo-50/50 rounded-xl p-6 border border-indigo-100">
+              <div className="bg-indigo-100 border border-indigo-300 rounded-lg p-4 mb-4">
                 <div className="flex items-start gap-3">
-                  <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <Info className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-semibold text-blue-900 mb-1">
+                    <p className="text-sm font-semibold text-indigo-900 mb-1">
                       🎧 Audio được upload ở cấp độ Part
                     </p>
-                    <p className="text-xs text-blue-700">
+                    <p className="text-xs text-indigo-700">
                       Tất cả câu hỏi trong Part {question.part} sẽ sử dụng chung 1 file audio. 
                       Vui lòng upload audio ở phần trên cùng của Part.
                     </p>
@@ -1433,12 +1434,12 @@ Your response will be evaluated in terms of Task Fulfillment, Organization, Voca
                 />
                 <div className="mt-2 space-y-3">
                   {/* Guide box */}
-                  <div className="flex items-start gap-2 text-xs text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-2 text-xs text-gray-600 bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                    <Info className="w-4 h-4 text-indigo-600 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
-                      <p className="font-semibold text-blue-900 mb-2">💡 Hướng dẫn format đề bài:</p>
-                      <div className="space-y-2 text-blue-800">
-                        <div className="bg-white rounded p-2 border border-blue-200">
+                      <p className="font-semibold text-indigo-900 mb-2">💡 Hướng dẫn format đề bài:</p>
+                      <div className="space-y-2 text-indigo-800">
+                        <div className="bg-white rounded p-2 border border-indigo-200">
                           <p className="font-semibold mb-1">Cách format text:</p>
                           <ul className="space-y-1 text-xs">
                             <li>• <span className="font-mono bg-gray-100 px-1">**text**</span> → <strong>in đậm</strong></li>
@@ -1946,7 +1947,7 @@ Your response will be evaluated in terms of Task Fulfillment, Organization, Voca
                 disabled={!canProceedStep1}
                 className={`px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-all ${
                   canProceedStep1
-                    ? "bg-blue-600 text-white hover:bg-blue-700 shadow-md"
+                    ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-500/25"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }`}
               >
@@ -1971,7 +1972,7 @@ Your response will be evaluated in terms of Task Fulfillment, Organization, Voca
                 </div>
                 <button
                   onClick={() => setIsAddingQuestion(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all flex items-center gap-2 font-medium"
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all flex items-center gap-2 font-medium"
                 >
                   <Plus className="w-4 h-4" />
                   Thêm câu hỏi

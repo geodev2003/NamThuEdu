@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getAuthToken } from '../../../../utils/authStorage';
 import { UserPlus, Baby, Users, GraduationCap, X } from 'lucide-react';
 
 interface CreateStudentProps {
@@ -67,7 +68,7 @@ export function CreateStudent({ onClose, onSuccess }: CreateStudentProps) {
     setIsLoading(true);
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`${import.meta.env.VITE_API_URL}/teacher/student`, {
         method: 'POST',
         headers: {

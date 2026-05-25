@@ -71,9 +71,7 @@ import { Categories } from "../features/teacher/blog/Categories";
 
 // Reports
 import { ReportsOverview } from "../features/teacher/reports/ReportsOverview";
-import { StudentProgress } from "../features/teacher/reports/StudentProgress";
 import { ResultsAnalysis } from "../features/teacher/reports/ResultsAnalysis";
-import { ExportReports } from "../features/teacher/reports/ExportReports";
 
 // Protected Teacher Layout
 function ProtectedTeacherLayout() {
@@ -175,9 +173,7 @@ export const teacherRoutes = {
 
     // Báo cáo
     { path: "bao-cao", Component: ReportsOverview },
-    { path: "bao-cao/tien-do-students", Component: StudentProgress },
     { path: "bao-cao/phan-tich", Component: ResultsAnalysis },
-    { path: "bao-cao/xuat-bao-cao", Component: ExportReports },
 
     // Cài đặt
     { path: "cai-dat", Component: Settings },

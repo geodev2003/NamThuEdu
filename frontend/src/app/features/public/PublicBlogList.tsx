@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback, memo } from "react";
 import { useNavigate, useSearchParams } from "react-router";
+import { useTranslation } from "react-i18next";
 import { usePageTitle } from "../../../hooks/usePageTitle";
 import { publicBlogApi, type Blog } from "../../../services/blogApi";
 import { Header, Footer } from "./components";
+import { BlogSEO } from "../../../components/shared/BlogSEO";
 import {
   Search,
   Eye,
   Calendar,
+  Clock,
   ChevronLeft,
   ChevronRight,
   BookOpen,
@@ -15,6 +18,7 @@ import {
   GraduationCap,
   Newspaper,
   ArrowRight,
+  Users,
 } from "lucide-react";
 
 const TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; dot: string }> = {
@@ -33,10 +37,6 @@ const TYPE_BADGE: Record<string, string> = {
   news:       "text-orange-600 bg-orange-50",
 };
 
-const ALL_TYPES = [
-  { value: "", label: "Tất cả" },
-  ...Object.entries(TYPE_CONFIG).map(([k, v]) => ({ value: k, label: v.label })),
-];
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("vi-VN", { day: "2-digit", month: "short", year: "numeric" });
@@ -46,11 +46,18 @@ function stripHtml(html: string) {
   return html.replace(/<[^>]*>/g, "");
 }
 
+function readTime(html: string) {
+  const words = stripHtml(html ?? "").split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.round(words / 200));
+}
+
 /* ── Featured hero (typography-first) ───────────────────────────── */
 const FeaturedCard = memo(function FeaturedCard({ post }: { post: Blog }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const slug = post.pUrl || String(post.pId);
   const cfg = TYPE_CONFIG[post.pType];
+  const mins = readTime(post.pContent ?? "");
 
   return (
     <article
@@ -58,19 +65,36 @@ const FeaturedCard = memo(function FeaturedCard({ post }: { post: Blog }) {
       className="group cursor-pointer border-b border-gray-100 py-10"
     >
       {cfg && (
-        <p className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.15em] text-slate-400">
+        <span className={`mb-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-widest ${
+          post.pType === 'grammar'    ? 'bg-blue-50 text-blue-600' :
+          post.pType === 'tips'       ? 'bg-amber-50 text-amber-600' :
+          post.pType === 'vocabulary' ? 'bg-violet-50 text-violet-600' :
+          post.pType === 'teaching'   ? 'bg-emerald-50 text-emerald-600' :
+          'bg-orange-50 text-orange-600'
+        }`}>
           <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-          {cfg.label}
-        </p>
+          {t(`blog.public.types.${post.pType}`, cfg.label)}
+        </span>
       )}
       <h2 className="mb-4 text-[1.75rem] font-bold leading-tight tracking-tight text-slate-900 transition-colors group-hover:text-orange-600">
         {post.pTitle}
       </h2>
-      {post.pThumbnail && (
-        <div className="mb-5 h-60 overflow-hidden rounded-xl">
-          <img src={post.pThumbnail} alt={post.pTitle} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-        </div>
-      )}
+      <div className="mb-5 overflow-hidden rounded-xl">
+        {post.pThumbnail ? (
+          <img src={post.pThumbnail} alt={post.pTitle} loading="lazy" decoding="async"
+            className="h-64 w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+        ) : (
+          <div className={`flex h-48 items-center justify-center rounded-xl ${
+            post.pType === 'grammar'    ? 'bg-gradient-to-br from-blue-50 to-blue-100' :
+            post.pType === 'tips'       ? 'bg-gradient-to-br from-amber-50 to-amber-100' :
+            post.pType === 'vocabulary' ? 'bg-gradient-to-br from-violet-50 to-violet-100' :
+            post.pType === 'teaching'   ? 'bg-gradient-to-br from-emerald-50 to-emerald-100' :
+            'bg-gradient-to-br from-orange-50 to-amber-100'
+          }`}>
+            {cfg && <cfg.icon className="h-16 w-16 opacity-20" />}
+          </div>
+        )}
+      </div>
       <p className="mb-5 text-[0.9375rem] leading-relaxed text-slate-500">
         {stripHtml(post.pContent ?? "").slice(0, 220)}…
       </p>
@@ -79,9 +103,11 @@ const FeaturedCard = memo(function FeaturedCard({ post }: { post: Blog }) {
         <span>·</span>
         <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDate(post.pCreated_at)}</span>
         <span>·</span>
-        <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{post.pView ?? 0} lượt đọc</span>
+        <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{post.pView ?? 0} {t('blog.public.list.views')}</span>
+        <span>·</span>
+        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{mins} {t('blog.public.list.readTime')}</span>
         <span className="ml-auto flex items-center gap-1 font-semibold text-orange-600">
-          Đọc tiếp <ArrowRight className="h-3 w-3" />
+          {t('blog.public.list.readMore')} <ArrowRight className="h-3 w-3" />
         </span>
       </div>
     </article>
@@ -91,8 +117,10 @@ const FeaturedCard = memo(function FeaturedCard({ post }: { post: Blog }) {
 /* ── Post row ────────────────────────────────────────────────────── */
 const PostRow = memo(function PostRow({ post }: { post: Blog }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const slug = post.pUrl || String(post.pId);
   const cfg = TYPE_CONFIG[post.pType];
+  const mins = readTime(post.pContent ?? "");
 
   return (
     <article
@@ -104,7 +132,7 @@ const PostRow = memo(function PostRow({ post }: { post: Blog }) {
           {cfg && (
             <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.15em] text-slate-400">
               <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-              {cfg.label}
+              {t(`blog.public.types.${post.pType}`, cfg.label)}
             </p>
           )}
           <h3 className="mb-2 line-clamp-2 text-[0.9375rem] font-semibold leading-snug text-slate-900 transition-colors group-hover:text-orange-600">
@@ -116,16 +144,29 @@ const PostRow = memo(function PostRow({ post }: { post: Blog }) {
           <div className="flex items-center gap-2 text-[11px] text-slate-400">
             {post.author && <span className="font-medium text-slate-500">{post.author.uName}</span>}
             <span>·</span>
-            <span>{formatDate(post.pCreated_at)}</span>
+            <span className="flex items-center gap-0.5"><Calendar className="h-3 w-3 mr-0.5" />{formatDate(post.pCreated_at)}</span>
             <span>·</span>
             <span className="flex items-center gap-0.5"><Eye className="h-3 w-3" />{post.pView ?? 0}</span>
+            <span>·</span>
+            <span className="flex items-center gap-0.5"><Clock className="h-3 w-3" />{mins} {t('blog.public.list.readTimeShort')}</span>
           </div>
         </div>
-        {post.pThumbnail && (
-          <div className="hidden h-20 w-28 flex-shrink-0 overflow-hidden rounded-lg sm:block">
-            <img src={post.pThumbnail} alt={post.pTitle} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-          </div>
-        )}
+        <div className="h-24 w-32 flex-shrink-0 overflow-hidden rounded-lg">
+          {post.pThumbnail ? (
+            <img src={post.pThumbnail} alt={post.pTitle} loading="lazy" decoding="async"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          ) : (
+            <div className={`flex h-full w-full items-center justify-center ${
+              post.pType === 'grammar'    ? 'bg-gradient-to-br from-blue-50 to-blue-100' :
+              post.pType === 'tips'       ? 'bg-gradient-to-br from-amber-50 to-amber-100' :
+              post.pType === 'vocabulary' ? 'bg-gradient-to-br from-violet-50 to-violet-100' :
+              post.pType === 'teaching'   ? 'bg-gradient-to-br from-emerald-50 to-emerald-100' :
+              'bg-gradient-to-br from-orange-50 to-amber-100'
+            }`}>
+              {cfg && <cfg.icon className="h-8 w-8 opacity-25" />}
+            </div>
+          )}
+        </div>
       </div>
     </article>
   );
@@ -178,9 +219,15 @@ function BlogListSkeleton() {
 
 /* ══ Page ══════════════════════════════════════════════════════════ */
 export function PublicBlogList() {
-  usePageTitle("Bài viết — NamThuEdu");
+  const { t } = useTranslation();
+  usePageTitle(t('blog.public.list.pageTabTitle'));
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const ALL_TYPES = [
+    { value: "", label: t('blog.public.list.filterAll') },
+    ...Object.entries(TYPE_CONFIG).map(([k]) => ({ value: k, label: t(`blog.public.types.${k}`) })),
+  ];
 
   const [posts, setPosts]         = useState<Blog[]>([]);
   const [loading, setLoading]     = useState(true);
@@ -223,27 +270,58 @@ export function PublicBlogList() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
+      <BlogSEO
+        title={t('blog.public.list.seoTitle')}
+        description={t('blog.public.list.seoDescription')}
+        canonical="/bai-viet"
+        type="website"
+      />
       <Header />
 
       {/* ── Page header ── */}
-      <div className="border-b border-gray-100 px-4 py-7">
-        <div className="mx-auto flex max-w-6xl items-end justify-between gap-4">
-          <div>
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-orange-500">NamThuEdu</p>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Bài viết & Kiến thức</h1>
-          </div>
-          <form onSubmit={handleSearch} className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Tìm bài viết…"
-                className="w-44 rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-3 text-sm text-slate-800 placeholder-gray-400 focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-100"
-              />
+      <div className="border-b border-gray-100 px-4 pb-0 pt-7">
+        <div className="mx-auto max-w-6xl">
+          {/* Top row: title + search */}
+          <div className="mb-5 flex items-end justify-between gap-4">
+            <div>
+              <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-orange-500">NamThuEdu</p>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('blog.public.list.pageTitle')}</h1>
+              {total > 0 && (
+                <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
+                  <Users className="h-3 w-3" />{t('blog.public.list.totalPosts', { count: total })}
+                </p>
+              )}
             </div>
-          </form>
+            <form onSubmit={handleSearch} className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t('blog.public.list.searchPlaceholder')}
+                  className="w-52 rounded-xl border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-slate-800 placeholder-gray-400 focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all"
+                />
+              </div>
+            </form>
+          </div>
+
+          {/* Filter tabs */}
+          <div className="-mx-1 flex items-center gap-1 overflow-x-auto pb-px scrollbar-none">
+            {ALL_TYPES.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => handleTypeChange(tab.value)}
+                className={`whitespace-nowrap rounded-t-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+                  activeType === tab.value
+                    ? "border-b-2 border-orange-500 text-orange-600"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -254,9 +332,9 @@ export function PublicBlogList() {
           <div className="flex h-72 flex-col items-center justify-center gap-4">
             <BookOpen className="h-10 w-10 text-gray-200" />
             <div className="text-center">
-              <p className="text-sm font-medium text-slate-600">Chưa có bài viết nào</p>
+              <p className="text-sm font-medium text-slate-600">{t('blog.public.list.emptyTitle')}</p>
               <p className="mt-1 text-xs text-slate-400">
-                {search ? "Không tìm thấy kết quả phù hợp" : "Các bài viết sẽ xuất hiện tại đây"}
+                {search ? t('blog.public.list.emptySearch') : t('blog.public.list.emptyDesc')}
               </p>
             </div>
             {search && (
@@ -264,7 +342,7 @@ export function PublicBlogList() {
                 onClick={() => { setSearch(""); setPage(1); }}
                 className="rounded-lg border border-gray-200 px-4 py-1.5 text-xs font-medium text-slate-600 hover:border-orange-300 hover:text-orange-600 transition-colors"
               >
-                Xóa tìm kiếm
+                {t('blog.public.list.clearSearch')}
               </button>
             )}
           </div>
@@ -311,16 +389,20 @@ export function PublicBlogList() {
         )}
 
         {/* ── CTA ── */}
-        <div className="mt-16 flex flex-col items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-8 py-10 text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-orange-500">NamThuEdu</p>
-          <h3 className="text-xl font-bold text-slate-900">Muốn học trực tiếp cùng giáo viên?</h3>
-          <p className="max-w-sm text-sm text-slate-500">Đăng ký để được tư vấn lộ trình học phù hợp với mục tiêu của bạn</p>
-          <button
-            onClick={() => navigate("/dang-nhap")}
-            className="mt-2 inline-flex items-center gap-2 rounded-xl border border-orange-200 px-6 py-2.5 text-sm font-semibold text-orange-600 hover:bg-orange-50 transition-colors"
-          >
-            Bắt đầu ngay <ArrowRight className="h-4 w-4" />
-          </button>
+        <div className="relative mt-16 overflow-hidden rounded-2xl px-8 py-12 text-center" style={{ background: 'linear-gradient(135deg, #F97316 0%, #FB923C 50%, #FBBF24 100%)' }}>
+          <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10" />
+          <div className="pointer-events-none absolute -bottom-6 -left-6 h-32 w-32 rounded-full bg-white/10" />
+          <div className="relative flex flex-col items-center gap-3">
+            <p className="text-xs font-bold uppercase tracking-widest text-white/70">NamThuEdu</p>
+            <h3 className="text-2xl font-bold text-white">{t('blog.public.list.ctaTitle')}</h3>
+            <p className="max-w-sm text-sm text-white/80">{t('blog.public.list.ctaDesc')}</p>
+            <button
+              onClick={() => navigate("/dang-nhap")}
+              className="mt-2 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3 text-sm font-bold text-orange-600 shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
+            >
+              {t('blog.public.list.ctaButton')} <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </main>
 

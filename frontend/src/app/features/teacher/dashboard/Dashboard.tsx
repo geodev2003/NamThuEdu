@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
 import { api } from "../../../../services/api";
+import { getAuthUser } from "../../../../utils/authStorage";
 import { Header } from "../../../components/shared/Header";
 import {
   BookOpen,
@@ -134,10 +135,8 @@ export function Dashboard() {
   const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
 
-  // Get user info from localStorage
-  const userStr = localStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : null;
-  const userName = user?.name || user?.uName || 'Teacher';
+  const user = getAuthUser();
+  const userName = (user?.name as string) || (user?.uName as string) || 'Teacher';
 
   // Fetch dashboard statistics with 30-second polling
   const [dashboardStats, setDashboardStats] = useState<any>(null);
@@ -299,15 +298,15 @@ export function Dashboard() {
                 {userName}
               </h1>
               <div className="flex items-center gap-2 mt-3 flex-wrap">
-                <span className="flex items-center gap-1.5 bg-slate-100 text-slate-600 text-xs px-3 py-1.5 rounded-full">
+                <span className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 text-xs px-3 py-1.5 rounded-full">
                   <Clock className="w-3 h-3" />
                   {statsLoading ? "..." : (dashboardStats?.classes_today || 0)} {t('teacher.dashboard.todayClasses')}
                 </span>
-                <span className="flex items-center gap-1.5 bg-slate-100 text-slate-600 text-xs px-3 py-1.5 rounded-full">
+                <span className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 text-xs px-3 py-1.5 rounded-full">
                   <AlertCircle className="w-3 h-3" />
                   {statsLoading ? "..." : (dashboardStats?.pending_grading || 0)} {t('teacher.dashboard.pendingGrading')}
                 </span>
-                <span className="flex items-center gap-1.5 bg-slate-100 text-slate-600 text-xs px-3 py-1.5 rounded-full">
+                <span className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 text-xs px-3 py-1.5 rounded-full">
                   <CheckCircle2 className="w-3 h-3" />
                   {statsLoading ? "..." : (dashboardStats?.deadlines_this_week || 0)} {t('teacher.dashboard.deadlinesThisWeek')}
                 </span>
@@ -332,7 +331,7 @@ export function Dashboard() {
               return (
                 <div
                   key={stat.key}
-                  className="bg-white rounded-xl p-5 border border-gray-200 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
+                  className="bg-white rounded-xl p-5 border border-gray-200 cursor-pointer hover:border-indigo-200 hover:shadow-sm transition-all"
                   style={{
                     opacity: mounted ? 1 : 0,
                     transform: mounted ? "translateY(0)" : "translateY(12px)",
@@ -340,10 +339,10 @@ export function Dashboard() {
                   }}
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center">
-                      <Icon className="w-4 h-4 text-slate-500" />
+                    <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center">
+                      <Icon className="w-4 h-4 text-indigo-500" />
                     </div>
-                    <span className="flex items-center gap-0.5 text-xs text-slate-400" style={{ fontWeight: 500 }}>
+                    <span className="flex items-center gap-0.5 text-xs text-indigo-400" style={{ fontWeight: 500 }}>
                       <TrendingUp className="w-3 h-3" />
                       {stat.change}
                     </span>
@@ -536,7 +535,7 @@ export function Dashboard() {
                   return (
                     <div
                       key={activity.id}
-                      className="flex items-start gap-3 p-3 rounded-xl transition-colors hover:bg-[#F9FAFB] cursor-default group"
+                      className="flex items-start gap-3 p-3 rounded-xl transition-colors hover:bg-indigo-50/50 cursor-default group"
                     >
                       <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
@@ -591,15 +590,15 @@ export function Dashboard() {
                 <button
                   key={action.titleKey}
                   onClick={() => navigate(action.href)}
-                  className="relative group text-left bg-white rounded-xl p-5 border border-gray-200 hover:border-orange-200 hover:shadow-sm transition-all duration-200"
+                  className="relative group text-left bg-white rounded-xl p-5 border border-gray-200 hover:border-indigo-200 hover:shadow-sm transition-all duration-200"
                   style={{
                     opacity: mounted ? 1 : 0,
                     transform: mounted ? "translateY(0)" : "translateY(12px)",
                     transition: `opacity 400ms ease ${i * 80 + 400}ms, transform 400ms ease ${i * 80 + 400}ms`,
                   }}
                 >
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-4 ${action.primary ? 'bg-orange-500' : 'bg-slate-100'}`}>
-                    <Icon className={`w-4 h-4 ${action.primary ? 'text-white' : 'text-slate-500'}`} />
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-4 ${action.primary ? 'bg-orange-500' : 'bg-indigo-50'}`}>
+                    <Icon className={`w-4 h-4 ${action.primary ? 'text-white' : 'text-indigo-400'}`} />
                   </div>
                   <p className="text-slate-800 mb-1" style={{ fontSize: "14px", fontWeight: 600 }}>
                     {t(action.titleKey)}

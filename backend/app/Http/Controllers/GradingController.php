@@ -660,16 +660,80 @@ class GradingController extends Controller
                                     ->where('sGraded_time', '>=', now()->subDays(7))
                                     ->count();
 
+        // Trend: last 7 days of grading activity
+        $trend7d = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $day = now()->subDays($i);
+            $count = $submissions->where('sStatus', 'graded')
+                ->filter(function($s) use ($day) {
+                    return $s->sGraded_time && $s->sGraded_time->toDateString() === $day->toDateString();
+                })->count();
+            $trend7d[] = ['date' => $day->format('d/m'), 'graded' => $count];
+        }
+
+        // By skill — group graded submissions by exam.eType
+        $gradedSubs = $submissions->where('sStatus', 'graded');
+        $bySkill = ['listening' => 0, 'reading' => 0, 'writing' => 0, 'speaking' => 0];
+        foreach ($gradedSubs as $sub) {
+            $type = strtolower($sub->exam->eType ?? '');
+            if (isset($bySkill[$type])) $bySkill[$type]++;
+        }
+
+        // Score distribution (from graded submissions)
+        $scores = $gradedSubs->pluck('sScore')->filter();
+        $scoreDist = [
+            '90-100' => $scores->filter(fn($s) => $s >= 90)->count(),
+            '80-89'  => $scores->filter(fn($s) => $s >= 80 && $s < 90)->count(),
+            '70-79'  => $scores->filter(fn($s) => $s >= 70 && $s < 80)->count(),
+            '60-69'  => $scores->filter(fn($s) => $s >= 60 && $s < 70)->count(),
+            '0-59'   => $scores->filter(fn($s) => $s < 60)->count(),
+        ];
+
+        // Top 5 students by average score (min 1 graded submission)
+        $topStudents = $gradedSubs->groupBy('user_id')
+            ->map(function($group) {
+                $student = $group->first()->user;
+                $sc = $group->pluck('sScore')->filter();
+                return [
+                    'name'  => $student ? $student->uName : 'Unknown',
+                    'count' => $group->count(),
+                    'avg'   => $sc->count() ? round($sc->avg(), 1) : 0,
+                ];
+            })
+            ->sortByDesc('avg')
+            ->take(5)
+            ->values();
+
+        // Top 5 exams with most pending submissions
+        $pendingByExam = $submissions->whereIn('sStatus', ['submitted', 'partially_graded'])
+            ->groupBy('exam_id')
+            ->map(function($group) {
+                $exam = $group->first()->exam;
+                return [
+                    'title' => $exam ? $exam->eTitle : 'Unknown',
+                    'type'  => $exam ? $exam->eType : '—',
+                    'count' => $group->count(),
+                ];
+            })
+            ->sortByDesc('count')
+            ->take(5)
+            ->values();
+
         return response()->json([
             'status' => 'success',
             'data' => [
-                'total_submissions' => $totalSubmissions,
-                'graded_submissions' => $gradedSubmissions,
-                'pending_submissions' => $pendingSubmissions,
+                'total_submissions'       => $totalSubmissions,
+                'graded_submissions'      => $gradedSubmissions,
+                'pending_submissions'     => $pendingSubmissions,
                 'grading_completion_rate' => $totalSubmissions > 0 ? round(($gradedSubmissions / $totalSubmissions) * 100, 2) : 0,
-                'scores_by_exam_type' => $scoresByExamType,
+                'scores_by_exam_type'     => $scoresByExamType,
                 'recent_grading_activity' => $recentActivity,
-                'average_grading_time' => $this->calculateAverageGradingTime($submissions)
+                'average_grading_time'    => $this->calculateAverageGradingTime($submissions),
+                'trend_7d'                => $trend7d,
+                'by_skill'                => $bySkill,
+                'score_dist'              => $scoreDist,
+                'top_students'            => $topStudents,
+                'pending_by_exam'         => $pendingByExam,
             ]
         ]);
     }

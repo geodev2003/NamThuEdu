@@ -1,26 +1,46 @@
 /**
  * Teacher Login Component
- * 
- * Clean, professional login form for teachers
  */
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, Link } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { login } from '../../../../services/authApi';
-import { Eye, EyeOff, Phone, Lock, GraduationCap } from 'lucide-react';
-import { ParticlesBackgroundWhite } from '../../public/components/ParticlesBackgroundWhite';
+import { Eye, EyeOff, Phone, Lock, BookOpen, ShieldOff, X } from 'lucide-react';
+import { Header } from '../../public/components/Header';
+import { setAuthData, getRememberedPhone } from '../../../../utils/authStorage';
 import { usePageTitle, PAGE_TITLES } from '../../../../hooks/usePageTitle';
+import '../../../../styles/loginAnimations.css';
 
 export function TeacherLogin() {
   usePageTitle(PAGE_TITLES.TEACHER_LOGIN, true);
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    const savedPhone = getRememberedPhone('teacher');
+    if (savedPhone) {
+      setPhone(savedPhone);
+      setRememberMe(true);
+    }
+  }, []);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loginSuccess, setLoginSuccess] = useState(false);
+  const [fadeOut, setFadeOut] = useState(false);
+  const [lockedToast, setLockedToast] = useState(false);
+  const lockedToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showLockedToast = () => {
+    setLockedToast(true);
+    if (lockedToastTimer.current) clearTimeout(lockedToastTimer.current);
+    lockedToastTimer.current = setTimeout(() => setLockedToast(false), 6000);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,187 +54,306 @@ export function TeacherLogin() {
       if (user.role !== 'teacher') {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_role');
-        setError('Tài khoản này không thuộc cổng giáo viên.');
+        setError(t('auth.teacherLogin.errorWrongRole'));
+        setIsLoading(false);
         return;
       }
 
-      localStorage.setItem('auth_token', access_token);
-      localStorage.setItem('auth_role', user.role);
-      localStorage.setItem('user', JSON.stringify(user));
-      localStorage.setItem('teacher_phone', phone.trim()); // Store phone for re-authentication
-      navigate('/giao-vien');
+      setAuthData(access_token, user as unknown as Record<string, unknown>, rememberMe);
+      
+      // Success animation sequence
+      setLoginSuccess(true);
+      
+      // Wait for success animation to complete
+      setTimeout(() => {
+        setFadeOut(true);
+      }, 800);
+      
+      // Navigate after fade out
+      setTimeout(() => {
+        navigate('/giao-vien');
+      }, 1100);
+      
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || 'Đăng nhập thất bại.');
+        const status  = err.response?.status;
+        const msg     = err.response?.data?.message ?? '';
+        const isLocked =
+          status === 403 ||
+          msg.toLowerCase().includes('kho\u00e1') ||
+          msg.toLowerCase().includes('locked') ||
+          msg.toLowerCase().includes('inactive');
+
+        if (isLocked) {
+          showLockedToast();
+          setError(null);
+        } else {
+          setError(msg || t('auth.teacherLogin.errorDefault'));
+        }
       } else {
-        setError('Đăng nhập thất bại.');
+        setError(t('auth.teacherLogin.errorDefault'));
       }
       setPassword('');
-    } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="relative w-full min-h-screen flex flex-col !bg-white" style={{ background: '#ffffff !important' }}>
-      {/* Particles Background */}
-      <ParticlesBackgroundWhite />
+    <div
+      className="w-full min-h-screen flex flex-col relative"
+      style={{ 
+        background: 'linear-gradient(145deg, #FFF7ED 0%, #FFEDD5 100%)',
+        opacity: fadeOut ? 0 : 1,
+        transition: 'opacity 300ms ease-out'
+      }}
+    >
+      {/* ── Locked account toast ── */}
+      {lockedToast && (
+        <div
+          className="fixed bottom-6 left-1/2 z-50 flex items-start gap-3 rounded-2xl px-5 py-4 shadow-2xl"
+          style={{
+            transform: 'translateX(-50%)',
+            background: '#1E293B',
+            border: '1px solid #334155',
+            maxWidth: 420,
+            width: 'calc(100vw - 32px)',
+            animation: 'fadeInUp 250ms ease-out',
+          }}
+        >
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: '#EF4444', marginTop: 1 }}>
+            <ShieldOff className="h-4 w-4 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p style={{ fontSize: 14, fontWeight: 700, color: '#F8FAFC', marginBottom: 3 }}>Tài khoản đã bị khoá</p>
+            <p style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.55 }}>
+              Tài khoản của bạn hiện không thể đăng nhập. Vui lòng liên hệ quản trị viên để được hỗ trợ mở khoá.
+            </p>
+            <p style={{ fontSize: 11, color: '#F97316', marginTop: 6, fontWeight: 500 }}>📞 Hotline: 0776 818 160</p>
+          </div>
+          <button onClick={() => setLockedToast(false)} className="flex-shrink-0 mt-1">
+            <X className="h-4 w-4" style={{ color: '#64748B' }} />
+          </button>
+        </div>
+      )}
+      {/* Success Overlay */}
+      {loginSuccess && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{
+            background: 'rgba(255, 255, 255, 0.95)',
+            animation: 'fadeIn 300ms ease-out'
+          }}
+        >
+          <div className="flex flex-col items-center gap-4">
+            {/* Animated Checkmark */}
+            <div 
+              className="relative"
+              style={{
+                width: '80px',
+                height: '80px',
+                animation: 'scaleIn 400ms ease-out'
+              }}
+            >
+              <svg viewBox="0 0 80 80" className="w-full h-full">
+                {/* Circle */}
+                <circle
+                  cx="40"
+                  cy="40"
+                  r="36"
+                  fill="none"
+                  stroke="#10B981"
+                  strokeWidth="4"
+                  style={{
+                    strokeDasharray: '226',
+                    strokeDashoffset: '226',
+                    animation: 'drawCircle 600ms ease-out forwards'
+                  }}
+                />
+                {/* Checkmark */}
+                <path
+                  d="M 25 40 L 35 50 L 55 30"
+                  fill="none"
+                  stroke="#10B981"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    strokeDasharray: '50',
+                    strokeDashoffset: '50',
+                    animation: 'drawCheck 400ms ease-out 300ms forwards'
+                  }}
+                />
+              </svg>
+            </div>
+            
+            {/* Success Text */}
+            <div 
+              className="text-center"
+              style={{
+                animation: 'fadeInUp 400ms ease-out 400ms both'
+              }}
+            >
+              <h3 className="text-xl font-bold text-gray-900 mb-1">
+                {t('auth.teacherLogin.successTitle')}
+              </h3>
+              <p className="text-sm text-gray-500">
+                {t('auth.teacherLogin.successRedirecting')}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       
-      {/* Login Card */}
-      <div className="flex-1 flex items-center justify-center p-4 md:p-8">
-        <div className="w-full max-w-md relative z-10">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 border border-orange-100" style={{
-            boxShadow: '0 20px 60px rgba(234, 88, 12, 0.15), 0 0 0 1px rgba(234, 88, 12, 0.05)'
-          }}>
-            {/* Badge */}
-            <div className="flex justify-center mb-6">
-              <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full" style={{
-                background: 'linear-gradient(135deg, #EA580C 0%, #C2410C 100%)',
-                boxShadow: '0 4px 12px rgba(234, 88, 12, 0.35)'
-              }}>
-                <GraduationCap className="w-5 h-5 text-white" />
-                <span className="text-white font-bold text-sm">Teacher Portal</span>
-              </div>
-            </div>
+      {/* Full-width Header */}
+      <Header />
 
-            {/* Title */}
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Đăng nhập Giáo viên
-              </h1>
-              <p className="text-gray-600">
-                Truy cập Teacher Dashboard của bạn
-              </p>
-            </div>
+      {/* Content row */}
+      <div className="flex flex-1 bg-white">
 
-            {/* Demo Account Info */}
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
-              <p className="text-sm font-semibold text-green-900 mb-2">
-                🎯 Demo Account
-              </p>
-              <p className="text-xs text-green-800">
-                SĐT: <span className="font-mono font-semibold">0336695863</span>
-                <br />
-                Password: <span className="font-mono font-semibold">password123</span>
-              </p>
-            </div>
+        {/* LEFT: Image panel */}
+        <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] items-center justify-end pr-4 pl-8 py-8">
+          <div className="overflow-hidden" style={{ maxWidth: '645px', width: '100%', borderRadius: '40px' }}>
+            <img
+              src="/images/form-login-gv.png"
+              alt="NamThuEdu"
+              className="w-full h-auto block"
+            />
+          </div>
+        </div>
+
+        {/* RIGHT: Form panel */}
+        <div className="flex-1 flex flex-col items-start justify-center px-6 py-10 lg:px-10 xl:px-14">
+
+          <div className="w-full max-w-[460px]">
+
+            {/* Heading */}
+            <h1 className="text-3xl font-extrabold text-gray-900 mb-1">{t('auth.teacherLogin.title')}</h1>
+            <p className="text-gray-500 text-sm mb-8">{t('auth.teacherLogin.subtitle')}</p>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Phone Input */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+
+              {/* Phone */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Số điện thoại <span className="text-red-500">*</span>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  {t('auth.teacherLogin.phoneLabel')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                    <Phone className="w-5 h-5" />
-                  </div>
+                  <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     required
                     autoFocus
-                    placeholder="0336695863"
-                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent transition-all"
+                    placeholder={t('auth.teacherLogin.phonePlaceholder')}
+                    className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all"
                   />
                 </div>
               </div>
 
-              {/* Password Input */}
+              {/* Password */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Mật khẩu <span className="text-red-500">*</span>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  {t('auth.teacherLogin.passwordLabel')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                    <Lock className="w-5 h-5" />
-                  </div>
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    placeholder="••••••••"
-                    className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent transition-all"
+                    placeholder={t('auth.teacherLogin.passwordPlaceholder')}
+                    className="w-full pl-11 pr-12 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
-              {/* Remember Me */}
+              {/* Remember me */}
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-300 cursor-pointer"
-                  />
-                  <span className="text-sm text-gray-600">Ghi nhớ đăng nhập</span>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <div
+                    onClick={() => setRememberMe(v => !v)}
+                    className={`relative w-9 h-5 rounded-full transition-colors duration-200 cursor-pointer ${
+                      rememberMe ? 'bg-orange-500' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
+                      rememberMe ? 'translate-x-4' : 'translate-x-0'
+                    }`} />
+                  </div>
+                  <span className="text-sm text-gray-600">{t('auth.teacherLogin.rememberMe')}</span>
                 </label>
               </div>
 
-              {/* Error Message */}
+              {/* Error */}
               {error && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
                   <p className="text-red-700 text-sm">{error}</p>
                 </div>
               )}
 
-              {/* Submit Button */}
+              {/* Submit */}
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-4 font-bold text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="w-full py-3.5 font-bold text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm"
                 style={{
-                  background: isLoading ? '#94A3B8' : 'linear-gradient(135deg, #EA580C 0%, #C2410C 100%)',
-                  boxShadow: isLoading ? 'none' : '0 4px 12px rgba(234, 88, 12, 0.45)',
+                  background: isLoading ? '#94A3B8' : 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)',
+                  boxShadow: isLoading ? 'none' : '0 4px 14px rgba(234, 88, 12, 0.40)',
                 }}
                 onMouseEnter={(e) => {
                   if (!isLoading) {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
                     e.currentTarget.style.boxShadow = '0 8px 20px rgba(234, 88, 12, 0.45)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!isLoading) {
                     e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(234, 88, 12, 0.35)';
+                    e.currentTarget.style.boxShadow = '0 4px 14px rgba(234, 88, 12, 0.40)';
                   }
                 }}
               >
                 {isLoading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    Đang đăng nhập...
+                    {t('auth.teacherLogin.loggingIn')}
                   </span>
                 ) : (
-                  <>
-                    <GraduationCap className="inline w-5 h-5 mr-2" />
-                    Đăng nhập Teacher Portal
-                  </>
+                  <span className="flex items-center justify-center gap-2">
+                    <BookOpen className="w-4 h-4" />
+                    {t('auth.teacherLogin.loginButton')}
+                  </span>
                 )}
               </button>
             </form>
 
-            {/* Security Note */}
-            {/* <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-              <p className="text-sm text-blue-900">
-                <strong>🔒 Bảo mật</strong><br />
-                Thông tin đăng nhập được mã hóa SSL 256-bit
-              </p>
-            </div> */}
+            {/* Footer note */}
+            <p className="mt-6 text-xs text-center text-gray-400">
+              {t('auth.teacherLogin.supportNote')}&nbsp;
+              <span className="text-orange-500 font-medium">0776 818 160</span>
+            </p>
+
+            {/* Cross-link to student */}
+            <p className="mt-4 text-sm text-center text-gray-500">
+              {t('auth.teacherLogin.isStudent')}&nbsp;
+              <Link to="/dang-nhap" className="text-orange-500 font-semibold hover:underline">
+                {t('auth.teacherLogin.studentLoginLink')}
+              </Link>
+            </p>
+
           </div>
         </div>
       </div>

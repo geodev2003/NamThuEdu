@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /hoc-vien/
+Disallow: /giao-vien/
+Disallow: /admin/
+
+Sitemap: https://namthu.vn/sitemap.xml

@@ -53,6 +53,7 @@ export interface Blog {
 // Teacher Blog APIs
 export const teacherBlogApi = {
   getMyBlogs: (params?: BlogFilters) => api.get('/teacher/blogs', { params }),
+  getStatistics: (period: string = '30') => api.get(`/teacher/blogs/statistics?period=${period}`),
   createBlog: (data: CreateBlogDto) => api.post('/teacher/blogs', data),
   getBlogDetail: (id: number) => api.get(`/teacher/blogs/${id}`),
   updateBlog: (id: number, data: UpdateBlogDto) => api.put(`/teacher/blogs/${id}`, data),

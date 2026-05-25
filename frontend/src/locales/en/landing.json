@@ -164,7 +164,55 @@
       "googlePlay": "Google Play",
       "copyright": "© 2013 - 2026 NAMTHU.VN",
       "email": "Email:",
-      "contactUs": "Contact"
+      "contactUs": "Contact",
+      "brand": {
+        "tagline": "Learn smarter",
+        "description": "A reputable English center in Can Tho. Developing comprehensive English skills for students from grades 1-12 and international exam preparation.",
+        "rating": "4.8/5",
+        "students": "1M+ students"
+      },
+      "courses": {
+        "title": "Courses",
+        "items": [
+          "Conversational English",
+          "Student English (Grades 1-12)",
+          "Cambridge Exam Prep (Starters, Movers, Flyers)",
+          "KET & PET Preparation",
+          "IELTS Preparation",
+          "VSTEP & V-SAT (CTU) Preparation"
+        ]
+      },
+      "contact": {
+        "title": "Contact",
+        "hotlineLabel": "Hotline",
+        "hotline": "0776 818 160",
+        "hotlineHref": "tel:0776818160",
+        "emailLabel": "Email",
+        "emailVal": "hello@namthu.vn",
+        "emailHref": "mailto:hello@namthu.vn",
+        "addressLabel": "Address",
+        "address": "Alley 387K1, 14B, Tran Nam Phu, Can Tho",
+        "addressHref": "https://maps.google.com/?q=Hẻm+387K1,+14B,+Trần+Nam+Phú,+Cần+Thơ",
+        "scheduleLabel": "Schedule",
+        "schedule": "Flexible by student — contact teacher for details"
+      },
+      "support": {
+        "title": "Support & Offers",
+        "register": "Enroll now",
+        "consult": "Course consultation",
+        "faq": "Frequently asked questions",
+        "promoTitle": "Special offers",
+        "promos": [
+          "Groups of 3+ students",
+          "Students in need",
+          "Free learning materials"
+        ]
+      },
+      "bottom": {
+        "copyright": "NamThu Education. Your partner on the English learning journey.",
+        "privacy": "Privacy policy",
+        "terms": "Terms of use"
+      }
     },
     "testimonials": {
       "title": "What Our Students Say",
@@ -428,11 +476,244 @@
         "title": "Ready to start your learning journey?",
         "subtitle": "Create a trial account and experience it today.",
         "button": "Start Free Trial"
-      },
-      "footer": {
-        "copyright": "© 2026 NamThuEdu. Modern knowledge architecture platform.",
-        "contact": "Hotline: 1900 6868 • support@namthuedu.vn"
       }
+    },
+    "features_page": {
+      "seo": {
+        "title": "Features | NamThuEdu",
+        "description": "Discover NamThuEdu's English learning features: VSTEP-standard practice tests, personalized study paths, and teachers who respond within 24 hours."
+      },
+      "hero": {
+        "eyebrow": "— Est. 2022 · Can Tho —",
+        "headline1": "Learn English",
+        "headline2": "like real school",
+        "sub": "A comprehensive English learning platform — VSTEP-standard tests, personalized paths, and teacher feedback within 24 hours.",
+        "ctaPrimary": "Start for free",
+        "ctaSecondary": "Read articles →"
+      },
+      "commitments": [
+        "Writing & Speaking feedback within 24 hours — we won't keep you waiting.",
+        "Teachers stay with you throughout the course, not just teach and disappear.",
+        "Transparent pricing from day one — no hidden fees or upsell packages."
+      ],
+      "manifesto": {
+        "eyebrow": "Features",
+        "title": "Everything you need",
+        "titleSub": "to master English",
+        "items": [
+          { "num": "01", "title": "VSTEP-Standard Tests", "desc": "Ministry-approved question bank covering all 4 skills: Listening, Speaking, Reading, Writing — updated regularly." },
+          { "num": "02", "title": "Personalized Path", "desc": "A placement test identifies your level and automatically recommends the best learning path for your goals." },
+          { "num": "03", "title": "Dedicated Teachers", "desc": "Writing graded and Speaking reviewed within 24 hours. Teachers support you directly — no learning alone." },
+          { "num": "04", "title": "Progress Tracking", "desc": "Score charts for each skill, study time, and clear strengths/weaknesses — always know where you stand." },
+          { "num": "05", "title": "Rich Article Library", "desc": "Grammar, vocabulary, and exam tips from our teachers — free to read, no sign-up required." },
+          { "num": "06", "title": "Learn Anytime, Anywhere", "desc": "Optimized for mobile and desktop. No app install needed — open in any browser and go." }
+        ]
+      },
+      "comparison": {
+        "eyebrow": "Why NamThuEdu",
+        "title": "Built to solve real learner challenges",
+        "leftTitle": "Common learner challenges",
+        "rightTitle": "How NamThuEdu helps",
+        "traditional": [
+          "Not sure where to start or what level to begin at",
+          "Submit work and wait days before getting any feedback",
+          "Group classes move at one pace, easy to fall behind",
+          "Hard to tell if you're actually improving week to week",
+          "Unclear total cost, worried about unexpected fees"
+        ],
+        "namthu": [
+          "Learn on your own schedule",
+          "Writing/Speaking feedback in 24h",
+          "Personal path based on placement",
+          "Visual progress dashboard, real-time",
+          "Fair pricing, clear from the start"
+        ]
+      },
+      "quote": {
+        "text": "Education is not the filling of a pail, but the lighting of a fire.",
+        "attribution": "W. B. Yeats"
+      },
+      "faq": {
+        "eyebrow": "Frequently asked questions",
+        "items": [
+          { "q": "Who is NamThuEdu for?", "a": "Students preparing for VSTEP B1–C1, IELTS, or general communication English. Especially suitable for students, university learners, and working adults in Can Tho." },
+          { "q": "Can I try before signing up?", "a": "Yes. The article library and some sample tests are open for free so you can experience it before deciding." },
+          { "q": "How does pricing work?", "a": "Pricing is flexible depending on course and goals. Contact us directly for a recommended path and a quote." }
+        ]
+      },
+      "cta": {
+        "ornament": "Ready to start?",
+        "title": "Come study with us.",
+        "sub": "Sign up today for a free personalized learning path consultation.",
+        "primary": "Sign up now",
+        "phone": "Call us: 0776 818 160"
+      }
+    }
+  },
+  "stickyContact": {
+    "hotline": "Hotline 0776.818.160",
+    "call": "Call",
+    "zalo": "Zalo",
+    "register": "Register consult"
+  },
+  "previewCard": {
+    "subtitle": "Learning Progress Board",
+    "recentScore": "Latest Test Score",
+    "studentTitle": "Student",
+    "studentDesc": "Kids \u00b7 Teens \u00b7 Adults",
+    "teacherTitle": "Teacher",
+    "teacherDesc": "Manage classes & students",
+    "badgeStudentsLabel": "Students",
+    "badgeRatingLabel": "Rating"
+  },
+  "tests": {
+    "title": "Try Practice Tests — No Registration Needed",
+    "subtitle": "Preview VSTEP and IELTS exam content updated continuously.",
+    "loading": "Loading practice tests...",
+    "cta": "View Test",
+    "defaultDesc": "Standard proficiency assessment test."
+  },
+  "paths": {
+    "title": "Goal-based learning paths",
+    "subtitle": "Pick your goal and get recommendations that match your level.",
+    "tabs": {
+      "ielts": "IELTS",
+      "toeic": "TOEIC",
+      "communication": "Communication",
+      "cambridge": "Cambridge",
+      "kids": "Kids"
+    },
+    "ielts": "Roadmap from band 4.5 to 6.5+ with mock tests and AI feedback.",
+    "toeic": "Roadmap from 450 to 750+ focused on Listening/Reading.",
+    "communication": "Daily speaking practice with real-world conversation scenarios.",
+    "cambridge": "Prepare for KET/PET/FCE with structured level-based tests.",
+    "kids": "Learn through games, audio, and visuals to keep kids engaged."
+  },
+  "features": {
+    "title": "Key Features",
+    "subtitle": "A complete learning experience powered by modern technology",
+    "items": {
+      "ai": {
+        "title": "Instant AI feedback",
+        "desc": "Get immediate feedback on Writing/Speaking to improve faster."
+      },
+      "report": {
+        "title": "Visual progress reports",
+        "desc": "Track strengths, weaknesses, and growth by week and month."
+      },
+      "path": {
+        "title": "Goal-focused roadmap",
+        "desc": "Focus on IELTS, TOEIC, communication, or academic English."
+      },
+      "community": {
+        "title": "Community Q&A",
+        "desc": "Ask questions and get support from teachers and fellow learners."
+      },
+      "competition": {
+        "title": "Knowledge Arena",
+        "desc": "Weekly competitions to boost motivation with a live leaderboard."
+      },
+      "quiz": {
+        "title": "Fun Challenges",
+        "desc": "Quick tasks, exciting rewards — learning that feels like play."
+      },
+      "exam": {
+        "title": "International Exam Prep",
+        "desc": "VSTEP, IELTS and Cambridge tests updated to the latest standards."
+      },
+      "progress": {
+        "title": "Progress Tracking",
+        "desc": "Visual dashboards showing strengths and weak skills per section."
+      },
+      "grading": {
+        "title": "Instant Grading",
+        "desc": "Automatic results right after submission with per-question feedback."
+      }
+    }
+  },
+  "testimonials": {
+    "title": "What learners say",
+    "items": {
+      "1": {
+        "name": "Linh Anh",
+        "role": "IELTS learner",
+        "text": "I improved by 1.0 band in 8 weeks thanks to the clear roadmap."
+      },
+      "2": {
+        "name": "Mr. Quang",
+        "role": "Teacher",
+        "text": "The class dashboard saves me a lot of time every week."
+      },
+      "3": {
+        "name": "Parent An",
+        "role": "Parent",
+        "text": "Tracking my child’s progress is much easier now."
+      }
+    }
+  },
+  "faq": {
+    "title": "Frequently asked questions",
+    "items": {
+      "1": {
+        "q": "Can I try before paying?",
+        "a": "Yes. You can start with a trial account to explore the interface and learning paths."
+      },
+      "2": {
+        "q": "Who is this platform for?",
+        "a": "NamThuEdu supports students, university learners, and working adults with tailored paths."
+      },
+      "3": {
+        "q": "Is there a dedicated teacher dashboard?",
+        "a": "Yes. The teacher portal supports class management, test creation, and progress tracking."
+      }
+    }
+  },
+  "ctaBanner": {
+    "title": "Join NamThuEdu Today!",
+    "subtitle": "Start learning smarter with a complete digital education ecosystem.",
+    "cta": "Try It Now",
+    "ctaContact": "Contact Us"
+  },
+  "cta": {
+    "title": "Ready to start your learning journey?",
+    "subtitle": "Create a trial account and experience it today.",
+    "button": "Start Free Trial"
+  },
+  "footer": {
+    "copyright": "© 2026 NamThuEdu. Modern knowledge architecture platform.",
+    "contact": "Hotline: 1900 6868 • support@namthuedu.vn"
+  },
+  "legal": {
+    "lastUpdated": "Last updated",
+    "date": "20/05/2026",
+    "understood": "Got it",
+    "contactNote": "For any questions please email",
+    "contactOr": "or call hotline",
+    "privacy": {
+      "title": "Privacy Policy",
+      "intro": "NamThu Education is committed to protecting your privacy. This document describes how we collect, use and protect your personal information.",
+      "contactSuffix": "privacy policy",
+      "sections": [
+        { "title": "1. Information We Collect", "body": "When you register or use NamThuEdu, we may collect: full name, email, phone number, device info, and learning data (progress, scores, test history). We only collect information necessary to provide and improve our service." },
+        { "title": "2. How We Use Information", "body": "Your information is used to: create and manage student accounts, track learning progress, send course-related notifications, provide technical support, and improve platform quality. We do not use personal data for third-party advertising." },
+        { "title": "3. Data Security", "body": "NamThuEdu applies industry-standard security: HTTPS encryption, bcrypt password storage, and role-based internal access control. However, no system is 100% secure — you are responsible for protecting your login credentials." },
+        { "title": "4. Information Sharing", "body": "We do not sell or rent your personal information. Data is only shared with the teacher assigned to your class, and when required by law. Parents of students under 18 may request to view learning data." },
+        { "title": "5. Your Rights", "body": "You have the right to: access and edit personal information, request account deletion, and opt out of marketing emails (except essential account emails). To exercise these rights, contact hello@namthu.vn." },
+        { "title": "6. Cookies & Sessions", "body": "NamThuEdu uses cookies to maintain login sessions and remember language preferences. You may disable cookies in your browser, but this may affect your user experience." }
+      ]
+    },
+    "terms": {
+      "title": "Terms of Use",
+      "intro": "Please read these terms carefully before using the NamThuEdu learning platform. Using our service means you accept these terms.",
+      "contactSuffix": "terms of use",
+      "sections": [
+        { "title": "1. Acceptance of Terms", "body": "By creating an account or using NamThuEdu, you agree to comply with these terms. If you do not agree, please do not use the service. We may update terms and will notify you by email of significant changes." },
+        { "title": "2. User Accounts", "body": "Each student may only create one account. You are responsible for your password security and all activity from your account. Accounts may not be transferred or shared. Students under 13 require parental consent." },
+        { "title": "3. Content & Intellectual Property", "body": "All content on NamThuEdu (lessons, exams, materials, UI) belongs to NamThu Education and is protected by intellectual property law. You may use it for personal learning only. Copying, redistribution, or commercial use without written permission is strictly prohibited." },
+        { "title": "4. Tuition & Payment", "body": "Tuition is disclosed before enrollment. We may adjust fees with at least 30 days' notice. Refund policy: within the first 7 days if you have completed less than 20% of the course, a full refund can be requested." },
+        { "title": "5. Prohibited Conduct", "body": "Strictly prohibited: cheating on exams, sharing exam content externally, using another person's account, posting offensive content, spamming, or attempting to breach the system. Violations may result in permanent account termination without refund." },
+        { "title": "6. Limitation of Liability", "body": "NamThuEdu provides services as-is and does not guarantee 100% uptime. We are not liable for indirect damages arising from use or inability to use the service. Maximum liability does not exceed fees paid in the last 3 months." }
+      ]
     }
   }
 }

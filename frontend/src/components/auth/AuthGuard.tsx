@@ -6,6 +6,7 @@
  */
 
 import { Navigate } from 'react-router';
+import { getAuthToken, getAuthUser } from '../../utils/authStorage';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -20,22 +21,12 @@ function getDashboardPath(role: string): string {
 }
 
 export function AuthGuard({ children, forRole }: AuthGuardProps) {
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
 
   if (token) {
-    try {
-      const raw = localStorage.getItem('user');
-      const user = raw ? JSON.parse(raw) : null;
-      const role: string | null = user?.role || user?.uRole || null;
-
-      if (role) {
-        // Already logged in → go to their own dashboard (any role)
-        return <Navigate to={getDashboardPath(role)} replace />;
-      }
-    } catch {
-      localStorage.removeItem('user');
-      localStorage.removeItem('auth_token');
-    }
+    const user = getAuthUser();
+    const role: string | null = (user?.role as string) || (user?.uRole as string) || null;
+    if (role) return <Navigate to={getDashboardPath(role)} replace />;
   }
 
   return <>{children}</>;

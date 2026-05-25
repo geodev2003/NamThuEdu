@@ -815,38 +815,142 @@ class TestAssignmentController extends Controller
                                      ->whereHas('exam', function($q) use ($user) {
                                          $q->where('eTeacher_id', $user->uId);
                                      })
+                                     ->orderBy('taCreated_at', 'desc')
                                      ->get();
 
         $totalAssignments = $assignments->count();
         $classAssignments = $assignments->where('taTarget_type', 'class')->count();
         $studentAssignments = $assignments->where('taTarget_type', 'student')->count();
-
-        // Assignments with deadlines
         $withDeadlines = $assignments->whereNotNull('taDeadline')->count();
-        $overdue = $assignments->filter(function($assignment) {
-            return $assignment->taDeadline && now() > $assignment->taDeadline;
+        $thisWeekCount = $assignments->filter(function($a) {
+            return $a->taCreated_at >= now()->startOfWeek();
         })->count();
 
-        // Recent assignments (last 7 days)
-        $recentAssignments = $assignments->filter(function($assignment) {
-            return $assignment->taCreated_at >= now()->subDays(7);
-        })->count();
+        // Build per-assignment submission stats
+        $allSubmittedCount = 0;
+        $allStudentCount = 0;
+        $completionRates = [];
+        $assignmentsList = [];
+        $ageGroupNotSubmitted = ['kids' => 0, 'teens' => 0, 'adults' => 0];
+
+        foreach ($assignments as $assignment) {
+            $targetStudents = $this->getTargetStudents($assignment);
+            $studentCount = $targetStudents->count();
+
+            $submissions = \App\Models\Submission::where('assignment_id', $assignment->taId)
+                ->whereIn('sStatus', ['submitted', 'graded'])
+                ->get();
+
+            $submittedCount = $submissions->count();
+
+            // Track not-submitted per age group
+            $submittedIds = $submissions->pluck('user_id')->toArray();
+            foreach ($targetStudents as $student) {
+                if (!in_array($student->uId, $submittedIds)) {
+                    $ag = $student->age_group ?? 'adults';
+                    $key = in_array($ag, ['kids', 'teens', 'adults']) ? $ag : 'adults';
+                    $ageGroupNotSubmitted[$key]++;
+                }
+            }
+            $completionRate = $studentCount > 0 ? round(($submittedCount / $studentCount) * 100, 1) : 0;
+            $avgScore = $submissions->whereNotNull('sScore')->avg('sScore');
+
+            $isOverdue = $assignment->taDeadline && now() > $assignment->taDeadline;
+
+            // Target name
+            $targetName = '—';
+            if ($assignment->taTarget_type === 'class') {
+                $class = \App\Models\Classes::find($assignment->taTarget_id);
+                $targetName = $class ? $class->cName : 'Lớp không tìm thấy';
+            } else {
+                $student = \App\Models\User::find($assignment->taTarget_id);
+                $targetName = $student ? $student->uName : 'HS không tìm thấy';
+            }
+
+            $allStudentCount += $studentCount;
+            $allSubmittedCount += $submittedCount;
+            if ($studentCount > 0) {
+                $completionRates[] = $completionRate;
+            }
+
+            $assignmentsList[] = [
+                'id'              => $assignment->taId,
+                'exam_title'      => $assignment->exam->eTitle ?? 'Unknown',
+                'exam_type'       => $assignment->exam->eType ?? null,
+                'target_type'     => $assignment->taTarget_type,
+                'target_name'     => $targetName,
+                'deadline'        => $assignment->taDeadline ? $assignment->taDeadline->toIso8601String() : null,
+                'is_overdue'      => $isOverdue,
+                'student_count'   => $studentCount,
+                'submitted_count' => $submittedCount,
+                'completion_rate' => $completionRate,
+                'avg_score'       => $avgScore ? round($avgScore, 2) : null,
+                'created_at'      => $assignment->taCreated_at ? $assignment->taCreated_at->toDateString() : null,
+            ];
+        }
+
+        $avgCompletionRate = count($completionRates) > 0
+            ? round(array_sum($completionRates) / count($completionRates), 1)
+            : 0;
+
+        $overdueCount = collect($assignmentsList)->where('is_overdue', true)->count();
+
+        // By month (last 6 months)
+        $byMonth = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $month = now()->subMonths($i);
+            $label = 'T' . $month->month;
+            $count = $assignments->filter(function($a) use ($month) {
+                return $a->taCreated_at &&
+                       $a->taCreated_at->month == $month->month &&
+                       $a->taCreated_at->year == $month->year;
+            })->count();
+            $byMonth[] = ['month' => $label, 'count' => $count];
+        }
+
+        // Submission trends (last 30 days) — daily submission count + rate
+        $allAssignmentIds = $assignments->pluck('taId')->toArray();
+        $submissionTrends = [];
+        for ($i = 29; $i >= 0; $i--) {
+            $day = now()->subDays($i);
+            $dateStr = $day->toDateString();
+            $count = \App\Models\Submission::whereIn('assignment_id', $allAssignmentIds)
+                ->whereIn('sStatus', ['submitted', 'graded'])
+                ->whereDate('sSubmit_time', $dateStr)
+                ->count();
+            $submissionTrends[] = [
+                'date'  => $day->format('d/m'),
+                'count' => $count,
+                'rate'  => $allStudentCount > 0 ? round(($count / $allStudentCount) * 100, 1) : 0,
+            ];
+        }
 
         return response()->json([
             'status' => 'success',
             'data' => [
-                'total_assignments' => $totalAssignments,
-                'class_assignments' => $classAssignments,
-                'student_assignments' => $studentAssignments,
-                'with_deadlines' => $withDeadlines,
-                'overdue_assignments' => $overdue,
-                'recent_assignments' => $recentAssignments,
-                'assignments_by_exam' => $assignments->groupBy('exam_id')->map(function($group) {
-                    return [
-                        'count' => $group->count(),
-                        'exam_title' => $group->first()->exam->eTitle ?? 'Unknown',
-                    ];
-                }),
+                'overview' => [
+                    'total_assignments'    => $totalAssignments,
+                    'avg_completion_rate'  => $avgCompletionRate,
+                    'overdue_count'        => $overdueCount,
+                    'this_week_count'      => $thisWeekCount,
+                    'total_students'       => $allStudentCount,
+                    'total_submitted'      => $allSubmittedCount,
+                    'class_assignments'    => $classAssignments,
+                    'student_assignments'  => $studentAssignments,
+                    'with_deadlines'       => $withDeadlines,
+                ],
+                'by_month'            => $byMonth,
+                'submission_trends'   => $submissionTrends,
+                'by_target_type'   => [
+                    'class'   => $classAssignments,
+                    'student' => $studentAssignments,
+                ],
+                'by_age_group' => [
+                    ['name' => 'Kids',   'key' => 'kids',   'not_submitted' => $ageGroupNotSubmitted['kids']],
+                    ['name' => 'Teens',  'key' => 'teens',  'not_submitted' => $ageGroupNotSubmitted['teens']],
+                    ['name' => 'Adults', 'key' => 'adults', 'not_submitted' => $ageGroupNotSubmitted['adults']],
+                ],
+                'assignments_list' => $assignmentsList,
             ]
         ]);
     }
@@ -857,12 +961,8 @@ class TestAssignmentController extends Controller
     private function getTargetStudents($assignment)
     {
         if ($assignment->taTarget_type === 'class') {
-            // Get students from class enrollments
-            return User::whereIn('uId', function($query) use ($assignment) {
-                $query->select('student_id')
-                      ->from('class_enrollments')
-                      ->where('class_id', $assignment->taTarget_id);
-            })
+            // class_enrollments table was dropped; students now have class_id directly on users table
+            return User::where('class_id', $assignment->taTarget_id)
             ->where('uRole', 'student')
             ->whereNull('uDeleted_at')
             ->get();

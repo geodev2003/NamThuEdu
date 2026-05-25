@@ -7,6 +7,7 @@
  */
 
 import { Navigate, useLocation } from 'react-router';
+import { getAuthToken, getAuthUser } from '../../utils/authStorage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -34,19 +35,13 @@ export function ProtectedRoute({
 }: ProtectedRouteProps) {
   const location = useLocation();
 
-  // ── Synchronous auth check ──────────────────────────────────────────────────
-  const token = localStorage.getItem('auth_token');
+  // ── Synchronous auth check (localStorage + sessionStorage) ─────────────────
+  const token = getAuthToken();
   let userRole: string | null = null;
 
   if (token) {
-    try {
-      const raw = localStorage.getItem('user');
-      const user = raw ? JSON.parse(raw) : null;
-      userRole = user?.role || user?.uRole || null;
-    } catch {
-      localStorage.removeItem('user');
-      localStorage.removeItem('auth_token');
-    }
+    const user = getAuthUser();
+    userRole = (user?.role as string) || (user?.uRole as string) || null;
   }
 
   // Not authenticated → go to the correct login page

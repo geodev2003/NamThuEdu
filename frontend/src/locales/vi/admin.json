@@ -1,0 +1,44 @@
+{
+  "admin": {
+    "dashboard": {
+      "loading": "Đang tải dashboard...",
+      "loadError": "Không tải được dashboard admin.",
+      "greetMorning": "Chào buổi sáng",
+      "greetAfternoon": "Chào buổi chiều",
+      "greetEvening": "Chào buổi tối",
+      "greetSuffix": ", Admin 👋",
+      "title": "Admin Console",
+      "subtitle": "Tổng quan hệ thống NamThu Education",
+      "systemOnline": "Hệ thống Online",
+      "cards": {
+        "teachers": "Tổng giáo viên",
+        "teachersSub": "{{count}} đang hoạt động",
+        "students": "Tổng học viên",
+        "studentsSub": "{{count}} mới tuần này",
+        "courses": "Khóa học active",
+        "coursesSub": "{{count}} lượt ghi danh",
+        "submissions": "Bài nộp hôm nay",
+        "submissionsSub": "Đề thi: {{count}}"
+      },
+      "trendsTitle": "Xu hướng hoạt động",
+      "contentTypeTitle": "Loại nội dung",
+      "recentActivity": "Hoạt động gần đây",
+      "viewLogs": "Xem nhật ký",
+      "realtime": "Realtime",
+      "activity": {
+        "submissions": "{{count}} bài nộp mới trong ngày",
+        "posts": "{{count}} bài viết mới",
+        "enrollments": "{{count}} ghi danh mới",
+        "pendingPosts": "{{count}} bài viết chờ duyệt"
+      },
+      "alertsTitle": "Cần xử lý",
+      "alerts": {
+        "posts": "{{count}} bài viết chờ duyệt",
+        "exams": "{{count}} đề thi chờ duyệt",
+        "lockedUsers": "{{count}} tài khoản đang bị khóa",
+        "completionRate": "Tỷ lệ hoàn thành bài tập {{rate}}%"
+      },
+      "serverHealth": "Sức khỏe Server"
+    }
+  }
+}
