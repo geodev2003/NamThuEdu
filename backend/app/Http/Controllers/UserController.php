@@ -1179,6 +1179,27 @@ class UserController extends Controller
                             return $group->count();
                         });
 
+        // Students by age_group (kids/teens/adults) - đếm trực tiếp từ cột users.age_group
+        $studentsByAgeGroup = User::where('uRole', 'student')
+                                  ->whereNull('uDeleted_at')
+                                  ->selectRaw("
+                                      CASE
+                                          WHEN age_group IN ('kids') THEN 'kids'
+                                          WHEN age_group IN ('teens') THEN 'teens'
+                                          WHEN age_group IN ('adults', 'adult', 'professionals', 'all') OR age_group IS NULL THEN 'adults'
+                                          ELSE 'adults'
+                                      END as bucket,
+                                      COUNT(*) as count
+                                  ")
+                                  ->groupBy('bucket')
+                                  ->pluck('count', 'bucket');
+
+        $byAgeGroup = [
+            'kids' => (int) ($studentsByAgeGroup['kids'] ?? 0),
+            'teens' => (int) ($studentsByAgeGroup['teens'] ?? 0),
+            'adults' => (int) ($studentsByAgeGroup['adults'] ?? 0),
+        ];
+
         $statistics = [
             'overview' => [
                 'total_students' => $totalStudents,
@@ -1196,6 +1217,7 @@ class UserController extends Controller
             ],
             'distribution' => [
                 'by_class' => $studentsByClass,
+                'by_age_group' => $byAgeGroup,
                 'by_status' => [
                     'active' => $activeStudents,
                     'inactive' => $inactiveStudents,

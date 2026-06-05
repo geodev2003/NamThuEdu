@@ -28,7 +28,18 @@ class GradingApiTest extends TestCase
 
         $this->teacher = User::factory()->create(['uRole' => 'teacher']);
 
-        $this->student = User::factory()->create(['uRole' => 'student']);
+        $classId = \Illuminate\Support\Facades\DB::table('classes')->insertGetId([
+            'cName'       => 'Test Class',
+            'cTeacher_id' => $this->teacher->uId,
+            'cStatus'     => 'active',
+            'age_group'   => 'adults',
+        ]);
+
+        $this->student = User::factory()->create([
+            'uRole'      => 'student',
+            'class_id'   => $classId,
+            'age_group'  => 'adults',
+        ]);
 
         $examType = ExamType::create([
             'etName' => 'IELTS',
@@ -37,13 +48,14 @@ class GradingApiTest extends TestCase
 
         $this->exam = Exam::factory()->create([
             'eTeacher_id' => $this->teacher->uId,
-            
+            'eType' => 'GENERAL',
             'eTotal_score' => 10,
         ]);
 
         Question::factory()->count(5)->create([
             'exam_id' => $this->exam->eId,
             'qScore' => 2,
+            'qType' => 'multiple_choice',
         ]);
 
         $this->submission = Submission::create([

@@ -502,7 +502,7 @@
         "feedbackPlaceholder": "Viết nhận xét cho học viên... (tuỳ chọn)",
         "score": "Điểm",
         "status": "Trạng thái review",
-        "aiScore": "Điểm AI chấm",
+        "aiScore": "Điểm được chấm",
         "noAiScore": "Chưa có điểm AI chi tiết",
         "onlyTotal": "Chỉ điểm tổng:",
         "adjustScore": "Điều chỉnh điểm (tuỳ chọn)",

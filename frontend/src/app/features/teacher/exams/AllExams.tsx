@@ -17,11 +17,12 @@ import {
   Baby,
   GraduationCap,
   BookOpen,
-  Briefcase,
   Check,
   CheckSquare,
   Square,
   X,
+  User,
+  Users,
 } from "lucide-react";
 import { getKidsExams, deleteKidsExam } from "../../../../services/kidsExamApi";
 import { api } from "../../../../services/api";
@@ -50,6 +51,10 @@ interface KidsExam {
   };
   questions?: any[];
   _group?: "vstep" | "ielts" | "adult" | "kids" | "teens";
+  _is_owner?: boolean;
+  _owner_name?: string;
+  eTeacher_id?: number;
+  eIs_private?: boolean;
 }
 
 export function AllExams() {
@@ -61,6 +66,7 @@ export function AllExams() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterAgeGroup, setFilterAgeGroup] = useState<string>("all");
+  const [filterOwner, setFilterOwner] = useState<"all" | "mine" | "others">("all");
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -252,7 +258,7 @@ export function AllExams() {
     setCurrentPage(1);
     // Clear selection khi filter thay đổi để tránh xóa nhầm
     setSelectedIds(new Set());
-  }, [searchQuery, filterType, filterAgeGroup]);
+  }, [searchQuery, filterType, filterAgeGroup, filterOwner]);
 
   // Validate exam tồn tại khi mount - lọc bỏ exam không hợp lệ khỏi state
   useEffect(() => {
@@ -262,29 +268,27 @@ export function AllExams() {
   }, []);
 
   // Calculate stats by age group - ưu tiên dùng _group tag từ API
-  // Mapping:
-  //   VSTEP  → "professionals" (Người đi làm)
-  //   IELTS  → "professionals" (Người đi làm)
-  //   Adult  → "adults" (Sinh viên)
-  //   Kids   → "kids" (Trẻ em)
-  //   Teens  → "teens" (Học sinh)
+  // Mapping (chỉ có 3 nhóm học viên thực tế: kids / teens / adults):
+  //   Kids   → "kids" (Trẻ em 6-12)
+  //   Teens  → "teens" (Học sinh 13-17)
+  //   Adult / VSTEP / IELTS → "adults" (Sinh viên + người trưởng thành)
   const getAgeGroup = (exam: KidsExam & { _group?: string }) => {
-    if (exam._group === "vstep") return "professionals";
-    if (exam._group === "ielts") return "professionals";
-    if (exam._group === "adult") return "adults";
     if (exam._group === "kids") return "kids";
     if (exam._group === "teens") return "teens";
+    // VSTEP, IELTS, Adult, General... đều thuộc adults
+    if (exam._group === "vstep" || exam._group === "ielts" || exam._group === "adult") {
+      return "adults";
+    }
 
-    // Fallback: check kids_exam_config
+    // Fallback: check kids_exam_config / age_range
     const ageRange = exam.kids_exam_config?.age_range || "all";
     if (ageRange === "kids" || ageRange.includes("6-8") || ageRange.includes("8-11") || ageRange.includes("9-12")) return "kids";
     if (ageRange === "teens" || ageRange.includes("13-17")) return "teens";
-    if (ageRange === "adults" || ageRange.includes("18+") || ageRange.includes("university")) return "adults";
-    if (ageRange === "professionals" || ageRange.includes("working")) return "professionals";
+    if (ageRange === "adults" || ageRange.includes("18+") || ageRange.includes("university") || ageRange === "professionals" || ageRange.includes("working")) return "adults";
     return "all";
   };
 
-  // Filter exams - dùng getAgeGroup() để áp dụng mapping mới (VSTEP/IELTS → professionals)
+  // Filter exams - dùng getAgeGroup() để áp dụng mapping mới (VSTEP/IELTS → adults)
   const filteredExams = exams.filter(exam => {
     const matchesSearch = exam.eTitle.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -321,7 +325,15 @@ export function AllExams() {
       }
     }
 
-    return matchesSearch && matchesType && matchesAgeGroup;
+    // Owner filter: của tôi / từ giáo viên khác / tất cả
+    let matchesOwner = true;
+    if (filterOwner === "mine") {
+      matchesOwner = exam._is_owner === true;
+    } else if (filterOwner === "others") {
+      matchesOwner = exam._is_owner === false;
+    }
+
+    return matchesSearch && matchesType && matchesAgeGroup && matchesOwner;
   });
 
   const stats = {
@@ -329,7 +341,8 @@ export function AllExams() {
     kids: exams.filter(e => getAgeGroup(e) === "kids").length,
     teens: exams.filter(e => getAgeGroup(e) === "teens").length,
     adults: exams.filter(e => getAgeGroup(e) === "adults").length,
-    professionals: exams.filter(e => getAgeGroup(e) === "professionals").length,
+    mine: exams.filter(e => e._is_owner === true).length,
+    others: exams.filter(e => e._is_owner === false).length,
   };
 
   // Pagination - lọc thêm lần nữa để chắc chắn không có exam không hợp lệ
@@ -435,125 +448,112 @@ export function AllExams() {
           </div>
         )}
 
-        {/* Refined Stats Cards - Compact & Professional */}
-        {!loading && !error && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            <button
-              onClick={() => setFilterAgeGroup("all")}
-              className={`group p-4 rounded-xl border transition-all text-left ${
-                filterAgeGroup === "all"
-                  ? "bg-gradient-to-br from-orange-600 to-orange-500 border-orange-600 shadow-lg shadow-orange-200/50"
-                  : "bg-white/80 backdrop-blur-sm border-gray-200 hover:border-orange-300 hover:shadow-md"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 mb-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                  filterAgeGroup === "all" ? "bg-white/20" : "bg-orange-50 group-hover:bg-orange-100"
-                }`}>
-                  <Layers className={`w-4 h-4 ${filterAgeGroup === "all" ? "text-white" : "text-orange-600"}`} />
-                </div>
-                <div className={`text-xs font-medium ${filterAgeGroup === "all" ? "text-white/90" : "text-gray-600"}`}>
-                  Tất cả
-                </div>
-              </div>
-              <div className={`text-2xl font-bold ${filterAgeGroup === "all" ? "text-white" : "text-gray-900"}`}>
-                {stats.total}
-              </div>
-            </button>
+        {/* Stats & Age Group Filter - Unified compact panel */}
+        {!loading && !error && (() => {
+          const total = stats.total || 1; // tránh chia 0
+          const kidsPct = (stats.kids / total) * 100;
+          const teensPct = (stats.teens / total) * 100;
+          const adultsPct = (stats.adults / total) * 100;
 
-            <button
-              onClick={() => setFilterAgeGroup("kids")}
-              className={`group p-4 rounded-xl border transition-all text-left ${
-                filterAgeGroup === "kids"
-                  ? "bg-gradient-to-br from-pink-600 to-pink-500 border-pink-600 shadow-lg shadow-pink-200/50"
-                  : "bg-white/80 backdrop-blur-sm border-gray-200 hover:border-pink-300 hover:shadow-md"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 mb-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                  filterAgeGroup === "kids" ? "bg-white/20" : "bg-pink-50 group-hover:bg-pink-100"
-                }`}>
-                  <Baby className={`w-4 h-4 ${filterAgeGroup === "kids" ? "text-white" : "text-pink-600"}`} />
-                </div>
-                <div className={`text-xs font-medium ${filterAgeGroup === "kids" ? "text-white/90" : "text-gray-600"}`}>
-                  Trẻ em
-                </div>
-              </div>
-              <div className={`text-2xl font-bold ${filterAgeGroup === "kids" ? "text-white" : "text-gray-900"}`}>
-                {stats.kids}
-              </div>
-            </button>
+          const groups = [
+            { key: "all", label: "Tất cả", icon: Layers, count: stats.total, color: "orange" },
+            { key: "kids", label: "Trẻ em", icon: Baby, count: stats.kids, color: "pink" },
+            { key: "teens", label: "Học sinh", icon: BookOpen, count: stats.teens, color: "blue" },
+            { key: "adults", label: "Sinh viên / Người đi làm", icon: GraduationCap, count: stats.adults, color: "violet" },
+          ] as const;
 
-            <button
-              onClick={() => setFilterAgeGroup("teens")}
-              className={`group p-4 rounded-xl border transition-all text-left ${
-                filterAgeGroup === "teens"
-                  ? "bg-gradient-to-br from-blue-600 to-blue-500 border-blue-600 shadow-lg shadow-blue-200/50"
-                  : "bg-white/80 backdrop-blur-sm border-gray-200 hover:border-blue-300 hover:shadow-md"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 mb-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                  filterAgeGroup === "teens" ? "bg-white/20" : "bg-blue-50 group-hover:bg-blue-100"
-                }`}>
-                  <BookOpen className={`w-4 h-4 ${filterAgeGroup === "teens" ? "text-white" : "text-blue-600"}`} />
-                </div>
-                <div className={`text-xs font-medium ${filterAgeGroup === "teens" ? "text-white/90" : "text-gray-600"}`}>
-                  Học sinh
-                </div>
-              </div>
-              <div className={`text-2xl font-bold ${filterAgeGroup === "teens" ? "text-white" : "text-gray-900"}`}>
-                {stats.teens}
-              </div>
-            </button>
+          // Mapping color → tailwind classes (active state)
+          const colorMap: Record<string, { bg: string; text: string; ring: string; dot: string; iconBg: string; iconText: string }> = {
+            orange: { bg: "bg-orange-50", text: "text-orange-700", ring: "ring-orange-200", dot: "bg-orange-500", iconBg: "bg-orange-100", iconText: "text-orange-600" },
+            pink:   { bg: "bg-pink-50",   text: "text-pink-700",   ring: "ring-pink-200",   dot: "bg-pink-500",   iconBg: "bg-pink-100",   iconText: "text-pink-600" },
+            blue:   { bg: "bg-blue-50",   text: "text-blue-700",   ring: "ring-blue-200",   dot: "bg-blue-500",   iconBg: "bg-blue-100",   iconText: "text-blue-600" },
+            violet: { bg: "bg-violet-50", text: "text-violet-700", ring: "ring-violet-200", dot: "bg-violet-500", iconBg: "bg-violet-100", iconText: "text-violet-600" },
+          };
 
-            <button
-              onClick={() => setFilterAgeGroup("adults")}
-              className={`group p-4 rounded-xl border transition-all text-left ${
-                filterAgeGroup === "adults"
-                  ? "bg-gradient-to-br from-violet-600 to-violet-500 border-violet-600 shadow-lg shadow-violet-200/50"
-                  : "bg-white/80 backdrop-blur-sm border-gray-200 hover:border-violet-300 hover:shadow-md"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 mb-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                  filterAgeGroup === "adults" ? "bg-white/20" : "bg-violet-50 group-hover:bg-violet-100"
-                }`}>
-                  <GraduationCap className={`w-4 h-4 ${filterAgeGroup === "adults" ? "text-white" : "text-violet-600"}`} />
-                </div>
-                <div className={`text-xs font-medium ${filterAgeGroup === "adults" ? "text-white/90" : "text-gray-600"}`}>
-                  Sinh viên
-                </div>
-              </div>
-              <div className={`text-2xl font-bold ${filterAgeGroup === "adults" ? "text-white" : "text-gray-900"}`}>
-                {stats.adults}
-              </div>
-            </button>
+          return (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              {/* Header: Total + Breakdown bar */}
+              <div className="px-5 pt-5 pb-4">
+                <div className="flex items-start justify-between gap-6 flex-wrap">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md shadow-orange-200/60">
+                      <Layers className="w-5 h-5 text-white" strokeWidth={2.25} />
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Tổng đề thi</div>
+                      <div className="flex items-baseline gap-1.5 mt-0.5">
+                        <span className="text-3xl font-bold text-gray-900 leading-none tracking-tight">{stats.total}</span>
+                        <span className="text-xs text-gray-500">đề</span>
+                      </div>
+                    </div>
+                  </div>
 
-            <button
-              onClick={() => setFilterAgeGroup("professionals")}
-              className={`group p-4 rounded-xl border transition-all text-left ${
-                filterAgeGroup === "professionals"
-                  ? "bg-gradient-to-br from-emerald-600 to-emerald-500 border-emerald-600 shadow-lg shadow-emerald-200/50"
-                  : "bg-white/80 backdrop-blur-sm border-gray-200 hover:border-emerald-300 hover:shadow-md"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 mb-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                  filterAgeGroup === "professionals" ? "bg-white/20" : "bg-emerald-50 group-hover:bg-emerald-100"
-                }`}>
-                  <Briefcase className={`w-4 h-4 ${filterAgeGroup === "professionals" ? "text-white" : "text-emerald-600"}`} />
-                </div>
-                <div className={`text-xs font-medium ${filterAgeGroup === "professionals" ? "text-white/90" : "text-gray-600"}`}>
-                  Người đi làm
+                  {/* Visual distribution bar - 3 nhóm học viên */}
+                  <div className="flex-1 min-w-[260px]">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Phân bổ theo nhóm tuổi</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden flex">
+                      {kidsPct > 0 && <div className="bg-pink-500 transition-all" style={{ width: `${kidsPct}%` }} title={`Trẻ em: ${stats.kids}`} />}
+                      {teensPct > 0 && <div className="bg-blue-500 transition-all" style={{ width: `${teensPct}%` }} title={`Học sinh: ${stats.teens}`} />}
+                      {adultsPct > 0 && <div className="bg-violet-500 transition-all" style={{ width: `${adultsPct}%` }} title={`Sinh viên: ${stats.adults}`} />}
+                    </div>
+                    <div className="flex items-center gap-x-4 gap-y-1 mt-2 text-[11px] flex-wrap">
+                      <span className="inline-flex items-center gap-1.5 text-gray-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-pink-500" />
+                        Trẻ em <span className="font-semibold text-gray-900">{stats.kids}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 text-gray-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        Học sinh <span className="font-semibold text-gray-900">{stats.teens}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 text-gray-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                        Sinh viên / Người đi làm <span className="font-semibold text-gray-900">{stats.adults}</span>
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className={`text-2xl font-bold ${filterAgeGroup === "professionals" ? "text-white" : "text-gray-900"}`}>
-                {stats.professionals}
+
+              {/* Divider */}
+              <div className="h-px bg-gray-100" />
+
+              {/* Segmented filter — chips kéo ngang trên mobile */}
+              <div className="px-3 py-3 overflow-x-auto">
+                <div className="flex items-center gap-1.5 min-w-max">
+                  {groups.map(({ key, label, icon: Icon, count, color }) => {
+                    const isActive = filterAgeGroup === key;
+                    const c = colorMap[color];
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => setFilterAgeGroup(key)}
+                        className={`group relative inline-flex items-center gap-2 pl-2.5 pr-3 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                          isActive
+                            ? `${c.bg} ${c.text} ring-1 ${c.ring} shadow-sm`
+                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                        }`}
+                      >
+                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md transition-colors ${
+                          isActive ? c.iconBg : "bg-gray-100 group-hover:bg-gray-200"
+                        }`}>
+                          <Icon className={`w-3.5 h-3.5 ${isActive ? c.iconText : "text-gray-500"}`} strokeWidth={2.25} />
+                        </span>
+                        <span>{label}</span>
+                        <span className={`inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-md text-[11px] font-bold tabular-nums ${
+                          isActive ? "bg-white/80 text-gray-900" : "bg-gray-100 text-gray-600 group-hover:bg-white"
+                        }`}>
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </button>
-          </div>
-        )}
+            </div>
+          );
+        })()}
 
         {/* Refined Search & Filters - Inline Design */}
         {!loading && !error && (
@@ -574,6 +574,48 @@ export function AllExams() {
               {/* Filters - Inline */}
               <div className="flex flex-wrap items-center gap-3">
                 <span className="text-xs font-semibold text-gray-600">Lọc theo:</span>
+
+                {/* Owner Filter Tabs */}
+                <div className="inline-flex items-center bg-gray-100 rounded-lg p-0.5 border border-gray-200">
+                  <button
+                    onClick={() => setFilterOwner("all")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                      filterOwner === "all"
+                        ? "bg-white text-orange-600 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="Hiển thị đề của bạn và đề public của giáo viên khác"
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    Tất cả
+                    <span className="ml-1 text-[10px] font-mono opacity-70">({stats.total})</span>
+                  </button>
+                  <button
+                    onClick={() => setFilterOwner("mine")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                      filterOwner === "mine"
+                        ? "bg-white text-orange-600 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    Của tôi
+                    <span className="ml-1 text-[10px] font-mono opacity-70">({stats.mine})</span>
+                  </button>
+                  <button
+                    onClick={() => setFilterOwner("others")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                      filterOwner === "others"
+                        ? "bg-white text-orange-600 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="Đề công khai từ các giáo viên khác trong hệ thống"
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    Từ giáo viên khác
+                    <span className="ml-1 text-[10px] font-mono opacity-70">({stats.others})</span>
+                  </button>
+                </div>
                 
                 {/* Age Group Filter */}
                 <select
@@ -584,8 +626,7 @@ export function AllExams() {
                   <option value="all">Tất cả nhóm tuổi</option>
                   <option value="kids">Trẻ em (6-12)</option>
                   <option value="teens">Học sinh (13-17)</option>
-                  <option value="adults">Sinh viên (18+)</option>
-                  <option value="professionals">Người đi làm</option>
+                  <option value="adults">Sinh viên / Người đi làm (18+)</option>
                 </select>
                 
                 {/* Exam Type Filter */}
@@ -608,31 +649,23 @@ export function AllExams() {
                   {/* Teens/Adults exam types */}
                   {(filterAgeGroup === "all" || filterAgeGroup === "teens" || filterAgeGroup === "adults") && (
                     <>
+                      <option value="vstep">VSTEP</option>
                       <option value="ielts">IELTS</option>
                       <option value="toefl">TOEFL</option>
+                      <option value="toeic">TOEIC</option>
                     </>
                   )}
                   
-                  {/* Adults/Professionals exam types */}
-                  {(filterAgeGroup === "all" || filterAgeGroup === "adults" || filterAgeGroup === "professionals") && (
-                    <option value="toeic">TOEIC</option>
-                  )}
-                  
-                  {/* Professionals only */}
-                  {(filterAgeGroup === "all" || filterAgeGroup === "professionals") && (
-                    <option value="business">Business English</option>
-                  )}
-                  
-                  {/* General - available for all */}
+                  {/* General - available for all except kids */}
                   {filterAgeGroup !== "kids" && (
                     <option value="general">Đề tổng hợp</option>
                   )}
                 </select>
                 
                 {/* Clear filters */}
-                {(filterAgeGroup !== "all" || filterType !== "all") && (
+                {(filterAgeGroup !== "all" || filterType !== "all" || filterOwner !== "all") && (
                   <button 
-                    onClick={() => { setFilterAgeGroup("all"); setFilterType("all"); }}
+                    onClick={() => { setFilterAgeGroup("all"); setFilterType("all"); setFilterOwner("all"); }}
                     className="text-xs text-orange-600 hover:text-orange-700 font-semibold ml-auto transition-colors"
                   >
                     Xóa bộ lọc
@@ -654,7 +687,10 @@ export function AllExams() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => {
-                  const pageIds = paginatedExams.map((e) => e.eId);
+                  // Chỉ select đề của chính mình (không thể bulk delete đề của giáo viên khác)
+                  const ownedPageExams = paginatedExams.filter((e) => e._is_owner !== false);
+                  const pageIds = ownedPageExams.map((e) => e.eId);
+                  if (pageIds.length === 0) return;
                   const allSelected = pageIds.every((id) => selectedIds.has(id));
                   setSelectedIds((prev) => {
                     const next = new Set(prev);
@@ -666,20 +702,24 @@ export function AllExams() {
                     return next;
                   });
                 }}
-                className="group flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:text-orange-600 rounded-lg hover:bg-orange-50 transition-colors"
+                className="group flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:text-orange-600 rounded-lg hover:bg-orange-50 transition-colors cursor-pointer"
               >
-                {paginatedExams.every((e) => selectedIds.has(e.eId)) &&
-                paginatedExams.length > 0 ? (
-                  <CheckSquare className="w-4 h-4 text-orange-600" />
-                ) : (
-                  <Square className="w-4 h-4 text-gray-400 group-hover:text-orange-500" />
-                )}
-                <span>
-                  {paginatedExams.every((e) => selectedIds.has(e.eId)) &&
-                  paginatedExams.length > 0
-                    ? "Bỏ chọn tất cả"
-                    : "Chọn tất cả trang này"}
-                </span>
+                {(() => {
+                  const ownedExams = paginatedExams.filter((e) => e._is_owner !== false);
+                  const allOwnedSelected = ownedExams.length > 0 && ownedExams.every((e) => selectedIds.has(e.eId));
+                  return (
+                    <>
+                      {allOwnedSelected ? (
+                        <CheckSquare className="w-4 h-4 text-orange-600" />
+                      ) : (
+                        <Square className="w-4 h-4 text-gray-400 group-hover:text-orange-500" />
+                      )}
+                      <span>
+                        {allOwnedSelected ? "Bỏ chọn tất cả" : "Chọn tất cả trang này"}
+                      </span>
+                    </>
+                  );
+                })()}
               </button>
               {selectedIds.size > 0 && (
                 <span className="text-xs text-gray-500">
@@ -719,11 +759,14 @@ export function AllExams() {
               if (!exam || !exam.eId || !exam.eTitle) return null;
               const typeInfo = getExamTypeInfo(exam);
               const isSelected = selectedIds.has(exam.eId);
+              const isOwner = exam._is_owner !== false;
               return (
                 <div
                   key={exam.eId}
                   onClick={(e) => {
                     // Click vào card nhưng không phải link/button thì toggle select
+                    // Chỉ cho phép select đề của chính mình (vì bulk delete chỉ xóa được đề của mình)
+                    if (!isOwner) return;
                     const target = e.target as HTMLElement;
                     if (
                       !target.closest("a") &&
@@ -733,28 +776,45 @@ export function AllExams() {
                       toggleSelect(exam.eId);
                     }
                   }}
-                  className={`group relative bg-white/90 backdrop-blur-sm rounded-xl border p-5 transition-all cursor-pointer ${
+                  className={`group relative bg-white/90 backdrop-blur-sm rounded-xl border p-5 transition-all ${
+                    isOwner ? "cursor-pointer" : ""
+                  } ${
                     isSelected
                       ? "border-orange-500 ring-2 ring-orange-200 shadow-lg shadow-orange-100"
-                      : "border-gray-200 hover:border-orange-300 hover:shadow-lg"
+                      : isOwner
+                        ? "border-gray-200 hover:border-orange-300 hover:shadow-lg"
+                        : "border-blue-100 bg-blue-50/30 hover:border-blue-300 hover:shadow-md"
                   }`}
                 >
-                  {/* Checkbox top-left */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleSelect(exam.eId);
-                    }}
-                    className={`absolute top-2 left-2 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
-                      isSelected
-                        ? "bg-gradient-to-br from-orange-500 to-orange-600 border-orange-600 shadow-md shadow-orange-500/30"
-                        : "bg-white border-gray-300 hover:border-orange-400"
-                    }`}
-                  >
-                    {isSelected && (
-                      <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                    )}
-                  </button>
+                  {/* Checkbox top-left - chỉ hiện cho đề của mình */}
+                  {isOwner && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSelect(exam.eId);
+                      }}
+                      className={`absolute top-2 left-2 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-gradient-to-br from-orange-500 to-orange-600 border-orange-600 shadow-md shadow-orange-500/30"
+                          : "bg-white border-gray-300 hover:border-orange-400"
+                      }`}
+                    >
+                      {isSelected && (
+                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                      )}
+                    </button>
+                  )}
+
+                  {/* Owner badge - chỉ hiện nếu đề không phải của mình */}
+                  {!isOwner && (
+                    <div
+                      className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200"
+                      title={`Đề công khai từ ${exam._owner_name || "giáo viên khác"}`}
+                    >
+                      <Users className="w-3 h-3" />
+                      <span className="truncate max-w-[120px]">{exam._owner_name || "Giáo viên khác"}</span>
+                    </div>
+                  )}
 
                   {/* ID badge top-right corner */}
                   <span className="absolute top-2 right-2 text-[10px] font-mono font-semibold text-gray-400 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded">
@@ -813,30 +873,48 @@ export function AllExams() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2">
-                    <Link
-                      to={getEditLink(exam)}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium"
-                    >
-                      <Edit className="w-3.5 h-3.5" />
-                      Sửa
-                    </Link>
-                    <Link
-                      to={
-                        exam.eType === "VSTEP"
-                          ? `/giao-vien/de-thi/${exam.eId}/vstep`
-                          : `/giao-vien/de-thi/${exam.eId}/xem`
-                      }
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-lg hover:from-orange-700 hover:to-orange-600 transition-all text-sm font-medium shadow-sm"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      Xem
-                    </Link>
-                    <button
-                      onClick={() => setDeleteConfirm(exam.eId)}
-                      className="inline-flex items-center justify-center p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {isOwner ? (
+                      <>
+                        <Link
+                          to={getEditLink(exam)}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium cursor-pointer"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                          Sửa
+                        </Link>
+                        <Link
+                          to={
+                            exam.eType === "VSTEP"
+                              ? `/giao-vien/de-thi/${exam.eId}/vstep`
+                              : `/giao-vien/de-thi/${exam.eId}/xem`
+                          }
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-lg hover:from-orange-700 hover:to-orange-600 transition-all text-sm font-medium shadow-sm cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          Xem
+                        </Link>
+                        <button
+                          onClick={() => setDeleteConfirm(exam.eId)}
+                          className="inline-flex items-center justify-center p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors cursor-pointer"
+                          title="Xóa đề thi"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      // Đề từ giáo viên khác — chỉ cho phép xem
+                      <Link
+                        to={
+                          exam.eType === "VSTEP"
+                            ? `/giao-vien/de-thi/${exam.eId}/vstep`
+                            : `/giao-vien/de-thi/${exam.eId}/xem`
+                        }
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all text-sm font-medium shadow-sm cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        Xem chi tiết
+                      </Link>
+                    )}
                   </div>
                 </div>
               );

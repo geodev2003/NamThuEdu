@@ -286,6 +286,11 @@ class GradingController extends Controller
             'questionScores' => 'nullable|array',
             'questionScores.*.question_id' => 'required|integer',
             'questionScores.*.saPoints_awarded' => 'required|numeric|min:0',
+            'skill_overrides' => 'nullable|array',
+            'skill_overrides.listening' => 'nullable|numeric|min:0|max:10',
+            'skill_overrides.reading' => 'nullable|numeric|min:0|max:10',
+            'skill_overrides.writing' => 'nullable|numeric|min:0|max:10',
+            'skill_overrides.speaking' => 'nullable|numeric|min:0|max:10',
         ]);
 
         if ($validator->fails()) {
@@ -353,11 +358,15 @@ class GradingController extends Controller
                 $raw = $sub->sGemini_feedback ? (json_decode($sub->sGemini_feedback, true) ?: []) : [];
                 $vstepScores = $raw['vstep_scores'] ?? [];
                 
-                if (!is_null($listeningScore)) $vstepScores['listening'] = $listeningScore;
-                if (!is_null($readingScore)) $vstepScores['reading'] = $readingScore;
-                if (!is_null($writingScore)) $vstepScores['writing'] = $writingScore;
-                if (!is_null($speakingScore)) $vstepScores['speaking'] = $speakingScore;
-                
+                // Apply manual skill overrides from the request if present
+                if ($request->has('skill_overrides') && is_array($request->skill_overrides)) {
+                    foreach (['listening', 'reading', 'writing', 'speaking'] as $skill) {
+                        if (isset($request->skill_overrides[$skill]) && is_numeric($request->skill_overrides[$skill])) {
+                            $vstepScores[$skill] = round((float) $request->skill_overrides[$skill], 2);
+                        }
+                    }
+                }
+
                 $raw['vstep_scores'] = $vstepScores;
                 
                 // Also update speaking_results parts in JSON if they exist, to stay in sync with answers
@@ -373,16 +382,20 @@ class GradingController extends Controller
                     }
                 }
                 
-                // Recalculate average
-                $available = array_filter([
-                    $vstepScores['listening'] ?? null,
-                    $vstepScores['reading']   ?? null,
-                    $vstepScores['writing']   ?? null,
-                    $vstepScores['speaking']  ?? null,
-                ], fn($v) => !is_null($v));
-                
-                $overallAvg = count($available) > 0 ? round(array_sum($available) / count($available), 2) : 0;
-                $totalScore = round($overallAvg * 10, 2);
+                if ($request->has('score') && !$request->has('skill_overrides')) {
+                    $totalScore = (float) $request->score;
+                } else {
+                    // Recalculate average
+                    $available = array_filter([
+                        $vstepScores['listening'] ?? null,
+                        $vstepScores['reading']   ?? null,
+                        $vstepScores['writing']   ?? null,
+                        $vstepScores['speaking']  ?? null,
+                    ], fn($v) => !is_null($v));
+                    
+                    $overallAvg = count($available) > 0 ? round(array_sum($available) / count($available), 2) : 0;
+                    $totalScore = round($overallAvg * 10, 2);
+                }
                 
                 $submission->update([
                     'sGemini_feedback' => json_encode($raw),
@@ -1012,14 +1025,14 @@ class GradingController extends Controller
             $correctText = trim(strtolower($correctAnswer->aContent));
             
             // Exact match for multiple choice
-            if ($question->question_type === 'multiple_choice') {
+            if ($question->qType === 'multiple_choice') {
                 if ($studentAnswer === $correctText) {
                     return true;
                 }
             }
             
             // Flexible matching for fill-in-blank
-            if ($question->question_type === 'fill_blank') {
+            if ($question->qType === 'fill_blank') {
                 // Remove extra spaces and check
                 if (str_replace(' ', '', $studentAnswer) === str_replace(' ', '', $correctText)) {
                     return true;
@@ -1027,7 +1040,7 @@ class GradingController extends Controller
             }
             
             // Boolean questions
-            if (in_array($question->question_type, ['true_false_not_given', 'yes_no_not_given'])) {
+            if (in_array($question->qType, ['true_false_not_given', 'yes_no_not_given'])) {
                 if ($studentAnswer === $correctText) {
                     return true;
                 }
@@ -1138,8 +1151,8 @@ class GradingController extends Controller
                 if (!isset($questionStats[$questionId])) {
                     $questionStats[$questionId] = [
                         'question_id' => $questionId,
-                        'question_text' => $answer->question->question_text ?? 'N/A',
-                        'question_type' => $answer->question->question_type ?? 'N/A',
+                        'question_text' => $answer->question->qContent ?? 'N/A',
+                        'question_type' => $answer->question->qType ?? 'N/A',
                         'total_attempts' => 0,
                         'correct_attempts' => 0,
                         'average_score' => 0,
@@ -1194,12 +1207,74 @@ class GradingController extends Controller
      */
     private function calculateTotalScore($submissionId)
     {
-        $submission = Submission::with(['answers.question'])->find($submissionId);
-        
+        $submission = Submission::with(['answers.question', 'exam'])->find($submissionId);
+        if (!$submission) {
+            return 0;
+        }
+
+        $isVstep = strtoupper($submission->exam->eType ?? '') === 'VSTEP';
+        if ($isVstep) {
+            $listeningCorrect = 0;
+            $listeningMax = 0;
+            $readingCorrect = 0;
+            $readingMax = 0;
+            $writingScores = [];
+            $speakingScores = [];
+            
+            foreach ($submission->answers as $ans) {
+                if (!$ans->question) continue;
+                $sec = strtolower($ans->question->qSkill ?? $ans->question->qSection ?? '');
+                $qPoints = $ans->question->qPoints ?? 1;
+                $pointsAwarded = $ans->saPoints_awarded ?? 0;
+                
+                if ($sec === 'listening') {
+                    $listeningMax += $qPoints;
+                    $listeningCorrect += $pointsAwarded;
+                } elseif ($sec === 'reading') {
+                    $readingMax += $qPoints;
+                    $readingCorrect += $pointsAwarded;
+                } elseif ($sec === 'writing') {
+                    $writingScores[] = $pointsAwarded;
+                } elseif ($sec === 'speaking') {
+                    $speakingScores[] = $pointsAwarded;
+                }
+            }
+            
+            $listeningScore = $listeningMax > 0 ? round(($listeningCorrect / $listeningMax) * 10, 2) : null;
+            $readingScore = $readingMax > 0 ? round(($readingCorrect / $readingMax) * 10, 2) : null;
+            $writingScore = count($writingScores) > 0 ? round(array_sum($writingScores) / count($writingScores), 2) : null;
+            $speakingScore = count($speakingScores) > 0 ? round(array_sum($speakingScores) / count($speakingScores), 2) : null;
+            
+            // Read and update sGemini_feedback's vstep_scores
+            $raw = $submission->sGemini_feedback ? (json_decode($submission->sGemini_feedback, true) ?: []) : [];
+            $vstepScores = $raw['vstep_scores'] ?? [];
+            
+            if (!is_null($listeningScore)) $vstepScores['listening'] = $listeningScore;
+            if (!is_null($readingScore)) $vstepScores['reading'] = $readingScore;
+            if (!is_null($writingScore)) $vstepScores['writing'] = $writingScore;
+            if (!is_null($speakingScore)) $vstepScores['speaking'] = $speakingScore;
+            
+            $raw['vstep_scores'] = $vstepScores;
+            $submission->sGemini_feedback = json_encode($raw);
+            $submission->save();
+            
+            // Recalculate average
+            $available = array_filter([
+                $vstepScores['listening'] ?? null,
+                $vstepScores['reading']   ?? null,
+                $vstepScores['writing']   ?? null,
+                $vstepScores['speaking']  ?? null,
+            ], fn($v) => !is_null($v));
+            
+            $overallAvg = count($available) > 0 ? round(array_sum($available) / count($available), 2) : 0;
+            return round($overallAvg * 10, 2);
+        }
+
         $totalPoints = 0;
         $maxPoints = 0;
 
         foreach ($submission->answers as $answer) {
+            if (!$answer->question) continue;
             $maxPoints += $answer->question->qPoints;
             $totalPoints += $answer->saPoints_awarded ?? 0;
         }
@@ -1284,60 +1359,67 @@ class GradingController extends Controller
                 'message' => 'Cập nhật đáp án đúng thành công.'
             ];
 
-            // 3. If submission_id is provided, update the submission's answer and score
-            if ($submissionId) {
-                $submission = Submission::where('sId', $submissionId)
-                                        ->where('exam_id', $question->exam_id)
-                                        ->first();
-                if ($submission) {
-                    $subAnswer = SubmissionAnswer::where('submission_id', $submissionId)
-                                                 ->where('question_id', $questionId)
-                                                 ->first();
-                    if ($subAnswer) {
-                        // Grade the student's answer against the new correct answer
-                        $studentAnswerText = trim(strtolower($subAnswer->saAnswer_text));
-                        $newCorrectText = trim(strtolower($targetAnswer->aContent));
-                        
-                        // We also check letter-based matching (A, B, C, D)
-                        // Retrieve all answers of the question sorted by aId
-                        $allAnswers = $question->answers()->orderBy('aId')->get();
-                        $targetIndex = -1;
-                        foreach ($allAnswers as $idx => $ans) {
-                            if ($ans->aId == $correctAnswerId) {
-                                $targetIndex = $idx;
-                                break;
-                            }
-                        }
-                        
-                        $letters = ['a', 'b', 'c', 'd'];
-                        $targetLetter = ($targetIndex >= 0 && $targetIndex < count($letters)) ? $letters[$targetIndex] : '';
-                        
-                        $isCorrect = false;
-                        if ($studentAnswerText === $newCorrectText) {
-                            $isCorrect = true;
-                        } else if (!empty($targetLetter) && $studentAnswerText === $targetLetter) {
-                            $isCorrect = true;
-                        }
+            // 3. Update all submissions' answers and scores for this question to ensure consistency
+            $subAnswers = SubmissionAnswer::where('question_id', $questionId)->get();
+            
+            // Lock all affected submissions in sorted order to prevent deadlocks and ensure consistency under concurrent load
+            $submissionIds = $subAnswers->pluck('submission_id')->unique()->sort()->values()->toArray();
+            if (!empty($submissionIds)) {
+                Submission::whereIn('sId', $submissionIds)->lockForUpdate()->get();
+            }
+            
+            // We also check letter-based matching (A, B, C, D)
+            // Retrieve all answers of the question sorted by aOrder if available, else aId
+            $firstAnswer = $question->answers->first();
+            $hasOrder = $firstAnswer && $firstAnswer->aOrder !== null;
+            $allAnswers = $hasOrder
+                ? $question->answers->sortBy('aOrder')->values()
+                : $question->answers->sortBy('aId')->values();
+            
+            $targetIndex = -1;
+            foreach ($allAnswers as $idx => $ans) {
+                if ($ans->aId == $correctAnswerId) {
+                    $targetIndex = $idx;
+                    break;
+                }
+            }
+            
+            $letters = ['a', 'b', 'c', 'd'];
+            $targetLetter = ($targetIndex >= 0 && $targetIndex < count($letters)) ? $letters[$targetIndex] : '';
+            $newCorrectText = trim(strtolower($targetAnswer->aContent));
 
-                        $points = $isCorrect ? ($question->qPoints ?? 1) : 0;
+            foreach ($subAnswers as $subAnswer) {
+                $studentAnswerText = trim(strtolower($subAnswer->saAnswer_text));
+                
+                $isCorrect = false;
+                if ($studentAnswerText === $newCorrectText) {
+                    $isCorrect = true;
+                } else if (!empty($targetLetter) && $studentAnswerText === $targetLetter) {
+                    $isCorrect = true;
+                }
 
-                        $subAnswer->update([
-                            'saIs_correct' => $isCorrect,
-                            'saPoints_awarded' => $points,
-                        ]);
+                $points = $isCorrect ? ($question->qPoints ?? 1) : 0;
 
-                        // Recalculate total score of submission
-                        $totalScore = $this->calculateTotalScore($submissionId);
-                        $submission->update([
-                            'sScore' => $totalScore
-                        ]);
+                $subAnswer->update([
+                    'saIs_correct' => $isCorrect,
+                    'saPoints_awarded' => $points,
+                ]);
 
-                        $responseData['submission'] = [
-                            'sScore' => $totalScore,
-                            'question_points' => $points,
-                            'question_is_correct' => $isCorrect
-                        ];
-                    }
+                // Recalculate total score of submission
+                $totalScore = $this->calculateTotalScore($subAnswer->submission_id);
+                $sub = Submission::find($subAnswer->submission_id);
+                if ($sub) {
+                    $sub->update([
+                        'sScore' => $totalScore
+                    ]);
+                }
+
+                if ($submissionId && $subAnswer->submission_id == $submissionId) {
+                    $responseData['submission'] = [
+                        'sScore' => $totalScore,
+                        'question_points' => $points,
+                        'question_is_correct' => $isCorrect
+                    ];
                 }
             }
 

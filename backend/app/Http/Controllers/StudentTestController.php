@@ -476,24 +476,6 @@ class StudentTestController extends Controller
             ], 401);
         }
 
-        $submission = Submission::where('sId', $submissionId)
-                               ->where('user_id', $user->uId)
-                               ->first();
-
-        if (!$submission) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Không tìm thấy bài làm.'
-            ], 404);
-        }
-
-        if ($submission->sStatus !== 'in_progress') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Bài làm đã được nộp hoặc không thể chỉnh sửa.'
-            ], 400);
-        }
-
         $validator = Validator::make($request->all(), [
             'question_id' => 'required|integer|exists:questions,qId',
             'saAnswer_text' => 'required|string|max:50000',
@@ -507,34 +489,79 @@ class StudentTestController extends Controller
             ], 400);
         }
 
-        $question = Question::where('qId', $request->question_id)
-            ->where('exam_id', $submission->exam_id)
-            ->first();
+        try {
+            $result = DB::transaction(function () use ($request, $submissionId, $user) {
+                // Lock the submission row to prevent concurrent answer modifications / submissions
+                $submission = Submission::where('sId', $submissionId)
+                                       ->where('user_id', $user->uId)
+                                       ->lockForUpdate()
+                                       ->first();
 
-        if (!$question) {
+                if (!$submission) {
+                    return [
+                        'status' => 404,
+                        'data' => [
+                            'status' => 'error',
+                            'message' => 'Không tìm thấy bài làm.'
+                        ]
+                    ];
+                }
+
+                if ($submission->sStatus !== 'in_progress') {
+                    return [
+                        'status' => 400,
+                        'data' => [
+                            'status' => 'error',
+                            'message' => 'Bài làm đã được nộp hoặc không thể chỉnh sửa.'
+                        ]
+                    ];
+                }
+
+                $question = Question::where('qId', $request->question_id)
+                    ->where('exam_id', $submission->exam_id)
+                    ->first();
+
+                if (!$question) {
+                    return [
+                        'status' => 403,
+                        'data' => [
+                            'status' => 'error',
+                            'message' => 'Câu hỏi không thuộc bài thi này.'
+                        ]
+                    ];
+                }
+
+                // Check if answer already exists, update or create
+                SubmissionAnswer::updateOrCreate(
+                    [
+                        'submission_id' => $submissionId,
+                        'question_id' => $question->qId,
+                    ],
+                    [
+                        'saAnswer_text' => $request->saAnswer_text,
+                    ]
+                );
+
+                return [
+                    'status' => 200,
+                    'data' => [
+                        'status' => 'success',
+                        'data' => [
+                            'message' => 'Câu trả lời đã được lưu.'
+                        ]
+                    ]
+                ];
+            });
+
+            return response()->json($result['data'], $result['status']);
+
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Câu hỏi không thuộc bài thi này.'
-            ], 403);
+                'message' => 'Lỗi hệ thống khi lưu câu trả lời.',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        // Check if answer already exists, update or create
-        $submissionAnswer = SubmissionAnswer::updateOrCreate(
-            [
-                'submission_id' => $submissionId,
-                'question_id' => $question->qId,
-            ],
-            [
-                'saAnswer_text' => $request->saAnswer_text,
-            ]
-        );
-
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'message' => 'Câu trả lời đã được lưu.'
-            ]
-        ]);
     }
 
     /**
@@ -898,10 +925,15 @@ class StudentTestController extends Controller
             ], 401);
         }
 
-        $submission = Submission::with(['exam.questions.answers', 'answers.question'])
-                               ->where('sId', $id)
-                               ->where('user_id', $user->uId)
-                               ->first();
+        $submission = Submission::with([
+            'exam.questions.answers', 
+            'exam.teacher', 
+            'answers.question', 
+            'user'
+        ])
+        ->where('sId', $id)
+        ->where('user_id', $user->uId)
+        ->first();
 
         if (!$submission) {
             return response()->json([
@@ -1262,6 +1294,8 @@ class StudentTestController extends Controller
                     'sStatus' => $submission->sStatus,
                     'sSubmit_time' => $submission->sSubmit_time,
                     'exam_title' => $submission->exam->eTitle,
+                    'exam_id' => $submission->exam_id,
+                    'exam_type' => $submission->exam->eType,
                 ],
                 'detailed_answers' => $detailedAnswers,
                 'summary' => [
@@ -1828,10 +1862,42 @@ class StudentTestController extends Controller
 
         foreach ($recentGraded as $submission) {
             if (!$submission->exam) continue;
+
+            // Compute display score on 0–10 scale (match frontend gradeHelpers.getSubmissionDisplayScore)
+            // - VSTEP: average of 4 AI skill scores (hệ 10), fallback sScore/10
+            // - Other: sScore/10 (sScore is stored as percentage 0-100)
+            $displayScore = null;
+            $isVstep = strtoupper($submission->exam->eType ?? '') === 'VSTEP'
+                || stripos($submission->exam->eTitle ?? '', 'VSTEP') !== false;
+
+            if ($isVstep) {
+                $raw = is_string($submission->sGemini_feedback)
+                    ? (json_decode($submission->sGemini_feedback, true) ?: [])
+                    : ((array) ($submission->sGemini_feedback ?? []));
+                $vs = $raw['vstep_scores'] ?? [];
+                $vals = [];
+                foreach (['listening', 'reading', 'writing', 'speaking'] as $sk) {
+                    if (isset($vs[$sk]) && is_numeric($vs[$sk])) {
+                        $vals[] = (float) $vs[$sk];
+                    }
+                }
+                if (count($vals) === 4) {
+                    $displayScore = array_sum($vals) / 4;
+                } elseif ($submission->sScore !== null) {
+                    $displayScore = (float) $submission->sScore / 10;
+                }
+            } elseif ($submission->sScore !== null) {
+                $displayScore = (float) $submission->sScore / 10;
+            }
+
+            $scoreLabel = $displayScore !== null
+                ? number_format(round($displayScore, 1), 1, '.', '') . '/10'
+                : '—';
+
             $notifications[] = [
                 'id'           => 'graded_' . $submission->sId,
                 'title'        => 'Kết quả bài thi đã có',
-                'message'      => 'Bài thi ' . $submission->exam->eTitle . ' đã được chấm. Điểm: ' . round((float)$submission->sScore, 1),
+                'message'      => 'Bài thi ' . $submission->exam->eTitle . ' đã được chấm. Điểm: ' . $scoreLabel,
                 'type'         => 'graded',
                 'color'        => '#10B981',
                 'is_read'      => false,
@@ -1889,6 +1955,14 @@ class StudentTestController extends Controller
 
         $readAt = $request->user()->notifications_read_at;
 
+        // Filter out notifications the student has dismissed
+        $dismissedIds = $request->user()->dismissed_notification_ids ?? [];
+        $dismissedSet = array_flip((array) $dismissedIds);
+        $notifications = array_values(array_filter(
+            $notifications,
+            fn($n) => !isset($dismissedSet[(string) $n['id']])
+        ));
+
         foreach ($notifications as &$notif) {
             $notif['is_read'] = $readAt && strtotime((string)$notif['created_at']) <= $readAt->timestamp;
         }
@@ -1932,9 +2006,25 @@ class StudentTestController extends Controller
 
     /**
      * DELETE /api/student/notifications/{id}
+     * Persists the notification ID to dismissed_notification_ids so it
+     * stays hidden across sessions. Caps the list at 200 to prevent bloat.
      */
     public function deleteNotification(Request $request, $id)
     {
+        $user = $request->user();
+        $dismissed = array_values((array) ($user->dismissed_notification_ids ?? []));
+
+        $strId = (string) $id;
+        if (!in_array($strId, $dismissed, true)) {
+            $dismissed[] = $strId;
+            // Keep only the most recent 200 dismissed IDs
+            if (count($dismissed) > 200) {
+                $dismissed = array_slice($dismissed, -200);
+            }
+            $user->dismissed_notification_ids = $dismissed;
+            $user->save();
+        }
+
         return response()->json(['status' => 'success', 'message' => 'Đã xóa thông báo.']);
     }
 
@@ -2439,12 +2529,15 @@ class StudentTestController extends Controller
                         'qId'            => $q->qId,
                         'questionNumber' => $q->qData['question_number'] ?? $q->qSection_order,
                         'questionText'   => $q->qContent,
-                        'options'        => $q->qData['options'] ?? [
-                            'A' => $q->answers[0]->aContent ?? '',
-                            'B' => $q->answers[1]->aContent ?? '',
-                            'C' => $q->answers[2]->aContent ?? '',
-                            'D' => $q->answers[3]->aContent ?? '',
-                        ],
+                        'options'        => $q->qData['options'] ?? (function() use ($q) {
+                            $sorted = ($q->answers ?? collect())->sortBy(fn($ans) => $ans->aOrder !== null ? $ans->aOrder : $ans->aId)->values();
+                            return [
+                                'A' => $sorted[0]->aContent ?? '',
+                                'B' => $sorted[1]->aContent ?? '',
+                                'C' => $sorted[2]->aContent ?? '',
+                                'D' => $sorted[3]->aContent ?? '',
+                            ];
+                        })(),
                     ])->values()->toArray(),
                 ];
             }
@@ -2499,12 +2592,15 @@ class StudentTestController extends Controller
                     'qId'            => $q->qId,
                     'questionNumber' => $q->qData['question_number'] ?? $q->qSection_order,
                     'questionText'   => $q->qContent,
-                    'options'        => $q->qData['options'] ?? [
-                        'A' => $q->answers[0]->aContent ?? '',
-                        'B' => $q->answers[1]->aContent ?? '',
-                        'C' => $q->answers[2]->aContent ?? '',
-                        'D' => $q->answers[3]->aContent ?? '',
-                    ],
+                    'options'        => $q->qData['options'] ?? (function() use ($q) {
+                        $sorted = ($q->answers ?? collect())->sortBy(fn($ans) => $ans->aOrder !== null ? $ans->aOrder : $ans->aId)->values();
+                        return [
+                            'A' => $sorted[0]->aContent ?? '',
+                            'B' => $sorted[1]->aContent ?? '',
+                            'C' => $sorted[2]->aContent ?? '',
+                            'D' => $sorted[3]->aContent ?? '',
+                        ];
+                    })(),
                 ])->toArray(),
             ];
         }

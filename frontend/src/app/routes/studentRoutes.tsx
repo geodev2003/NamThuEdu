@@ -211,10 +211,6 @@ export const studentRoutes: RouteObject = {
       element: <Suspense fallback={<LoadingFallback />}><PracticeSession /></Suspense>,
     },
     {
-      path: 'thong-bao',
-      element: <Suspense fallback={<LoadingFallback />}><NotificationList /></Suspense>,
-    },
-    {
       path: 'phong-cho/:id',
       element: <Suspense fallback={<LoadingFallback />}><ExamLobby /></Suspense>,
     },
@@ -344,10 +340,6 @@ export const kidsRoutes: RouteObject = {
     {
       path: 'thanh-tich',
       element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
-    },
-    {
-      path: 'thong-bao',
-      element: <Suspense fallback={<LoadingFallback />}><NotificationList /></Suspense>,
     },
     {
       path: 'ho-so',

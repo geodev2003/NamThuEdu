@@ -134,9 +134,24 @@ class KidsExamController extends Controller
      */
     public function index(Request $request)
     {
+        $user = auth()->user();
+
+        // Hiển thị:
+        // 1) Đề kids của chính giáo viên này
+        // 2) Đề kids public (eIs_private=false) đã published của giáo viên khác
         $query = Exam::where('age_group', 'kids')
-            ->where('eTeacher_id', auth()->id())
-            ->with('questions');
+            ->where(function($outer) use ($user) {
+                $outer->where('eTeacher_id', $user->uId)
+                      ->orWhere(function($pub) use ($user) {
+                          $pub->where('eTeacher_id', '!=', $user->uId)
+                              ->where(function($p) {
+                                  $p->whereNull('eIs_private')
+                                    ->orWhere('eIs_private', false);
+                              })
+                              ->where('eStatus', 'published');
+                      });
+            })
+            ->with(['questions', 'teacher:uId,uName,uPhone']);
 
         if ($request->has('exam_type')) {
             $query->whereRaw("JSON_EXTRACT(kids_exam_config, '$.exam_type') = ?", [$request->exam_type]);
@@ -145,10 +160,14 @@ class KidsExamController extends Controller
         $exams = $query->orderBy('eCreated_at', 'desc')->get();
         
         // Map kids_exam_type_id to exam_type code for backward compatibility
-        $kidsExamTypes = \DB::table('kids_exam_types')->get()->keyBy('id');
+        // Bảng kids_exam_types có thể chưa tồn tại nếu seeder chưa chạy → safe-guard
+        $kidsExamTypes = collect();
+        if (\Schema::hasTable('kids_exam_types')) {
+            $kidsExamTypes = \DB::table('kids_exam_types')->get()->keyBy('id');
+        }
         
-        $exams->each(function($exam) use ($kidsExamTypes) {
-            if ($exam->kids_exam_config) {
+        $exams->each(function($exam) use ($kidsExamTypes, $user) {
+            if ($exam->kids_exam_config && $kidsExamTypes->isNotEmpty()) {
                 $config = $exam->kids_exam_config;
                 
                 // If exam_type is missing but kids_exam_type_id exists, populate it
@@ -160,6 +179,13 @@ class KidsExamController extends Controller
                     }
                 }
             }
+
+            // Owner metadata
+            $isOwner = (int)$exam->eTeacher_id === (int)$user->uId;
+            $exam->_is_owner = $isOwner;
+            $exam->_owner_name = $isOwner
+                ? 'Bạn'
+                : ($exam->teacher->uName ?? 'Giáo viên khác');
         });
         
         return response()->json($exams);

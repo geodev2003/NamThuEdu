@@ -47,6 +47,9 @@ class Exam extends Model
         'ui_config',
         // Kids exam fields
         'kids_exam_config',
+        // IELTS fields
+        'ielts_test_type',
+        'ielts_config',
     ];
 
     protected $casts = [
@@ -56,6 +59,7 @@ class Exam extends Model
         'gamification_config' => 'array',
         'ui_config' => 'array',
         'kids_exam_config' => 'array',
+        'ielts_config' => 'array',
     ];
 
     /**

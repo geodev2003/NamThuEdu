@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -21,13 +21,32 @@ export function AnswerReview() {
   const submissionId = Number(id);
   const [filter, setFilter] = useState<FilterType>("all");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["answers", submissionId],
     queryFn: () => studentApi.getAnswers(submissionId),
     enabled: !!submissionId,
   });
 
-  const items: any[] = (data as any)?.data?.data?.detailed_answers ?? [];
+  const rawData = (data as any)?.data?.data ?? (data as any)?.data;
+  const isVstep = rawData?.submission_info?.exam_type?.toUpperCase() === "VSTEP";
+  const examId = rawData?.submission_info?.exam_id;
+
+  // Ensure modal is closed on mount
+  useEffect(() => {
+    window.dispatchEvent(new Event("close-result-modal"));
+  }, []);
+
+  useEffect(() => {
+    if (isVstep && examId && submissionId) {
+      window.dispatchEvent(new Event("close-result-modal"));
+      navigate(`/hoc-vien/lam-bai-vstep/${examId}?review=${submissionId}`, { replace: true });
+    }
+  }, [isVstep, examId, submissionId, navigate]);
+
+  const rawItems = rawData?.detailed_answers ?? (Array.isArray(rawData) ? rawData : []);
+  const items: any[] = Array.isArray(rawItems)
+    ? rawItems
+    : (rawItems && typeof rawItems === "object" ? Object.values(rawItems) : []);
 
   const filtered = items.filter((item) => {
     if (filter === "correct") return item.student_answer?.saIs_correct === true;
@@ -47,11 +66,40 @@ export function AnswerReview() {
     { key: "unanswered", label: "Chưa trả lời", count: unansweredCount, color: "#F59E0B" },
   ];
 
-  if (isLoading) {
+  if (isLoading || isVstep) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
         <div className="w-10 h-10 border-4 rounded-full animate-spin"
           style={{ borderColor: PRIMARY_LIGHT, borderTopColor: PRIMARY }} />
+        {isVstep && (
+          <p className="text-sm font-semibold text-slate-500 animate-pulse">
+            Đang chuyển hướng sang giao diện xem lại bài thi VSTEP...
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (error) {
+    const errorMsg = (error as any)?.response?.data?.message || (error as any)?.message || "Đã xảy ra lỗi khi tải đáp án.";
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center border border-red-100 shadow-xl space-y-6">
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-500">
+            <XCircle className="w-10 h-10" />
+          </div>
+          <div className="space-y-2">
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: "#1F1344" }}>Không thể xem đáp án</h2>
+            <p style={{ fontSize: 14, color: "#6B7280" }}>{errorMsg}</p>
+          </div>
+          <button
+            onClick={() => navigate(-1)}
+            className="w-full py-3 rounded-2xl font-bold text-white transition-opacity hover:opacity-90"
+            style={{ background: `linear-gradient(135deg, ${PRIMARY}, #38BDF8)` }}
+          >
+            Quay lại
+          </button>
+        </div>
       </div>
     );
   }

@@ -42,32 +42,39 @@ class ExamController extends Controller
             ], 401);
         }
 
-        $query = Exam::where('eTeacher_id', $user->uId)
+        // Hiển thị:
+        // 1) Đề của chính giáo viên này (mọi status, mọi visibility)
+        // 2) Đề của giáo viên khác nếu là public (eIs_private = false) VÀ đã published
+        $query = Exam::where(function($outer) use ($user) {
+                        $outer->where('eTeacher_id', $user->uId)
+                              ->orWhere(function($pub) use ($user) {
+                                  $pub->where('eTeacher_id', '!=', $user->uId)
+                                      ->where(function($p) {
+                                          $p->whereNull('eIs_private')
+                                            ->orWhere('eIs_private', false);
+                                      })
+                                      ->where('eStatus', 'published');
+                              });
+                    })
                     ->where(function($q) {
                         $q->whereNull('ePurpose')
                           ->orWhere('ePurpose', '!=', 'practice');
                     })
+                    ->with(['teacher:uId,uName,uPhone'])
                     ->withCount('questions');
 
         // Filter theo group: vstep_full | ielts_full | adult | kids | teens
+        // NOTE: vstep_full và ielts_full hiện gom CẢ đề full lẫn skill riêng (Listening/Reading/Writing/Speaking)
+        // để giáo viên thấy được tất cả đề loại đó trong "Ngân hàng đề thi"
         if ($request->has('group')) {
             switch ($request->group) {
                 case 'vstep_full':
-                    $query->where('eType', 'VSTEP')
-                          ->where(function($q) {
-                              $q->whereNull('eSkill')
-                                ->orWhere('eSkill', 'mixed')
-                                ->orWhere('eSkill', '');
-                          });
+                case 'vstep':
+                    $query->where('eType', 'VSTEP');
                     break;
                 case 'ielts_full':
-                    $query->where('eType', 'IELTS')
-                          ->where(function($q) {
-                              $q->whereNull('eSkill')
-                                ->orWhere('eSkill', 'full')
-                                ->orWhere('eSkill', 'mixed')
-                                ->orWhere('eSkill', '');
-                          });
+                case 'ielts':
+                    $query->where('eType', 'IELTS');
                     break;
                 case 'kids':
                     $query->where('age_group', 'kids');
@@ -78,11 +85,13 @@ class ExamController extends Controller
                 case 'adults':
                 case 'adult':
                     $query->where(function($q) {
+                        // age_group nằm trong: adults | adult | all | null
                         $q->where('age_group', 'adults')
                           ->orWhere('age_group', 'adult')
+                          ->orWhere('age_group', 'all')
                           ->orWhereNull('age_group');
                     })->where(function($q) {
-                        // Loại trừ VSTEP/IELTS đã filter ở trên
+                        // Loại trừ VSTEP/IELTS đã filter ở nhóm khác để tránh duplicate
                         $q->where('eType', '!=', 'VSTEP')
                           ->where('eType', '!=', 'IELTS')
                           ->orWhereNull('eType');
@@ -92,6 +101,16 @@ class ExamController extends Controller
         }
 
         $exams = $query->orderBy('eCreated_at', 'desc')->get();
+
+        // Gắn metadata owner để frontend hiển thị badge "Của tôi" / tên giáo viên khác
+        $exams->transform(function ($exam) use ($user) {
+            $isOwner = (int)$exam->eTeacher_id === (int)$user->uId;
+            $exam->_is_owner = $isOwner;
+            $exam->_owner_name = $isOwner
+                ? 'Bạn'
+                : ($exam->teacher->uName ?? 'Giáo viên khác');
+            return $exam;
+        });
 
         return response()->json([
             'status' => 'success',
@@ -127,7 +146,6 @@ class ExamController extends Controller
      */
     public function store(Request $request)
     {
-        
         $user = $request->user();
 
         if (!$user || $user->uRole !== 'teacher') {
@@ -135,6 +153,12 @@ class ExamController extends Controller
                 'status' => 'error',
                 'message' => 'Bạn không có quyền truy cập.'
             ], 401);
+        }
+
+        if ($request->has('eSkill')) {
+            $request->merge([
+                'eSkill' => strtolower($request->eSkill)
+            ]);
         }
 
         $validator = Validator::make($request->all(), [
@@ -366,6 +390,12 @@ class ExamController extends Controller
                 'status' => 'error',
                 'message' => 'Không tìm thấy bài thi.'
             ], 404);
+        }
+
+        if ($request->has('eSkill')) {
+            $request->merge([
+                'eSkill' => strtolower($request->eSkill)
+            ]);
         }
 
         $validator = Validator::make($request->all(), [
@@ -1035,6 +1065,47 @@ class ExamController extends Controller
             ], 404);
         }
 
+        if ($exam->eType === 'IELTS') {
+            $validator = Validator::make($request->all(), [
+                'ielts_test_type' => 'required|string|in:Academic,General Training',
+                'ielts_data' => 'required|array',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Dữ liệu IELTS không hợp lệ.',
+                    'errors' => $validator->errors()
+                ], 400);
+            }
+
+            try {
+                $result = \App\Services\IELTSService::publishIeltsExam(
+                    $exam,
+                    $request->input('ielts_test_type'),
+                    $request->input('ielts_data')
+                );
+
+                return response()->json([
+                    'status' => 'success',
+                    'data' => [
+                        'message' => 'Xuất bản đề thi IELTS thành công',
+                        'exam_id' => $exam->eId,
+                        'questions_count' => $result['total_questions'] ?? 0,
+                    ]
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Failed to publish IELTS exam: ' . $e->getMessage(), [
+                    'exam_id' => $exam->eId,
+                    'exception' => $e
+                ]);
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Đã xảy ra lỗi khi xuất bản đề thi IELTS: ' . $e->getMessage(),
+                ], 500);
+            }
+        }
+
         // Validate exam can be published
         $validationErrors = [];
 
@@ -1388,12 +1459,15 @@ class ExamController extends Controller
                     return [
                         'questionNumber' => $q->qData['question_number'] ?? $q->qSection_order,
                         'questionText' => $q->qContent,
-                        'options' => $q->qData['options'] ?? [
-                            'A' => $q->answers[0]->aContent ?? '',
-                            'B' => $q->answers[1]->aContent ?? '',
-                            'C' => $q->answers[2]->aContent ?? '',
-                            'D' => $q->answers[3]->aContent ?? '',
-                        ],
+                        'options' => $q->qData['options'] ?? (function() use ($q) {
+                            $sorted = ($q->answers ?? collect())->sortBy(fn($ans) => $ans->aOrder !== null ? $ans->aOrder : $ans->aId)->values();
+                            return [
+                                'A' => $sorted[0]->aContent ?? '',
+                                'B' => $sorted[1]->aContent ?? '',
+                                'C' => $sorted[2]->aContent ?? '',
+                                'D' => $sorted[3]->aContent ?? '',
+                            ];
+                        })(),
                         'correctAnswer' => $q->qData['correct_answer'] ?? 'A',
                     ];
                 })->toArray(),
@@ -1904,6 +1978,102 @@ class ExamController extends Controller
                 return $sec == $sectionNumber;
             })
             ->values();
+    }
+
+    /**
+     * POST /api/teacher/exams/{examId}/ielts/listening/sections/{sectionNumber}/audio
+     * Upload audio file for IELTS listening section
+     */
+    public function uploadIeltsListeningAudio(Request $request, $examId, $sectionNumber)
+    {
+        $user = $request->user();
+        $sectionNumber = (int) $sectionNumber;
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $exam = Exam::where('eId', $examId)
+                    ->where('eTeacher_id', $user->uId)
+                    ->first();
+
+        if (!$exam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy bài thi.'
+            ], 404);
+        }
+
+        if ($sectionNumber < 1 || $sectionNumber > 4) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Section number không hợp lệ. IELTS chỉ có 4 section.'
+            ], 400);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'audio' => 'required|file|mimes:mp3,wav,m4a,aac,ogg,webm|max:51200', // 50MB max
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        try {
+            $audioFile = $request->file('audio');
+            $originalName = $audioFile->getClientOriginalName();
+            $extension = $audioFile->getClientOriginalExtension() ?: 'mp3';
+            $filename = 'ielts_listening_' . $examId . '_sec' . $sectionNumber . '_' . time() . '_' . \Illuminate\Support\Str::random(8) . '.' . $extension;
+
+            // Store file
+            $path = $audioFile->storeAs('exam_audio', $filename, 'public');
+
+            if (!$path) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Không thể lưu tệp tin âm thanh.'
+                ], 500);
+            }
+
+            $audioUrl = url('files/audio/' . $filename);
+
+            \Log::info('IELTS Listening Audio uploaded successfully', [
+                'exam_id' => $examId,
+                'section_number' => $sectionNumber,
+                'filename' => $filename,
+                'audio_url' => $audioUrl
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'success' => true,
+                'audio_url' => $audioUrl,
+                'data' => [
+                    'audio_url' => $audioUrl,
+                    'filename' => $filename,
+                    'originalName' => $originalName
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('IELTS audio upload exception', [
+                'exam_id' => $examId,
+                'section_number' => $sectionNumber,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đã xảy ra lỗi hệ thống khi upload audio: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -2587,12 +2757,15 @@ class ExamController extends Controller
                         return [
                             'questionNumber' => $q->qData['question_number'] ?? $q->qSection_order,
                             'questionText' => $q->qContent,
-                            'options' => $q->qData['options'] ?? [
-                                'A' => $q->answers[0]->aContent ?? '',
-                                'B' => $q->answers[1]->aContent ?? '',
-                                'C' => $q->answers[2]->aContent ?? '',
-                                'D' => $q->answers[3]->aContent ?? '',
-                            ],
+                            'options' => $q->qData['options'] ?? (function() use ($q) {
+                                $sorted = ($q->answers ?? collect())->sortBy(fn($ans) => $ans->aOrder !== null ? $ans->aOrder : $ans->aId)->values();
+                                return [
+                                    'A' => $sorted[0]->aContent ?? '',
+                                    'B' => $sorted[1]->aContent ?? '',
+                                    'C' => $sorted[2]->aContent ?? '',
+                                    'D' => $sorted[3]->aContent ?? '',
+                                ];
+                            })(),
                             'correctAnswer' => $q->qData['correct_answer'] ?? 'A',
                         ];
                     })->values()->toArray(),

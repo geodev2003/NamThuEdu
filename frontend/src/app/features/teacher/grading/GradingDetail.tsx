@@ -1,4 +1,4 @@
-import { Fragment, useState, useMemo, useEffect } from "react";
+import { Fragment, useState, useMemo, useEffect, useRef, useLayoutEffect } from "react";
 import { api } from "../../../../services/api";
 import { gradingApi } from "../../../../services/gradingApi";
 import { useTranslation } from "react-i18next";
@@ -139,6 +139,32 @@ export function GradingDetail() {
   const [skillFeedback, setSkillFeedback] = useState<Partial<Record<VstepSkill, string>>>({});
   const [savingCorrectAnswerIds, setSavingCorrectAnswerIds] = useState<Record<string, boolean>>({});
   const [hoveredSkillButton, setHoveredSkillButton] = useState<string | null>(null);
+  // Authoritative total score from DB (sScore field) — avoids frontend recomputation drift
+  const [dbScore, setDbScore] = useState<number | null>(null);
+  // Track which question cards are in "override answer key" mode (separate from questions state
+  // to avoid full-list remount that would cause scroll jump)
+  const [overrideKeyIds, setOverrideKeyIds] = useState<Set<string>>(new Set());
+
+  // Preserve scroll position across setQuestions re-renders
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const savedScrollRef = useRef<number>(0);
+  const isUpdatingQuestions = useRef(false);
+
+  useLayoutEffect(() => {
+    if (isUpdatingQuestions.current && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = savedScrollRef.current;
+      isUpdatingQuestions.current = false;
+    }
+  });
+
+  const safeSetQuestions: typeof setQuestions = (updater) => {
+    // Save scroll position before state update
+    if (scrollContainerRef.current) {
+      savedScrollRef.current = scrollContainerRef.current.scrollTop;
+      isUpdatingQuestions.current = true;
+    }
+    setQuestions(updater as any);
+  };
   // Per-answer editing mode for AI grading review (true = teacher is overriding, false = following AI)
   const [editingAnswerIds, setEditingAnswerIds] = useState<Record<string, boolean>>({});
   // Per-answer saving state — for the "Save" button on each question
@@ -173,6 +199,9 @@ export function GradingDetail() {
 
         // Overall feedback
         if (d.sTeacher_feedback) setOverallFeedback(d.sTeacher_feedback);
+
+        // Authoritative score from DB
+        if (d.sScore !== undefined && d.sScore !== null) setDbScore(Number(d.sScore));
 
         // NOTE: We intentionally do NOT pre-populate per-skill override scores here.
         // The skill header score is computed dynamically from each task's score
@@ -364,74 +393,52 @@ export function GradingDetail() {
   };
 
   const changeCorrectOption = (qId: string, newCorrectLetter: string) => {
-    setQuestions((prev) =>
+    // Enter override mode for this question
+    setOverrideKeyIds((prev) => { const s = new Set(prev); s.add(qId); return s; });
+    safeSetQuestions((prev) =>
       prev.map((q) => {
-        if (q.id === qId) {
-          const updatedOptions = q.options?.map((opt) => ({
-            ...opt,
-            isCorrect: opt.letter === newCorrectLetter,
-          })) ?? [];
-          const matchedOption = updatedOptions.find((o) => o.isCorrect);
-          const correctAnswerText = matchedOption ? matchedOption.content : q.correctAnswer;
-          
-          // Re-evaluate student's score
-          const cleanStudentAnswer = q.studentAnswer.replace(/^[A-D]\.\s*/i, "").trim();
-          const studentOption = q.options?.find(
-            (opt) =>
-              opt.letter.toLowerCase() === q.studentAnswer.toLowerCase().trim() ||
-              opt.content.toLowerCase().trim() === q.studentAnswer.toLowerCase().trim() ||
-              opt.content.toLowerCase().trim() === cleanStudentAnswer.toLowerCase()
-          );
-          const studentOptionLetter = studentOption ? studentOption.letter : q.studentAnswer;
-
-          const isCorrect = studentOptionLetter.toUpperCase() === newCorrectLetter.toUpperCase();
-          const points = isCorrect ? q.maxPoints : 0;
-          
-          return {
-            ...q,
-            options: updatedOptions,
-            correctAnswer: correctAnswerText,
-            points,
-            isCorrect,
-            isOverrideKey: true,
-          };
-        }
-        return q;
+        if (q.id !== qId) return q;
+        const updatedOptions = q.options?.map((opt) => ({
+          ...opt,
+          isCorrect: opt.letter === newCorrectLetter,
+        })) ?? [];
+        const matchedOption = updatedOptions.find((o) => o.isCorrect);
+        const correctAnswerText = matchedOption ? matchedOption.content : q.correctAnswer;
+        const cleanStudentAnswer = q.studentAnswer.replace(/^[A-D]\.\s*/i, "").trim();
+        const studentOption = q.options?.find(
+          (opt) =>
+            opt.letter.toLowerCase() === q.studentAnswer.toLowerCase().trim() ||
+            opt.content.toLowerCase().trim() === q.studentAnswer.toLowerCase().trim() ||
+            opt.content.toLowerCase().trim() === cleanStudentAnswer.toLowerCase()
+        );
+        const studentOptionLetter = studentOption ? studentOption.letter : q.studentAnswer;
+        const isCorrect = studentOptionLetter.toUpperCase() === newCorrectLetter.toUpperCase();
+        const points = isCorrect ? q.maxPoints : 0;
+        return { ...q, options: updatedOptions, correctAnswer: correctAnswerText, points, isCorrect };
       })
     );
   };
 
   const resetToOriginalKey = (qId: string) => {
-    setQuestions((prev) =>
+    // Exit override mode for this question
+    setOverrideKeyIds((prev) => { const s = new Set(prev); s.delete(qId); return s; });
+    safeSetQuestions((prev) =>
       prev.map((q) => {
-        if (q.id === qId && q.originalOptions) {
-          const originalCorrectOpt = q.originalOptions.find((o) => o.isCorrect);
-          const correctAnswerText = originalCorrectOpt ? originalCorrectOpt.content : q.correctAnswer;
-          const correctLetter = originalCorrectOpt ? originalCorrectOpt.letter : "";
-          
-          // Re-evaluate student's score against original key
-          const cleanStudentAnswer = q.studentAnswer.replace(/^[A-D]\.\s*/i, "").trim();
-          const studentOption = q.options?.find(
-            (opt) =>
-              opt.letter.toLowerCase() === q.studentAnswer.toLowerCase().trim() ||
-              opt.content.toLowerCase().trim() === q.studentAnswer.toLowerCase().trim() ||
-              opt.content.toLowerCase().trim() === cleanStudentAnswer.toLowerCase()
-          );
-          const studentOptionLetter = studentOption ? studentOption.letter : q.studentAnswer;
-
-          const isCorrect = studentOptionLetter.toUpperCase() === correctLetter.toUpperCase();
-          const points = isCorrect ? q.maxPoints : 0;
-          
-          return {
-            ...q,
-            options: [...q.originalOptions],
-            correctAnswer: correctAnswerText,
-            points,
-            isCorrect,
-            isOverrideKey: false,
-          };
-        }
-        return q;
+        if (q.id !== qId || !q.originalOptions) return q;
+        const originalCorrectOpt = q.originalOptions.find((o) => o.isCorrect);
+        const correctAnswerText = originalCorrectOpt ? originalCorrectOpt.content : q.correctAnswer;
+        const correctLetter = originalCorrectOpt ? originalCorrectOpt.letter : "";
+        const cleanStudentAnswer = q.studentAnswer.replace(/^[A-D]\.\s*/i, "").trim();
+        const studentOption = q.options?.find(
+          (opt) =>
+            opt.letter.toLowerCase() === q.studentAnswer.toLowerCase().trim() ||
+            opt.content.toLowerCase().trim() === q.studentAnswer.toLowerCase().trim() ||
+            opt.content.toLowerCase().trim() === cleanStudentAnswer.toLowerCase()
+        );
+        const studentOptionLetter = studentOption ? studentOption.letter : q.studentAnswer;
+        const isCorrect = studentOptionLetter.toUpperCase() === correctLetter.toUpperCase();
+        const points = isCorrect ? q.maxPoints : 0;
+        return { ...q, options: [...q.originalOptions], correctAnswer: correctAnswerText, points, isCorrect };
       })
     );
   };
@@ -439,7 +446,6 @@ export function GradingDetail() {
   const saveOverrideCorrectAnswer = async (qId: string) => {
     const q = questions.find((item) => item.id === qId);
     if (!q || !q.options) return;
-    
     const correctOption = q.options.find((o) => o.isCorrect);
     if (!correctOption) {
       toast.error("Vui lòng chọn một đáp án đúng trước khi lưu.");
@@ -451,24 +457,24 @@ export function GradingDetail() {
         correct_answer_id: parseInt(correctOption.id),
         submission_id: submissionId ? parseInt(submissionId) : null,
       });
-
       const data = res?.data?.data ?? res?.data;
       if (res?.data?.status === "success" || res?.status === "success" || data) {
         toast.success("Đã lưu đáp án đúng mới vào cơ sở dữ liệu!");
-        
+        // Exit override mode
+        setOverrideKeyIds((prev) => { const s = new Set(prev); s.delete(qId); return s; });
         const subData = data?.submission;
-        setQuestions((prev) =>
+        if (subData && typeof subData.sScore === "number") {
+          setDbScore(subData.sScore);
+        }
+        safeSetQuestions((prev) =>
           prev.map((item) => {
-            if (item.id === qId) {
-              return {
-                ...item,
-                originalOptions: item.options ? [...item.options] : item.originalOptions,
-                isOverrideKey: false, // Exit edit mode after saving
-                points: subData ? subData.question_points : item.points,
-                isCorrect: subData ? subData.question_is_correct : item.isCorrect,
-              };
-            }
-            return item;
+            if (item.id !== qId) return item;
+            return {
+              ...item,
+              originalOptions: item.options ? [...item.options] : item.originalOptions,
+              points: subData ? subData.question_points : item.points,
+              isCorrect: subData ? subData.question_is_correct : item.isCorrect,
+            };
           })
         );
       } else {
@@ -543,6 +549,7 @@ export function GradingDetail() {
   const QuestionCard = ({ question }: { question: Question }) => {
     const qt = Q_TYPE_CONFIG[question.type];
     const QtIcon = qt.icon;
+    const isOverrideKey = overrideKeyIds.has(question.id);
     return (
       <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-slate-50">
@@ -593,7 +600,7 @@ export function GradingDetail() {
                   } else if (isCorrect) {
                     bgStyle = "bg-emerald-50/50 border-emerald-300 text-emerald-700 border-dashed";
                   }
-                  const isClickable = question.isOverrideKey;
+                  const isClickable = isOverrideKey;
                   return (
                     <div 
                       key={opt.id} 
@@ -659,7 +666,7 @@ export function GradingDetail() {
                     <button
                       onClick={() => resetToOriginalKey(question.id)}
                       className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 ease-out border hover:scale-105 active:scale-[0.98] cursor-pointer ${
-                        !question.isOverrideKey
+                        !isOverrideKey
                           ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 hover:border-indigo-700 hover:shadow-sm"
                           : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-700"
                       }`}
@@ -669,13 +676,13 @@ export function GradingDetail() {
                     </button>
                     <button
                       onClick={() => {
-                        if (!question.isOverrideKey && question.options && question.options.length > 0) {
+                        if (!isOverrideKey && question.options && question.options.length > 0) {
                           // Default to setting the first option as correct when entering override mode
                           changeCorrectOption(question.id, question.options[0].letter);
                         }
                       }}
                       className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 ease-out border hover:scale-105 active:scale-[0.98] cursor-pointer ${
-                        question.isOverrideKey
+                        isOverrideKey
                           ? "bg-orange-500 text-white border-orange-500 hover:bg-orange-600 hover:border-orange-600 hover:shadow-sm"
                           : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-700"
                       }`}
@@ -683,7 +690,7 @@ export function GradingDetail() {
                     >
                       Sửa lại đáp án đúng
                     </button>
-                    {question.isOverrideKey && (
+                    {isOverrideKey && (
                       <button
                         onClick={() => saveOverrideCorrectAnswer(question.id)}
                         disabled={savingCorrectAnswerIds[question.id]}
@@ -702,7 +709,7 @@ export function GradingDetail() {
                 </div>
               </div>
 
-              {question.isOverrideKey && (
+              {isOverrideKey && (
                 <p className="text-xs text-amber-600 font-semibold animate-pulse">
                   ℹ️ Đang ở chế độ sửa đáp án đúng. Vui lòng click trực tiếp vào chữ A, B, C hoặc D của đáp án trên đây để chọn lại đáp án đúng cho câu này.
                 </p>
@@ -1578,7 +1585,7 @@ export function GradingDetail() {
           </div>
         </div>
       ) : (
-      <div className="flex-1 overflow-y-auto" style={{ background: "#EEEEF3" }}>
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto" style={{ background: "#EEEEF3" }}>
         <div className="px-6 py-5 space-y-5">
 
           {/* ── Hero card ── */}
@@ -1762,7 +1769,8 @@ export function GradingDetail() {
                   <>
                     {/* ─── 1. Hero Score Card with CEFR gauge ─── */}
                     {(() => {
-                      const total = vstepTotal; // 0–10
+                      // Use DB score as authoritative (avoids drift from frontend recomputation)
+                      const total = isVstep && dbScore !== null ? dbScore / 10 : vstepTotal;
                       const pctVstep = Math.min((total / 10) * 100, 100);
                       // CEFR mapping (VSTEP scale)
                       const cefr =

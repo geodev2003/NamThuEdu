@@ -241,6 +241,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/exams/{examId}/vstep/publish', [ExamController::class, 'publishVstepExam']);
         Route::get('/exams/{examId}/vstep/load', [ExamController::class, 'loadVstepExam']);
         
+        // IELTS-specific routes
+        Route::post('/exams/{examId}/ielts/listening/sections/{sectionNumber}/audio', [ExamController::class, 'uploadIeltsListeningAudio']);
+        
         // Listening
         Route::post('/exams/{examId}/vstep/listening/parts/{partNumber}', [ExamController::class, 'saveVstepListeningPart']);
         // New section-based endpoints (Part 1: 8 sections, Part 2/3: 3 sections each)

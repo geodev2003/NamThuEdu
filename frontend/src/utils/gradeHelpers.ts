@@ -48,3 +48,79 @@ export function calculateGradeImprovement(currentScore: number, previousScore: n
 
   return { difference, percentage, trend };
 }
+
+// ─── VSTEP shared score helpers ──────────────────────────────────────────────
+// Single source-of-truth used by GradingQueue list AND TeacherReviewModal.
+
+export const VSTEP_SKILL_KEYS = ['listening', 'reading', 'writing', 'speaking'] as const;
+export type VstepSkillKey = typeof VSTEP_SKILL_KEYS[number];
+
+/** Parse sGemini_feedback JSON and return per-skill scores (null if missing). */
+export function parseVstepScores(sGemini_feedback?: string): Record<VstepSkillKey, number | null> {
+  try {
+    const vs = JSON.parse(sGemini_feedback ?? '{}')?.vstep_scores ?? {};
+    return {
+      listening: vs.listening !== undefined && vs.listening !== null ? Number(vs.listening) : null,
+      reading:   vs.reading   !== undefined && vs.reading   !== null ? Number(vs.reading)   : null,
+      writing:   vs.writing   !== undefined && vs.writing   !== null ? Number(vs.writing)   : null,
+      speaking:  vs.speaking  !== undefined && vs.speaking  !== null ? Number(vs.speaking)  : null,
+    };
+  } catch {
+    return { listening: null, reading: null, writing: null, speaking: null };
+  }
+}
+
+/** Average all four VSTEP skills. Returns null if any skill is missing. */
+export function calcVstepAvg(vstepScores: Record<VstepSkillKey, number | null>): number | null {
+  const vals = VSTEP_SKILL_KEYS.map((k) => vstepScores[k]);
+  if (vals.some((v) => v === null)) return null;
+  return (vals as number[]).reduce((s, v) => s + v, 0) / vals.length;
+}
+
+/** Returns true for VSTEP exam type or title. */
+export function isVstepExam(examType?: string, examTitle?: string): boolean {
+  return (
+    examType?.toUpperCase() === 'VSTEP' ||
+    String(examTitle ?? '').toUpperCase().includes('VSTEP')
+  );
+}
+
+/**
+ * Canonical display score for any submission.
+ * - VSTEP: use sScore/10 from DB (authoritative). Falls back to avg of AI skill scores.
+ * - Other: use sScore directly.
+ * Returns null when no score is available.
+ */
+export function getSubmissionDisplayScore(
+  opts: {
+    examType?: string;
+    examTitle?: string;
+    sGemini_feedback?: string;
+    score?: number;   // mapped from sScore
+    maxScore?: number;
+  }
+): { value: number; max: number } | null {
+  const { examType, examTitle, sGemini_feedback, score, maxScore = 100 } = opts;
+  if (isVstepExam(examType, examTitle)) {
+    // 1st priority: sScore from DB (= backend computed value, authoritative)
+    if (score !== undefined && score !== null) return { value: score / 10, max: 10 };
+    // Fallback: average of AI skill scores in sGemini_feedback
+    const vs = parseVstepScores(sGemini_feedback);
+    const avg = calcVstepAvg(vs);
+    if (avg !== null) return { value: avg, max: 10 };
+    return null;
+  }
+  if (score !== undefined && score !== null) return { value: score, max: maxScore };
+  return null;
+}
+
+/** Patch object passed from modal → queue when teacher saves a review. */
+export interface SubmissionScoreUpdate {
+  id: string;
+  /** New raw score saved to DB (= totalOverride * 10 for VSTEP). */
+  rawScore?: number;
+  sTeacher_feedback?: string;
+  /** Updated AI feedback JSON string (unchanged, forwarded for consistency). */
+  sGemini_feedback?: string;
+  teacher_reviewed_at: string;
+}

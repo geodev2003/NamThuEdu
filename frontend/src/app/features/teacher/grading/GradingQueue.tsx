@@ -20,6 +20,7 @@ import { Header } from "../../../components/shared/Header";
 import { api } from "../../../../services/api";
 import { getAssetUrl } from "../../../../utils/apiConfig";
 import { TeacherReviewModal } from "./TeacherReviewModal";
+import { getSubmissionDisplayScore, type SubmissionScoreUpdate } from "../../../../utils/gradeHelpers";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface Submission {
@@ -481,13 +482,16 @@ export function GradingQueue() {
                         </td>
                         {/* AI score */}
                         <td className="px-5 py-4 whitespace-nowrap">
-                          {sub.score !== undefined ? (
-                            <span className="text-sm font-bold text-slate-800">
-                              {(sub.score / (sub.maxScore / 10)).toFixed(2)}<span className="text-slate-400 font-normal text-xs">/10</span>
-                            </span>
-                          ) : (
-                            <span className="text-slate-300 text-sm">—</span>
-                          )}
+                          {(() => {
+                            const ds = getSubmissionDisplayScore(sub);
+                            return ds ? (
+                              <span className="text-sm font-bold text-slate-800">
+                                {ds.value.toFixed(2)}<span className="text-slate-400 font-normal text-xs">/{ds.max}</span>
+                              </span>
+                            ) : (
+                              <span className="text-slate-300 text-sm">—</span>
+                            );
+                          })()}
                         </td>
                         {/* Graded time */}
                         <td className="px-5 py-4 whitespace-nowrap">
@@ -564,9 +568,20 @@ export function GradingQueue() {
         submission={reviewTarget}
         open={!!reviewTarget}
         onClose={() => setReviewTarget(null)}
-        onReviewed={(id) => {
+        onReviewed={(update: SubmissionScoreUpdate) => {
           setSubmissions((prev) =>
-            prev.map((s) => s.id === id ? { ...s, teacher_reviewed_at: new Date().toISOString() } : s)
+            prev.map((s) => {
+              if (s.id !== update.id) return s;
+              return {
+                ...s,
+                // Apply new score if teacher changed it
+                ...(update.rawScore !== undefined ? { score: update.rawScore } : {}),
+                sTeacher_feedback: update.sTeacher_feedback ?? s.sTeacher_feedback,
+                sGemini_feedback:  update.sGemini_feedback  ?? s.sGemini_feedback,
+                teacher_reviewed_at: update.teacher_reviewed_at,
+                status: "graded" as const,
+              };
+            })
           );
           setReviewTarget(null);
         }}

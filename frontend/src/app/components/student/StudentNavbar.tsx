@@ -46,7 +46,6 @@ const prefetchMap: Record<string, () => Promise<unknown>> = {
   [studentPath("/bang-xep-hang")]:  () => import("../../features/student/dashboard/StudentLeaderboard"),
   [studentPath("/ho-so")]:          () => import("../../features/student/dashboard/Profile"),
   [studentPath("/cai-dat")]:        () => import("../../features/student/settings"),
-  [studentPath("/thong-bao")]:      () => import("../../features/student/notifications/NotificationList"),
 };
 
 const prefetched = new Set<string>();
@@ -184,7 +183,6 @@ export function StudentNavbar() {
     { path: studentPath("/tien-do"),       label: t("student.nav.progress"),           icon: TrendingUp,    exact: false },
     { path: studentPath("/lich-su"),       label: t("student.nav.history"),            icon: History,       exact: false },
     { path: studentPath("/bang-xep-hang"),label: "Bảng xếp hạng",                    icon: Trophy,        exact: false },
-    { path: studentPath("/thong-bao"),     label: "Thông báo",                         icon: Bell,          exact: false },
     { path: studentPath("/ho-so"),         label: t("student.nav.profile.myProfile"),  icon: User,          exact: false },
     { path: studentPath("/cai-dat"),       label: t("student.nav.profile.settings"),   icon: Settings,      exact: false },
   ];

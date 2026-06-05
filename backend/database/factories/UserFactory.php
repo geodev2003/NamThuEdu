@@ -23,6 +23,20 @@ class UserFactory extends Factory
             'uStatus' => 'active',
             'uDoB' => $this->faker->date('Y-m-d', '-18 years'),
             'uCreated_at' => now(),
+            'age_group' => 'adults',
+            'class_id' => function (array $attributes) {
+                if (($attributes['uRole'] ?? 'student') === 'student') {
+                    $teacher = User::where('uRole', 'teacher')->first() 
+                        ?? User::factory()->create(['uRole' => 'teacher']);
+                    return \Illuminate\Support\Facades\DB::table('classes')->insertGetId([
+                        'cName'       => 'Default Class',
+                        'cTeacher_id' => $teacher->uId,
+                        'cStatus'     => 'active',
+                        'age_group'   => 'adults',
+                    ]);
+                }
+                return null;
+            }
         ];
     }
 

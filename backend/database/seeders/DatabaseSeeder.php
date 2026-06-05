@@ -13,8 +13,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
-        // \App\Models\User::factory(10)->create();
-        
+        // Disable User model events during seeding to prevent validation constraint exceptions
+        \App\Models\User::flushEventListeners();
+
         $this->call([
             UserSeeder::class,
             CategorySeeder::class,

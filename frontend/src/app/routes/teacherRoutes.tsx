@@ -38,6 +38,7 @@ import { CreateVstepListening } from "../features/teacher/exams/vstep/CreateVste
 import { CreateVstepWriting } from "../features/teacher/exams/vstep/CreateVstepWriting";
 import { CreateVstepSpeaking } from "../features/teacher/exams/vstep/CreateVstepSpeaking";
 import { CreateVstepFull } from "../features/teacher/exams/vstep/CreateVstepFull";
+import CreateIeltsExam from "../features/teacher/exams/ielts/CreateIeltsExam";
 import { TestExamPlayer } from "../features/test";
 
 // Assignment
@@ -127,6 +128,18 @@ export const teacherRoutes = {
     { path: "de-thi/vstep/speaking/sua/:examId", Component: CreateVstepSpeaking },
     { path: "de-thi/vstep/full/tao-moi", Component: CreateVstepFull },
     { path: "de-thi/vstep/full/sua/:examId", Component: CreateVstepFull },
+
+    // ── IELTS routes ──────────────────────────────────────────────────────
+    { path: "de-thi/ielts/full/tao-moi", Component: () => <CreateIeltsExam /> },
+    { path: "de-thi/ielts/full/sua/:examId", Component: () => <CreateIeltsExam /> },
+    { path: "de-thi/ielts/listening/tao-moi", Component: () => <CreateIeltsExam initialSkill="listening" /> },
+    { path: "de-thi/ielts/listening/sua/:examId", Component: () => <CreateIeltsExam initialSkill="listening" /> },
+    { path: "de-thi/ielts/reading/tao-moi", Component: () => <CreateIeltsExam initialSkill="reading" /> },
+    { path: "de-thi/ielts/reading/sua/:examId", Component: () => <CreateIeltsExam initialSkill="reading" /> },
+    { path: "de-thi/ielts/writing/tao-moi", Component: () => <CreateIeltsExam initialSkill="writing" /> },
+    { path: "de-thi/ielts/writing/sua/:examId", Component: () => <CreateIeltsExam initialSkill="writing" /> },
+    { path: "de-thi/ielts/speaking/tao-moi", Component: () => <CreateIeltsExam initialSkill="speaking" /> },
+    { path: "de-thi/ielts/speaking/sua/:examId", Component: () => <CreateIeltsExam initialSkill="speaking" /> },
     { path: "de-thi/mau-de", Component: ExamTemplates },
     { path: "de-thi/cua-toi", Component: MyExams },
     { path: "de-thi/:examId", Component: ExamDetail },

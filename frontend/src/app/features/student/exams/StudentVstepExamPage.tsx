@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { studentApi } from "../../../../services/studentApi";
 import { api } from "../../../../services/api";
+import { usePageTitle } from "../../../../hooks/usePageTitle";
 
 /* ============================================================
  *  TYPES (identical to VstepExamPreview)
@@ -169,6 +170,8 @@ export function StudentVstepExamPage() {
   }, [location.search]);
   const reviewMode = reviewSubmissionId !== null;
 
+  usePageTitle(reviewMode ? "Xem lại bài thi VSTEP" : "Làm bài thi VSTEP");
+
   /* ── Teacher view mode (?teacher=1) ────────────────────── */
   const teacherMode = useMemo(() => new URLSearchParams(location.search).get("teacher") === "1", [location.search]);
 
@@ -196,6 +199,13 @@ export function StudentVstepExamPage() {
   const [readingParts, setReadingParts] = useState<ReadingPart[]>([]);
   const [writingTasks, setWritingTasks] = useState<WritingTask[]>([]);
   const [speakingParts, setSpeakingParts] = useState<SpeakingPart[]>([]);
+
+  // Ensure result detail modal is closed in review mode
+  useEffect(() => {
+    if (reviewMode) {
+      window.dispatchEvent(new Event("close-result-modal"));
+    }
+  }, [reviewMode]);
 
   /* ── Navigation state ───────────────────────────────────── */
   const [current, setCurrent] = useState<{ skill: SkillKey; partNumber: number }>({ skill: "listening", partNumber: 1 });
@@ -852,7 +862,7 @@ export function StudentVstepExamPage() {
                 {teacherMode && reviewStudentName ? `${reviewStudentName} — ` : ""}{examTitle}
               </p>
               <p className="text-xs text-slate-500 leading-tight">
-                {teacherMode ? "Xem bài học viên · Chế độ giáo viên" : "Bài thi VSTEP · Học viên"}
+                {teacherMode ? "Xem bài học viên · Chế độ giáo viên" : reviewMode ? "Xem lại bài thi · Học viên" : "Bài thi VSTEP · Học viên"}
               </p>
             </div>
             {/* Current skill badge */}
@@ -896,7 +906,7 @@ export function StudentVstepExamPage() {
               </Link>
             ) : reviewMode ? (
               <button
-                onClick={() => navigate(`${STUDENT_BASE_PATH}/ket-qua-vstep/${reviewSubmissionId}`)}
+                onClick={() => navigate(`${STUDENT_BASE_PATH}/ket-qua/${reviewSubmissionId}`)}
                 className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-slate-600 text-white text-sm font-semibold rounded-lg hover:bg-slate-700 active:scale-[0.97] transition-all"
               >
                 <ArrowLeft className="w-4 h-4" />
