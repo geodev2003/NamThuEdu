@@ -1,0 +1,118 @@
+{
+  "vi": {
+    "privacy": {
+      "sections": [
+        {
+          "title": "1. Thu thập thông tin cá nhân",
+          "body": "Khi bạn đăng ký tài khoản, sử dụng các dịch vụ trên nền tảng giáo dục NamThuEdu, hoặc tương tác trực tiếp với chúng tôi, chúng tôi có thể thu thập các thông tin cá nhân bao gồm nhưng không giới hạn ở: Họ và tên, địa chỉ email, số điện thoại liên lạc, ảnh đại diện, chức danh công việc, cơ quan công tác, địa chỉ liên hệ và thông tin thanh toán khi bạn thực hiện các giao dịch trên hệ thống. Ngoài ra, hệ thống cũng tự động thu thập thông tin kỹ thuật từ thiết bị truy cập của bạn bao gồm: Địa chỉ IP, loại trình duyệt, hệ điều hành, thông số User-Agent, thời gian truy cập, lịch sử hoạt động học tập, kết quả thi và tiến trình làm bài kiểm tra. Việc thu thập này giúp chúng tôi tối ưu hóa dịch vụ và cá nhân hóa trải nghiệm học tập của bạn."
+        },
+        {
+          "title": "2. Mục đích sử dụng thông tin",
+          "body": "Chúng tôi sử dụng thông tin thu thập được để thực hiện các mục đích sau: (a) Cung cấp, vận hành và duy trì các dịch vụ học tập, thi thử trên nền tảng NamThuEdu; (b) Cá nhân hóa lộ trình học tập, gợi ý nội dung giảng dạy phù hợp cho giáo viên và học viên; (c) Xử lý các giao dịch thanh toán và gửi xác nhận hóa đơn học phí; (d) Gửi thông báo hệ thống, nhắc nhở lịch học, thông báo cập nhật tính năng hoặc các thay đổi về mặt pháp lý; (e) Hỗ trợ kỹ thuật, giải đáp thắc mắc và chăm sóc khách hàng; (f) Phân tích số liệu thống kê ẩn danh để nghiên cứu hành vi người dùng, từ đó nâng cấp chất lượng ứng dụng và ngăn chặn các hành vi gian lận hoặc bảo mật kém."
+        },
+        {
+          "title": "3. Bảo mật và lưu trữ dữ liệu",
+          "body": "An toàn thông tin của bạn là ưu tiên hàng đầu của chúng tôi. NamThuEdu áp dụng các biện pháp bảo mật kỹ thuật và tổ chức nghiêm ngặt để bảo vệ dữ liệu cá nhân khỏi bị truy cập trái phép, thay đổi, tiết lộ hoặc phá hủy. Toàn bộ dữ liệu truyền tải giữa thiết bị của bạn và hệ thống của chúng tôi đều được mã hóa bằng giao thức SSL/TLS tiêu chuẩn công nghiệp. Các thông tin nhạy cảm như mật khẩu đều được băm (hash) bảo mật phía server. Việc truy cập dữ liệu cá nhân bị giới hạn nghiêm ngặt và chỉ cấp quyền cho các nhân viên, nhà thầu có nhu cầu xử lý công việc cụ thể. Chúng tôi cam kết lưu trữ thông tin của bạn tối thiểu là trong suốt thời gian tài khoản của bạn còn hoạt động hoặc theo yêu cầu của pháp luật hiện hành."
+        },
+        {
+          "title": "4. Chia sẻ thông tin với bên thứ ba",
+          "body": "Chúng tôi cam kết không bán, trao đổi hoặc cho thuê thông tin cá nhân của bạn cho bất kỳ bên thứ ba nào vì mục đích thương mại. Thông tin cá nhân của bạn chỉ có thể được chia sẻ trong các trường hợp giới hạn sau: (a) Chia sẻ với các nhà cung cấp dịch vụ hạ tầng đám mây uy tín chịu trách nhiệm lưu trữ và xử lý dữ liệu cho hệ thống; (b) Đối tác cung cấp cổng thanh toán trực tuyến được tích hợp nhằm thực hiện các giao dịch nạp tiền, học phí một cách an toàn; (c) Khi có yêu cầu bằng văn bản và có thẩm quyền pháp lý từ cơ quan nhà nước, tòa án hoặc cơ quan công an để phục vụ mục đích điều tra pháp luật."
+        },
+        {
+          "title": "5. Quyền của người dùng và quy trình xóa tài khoản",
+          "body": "Bạn có toàn quyền kiểm soát thông tin cá nhân của mình trên hệ thống. Cụ thể, bạn có quyền: (a) Truy cập và tự cập nhật thông tin cá nhân trong mục Cài đặt hồ sơ; (b) Yêu cầu xuất dữ liệu cá nhân hoặc tạm ngưng xử lý thông tin; (c) Yêu cầu xóa tài khoản vĩnh viễn khỏi hệ thống. Để bảo vệ quyền lợi và tránh những quyết định sai lầm ngoài ý muốn, khi bạn gửi yêu cầu xóa tài khoản, hệ thống sẽ đưa tài khoản vào trạng thái chờ xóa tạm thời trong vòng 3 ngày. Trong 3 ngày này, bạn có thể đăng nhập lại bất kỳ lúc nào để bấm hủy yêu cầu xóa. Sau thời hạn 3 ngày mà bạn không đổi ý, hệ thống sẽ thực hiện tác vụ tự động xóa vĩnh viễn toàn bộ dữ liệu của bạn khỏi cơ sở dữ liệu và không thể khôi phục."
+        },
+        {
+          "title": "6. Sử dụng Cookies và công nghệ theo dõi",
+          "body": "NamThuEdu sử dụng cookies và các công nghệ theo dõi tương tự để nâng cao chất lượng trải nghiệm của bạn. Cookie là các tệp văn bản nhỏ được lưu trữ trên thiết bị của bạn. Chúng tôi sử dụng các loại cookie sau: (a) Cookie thiết yếu để duy trì trạng thái đăng nhập của bạn khi chuyển hướng giữa các trang mà không phải nhập lại mật khẩu; (b) Cookie chức năng để ghi nhớ cấu hình giao diện (sáng/tối) và lựa chọn ngôn ngữ ưu tiên của bạn; (c) Cookie phân tích ẩn danh (như Google Analytics) để hiểu cách người dùng tương tác với trang web, giúp chúng tôi phát hiện lỗi và tối ưu hóa tốc độ tải trang. Bạn có thể cấu hình chặn cookie trong trình duyệt của mình, tuy nhiên một số tính năng cốt lõi của hệ thống có thể hoạt động không chính xác nếu không có cookie."
+        }
+      ]
+    },
+    "terms": {
+      "sections": [
+        {
+          "title": "1. Chấp thuận các điều khoản",
+          "body": "Bằng việc truy cập, đăng ký tài khoản, hoặc sử dụng bất kỳ dịch vụ, tính năng học tập nào trên nền tảng NamThuEdu, bạn xác nhận đã đọc kỹ, hiểu rõ và hoàn toàn đồng ý bị ràng buộc bởi các Điều khoản dịch vụ này cùng Chính sách bảo mật đã được công bố của chúng tôi. Nếu bạn không đồng ý với bất kỳ điều khoản nào, vui lòng ngừng sử dụng dịch vụ ngay lập tức. Chúng tôi có quyền cập nhật, bổ sung các điều khoản này theo thời gian và sẽ thông báo trước trên hệ thống để người dùng tiện theo dõi."
+        },
+        {
+          "title": "2. Quyền và nghĩa vụ tài khoản",
+          "body": "Để sử dụng đầy đủ các tính năng trên NamThuEdu, bạn cần đăng ký một tài khoản cá nhân và cung cấp thông tin chính xác. Bạn có trách nhiệm tuyệt đối trong việc bảo mật mật khẩu và thông tin đăng nhập của mình. Bạn cam kết không chia sẻ tài khoản cho bên thứ ba, không bán hoặc cho thuê tài khoản dưới mọi hình thức. Mọi hoạt động phát sinh từ tài khoản của bạn, bao gồm cả các tương tác trực tiếp, bài tập đã nộp hoặc bình luận, đều được coi là hành vi của chính bạn và bạn phải tự chịu trách nhiệm pháp lý liên quan."
+        },
+        {
+          "title": "3. Quyền sở hữu trí tuệ",
+          "body": "Tất cả nội dung có trên NamThuEdu bao gồm nhưng không giới hạn ở: Bài giảng điện tử, đề thi thử, tài liệu PDF, giao diện thiết kế, hình ảnh minh họa, clip hướng dẫn, âm thanh, biểu tượng và mã nguồn phần mềm đều là tài sản trí tuệ độc quyền của NamThuEdu hoặc các đối tác cấp phép cho chúng tôi. Chúng được bảo hộ bởi luật bản quyền và luật sở hữu trí tuệ của Việt Nam và quốc tế. Người dùng chỉ được quyền xem và học tập trực tuyến cá nhân. Nghiêm cấm mọi hành vi sao chép, tải xuống trái phép, phân phối, đăng tải lại lên các nền tảng khác hoặc sử dụng cho mục đích thương mại khi chưa có sự đồng ý bằng văn bản từ chúng tôi."
+        },
+        {
+          "title": "4. Quy định hành vi người dùng",
+          "body": "Khi sử dụng nền tảng NamThuEdu, bạn cam kết tuân thủ các quy tắc ứng xử văn minh và không thực hiện các hành vi sau: (a) Tải lên, phát tán các tài liệu có nội dung khiêu dâm, bạo lực, vi phạm thuần phong mỹ tục hoặc chứa mã độc, virus nhằm phá hoại hệ thống; (b) Có hành vi quấy rối, xúc phạm danh dự, phân biệt chủng tộc hoặc xâm phạm đời tư của giáo viên và các học viên khác; (c) Sử dụng các công cụ tự động (bot, scraper, crawler) để tải tài nguyên đề thi hàng loạt từ hệ thống; (d) Thực hiện các cuộc tấn công mạng nhằm làm tê liệt hoặc giảm hiệu suất hoạt động của máy chủ. Vi phạm các quy định này sẽ dẫn đến việc đình chỉ tài khoản ngay lập tức mà không hoàn phí."
+        },
+        {
+          "title": "5. Giới hạn trách nhiệm pháp lý",
+          "body": "NamThuEdu nỗ lực tối đa để đảm bảo nền tảng hoạt động ổn định và liên tục 24/7. Tuy nhiên, dịch vụ được cung cấp trên cơ sở 'nguyên trạng' và 'sẵn có'. Chúng tôi không bảo đảm rằng dịch vụ sẽ hoàn toàn không có lỗi kỹ thuật, không bị gián đoạn do sự cố đường truyền Internet toàn cầu, các cuộc tấn công DDoS quy mô lớn, thiên tai hoặc các yếu tố bất khả kháng khác ngoài tầm kiểm soát hợp lý. Trong mọi trường hợp tối đa được pháp luật cho phép, NamThuEdu không chịu trách nhiệm đối với bất kỳ thiệt hại gián tiếp, vô ý hay mất mát dữ liệu phát sinh từ việc bạn sử dụng hoặc không thể sử dụng hệ thống."
+        },
+        {
+          "title": "6. Thay đổi điều khoản và giải quyết tranh chấp",
+          "body": "Chúng tôi giữ quyền sửa đổi các Điều khoản sử dụng này bất kỳ lúc nào để phù hợp với sự phát triển của công nghệ và quy định của pháp luật. Các sửa đổi sẽ có hiệu lực ngay sau khi được đăng tải trên hệ thống. Việc tiếp tục sử dụng dịch vụ đồng nghĩa với việc bạn đồng ý với các thay đổi đó. Mọi tranh chấp phát sinh giữa người dùng và NamThuEdu sẽ được giải quyết trước tiên thông qua thương lượng, hòa giải trên tinh thần tôn trọng lẫn nhau. Trong trường hợp không đạt được thỏa thuận chung, vụ việc sẽ được đưa ra giải quyết tại Tòa án có thẩm quyền tại Việt Nam theo luật pháp nước Cộng hòa Xã hội Chủ nghĩa Việt Nam."
+        }
+      ]
+    }
+  },
+  "en": {
+    "privacy": {
+      "sections": [
+        {
+          "title": "1. Collection of Personal Data",
+          "body": "When you register an account, utilize services on the NamThuEdu educational platform, or interact directly with us, we may collect personal information including, but not limited to: Full name, email address, contact telephone number, profile picture, job title, institutional affiliation, contact address, and billing details when you complete financial transactions. Additionally, the system automatically collects technical details from your accessing device: IP address, browser type, operating system, User-Agent parameters, access timestamps, learning history logs, test results, and exam progression. This collection enables us to optimize services and tailor your personal educational experiences."
+        },
+        {
+          "title": "2. Purpose of Using Information",
+          "body": "We use the collected information to fulfill the following purposes: (a) Provide, operate, and maintain educational services, virtual trials, and exam features on NamThuEdu; (b) Personalize learning paths and suggest relevant pedagogical material for teachers and students; (c) Process payment transactions and issue tuition invoice confirmations; (d) Dispatch system notifications, class schedules, feature updates, or legal change alerts; (e) Provide technical support, resolve inquiries, and perform customer care; (f) Analyze aggregated anonymous data to study user behaviors, leading to application performance upgrades and prevention of security breaches or fraudulent activities."
+        },
+        {
+          "title": "3. Data Security and Storage",
+          "body": "The security of your information is our utmost priority. NamThuEdu implements rigorous technical and organizational security protocols to safeguard your personal data from unauthorized access, alteration, disclosure, or destruction. All data transmitted between your device and our servers is encrypted using industry-standard SSL/TLS protocols. Sensitive information such as account passwords is encrypted using secure server-side hashing algorithms. Access to personal data is strictly confined to employees and contractors who need to handle specific jobs. We commit to retaining your information at least for as long as your account remains active or as required by applicable laws."
+        },
+        {
+          "title": "4. Third-party Disclosures",
+          "body": "We pledge never to sell, exchange, or rent out your personal credentials to any third party for commercial purposes. Your personal data is only shared in the following limited situations: (a) Sharing with trusted cloud infrastructure providers responsible for secure data storage and system computation; (b) Partnering with integrated secure payment gateways to execute tuition transactions; (c) In compliance with written, legally-authorized demands from state agencies, court structures, or law enforcement forces to support legal investigations."
+        },
+        {
+          "title": "5. User Rights and Deletion Procedure",
+          "body": "You hold full control over your personal records on the system. Specifically, you have the right to: (a) Access and update your profile details under settings; (b) Request data extraction or suspend data processing; (c) Request permanent account deletion. To protect your interests and prevent unintentional mistakes, when you request account deletion, the system puts your account in a 3-day temporary pending state. Within this 3-day hold period, you can log back in at any time to cancel the request. After 3 days, if you do not change your mind, the system will run an automatic cron job to permanently purge all your data from our database, which is irreversible."
+        },
+        {
+          "title": "6. Cookies and Tracking Technologies",
+          "body": "NamThuEdu utilizes cookies and similar tracking tools to enrich your browsing experience. Cookies are small text documents stored on your terminal. We utilize: (a) Essential cookies to persist your authenticated session when navigating between pages without re-entering credentials; (b) Functional cookies to memorize display preferences (light/dark) and preferred languages; (c) Anonymous analytical cookies (such as Google Analytics) to understand user interactions, identify errors, and optimize load speeds. You can configure cookie blocks in your browser settings, though some key features may not operate properly without them."
+        }
+      ]
+    },
+    "terms": {
+      "sections": [
+        {
+          "title": "1. Acceptance of Terms",
+          "body": "By accessing, creating an account, or employing any learning services and features on the NamThuEdu platform, you confirm that you have read, understood, and agreed to be bound by these Terms of Service and our published Privacy Policy. If you disagree with any terms, please stop using the service immediately. We reserve the right to update or modify these terms periodically and will post announcements on the platform for your convenience."
+        },
+        {
+          "title": "2. Account Rights and Obligations",
+          "body": "To utilize the full capabilities of NamThuEdu, you must register a personal account and provide accurate details. You are fully responsible for maintaining password and login credential security. You commit not to share, sell, or rent your account to any third party under any circumstances. All activities originating from your account, including exam submissions, comments, or direct interactions, are legally considered your own actions, and you bear full responsibility."
+        },
+        {
+          "title": "3. Intellectual Property Rights",
+          "body": "All content on NamThuEdu including, but not limited to: E-lectures, sample tests, PDF documents, interface designs, illustrations, tutorials, audio, icons, and software source code are the exclusive intellectual property of NamThuEdu or our licensors. They are protected by Vietnamese and international copyright and intellectual property laws. Users only have the right to personal, non-commercial online viewing and learning. Any unauthorized copying, downloading, distribution, reposting, or commercial exploitation is strictly prohibited without prior written consent."
+        },
+        {
+          "title": "4. User Conduct Guidelines",
+          "body": "When using NamThuEdu, you agree to follow civilized behavioral standards and must not: (a) Upload or distribute materials with obscene, violent, indecent, or virus-infected content that can disrupt the system; (b) Harass, insult, racially discriminate, or violate the privacy of teachers or other learners; (c) Use automated tools (bots, scrapers, crawlers) to download exam resources in bulk; (d) Execute cyber attacks to disable or throttle server performance. Violations will lead to immediate account suspension without any tuition refund."
+        },
+        {
+          "title": "5. Disclaimer of Warranties and Liability Limits",
+          "body": "NamThuEdu makes maximum efforts to ensure a stable, continuous 24/7 service. However, services are provided on an 'as is' and 'as available' basis. We do not warrant that services will be completely error-free or uninterrupted by global internet outages, large-scale DDoS attacks, natural disasters, or other force majeure factors beyond our reasonable control. To the maximum extent permitted by law, NamThuEdu is not liable for any indirect, incidental, or consequential damages arising from your use or inability to use the platform."
+        },
+        {
+          "title": "6. Changes to Terms and Dispute Resolution",
+          "body": "We reserve the right to amend these Terms of Service at any time to align with technology developments and legal regulations. Amendments are effective immediately upon posting. Your continued use of services implies acceptance of the updated terms. Any disputes arising between users and NamThuEdu will first be resolved through good-faith negotiation and mediation. If mutual agreement cannot be reached, the dispute will be settled in a competent court in Vietnam in accordance with the laws of the Socialist Republic of Vietnam."
+        }
+      ]
+    }
+  }
+}

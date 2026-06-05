@@ -21,12 +21,10 @@ export function getAuthUser(): Record<string, unknown> | null {
 }
 
 export function setAuthData(token: string, user: Record<string, unknown>, remember: boolean): void {
+  // CRITICAL: Clear ALL auth data from BOTH storages first to prevent old user data leaking
+  clearAuthData();
+  
   const keep = remember ? localStorage : sessionStorage;
-  const drop = remember ? sessionStorage : localStorage;
-
-  drop.removeItem('auth_token');
-  drop.removeItem('auth_role');
-  drop.removeItem('user');
 
   keep.setItem('auth_token', token);
   keep.setItem('auth_role', String(user.role ?? ''));

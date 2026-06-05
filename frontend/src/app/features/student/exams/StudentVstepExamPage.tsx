@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router";
 import {
   ArrowLeft,
@@ -319,17 +319,44 @@ export function StudentVstepExamPage() {
           ? (typeof data.sGemini_feedback === 'string' ? JSON.parse(data.sGemini_feedback) : data.sGemini_feedback)
           : {};
         setReviewSpeakingAudio(feedback.speaking_audio ?? {});
-        const spScore = feedback.vstep_scores?.speaking ?? data.vstep_meta?.vstep_scores?.speaking ?? null;
-        setReviewSpeakingScore(typeof spScore === 'number' ? spScore : null);
-        // Speaking detailed results
+
+        // Detailed speaking results from feedback
         const spResults: Record<number, any> = {};
         for (const [key, val] of Object.entries(feedback.speaking_results ?? {})) {
           const partNum = parseInt(key.replace('part_', ''));
-          if (!isNaN(partNum)) spResults[partNum] = val;
+          if (!isNaN(partNum)) {
+            spResults[partNum] = { ...val };
+          }
+        }
+
+        // Override speaking part scores and detailed results with manual/teacher scores from data.answers
+        const spTasks: Record<number, number | null> = {};
+        for (const a of (data.answers ?? [])) {
+          const sec = (a.question?.qSkill ?? a.question?.qSection ?? "").toLowerCase();
+          if (sec === "speaking") {
+            const part = a.question?.qPart ?? 1;
+            const pts = a.saPoints_awarded;
+            if (pts !== null && pts !== undefined) {
+              const ptsNum = parseFloat(String(pts));
+              spTasks[part] = ptsNum;
+              if (!spResults[part]) {
+                spResults[part] = { criteria: {}, criterion_comments: {}, feedback: "", suggestions: [] };
+              }
+              spResults[part].score = ptsNum;
+            }
+          }
         }
         setReviewSpeakingResults(spResults);
+
+        // Compute overall speaking score: prioritize average of manually graded/overridden parts if available
+        const spScores = Object.values(spTasks).filter((s) => s !== null) as number[];
+        let spScore = feedback.vstep_scores?.speaking ?? data.vstep_meta?.vstep_scores?.speaking ?? null;
+        if (spScores.length > 0) {
+          spScore = spScores.reduce((sum, s) => sum + s, 0) / spScores.length;
+        }
+        setReviewSpeakingScore(typeof spScore === 'number' ? Math.round(spScore * 100) / 100 : null);
+
         // Writing scores: overall + per-task from saPoints_awarded + detailed results
-        const wOverall = feedback.vstep_scores?.writing ?? data.vstep_meta?.vstep_scores?.writing ?? null;
         const wTasks: Record<number, number | null> = {};
         const wResults: Record<number, any> = {};
         for (const a of (data.answers ?? [])) {
@@ -340,13 +367,34 @@ export function StudentVstepExamPage() {
             wTasks[part] = pts !== null && pts !== undefined ? parseFloat(String(pts)) : null;
           }
         }
+
         // Detailed per-task results from sGemini_feedback.writing_results
         const writingResults = feedback.writing_results ?? {};
         for (const key of Object.keys(writingResults)) {
           const taskNum = parseInt(key.replace('task_', ''));
-          if (!isNaN(taskNum)) wResults[taskNum] = writingResults[key];
+          if (!isNaN(taskNum)) {
+            wResults[taskNum] = { ...writingResults[key] };
+          }
         }
-        setReviewWritingScores({ overall: typeof wOverall === 'number' ? wOverall : null, tasks: wTasks, results: wResults });
+
+        // Override writing task scores with manual/teacher scores from data.answers
+        for (const taskNum of Object.keys(wTasks).map(Number)) {
+          const score = wTasks[taskNum];
+          if (score !== null && score !== undefined) {
+            if (!wResults[taskNum]) {
+              wResults[taskNum] = { criteria: {}, criterion_comments: {}, feedback: "", suggestions: [] };
+            }
+            wResults[taskNum].score = score;
+          }
+        }
+
+        // Compute overall writing score: prioritize average of manually graded/overridden parts if available
+        const wScores = Object.values(wTasks).filter((s) => s !== null) as number[];
+        let wOverall = feedback.vstep_scores?.writing ?? data.vstep_meta?.vstep_scores?.writing ?? null;
+        if (wScores.length > 0) {
+          wOverall = wScores.reduce((sum, s) => sum + s, 0) / wScores.length;
+        }
+        setReviewWritingScores({ overall: typeof wOverall === 'number' ? Math.round(wOverall * 100) / 100 : null, tasks: wTasks, results: wResults });
         // Check if grading is still pending
         const isPending = data.sStatus === 'grading_subjective' ||
           (Object.keys(writingResults).length === 0 && Object.keys(spResults).length === 0);
@@ -702,7 +750,7 @@ export function StudentVstepExamPage() {
     }
     if (current.skill === "reading") {
       const part = readingParts.find((p) => p.partNumber === current.partNumber);
-      return <ReadingView part={part} partNumber={current.partNumber} answers={answers} onAnswer={setAnswer} flagged={flagged} onFlag={toggleFlag} reviewMode={reviewMode} correctAnswersMap={correctAnswersMap} />;
+      return <ReadingView part={part} partNumber={current.partNumber} answers={answers} onAnswer={setAnswer} flagged={flagged} onFlag={toggleFlag} reviewMode={reviewMode} correctAnswersMap={correctAnswersMap} examId={examId ? Number(examId) : undefined} />;
     }
     if (current.skill === "writing") {
       const task = writingTasks.find((t) => t.taskNumber === current.partNumber);
@@ -841,9 +889,10 @@ export function StudentVstepExamPage() {
             {teacherMode ? (
               <Link
                 to={`/giao-vien/cham-diem/${reviewSubmissionId}`}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-violet-600 text-white text-sm font-semibold rounded-lg hover:bg-violet-700 active:scale-[0.97] transition-all"
+                className="group inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white text-sm font-bold rounded-lg shadow-sm active:scale-[0.97] transition-all duration-200"
               >
-                ✏️ Chỉnh sửa điểm
+                <PenLine className="w-4 h-4 transition-transform group-hover:rotate-12" />
+                <span>Chỉnh sửa điểm</span>
               </Link>
             ) : reviewMode ? (
               <button
@@ -860,7 +909,7 @@ export function StudentVstepExamPage() {
                 </span>
                 <button
                   onClick={() => setShowSubmit(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-sky-600 text-white text-sm font-semibold rounded-lg hover:bg-sky-700 active:scale-[0.97] transition-all"
+                  className="inline-flex items-center gap-2 px-5 py-2 bg-sky-600 text-white text-base font-semibold rounded-lg hover:bg-sky-700 active:scale-[0.97] transition-all shadow-sm"
                 >
                   <Send className="w-4 h-4" />
                   Nộp bài
@@ -1057,7 +1106,7 @@ function ListeningView({
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-6xl mx-auto px-8 py-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-8 py-6 space-y-6">
         <PartHeader icon={Headphones} color="sky" title={`Part ${partNumber}`}
           subtitle={part.partName || (partNumber === 1 ? "Announcements" : partNumber === 2 ? "Conversations" : "Talks / Lectures")} />
 
@@ -1107,10 +1156,351 @@ function ListeningView({
 }
 
 /* ============================================================
+ *  HIGHLIGHT COLORS
+ * ============================================================ */
+const HIGHLIGHT_COLORS: { key: string; bg: string; label: string }[] = [
+  { key: "yellow",  bg: "#FEF08A", label: "Vàng"  },
+  { key: "green",   bg: "#BBF7D0", label: "Xanh lá" },
+  { key: "blue",    bg: "#BAE6FD", label: "Xanh dương" },
+  { key: "pink",    bg: "#FBCFE8", label: "Hồng"  },
+  { key: "orange",  bg: "#FED7AA", label: "Cam"   },
+];
+
+const COLOR_MAP: Record<string, string> = Object.fromEntries(
+  HIGHLIGHT_COLORS.map((c) => [c.key, c.bg])
+);
+
+interface HighlightItem {
+  id: number;
+  start_offset: number;
+  end_offset: number;
+  color: string;
+  selected_text: string;
+}
+
+/* ============================================================
+ *  HIGHLIGHTABLE PASSAGE
+ * ============================================================ */
+function HighlightablePassage({
+  html,
+  examId,
+  partNumber,
+  reviewMode,
+}: {
+  html: string;
+  examId: number;
+  partNumber: number;
+  reviewMode?: boolean;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const articleRef = useRef<HTMLElement>(null);
+  const [popup, setPopup] = useState<{ x: number; y: number; range: Range } | null>(null);
+  /* fixed = viewport coords */
+  const [highlights, setHighlights] = useState<HighlightItem[]>([]);
+
+  const [vocabCount, setVocabCount] = useState(0);
+  const [vocabList, setVocabList] = useState<{ id: number; word: string; note: string }[]>([]);
+  const [showVocab, setShowVocab] = useState(false);
+
+  /* Fetch saved highlights on mount / part change */
+  useEffect(() => {
+    if (!examId) return;
+    studentApi.getHighlights(examId, partNumber)
+      .then((res: any) => {
+        const data: HighlightItem[] = res?.data?.data ?? [];
+        setHighlights(data);
+      })
+      .catch(() => {});
+
+    studentApi.getVocab(examId)
+      .then((res: any) => {
+        const data = res?.data?.data ?? [];
+        setVocabCount(data.length);
+        setVocabList(data);
+      })
+      .catch(() => {});
+  }, [examId, partNumber]);
+
+  /* Stable plain text derived once from original html — normalizes soft line breaks */
+  const plainText = useMemo(() => {
+    const stripped = html.replace(/<[^>]*>/g, "");
+    /* Replace double newlines (paragraph breaks) with a placeholder, collapse single \n into space */
+    return stripped
+      .replace(/\r\n/g, "\n")
+      .replace(/\n{2,}/g, "\x00PARA\x00")   // paragraph break → placeholder
+      .replace(/\n/g, " ")                  // mid-sentence \n → space
+      .replace(/  +/g, " ")                 // collapse multiple spaces
+      .replace(/\x00PARA\x00/g, "\n\n");    // restore paragraph breaks
+  }, [html]);
+
+  /* Escape HTML special chars in plain text segments */
+  const escHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  /* Build rendered HTML with <mark> tags and paragraph support */
+  const renderedHtml = useMemo(() => {
+    const toHtml = (s: string) =>
+      s.split("\n\n").map((para) => `<p style="font-size:17px;line-height:1.8;margin-bottom:1em">${escHtml(para.trim())}</p>`).join("");
+
+    if (!highlights.length) return toHtml(plainText);
+
+    const sorted = [...highlights].sort((a, b) => a.start_offset - b.start_offset);
+
+    let flat = "";
+    let cursor = 0;
+    for (const h of sorted) {
+      if (h.end_offset <= cursor) continue;
+      const start = Math.max(h.start_offset, cursor);
+      if (start > cursor) flat += escHtml(plainText.slice(cursor, start));
+      const bg = COLOR_MAP[h.color] || "#FEF08A";
+      flat += `<mark data-hid="${h.id}" style="background:${bg};border-radius:3px;cursor:pointer;" title="Click để xóa highlight">${escHtml(plainText.slice(start, h.end_offset))}</mark>`;
+      cursor = h.end_offset;
+    }
+    flat += escHtml(plainText.slice(cursor));
+    return flat.split("\n\n").map((para) => `<p style="font-size:17px;line-height:1.8;margin-bottom:1em">${para.trim()}</p>`).join("");
+  }, [plainText, highlights]);
+
+  /* Click on existing mark to delete */
+  const handleClick = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    const mark = (e.target as HTMLElement).closest("mark[data-hid]");
+    if (!mark) return;
+    const hid = Number((mark as HTMLElement).dataset.hid);
+    studentApi.deleteHighlight(examId, hid)
+      .then(() => setHighlights((prev) => prev.filter((h) => h.id !== hid)))
+      .catch(() => {});
+  }, [examId]);
+
+  /* Snap a text node offset to nearest word boundary */
+  const snapToWord = (node: Node, offset: number, direction: "start" | "end"): [Node, number] => {
+    if (node.nodeType !== Node.TEXT_NODE) return [node, offset];
+    const text = node.textContent || "";
+    if (direction === "start") {
+      let i = offset;
+      while (i > 0 && /\S/.test(text[i - 1])) i--;
+      return [node, i];
+    } else {
+      let i = offset;
+      while (i < text.length && /\S/.test(text[i])) i++;
+      return [node, i];
+    }
+  };
+
+  /* Mouse up: detect selection, snap to word boundaries */
+  const handleMouseUp = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    if (reviewMode) return;
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { setPopup(null); return; }
+    const range = sel.getRangeAt(0);
+    if (!containerRef.current?.contains(range.commonAncestorContainer)) { setPopup(null); return; }
+
+    /* Snap start backward and end forward to word edges */
+    const [snapStartNode, snapStartOff] = snapToWord(range.startContainer, range.startOffset, "start");
+    const [snapEndNode, snapEndOff]     = snapToWord(range.endContainer, range.endOffset, "end");
+    try {
+      range.setStart(snapStartNode, snapStartOff);
+      range.setEnd(snapEndNode, snapEndOff);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (_) { /* ignore if DOM changed */ }
+
+    if (range.collapsed || !range.toString().trim()) { setPopup(null); return; }
+
+    const rect = range.getBoundingClientRect();
+    setPopup({
+      x: rect.left + rect.width / 2,
+      y: rect.top - 48,
+      range,
+    });
+  }, [reviewMode]);
+
+  /* Get text offset by walking only the article element — avoids badge/popup node interference */
+  const getTextOffset = (node: Node, offsetInNode: number): number => {
+    const root = articleRef.current ?? containerRef.current!;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let total = 0;
+    let current = walker.nextNode();
+    while (current) {
+      if (current === node) return total + offsetInNode;
+      total += (current.textContent || "").length;
+      current = walker.nextNode();
+    }
+    return total + offsetInNode;
+  };
+
+  /* Apply highlight for chosen color — optimistic update */
+  const applyColor = useCallback((color: string) => {
+    if (!popup) return;
+    const { range } = popup;
+    const sel = window.getSelection();
+    const selectedText = range.toString().trim();
+    if (!selectedText) { setPopup(null); return; }
+
+    const startOffset = getTextOffset(range.startContainer, range.startOffset);
+    const endOffset   = getTextOffset(range.endContainer, range.endOffset);
+
+    sel?.removeAllRanges();
+    setPopup(null);
+
+    /* ── Optimistic: add immediately with negative temp id ── */
+    const tempId = -(Date.now());
+    const optimistic: HighlightItem = { id: tempId, start_offset: startOffset, end_offset: endOffset, color, selected_text: selectedText };
+    setHighlights((prev) => [...prev, optimistic]);
+
+    studentApi.saveHighlight(examId, {
+      skill: "reading",
+      part_number: partNumber,
+      start_offset: startOffset,
+      end_offset: endOffset,
+      color,
+      selected_text: selectedText,
+    }).then((res: any) => {
+      const saved: HighlightItem = res?.data?.data;
+      if (saved) {
+        /* Replace temp with real id */
+        setHighlights((prev) => prev.map((h) => h.id === tempId ? saved : h));
+      }
+      /* Auto-save vocab word (fire-and-forget) */
+      const words = selectedText.trim().split(/\s+/);
+      if (words.length <= 5) {
+        studentApi.saveVocab(examId, selectedText.trim(), "")
+          .then((r: any) => {
+            const saved = r?.data?.data;
+            setVocabCount((c) => c + 1);
+            if (saved) setVocabList((prev) => [...prev, saved]);
+          })
+          .catch(() => {});
+      }
+    }).catch(() => {
+      /* Rollback on failure */
+      setHighlights((prev) => prev.filter((h) => h.id !== tempId));
+    });
+  }, [popup, examId, partNumber]);
+
+  /* Close popup on outside click */
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (popup && containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setPopup(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [popup]);
+
+  return (
+    <div ref={containerRef} className="relative flex-1 overflow-y-auto px-6 py-5 select-text">
+      {/* Vocab badge — click to open list */}
+      {vocabCount > 0 && (
+        <button
+          onClick={() => setShowVocab(true)}
+          className="absolute top-3 right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm z-10 hover:brightness-95 transition-all"
+          style={{ background: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0" }}
+          title="Xem danh sách từ vựng đã lưu"
+        >
+          📚 {vocabCount} từ vựng
+        </button>
+      )}
+
+      {/* Vocab list modal */}
+      {showVocab && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center"
+          style={{ background: "rgba(15,23,42,0.45)" }}
+          onClick={() => setShowVocab(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">📚</span>
+                <span className="font-semibold text-slate-800">Từ vựng đã lưu</span>
+                <span className="ml-1 px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">{vocabList.length}</span>
+              </div>
+              <button onClick={() => setShowVocab(false)} className="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
+            </div>
+            {/* List */}
+            <div className="max-h-80 overflow-y-auto px-4 py-3 space-y-2">
+              {vocabList.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-6">Chưa có từ vựng nào</p>
+              ) : (
+                vocabList.map((v, i) => (
+                  <div key={v.id} className="flex items-start gap-3 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-800 break-words">{v.word}</p>
+                      {v.note && <p className="text-xs text-slate-500 mt-0.5 break-words">{v.note}</p>}
+                    </div>
+                    <button
+                      onClick={() => {
+                        studentApi.deleteVocab(examId, v.id).then(() => {
+                          setVocabList((prev) => prev.filter((x) => x.id !== v.id));
+                          setVocabCount((c) => c - 1);
+                        }).catch(() => {});
+                      }}
+                      className="flex-shrink-0 text-slate-300 hover:text-red-400 text-sm transition-colors"
+                      title="Xóa"
+                    >&times;</button>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="px-5 py-3 border-t border-slate-100">
+              <p className="text-[11px] text-slate-400 text-center">Từ được tự động lưu khi bôi đen highlight</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Color picker popup — fixed to viewport so it renders above sticky headers */}
+      {popup && (
+        <div
+          className="fixed z-[9999] flex items-center gap-1 px-2 py-1.5 rounded-xl shadow-xl"
+          style={{
+            left: popup.x - 90,
+            top: popup.y,
+            background: "#F8FAFC",
+            border: "1.5px solid #E2E8F0",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
+            minWidth: 184,
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <span className="text-[10px] text-slate-500 mr-1 whitespace-nowrap font-medium">Tô màu:</span>
+          {HIGHLIGHT_COLORS.map((c) => (
+            <button
+              key={c.key}
+              onClick={() => applyColor(c.key)}
+              title={c.label}
+              className="w-6 h-6 rounded-full border-2 border-slate-200 hover:scale-110 hover:border-slate-400 transition-transform flex-shrink-0 disabled:opacity-50"
+              style={{ background: c.bg }}
+            />
+          ))}
+          <button
+            onClick={() => { window.getSelection()?.removeAllRanges(); setPopup(null); }}
+            className="ml-1 text-slate-400 hover:text-slate-700 text-xs px-1"
+            title="Đóng"
+          >✕</button>
+        </div>
+      )}
+
+      <article
+        ref={articleRef as React.RefObject<HTMLElement>}
+        className="prose max-w-none text-slate-800"
+        dangerouslySetInnerHTML={{ __html: renderedHtml }}
+        onMouseUp={handleMouseUp}
+        onClick={handleClick}
+      />
+    </div>
+  );
+}
+
+/* ============================================================
  *  READING VIEW
  * ============================================================ */
 function ReadingView({
-  part, partNumber, answers, onAnswer, flagged, onFlag, reviewMode, correctAnswersMap,
+  part, partNumber, answers, onAnswer, flagged, onFlag, reviewMode, correctAnswersMap, examId,
 }: {
   part?: ReadingPart;
   partNumber: number;
@@ -1120,6 +1510,7 @@ function ReadingView({
   onFlag: (qId: number) => void;
   reviewMode?: boolean;
   correctAnswersMap?: Record<number, string>;
+  examId?: number;
 }) {
   if (!part || !part.questions?.length) return <EmptyState skill="reading" />;
 
@@ -1133,12 +1524,21 @@ function ReadingView({
           </div>
           {part.partName && <span className="text-xs text-emerald-700">{part.partName}</span>}
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-5">
-          <article
-            className="prose prose-sm max-w-none text-slate-800 leading-relaxed whitespace-pre-wrap"
-            dangerouslySetInnerHTML={{ __html: part.passage || "" }}
+        {examId ? (
+          <HighlightablePassage
+            html={part.passage || ""}
+            examId={examId}
+            partNumber={partNumber}
+            reviewMode={reviewMode}
           />
-        </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            <article
+              className="prose prose-sm max-w-none text-slate-800 leading-relaxed whitespace-pre-wrap"
+              dangerouslySetInnerHTML={{ __html: part.passage || "" }}
+            />
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden min-h-0">
@@ -1366,7 +1766,7 @@ function WritingView({
 
   return (
     <div className="h-full overflow-y-auto bg-[#eef0f4]">
-      <div className={`mx-auto px-8 py-8 ${reviewScores ? "max-w-[1400px] flex gap-6 items-start" : "max-w-3xl"}`}>
+      <div className={`mx-auto px-8 py-8 ${reviewScores ? "max-w-[1400px] flex gap-6 items-start" : "max-w-4xl"}`}>
         <div className={`space-y-5 ${reviewScores ? "flex-1 min-w-0" : ""}`}>
           <div className="space-y-4">
             {renderBlocks.map((block, i) => renderBlock(block, i))}
@@ -1644,7 +2044,7 @@ function SpeakingQuestionScreen({ part, partNumber, submissionId, onComplete, re
   const showRightPanel = isRecording || phase === "done" || phase === "countdown3";
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-6">
+    <div className="max-w-7xl mx-auto px-6 py-6">
       {!reviewMode && isRecording && (<div className="flex justify-center mb-5"><div className="bg-red-50 border border-red-200 px-5 py-1.5 rounded-md"><span className="text-2xl font-bold tabular-nums text-red-600">{fmtSec(recLeft)}</span></div></div>)}
       {!reviewMode && phase === "countdown3" && (<div className="flex justify-center mb-5"><div className="bg-amber-50 border border-amber-200 px-5 py-1.5 rounded-md"><span className="text-xs font-semibold text-amber-700 mr-2">Bắt đầu sau</span><span className="text-2xl font-bold tabular-nums text-amber-600">{count3}</span></div></div>)}
       <div className={`grid gap-6 ${!reviewMode && showRightPanel ? "grid-cols-1 md:grid-cols-[1fr_360px]" : "grid-cols-1"}`}>
@@ -1863,19 +2263,34 @@ function SpeakingView({
  *  SHARED HELPER COMPONENTS
  * ============================================================ */
 function PartHeader({ icon: Icon, color, title, subtitle }: { icon: any; color: "sky" | "emerald" | "amber" | "pink"; title: string; subtitle?: string }) {
-  const colors: Record<string, { bg: string; text: string; iconBg: string }> = {
-    sky:     { bg: "bg-sky-50",     text: "text-sky-900",     iconBg: "bg-sky-500"     },
-    emerald: { bg: "bg-emerald-50", text: "text-emerald-900", iconBg: "bg-emerald-500" },
-    amber:   { bg: "bg-amber-50",   text: "text-amber-900",   iconBg: "bg-amber-500"   },
-    pink:    { bg: "bg-pink-50",    text: "text-pink-900",    iconBg: "bg-pink-500"    },
+  const palette: Record<string, { from: string; to: string; border: string; titleColor: string; iconFrom: string; iconTo: string; glow: string }> = {
+    sky:     { from: "#0EA5E9", to: "#0284C7", border: "rgba(14,165,233,0.28)", titleColor: "#0C4A6E", iconFrom: "#38BDF8", iconTo: "#0284C7", glow: "rgba(14,165,233,0.18)" },
+    emerald: { from: "#10B981", to: "#059669", border: "rgba(16,185,129,0.28)", titleColor: "#064E3B", iconFrom: "#34D399", iconTo: "#059669", glow: "rgba(16,185,129,0.18)" },
+    amber:   { from: "#F59E0B", to: "#D97706", border: "rgba(245,158,11,0.28)", titleColor: "#78350F", iconFrom: "#FCD34D", iconTo: "#D97706", glow: "rgba(245,158,11,0.18)" },
+    pink:    { from: "#EC4899", to: "#DB2777", border: "rgba(236,72,153,0.28)", titleColor: "#831843", iconFrom: "#F472B6", iconTo: "#DB2777", glow: "rgba(236,72,153,0.18)" },
   };
-  const c = colors[color];
+  const p = palette[color];
   return (
-    <div className={`${c.bg} rounded-xl px-5 py-4 flex items-center gap-3`}>
-      <div className={`w-10 h-10 ${c.iconBg} rounded-lg flex items-center justify-center text-white`}><Icon className="w-5 h-5" /></div>
+    <div
+      className="rounded-xl px-5 py-4 flex items-center gap-3"
+      style={{
+        background: `linear-gradient(135deg, ${p.from}14 0%, ${p.to}08 100%)`,
+        border: `1.5px solid ${p.border}`,
+        boxShadow: `0 4px 16px ${p.glow}, inset 0 1px 0 rgba(255,255,255,0.75)`,
+      }}
+    >
+      <div
+        className="w-11 h-11 rounded-xl flex items-center justify-center text-white flex-shrink-0"
+        style={{
+          background: `linear-gradient(135deg, ${p.iconFrom}, ${p.iconTo})`,
+          boxShadow: `0 4px 14px ${p.glow}`,
+        }}
+      >
+        <Icon className="w-5 h-5" />
+      </div>
       <div className="flex-1">
-        <h2 className={`text-lg font-bold ${c.text}`}>{title}</h2>
-        {subtitle && <p className="text-sm text-slate-600">{subtitle}</p>}
+        <h2 className="text-lg font-bold" style={{ color: p.titleColor, letterSpacing: "-0.01em" }}>{title}</h2>
+        {subtitle && <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>}
       </div>
     </div>
   );
@@ -2070,7 +2485,8 @@ function QuestionCard({ q, selected, onSelect, flagged, onToggleFlag, reviewMode
           }
           return (
             <button key={l} onClick={() => reviewMode ? undefined : onSelect(l)} disabled={reviewMode}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left text-sm transition-all ${rowCls} ${reviewMode ? "cursor-default" : ""}`}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left text-sm transition-all ${rowCls}`}
+              style={reviewMode ? { cursor: "default" } : { cursor: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%237C3AED' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z'/><path d='m15 5 4 4'/></svg>\") 0 20, auto" }}
             >
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${dotCls}`}>{l}</span>
               <span className={isSel || (reviewMode && isCorrect) ? "font-medium text-slate-900" : "text-slate-700"}>{text}</span>
@@ -2095,17 +2511,32 @@ function AudioPlayer({ src }: { src?: string }) {
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
   const [played, setPlayed] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const progress = duration ? (currentTime / duration) * 100 : 0;
 
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
-    const onTime = () => setCurrentTime(a.currentTime);
-    const onLoaded = () => setDuration(a.duration || 0);
-    const onEnded = () => { setPlaying(false); setCurrentTime(0); };
-    a.addEventListener("timeupdate", onTime); a.addEventListener("loadedmetadata", onLoaded);
-    a.addEventListener("durationchange", onLoaded); a.addEventListener("ended", onEnded);
-    return () => { a.removeEventListener("timeupdate", onTime); a.removeEventListener("loadedmetadata", onLoaded); a.removeEventListener("durationchange", onLoaded); a.removeEventListener("ended", onEnded); };
+    // Reset state for new src
+    setPlaying(false); setCurrentTime(0); setDuration(0); setPlayed(false); setLoadError(false);
+    const onTime    = () => setCurrentTime(a.currentTime);
+    const onLoaded  = () => setDuration(a.duration || 0);
+    const onEnded   = () => { setPlaying(false); setCurrentTime(0); };
+    const onError   = () => { setLoadError(true); console.error("[AudioPlayer] Failed to load:", src); };
+    a.addEventListener("timeupdate", onTime);
+    a.addEventListener("loadedmetadata", onLoaded);
+    a.addEventListener("durationchange", onLoaded);
+    a.addEventListener("ended", onEnded);
+    a.addEventListener("error", onError);
+    // Force reload so the browser actually fetches the new src
+    if (src) a.load();
+    return () => {
+      a.removeEventListener("timeupdate", onTime);
+      a.removeEventListener("loadedmetadata", onLoaded);
+      a.removeEventListener("durationchange", onLoaded);
+      a.removeEventListener("ended", onEnded);
+      a.removeEventListener("error", onError);
+    };
   }, [src]);
 
   const toggle = () => {
@@ -2128,6 +2559,18 @@ function AudioPlayer({ src }: { src?: string }) {
 
   if (!src) {
     return (<div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center gap-3 text-slate-400 text-sm"><div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><Volume2 className="w-5 h-5" /></div>Chưa có audio cho phần này</div>);
+  }
+
+  if (loadError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-1.5">
+        <div className="flex items-center gap-2 text-red-700 text-sm font-semibold">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          Không thể tải file audio. Vui lòng liên hệ giáo viên.
+        </div>
+        <p className="text-[11px] text-red-400 font-mono break-all">{src}</p>
+      </div>
+    );
   }
 
   return (

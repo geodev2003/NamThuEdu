@@ -188,4 +188,62 @@ class GradingApiTest extends TestCase
         $response->assertStatus(200)
                  ->assertStatus(200);
     }
+
+    /** @test */
+    public function teacher_can_override_correct_answer()
+    {
+        $question = Question::where('exam_id', $this->exam->eId)->first();
+        
+        // Create 2 answers for this question
+        $answer1 = \App\Models\Answer::create([
+            'question_id' => $question->qId,
+            'aContent' => 'Option A',
+            'aIs_correct' => true,
+        ]);
+        
+        $answer2 = \App\Models\Answer::create([
+            'question_id' => $question->qId,
+            'aContent' => 'Option B',
+            'aIs_correct' => false,
+        ]);
+
+        // Student answer is Option B (incorrect under old key)
+        $subAnswer = SubmissionAnswer::create([
+            'submission_id' => $this->submission->sId,
+            'question_id' => $question->qId,
+            'saAnswer_text' => 'Option B',
+            'saIs_correct' => false,
+            'saPoints_awarded' => 0,
+        ]);
+
+        $token = $this->teacher->createToken('test-token')->plainTextToken;
+
+        // Override correct answer to Option B (answer2)
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $token,
+        ])->postJson("/api/teacher/questions/{$question->qId}/override-correct-answer", [
+            'correct_answer_id' => $answer2->aId,
+            'submission_id' => $this->submission->sId,
+        ]);
+
+        $response->assertStatus(200);
+
+        // Verify correct answer updated in database
+        $this->assertDatabaseHas('answers', [
+            'aId' => $answer1->aId,
+            'aIs_correct' => false,
+        ]);
+        $this->assertDatabaseHas('answers', [
+            'aId' => $answer2->aId,
+            'aIs_correct' => true,
+        ]);
+
+        // Verify student submission answer updated to correct
+        $this->assertDatabaseHas('submission_answers', [
+            'submission_id' => $this->submission->sId,
+            'question_id' => $question->qId,
+            'saIs_correct' => true,
+            'saPoints_awarded' => $question->qPoints ?? 1,
+        ]);
+    }
 }

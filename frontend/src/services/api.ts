@@ -1,12 +1,14 @@
-import axios from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import { getAuthToken, clearAuthData } from '../utils/authStorage';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
+const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 30000;
 
 console.log('🔧 API Base URL:', API_BASE_URL);
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -14,31 +16,73 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-// Add auth token to requests
-api.interceptors.request.use((config) => {
-  const token = getAuthToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// ─── Request Interceptor ────────────────────────────────────────────────────
+api.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    // Attach authentication token
+    const token = getAuthToken();
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
 
-// Handle response errors
+    // Development mode logging
+    if (import.meta.env.DEV) {
+      console.group('🚀 API Request');
+      console.log('Endpoint:', config.url);
+      console.log('Method:', config.method?.toUpperCase());
+      console.log('Params:', config.params);
+      console.log('Data:', config.data);
+      console.groupEnd();
+    }
+
+    return config;
+  },
+  (error: AxiosError) => {
+    if (import.meta.env.DEV) {
+      console.error('❌ Request Error:', error);
+    }
+    return Promise.reject(error);
+  }
+);
+
+// ─── Response Interceptor ───────────────────────────────────────────────────
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response: AxiosResponse) => {
+    // Development mode logging
+    if (import.meta.env.DEV) {
+      console.group('✅ API Response');
+      console.log('Endpoint:', response.config.url);
+      console.log('Status:', response.status);
+      console.log('Data:', response.data);
+      console.groupEnd();
+    }
+
+    return response;
+  },
+  (error: AxiosError) => {
+    // Development mode logging
+    if (import.meta.env.DEV) {
+      console.group('❌ API Error');
+      console.error('Endpoint:', error.config?.url);
+      console.error('Method:', error.config?.method?.toUpperCase());
+      console.error('Status:', error.response?.status);
+      console.error('Data:', error.response?.data);
+      console.error('Message:', error.message);
+      console.groupEnd();
+    }
+
+    // Handle 401 Unauthorized — smart redirect based on current path
     if (error.response?.status === 401) {
       clearAuthData();
-      
-      // Determine redirect path based on current location
+
       const currentPath = window.location.pathname;
-      
+
       // Don't redirect if already on login page
       if (currentPath.includes('/dang-nhap') || currentPath.includes('/login')) {
         return Promise.reject(error);
       }
-      
-      // Redirect based on role or current path
+
+      // Redirect based on role context
       if (currentPath.includes('/giao-vien')) {
         window.location.href = '/giao-vien/dang-nhap';
       } else if (currentPath.includes('/admin')) {
@@ -49,6 +93,7 @@ api.interceptors.response.use(
         window.location.href = '/';
       }
     }
+
     return Promise.reject(error);
   }
 );

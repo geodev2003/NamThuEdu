@@ -1,10 +1,5 @@
 import { api } from "./api";
-
-interface ApiResponse<T> {
-  status: string;
-  message?: string;
-  data: T;
-}
+import type { ApiResponse } from "../types/index";
 
 export interface AdminUser {
   uId?: number;

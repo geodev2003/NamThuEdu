@@ -47,6 +47,7 @@ class User extends Authenticatable
         'language_preference',
         'plain_password',
         'notifications_read_at',
+        'notification_settings',
     ];
 
     /**
@@ -72,6 +73,8 @@ class User extends Authenticatable
         'theme_updated_at' => 'datetime',
         'refresh_token_expires_at' => 'datetime',
         'notifications_read_at'     => 'datetime',
+        'scheduled_delete_at'       => 'datetime',
+        'notification_settings'     => 'array',
     ];
 
     /**

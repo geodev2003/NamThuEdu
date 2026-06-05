@@ -137,8 +137,25 @@ export function NotificationDropdown() {
     return () => navigator.serviceWorker.removeEventListener("message", handler);
   }, [queryClient]);
 
+  const hoverTimeout = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseEnter = () => {
+    if (hoverTimeout[0]) clearTimeout(hoverTimeout[0]);
+    if (!open) handleOpen();
+  };
+
+  const handleMouseLeave = () => {
+    const t = setTimeout(() => handleClose(), 200);
+    hoverTimeout[1](t);
+  };
+
   return (
-    <div className="relative" ref={containerRef}>
+    <div
+      className="relative"
+      ref={containerRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <button
         type="button"
         onClick={() => (open ? handleClose() : handleOpen())}

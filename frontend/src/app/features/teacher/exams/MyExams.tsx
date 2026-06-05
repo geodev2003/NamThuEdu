@@ -92,6 +92,9 @@ export function MyExams() {
   const [sortBy, setSortBy] = useState("recent");
   const [selectedExams, setSelectedExams] = useState<string[]>([]);
   const [showActionMenu, setShowActionMenu] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Real data from API
   const [exams, setExams] = useState<Exam[]>([]);
@@ -190,6 +193,41 @@ export function MyExams() {
     setFilterSkill("all");
     setSearchTerm("");
     setSortBy("recent");
+  };
+
+  // Handle delete exam
+  const handleDeleteClick = (exam: Exam) => {
+    setExamToDelete(exam);
+    setShowDeleteModal(true);
+    setShowActionMenu(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!examToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await teacherApi.exams.delete(Number(examToDelete.id));
+      
+      // Remove from local state
+      setExams((prev) => prev.filter((e) => e.id !== examToDelete.id));
+      
+      // Show success message (if you have toast)
+      alert("Đã xóa đề thi thành công!");
+      
+      setShowDeleteModal(false);
+      setExamToDelete(null);
+    } catch (error: any) {
+      console.error("Error deleting exam:", error);
+      alert(error.message || "Không thể xóa đề thi. Vui lòng thử lại!");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setExamToDelete(null);
   };
 
   return (
@@ -540,7 +578,10 @@ export function MyExams() {
                                 Lưu trữ
                               </button>
                               <hr className="my-2" />
-                              <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600">
+                              <button 
+                                onClick={() => handleDeleteClick(exam)}
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 flex items-center gap-2 text-red-600 transition-colors"
+                              >
                                 <Trash2 className="w-4 h-4" />
                                 Xóa
                               </button>
@@ -830,6 +871,79 @@ export function MyExams() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && examToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-in fade-in duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Xác nhận xóa đề thi</h3>
+                  <p className="text-sm text-gray-500 mt-0.5">Hành động này không thể hoàn tác</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 py-5 space-y-4">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <p className="text-sm text-orange-800 font-medium mb-2">
+                  ⚠️ Bạn có chắc chắn muốn xóa đề thi này?
+                </p>
+                <div className="space-y-1 text-sm text-orange-700">
+                  <p><span className="font-semibold">Tên đề:</span> {examToDelete.title}</p>
+                  <p><span className="font-semibold">Loại:</span> {examToDelete.type} - {examToDelete.skill}</p>
+                  <p><span className="font-semibold">Số câu hỏi:</span> {examToDelete.questions} câu</p>
+                </div>
+              </div>
+
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-800">
+                  <strong>Lưu ý:</strong> Khi xóa đề thi, tất cả dữ liệu liên quan sẽ bị xóa vĩnh viễn bao gồm:
+                </p>
+                <ul className="list-disc list-inside text-sm text-red-700 mt-2 space-y-1">
+                  <li>Toàn bộ câu hỏi và đáp án</li>
+                  <li>Lịch sử giao bài (nếu có)</li>
+                  <li>Kết quả làm bài của học viên (nếu có)</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-gray-50 rounded-b-2xl flex items-center justify-end gap-3">
+              <button
+                onClick={cancelDelete}
+                disabled={isDeleting}
+                className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-medium shadow-lg shadow-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Đang xóa...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Xác nhận xóa
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

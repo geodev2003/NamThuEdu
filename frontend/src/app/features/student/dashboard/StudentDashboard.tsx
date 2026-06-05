@@ -178,7 +178,7 @@ export function StudentDashboard() {
     (submissionsData as any)?.data?.data?.submissions?.map((s: any) => ({
       id: s.sId,
       title: s.exam.eTitle,
-      score: s.sScore,
+      score: Number(s.sScore || 0),
       max: s.exam.eMax_score,
       date: formatDate(s.sSubmit_time),
       badge: getGradeBadge(s.sScore),
@@ -188,19 +188,19 @@ export function StudentDashboard() {
   const skillData =
     progress?.skill_analysis?.skills_breakdown?.map((s: any) => ({
       skill: s.skill_name,
-      score: s.average_score,
+      score: Number(s.average_score || 0),
     })) || [];
   const chartData =
     progress?.trends?.recent_scores?.slice(-7).map((s: any, i: number) => ({
       week: `T${i + 1}`,
-      score: s.score,
+      score: Number(s.score || 0),
     })) || [];
 
   const stats = {
     pendingTests: pendingAssignments.length,
-    averageScore: progress?.overview?.average_score || 0,
-    totalTests: progress?.overview?.total_tests || 0,
-    recentScore: progress?.overview?.recent_score || 0,
+    averageScore: Number(progress?.overview?.average_score || 0),
+    totalTests: Number(progress?.overview?.total_tests || 0),
+    recentScore: Number(progress?.overview?.recent_score || 0),
   };
 
   const isLoading = testsLoading || submissionsLoading || progressLoading;
@@ -314,9 +314,9 @@ export function StudentDashboard() {
       <div className="py-6 space-y-6 max-w-[1600px] mx-auto">
       {/* ─── Hero Welcome Section ───────────────────────────────────────────── */}
       <div
-        className="relative overflow-hidden rounded-3xl p-6 md:p-8"
+        className="relative overflow-hidden rounded-3xl p-6 md:p-8 shadow-lg shadow-indigo-600/10"
         style={{
-          background: `linear-gradient(135deg, ${PRIMARY} 0%, ${PRIMARY_MID} 50%, #7DD3FC 100%)`,
+          background: "linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #8B5CF6 100%)",
         }}
       >
         {/* decorative circles */}
@@ -464,17 +464,17 @@ export function StudentDashboard() {
         ))}
       </div>
 
-      {/* ─── NEW: Important Notifications + In-Progress Tests ────────────────── */}
+      {/* ─── In-Progress Tests + Upcoming Calendar ───────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <ImportantNotifications
-          notifications={importantNotifications}
-          isLoading={notificationsLoading}
-        />
         <InProgressTests tests={inProgressTests} isLoading={inProgressLoading} />
+        <UpcomingCalendar tests={upcomingTests} isLoading={upcomingLoading} />
       </div>
 
-      {/* ─── NEW: Upcoming Calendar ──────────────────────────────────────────── */}
-      <UpcomingCalendar tests={upcomingTests} isLoading={upcomingLoading} />
+      {/* ─── Important Notifications (full-width) ────────────────────────────── */}
+      <ImportantNotifications
+        notifications={importantNotifications}
+        isLoading={notificationsLoading}
+      />
 
       {/* ─── Quick Actions ───────────────────────────────────────────────────── */}
       <div>

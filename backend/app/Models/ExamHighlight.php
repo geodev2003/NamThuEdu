@@ -1,0 +1,19 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class ExamHighlight extends Model
+{
+    protected $fillable = [
+        'user_id',
+        'exam_id',
+        'skill',
+        'part_number',
+        'start_offset',
+        'end_offset',
+        'color',
+        'selected_text',
+    ];
+}

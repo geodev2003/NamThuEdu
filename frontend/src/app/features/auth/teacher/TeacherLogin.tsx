@@ -9,7 +9,7 @@ import axios from 'axios';
 import { login } from '../../../../services/authApi';
 import { Eye, EyeOff, Phone, Lock, BookOpen, ShieldOff, X } from 'lucide-react';
 import { Header } from '../../public/components/Header';
-import { setAuthData, getRememberedPhone } from '../../../../utils/authStorage';
+import { setAuthData, getRememberedPhone, clearAuthData } from '../../../../utils/authStorage';
 import { usePageTitle, PAGE_TITLES } from '../../../../hooks/usePageTitle';
 import '../../../../styles/loginAnimations.css';
 
@@ -47,13 +47,15 @@ export function TeacherLogin() {
     setIsLoading(true);
     setError(null);
 
+    // CRITICAL FIX: Clear all old auth data BEFORE logging in to prevent user confusion
+    clearAuthData();
+
     try {
       const response = await login({ phone: phone.trim(), password });
       const { access_token, user } = response.data;
 
       if (user.role !== 'teacher') {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_role');
+        clearAuthData();
         setError(t('auth.teacherLogin.errorWrongRole'));
         setIsLoading(false);
         return;
@@ -270,9 +272,24 @@ export function TeacherLogin() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-orange-500 transition-colors cursor-pointer"
+                    style={{ transition: 'color 0.2s' }}
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <span
+                      key={showPassword ? 'off' : 'on'}
+                      style={{
+                        display: 'inline-flex',
+                        animation: 'eyeToggle 0.25s cubic-bezier(0.34,1.56,0.64,1) both',
+                      }}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </span>
+                    <style>{`
+                      @keyframes eyeToggle {
+                        0%   { opacity: 0; transform: scale(0.5) rotate(-15deg); }
+                        100% { opacity: 1; transform: scale(1) rotate(0deg); }
+                      }
+                    `}</style>
                   </button>
                 </div>
               </div>

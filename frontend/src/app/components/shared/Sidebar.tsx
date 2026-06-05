@@ -15,7 +15,6 @@ import {
   Settings,
   LogOut,
   ChevronDown,
-  Signal,
   Lightbulb,
   CheckCircle2,
   ChevronLeft,
@@ -85,15 +84,6 @@ const navigationData: MenuItem[] = [
     ],
   },
   {
-    name: "liveMonitor",
-    icon: Signal,
-    indicator: "active",
-    submenu: [
-      { name: "activeSessions", href: "/giao-vien/giam-sat-truc-tiep" },
-      { name: "realtimeStats", href: "/giao-vien/giam-sat-truc-tiep/thong-ke" },
-    ],
-  },
-  {
     name: "blog",
     icon: FileText,
     submenu: [
@@ -105,11 +95,8 @@ const navigationData: MenuItem[] = [
   },
   {
     name: "reports",
+    href: "/giao-vien/bao-cao",
     icon: BarChart3,
-    submenu: [
-      { name: "reportOverview", href: "/giao-vien/bao-cao" },
-      { name: "analysis", href: "/giao-vien/bao-cao/phan-tich" },
-    ],
   },
   {
     name: "settings",
@@ -179,7 +166,8 @@ export function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onTog
   };
   const userInitials = getInitials(userName);
   
-  // State to track avatar updates
+  // State to track avatar updates - with loading state
+  const [avatarLoading, setAvatarLoading] = useState(true);
   const [currentAvatar, setCurrentAvatar] = useState(getAvatarUrl(userAvatar));
   
   // Listen for storage changes to update avatar
@@ -187,7 +175,11 @@ export function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onTog
     const handleStorageChange = () => {
       const updatedUser = getAuthUser();
       const newAvatar = (updatedUser?.avatar_url as string) || (updatedUser?.avatar as string) || '';
-      setCurrentAvatar(getAvatarUrl(newAvatar));
+      const newAvatarUrl = getAvatarUrl(newAvatar);
+      if (newAvatarUrl !== currentAvatar) {
+        setAvatarLoading(true); // Reset loading state
+        setCurrentAvatar(newAvatarUrl);
+      }
     };
     
     window.addEventListener('storage', handleStorageChange);
@@ -198,7 +190,7 @@ export function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onTog
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('avatarUpdated', handleStorageChange);
     };
-  }, []);
+  }, [currentAvatar]);
 
   const handleLogout = async () => {
     await logout();
@@ -371,7 +363,7 @@ export function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onTog
     >
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4" style={{ borderBottom: '1px solid #E0E7FF' }}>
-        <div className="flex items-center gap-2.5 overflow-hidden">
+        <Link to="/giao-vien" className="flex items-center gap-2.5 overflow-hidden cursor-pointer hover:opacity-85 transition-opacity">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#4F46E5,#4338CA)' }}>
             <BookOpen className="w-5 h-5 text-white" strokeWidth={2} />
           </div>
@@ -381,7 +373,7 @@ export function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onTog
               <span className="text-indigo-400 text-[11px] font-medium mt-0.5">Teacher Portal</span>
             </div>
           )}
-        </div>
+        </Link>
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
           className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors flex-shrink-0 cursor-pointer hover:bg-indigo-100"
@@ -398,20 +390,40 @@ export function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onTog
       {!isCollapsed ? (
         <div className="px-3 py-3" style={{ borderBottom: '1px solid #E0E7FF' }}>
           <div className="flex items-center gap-3 px-2 py-2 rounded-xl cursor-default" style={{ background: '#EEF2FF' }}>
-            {currentAvatar ? (
-              <img
-                src={currentAvatar}
-                alt={userName}
-                className="w-9 h-9 rounded-full object-cover flex-shrink-0 border-2 border-indigo-200"
-                onError={(e) => {
-                  // Fallback to initials if image fails to load
-                  e.currentTarget.style.display = 'none';
-                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                }}
-              />
-            ) : null}
-            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${currentAvatar ? 'hidden' : ''}`} style={{ background: 'linear-gradient(135deg,#6366F1,#4338CA)' }}>
-              {userInitials}
+            <div className="relative w-9 h-9 flex-shrink-0">
+              {currentAvatar && avatarLoading && (
+                <div 
+                  className="absolute inset-0 rounded-full animate-pulse border-2 border-indigo-200" 
+                  style={{ background: 'linear-gradient(135deg,#E0E7FF,#C7D2FE)' }}
+                />
+              )}
+              {currentAvatar ? (
+                <img
+                  src={currentAvatar}
+                  alt={userName}
+                  loading="eager"
+                  decoding="async"
+                  className="w-9 h-9 rounded-full object-cover border-2 border-indigo-200"
+                  style={{ 
+                    opacity: avatarLoading ? 0 : 1,
+                    transition: 'opacity 150ms ease-in',
+                    position: 'absolute',
+                    inset: 0
+                  }}
+                  onLoad={() => setAvatarLoading(false)}
+                  onError={() => {
+                    setAvatarLoading(false);
+                    setCurrentAvatar('');
+                  }}
+                />
+              ) : (
+                <div 
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-indigo-200" 
+                  style={{ background: 'linear-gradient(135deg,#6366F1,#4338CA)' }}
+                >
+                  {userInitials}
+                </div>
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-slate-800 text-sm font-semibold truncate leading-tight">{userName}</p>
@@ -424,25 +436,42 @@ export function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onTog
         </div>
       ) : (
         <div className="flex justify-center py-3" style={{ borderBottom: '1px solid #E0E7FF' }}>
-          {currentAvatar ? (
-            <img
-              src={currentAvatar}
-              alt={userName}
-              className="w-9 h-9 rounded-full object-cover border-2 border-indigo-200"
-              title={userName}
-              onError={(e) => {
-                // Fallback to initials if image fails to load
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.nextElementSibling?.classList.remove('hidden');
-              }}
-            />
-          ) : null}
-          <div
-            className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold ${currentAvatar ? 'hidden' : ''}`}
-            style={{ background: 'linear-gradient(135deg,#6366F1,#4338CA)' }}
-            title={userName}
-          >
-            {userInitials}
+          <div className="relative w-9 h-9">
+            {currentAvatar && avatarLoading && (
+              <div 
+                className="absolute inset-0 rounded-full animate-pulse border-2 border-indigo-200" 
+                style={{ background: 'linear-gradient(135deg,#E0E7FF,#C7D2FE)' }}
+              />
+            )}
+            {currentAvatar ? (
+              <img
+                src={currentAvatar}
+                alt={userName}
+                loading="eager"
+                decoding="async"
+                className="w-9 h-9 rounded-full object-cover border-2 border-indigo-200"
+                title={userName}
+                style={{ 
+                  opacity: avatarLoading ? 0 : 1,
+                  transition: 'opacity 150ms ease-in',
+                  position: 'absolute',
+                  inset: 0
+                }}
+                onLoad={() => setAvatarLoading(false)}
+                onError={() => {
+                  setAvatarLoading(false);
+                  setCurrentAvatar('');
+                }}
+              />
+            ) : (
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-indigo-200"
+                style={{ background: 'linear-gradient(135deg,#6366F1,#4338CA)' }}
+                title={userName}
+              >
+                {userInitials}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -462,18 +491,18 @@ export function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onTog
         <div>
           {!isCollapsed && <p className="px-2 mb-1 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Assessment</p>}
           <div className="space-y-0.5">
-            {navigationData.slice(2, 7).map((item) => renderMenuItem(item))}
+            {navigationData.slice(2, 6).map((item) => renderMenuItem(item))}
           </div>
         </div>
         <div>
           {!isCollapsed && <p className="px-2 mb-1 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Content</p>}
           <div className="space-y-0.5">
-            {navigationData.slice(7, 9).map((item) => renderMenuItem(item))}
+            {navigationData.slice(6, 8).map((item) => renderMenuItem(item))}
           </div>
         </div>
         <div className="h-px bg-indigo-100" />
         <div className="space-y-0.5">
-          {renderMenuItem(navigationData[9])}
+          {renderMenuItem(navigationData[8])}
         </div>
       </nav>
 

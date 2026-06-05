@@ -1563,21 +1563,34 @@ function PartHeader({
   title: string;
   subtitle?: string;
 }) {
-  const colors: Record<string, { bg: string; text: string; iconBg: string }> = {
-    sky: { bg: "bg-sky-50", text: "text-sky-900", iconBg: "bg-sky-500" },
-    emerald: { bg: "bg-emerald-50", text: "text-emerald-900", iconBg: "bg-emerald-500" },
-    amber: { bg: "bg-amber-50", text: "text-amber-900", iconBg: "bg-amber-500" },
-    pink: { bg: "bg-pink-50", text: "text-pink-900", iconBg: "bg-pink-500" },
+  const palette: Record<string, { from: string; to: string; border: string; titleColor: string; iconFrom: string; iconTo: string; glow: string }> = {
+    sky:     { from: "#0EA5E9", to: "#0284C7", border: "rgba(14,165,233,0.28)", titleColor: "#0C4A6E", iconFrom: "#38BDF8", iconTo: "#0284C7", glow: "rgba(14,165,233,0.18)" },
+    emerald: { from: "#10B981", to: "#059669", border: "rgba(16,185,129,0.28)", titleColor: "#064E3B", iconFrom: "#34D399", iconTo: "#059669", glow: "rgba(16,185,129,0.18)" },
+    amber:   { from: "#F59E0B", to: "#D97706", border: "rgba(245,158,11,0.28)", titleColor: "#78350F", iconFrom: "#FCD34D", iconTo: "#D97706", glow: "rgba(245,158,11,0.18)" },
+    pink:    { from: "#EC4899", to: "#DB2777", border: "rgba(236,72,153,0.28)", titleColor: "#831843", iconFrom: "#F472B6", iconTo: "#DB2777", glow: "rgba(236,72,153,0.18)" },
   };
-  const c = colors[color];
+  const p = palette[color];
   return (
-    <div className={`${c.bg} rounded-xl px-5 py-4 flex items-center gap-3`}>
-      <div className={`w-10 h-10 ${c.iconBg} rounded-lg flex items-center justify-center text-white`}>
+    <div
+      className="rounded-xl px-5 py-4 flex items-center gap-3"
+      style={{
+        background: `linear-gradient(135deg, ${p.from}14 0%, ${p.to}08 100%)`,
+        border: `1.5px solid ${p.border}`,
+        boxShadow: `0 4px 16px ${p.glow}, inset 0 1px 0 rgba(255,255,255,0.75)`,
+      }}
+    >
+      <div
+        className="w-11 h-11 rounded-xl flex items-center justify-center text-white flex-shrink-0"
+        style={{
+          background: `linear-gradient(135deg, ${p.iconFrom}, ${p.iconTo})`,
+          boxShadow: `0 4px 14px ${p.glow}`,
+        }}
+      >
         <Icon className="w-5 h-5" />
       </div>
       <div className="flex-1">
-        <h2 className={`text-lg font-bold ${c.text}`}>{title}</h2>
-        {subtitle && <p className="text-sm text-slate-600">{subtitle}</p>}
+        <h2 className="text-lg font-bold" style={{ color: p.titleColor, letterSpacing: "-0.01em" }}>{title}</h2>
+        {subtitle && <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>}
       </div>
     </div>
   );

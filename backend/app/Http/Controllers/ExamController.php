@@ -42,14 +42,56 @@ class ExamController extends Controller
             ], 401);
         }
 
-        $exams = Exam::where('eTeacher_id', $user->uId)
+        $query = Exam::where('eTeacher_id', $user->uId)
                     ->where(function($q) {
                         $q->whereNull('ePurpose')
                           ->orWhere('ePurpose', '!=', 'practice');
                     })
-                    ->withCount('questions')
-                    ->orderBy('eCreated_at', 'desc')
-                    ->get();
+                    ->withCount('questions');
+
+        // Filter theo group: vstep_full | ielts_full | adult | kids | teens
+        if ($request->has('group')) {
+            switch ($request->group) {
+                case 'vstep_full':
+                    $query->where('eType', 'VSTEP')
+                          ->where(function($q) {
+                              $q->whereNull('eSkill')
+                                ->orWhere('eSkill', 'mixed')
+                                ->orWhere('eSkill', '');
+                          });
+                    break;
+                case 'ielts_full':
+                    $query->where('eType', 'IELTS')
+                          ->where(function($q) {
+                              $q->whereNull('eSkill')
+                                ->orWhere('eSkill', 'full')
+                                ->orWhere('eSkill', 'mixed')
+                                ->orWhere('eSkill', '');
+                          });
+                    break;
+                case 'kids':
+                    $query->where('age_group', 'kids');
+                    break;
+                case 'teens':
+                    $query->where('age_group', 'teens');
+                    break;
+                case 'adults':
+                case 'adult':
+                    $query->where(function($q) {
+                        $q->where('age_group', 'adults')
+                          ->orWhere('age_group', 'adult')
+                          ->orWhereNull('age_group');
+                    })->where(function($q) {
+                        // Loại trừ VSTEP/IELTS đã filter ở trên
+                        $q->where('eType', '!=', 'VSTEP')
+                          ->where('eType', '!=', 'IELTS')
+                          ->orWhereNull('eType');
+                    });
+                    break;
+            }
+        }
+
+        $exams = $query->orderBy('eCreated_at', 'desc')->get();
 
         return response()->json([
             'status' => 'success',
@@ -2531,10 +2573,12 @@ class ExamController extends Controller
                     ->sortBy('qSection_order')
                     ->values();
 
+                $storedAudio   = $block->content ?? '';
+                $audioFilename = $storedAudio ? basename(parse_url($storedAudio, PHP_URL_PATH)) : '';
                 $sections[] = [
                     'sectionNumber' => $s,
                     'sectionName'   => $block->metadata['section_name'] ?? "{$layout['sectionLabel']} {$s}",
-                    'audioUrl'      => $block->content ?? '',
+                    'audioUrl'      => $audioFilename ? url('files/audio/' . $audioFilename) : '',
                     'audioDuration' => $block->metadata['audio_duration'] ?? 0,
                     'transcript'    => $block->metadata['transcript'] ?? '',
                     'questionStart' => $layout['questionStart'] + ($s - 1) * $qPerSection,

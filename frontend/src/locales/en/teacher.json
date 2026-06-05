@@ -178,8 +178,9 @@
         "new": "New",
         "updatedAt": "Updated At",
         "submissionTime": "Submission Time",
-        "aiScore": "AI Score",
-        "review": "Review"
+        "aiScore": "Score",
+        "review": "Review",
+        "gradedAt": "Graded At"
       },
       "refreshing": "Refreshing...",
       "queuePage": {

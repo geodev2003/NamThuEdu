@@ -27,7 +27,7 @@ export function AnswerReview() {
     enabled: !!submissionId,
   });
 
-  const items: any[] = (data as any)?.data?.data ?? [];
+  const items: any[] = (data as any)?.data?.data?.detailed_answers ?? [];
 
   const filtered = items.filter((item) => {
     if (filter === "correct") return item.student_answer?.saIs_correct === true;

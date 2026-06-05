@@ -295,8 +295,9 @@
         "new": "Mới",
         "updatedAt": "Cập nhật lúc",
         "submissionTime": "Thời gian nộp",
-        "aiScore": "Điểm AI",
-        "review": "Xét duyệt"
+        "aiScore": "Điểm",
+        "review": "Xét duyệt",
+        "gradedAt": "Thời gian chấm"
       },
       "refreshing": "Đang cập nhật...",
       "queuePage": {

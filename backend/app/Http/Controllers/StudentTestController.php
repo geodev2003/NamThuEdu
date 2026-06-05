@@ -2422,10 +2422,15 @@ class StudentTestController extends Controller
                     ->sortBy('qSection_order')
                     ->values();
 
+                // Regenerate audio URL from filename so stored port/host never causes breakage
+                $storedAudio = $block->content ?? '';
+                $audioFilename = $storedAudio ? basename(parse_url($storedAudio, PHP_URL_PATH)) : '';
+                $freshAudioUrl = $audioFilename ? url('files/audio/' . $audioFilename) : '';
+
                 $sections[] = [
                     'sectionNumber'       => $s,
                     'sectionName'         => $block->metadata['section_name'] ?? "{$layout['sectionLabel']} {$s}",
-                    'audioUrl'            => $block->content ?? '',
+                    'audioUrl'            => $freshAudioUrl,
                     'audioDuration'       => $block->metadata['audio_duration'] ?? 0,
                     'transcript'          => $block->metadata['transcript'] ?? '',
                     'questionStart'       => $qStart + ($s - 1) * $qPerSection,
@@ -2638,6 +2643,28 @@ class StudentTestController extends Controller
         try { $feedback = json_decode($submission->sGemini_feedback ?? '{}', true) ?: []; } catch (\Exception $e) {}
         $feedback['speaking_audio'][(int) $partNumber] = $publicUrl;
         $submission->update(['sGemini_feedback' => json_encode($feedback)]);
+
+        // Also create/update SubmissionAnswer placeholder row for this speaking question
+        $question = Question::where('exam_id', $submission->exam_id)
+            ->where(function($query) {
+                $query->whereRaw('LOWER(qSkill) = ?', ['speaking'])
+                      ->orWhereRaw('LOWER(qSection) = ?', ['speaking']);
+            })
+            ->where('qPart', (int) $partNumber)
+            ->first();
+            
+        if ($question) {
+            SubmissionAnswer::updateOrCreate(
+                [
+                    'submission_id' => $submission->sId,
+                    'question_id' => $question->qId,
+                ],
+                [
+                    'saAnswer_text' => $publicUrl,
+                    'saReview_status' => 'pending',
+                ]
+            );
+        }
 
         return response()->json([
             'status' => 'success',

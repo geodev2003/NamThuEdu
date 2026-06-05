@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { logout } from "../../../services/authApi";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { studentApi } from "../../../services/studentApi";
 import {
   Home,
   ClipboardList,
@@ -31,13 +34,71 @@ const STUDENT_BASE_PATH = "/hoc-vien";
 
 const studentPath = (suffix = "") => `${STUDENT_BASE_PATH}${suffix}`;
 
+// ─── Route prefetch map ────────────────────────────────────────────────────────
+// Triggered on hover/focus so the lazy chunk is warmed in browser cache before
+// the user actually clicks → near-instant navigation.
+const prefetchMap: Record<string, () => Promise<unknown>> = {
+  [studentPath("/bai-tap")]:        () => import("../../features/student/tests/TestList"),
+  [studentPath("/de-thi")]:         () => import("../../features/student/exams/StudentExamBrowser"),
+  [studentPath("/luyen-tap")]:      () => import("../../features/student/practice/PracticeList"),
+  [studentPath("/tien-do")]:        () => import("../../features/student/dashboard/Progress"),
+  [studentPath("/lich-su")]:        () => import("../../features/student/tests/TestHistory"),
+  [studentPath("/bang-xep-hang")]:  () => import("../../features/student/dashboard/StudentLeaderboard"),
+  [studentPath("/ho-so")]:          () => import("../../features/student/dashboard/Profile"),
+  [studentPath("/cai-dat")]:        () => import("../../features/student/settings"),
+  [studentPath("/thong-bao")]:      () => import("../../features/student/notifications/NotificationList"),
+};
+
+const prefetched = new Set<string>();
+const prefetchRoute = (path: string) => {
+  if (prefetched.has(path)) return;
+  const fn = prefetchMap[path];
+  if (!fn) return;
+  prefetched.add(path);
+  fn().catch(() => prefetched.delete(path));
+};
+
+// ─── Data prefetch callbacks (API) ────────────────────────────────────────────
+// These are invoked alongside prefetchRoute on hover to warm the React Query
+// cache before the user navigates. Each function receives `queryClient`.
+type QC = import("@tanstack/react-query").QueryClient;
+const dataPrefetchMap: Record<string, (qc: QC) => void> = {
+  [studentPath("/de-thi")]: (qc) => {
+    const opts = { staleTime: 5 * 60 * 1000 };
+    qc.prefetchQuery({ queryKey: ["student", "exams-browse", "ALL"],   queryFn: () => studentApi.browseExams(undefined),         ...opts });
+    qc.prefetchQuery({ queryKey: ["student", "exams-browse", "VSTEP"], queryFn: () => studentApi.browseExams({ type: "VSTEP" }), ...opts });
+    qc.prefetchQuery({ queryKey: ["student", "exams-browse", "IELTS"], queryFn: () => studentApi.browseExams({ type: "IELTS" }), ...opts });
+  },
+};
+
 export function StudentNavbar() {
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [scrolled, setScrolled] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const profileHoverTimeout = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  const { data: streakData } = useQuery({
+    queryKey: ["student", "streak", "navbar"],
+    queryFn: () => studentApi.getStreak(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const currentStreak: number = (streakData as any)?.data?.data?.current_streak ?? 0;
+
+  const { data: profileData } = useQuery({
+    queryKey: ["student", "profile"],
+    queryFn: () => studentApi.getProfile(),
+    staleTime: 10 * 60 * 1000,
+  });
+  const profile = (profileData as any)?.data?.data ?? (profileData as any)?.data;
+  const avatarUrl: string | null = profile?.avatar_url ?? null;
+  const displayName: string = profile?.uName ?? '';
+  const initials: string = displayName
+    ? displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+    : 'H';
 
   const handleLogout = async () => {
     await logout();
@@ -61,6 +122,34 @@ export function StudentNavbar() {
 
   // Close sidebar on route change
   useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
+
+  // Idle-time prefetch — warm chunks for likely-next routes so the very first
+  // navigation also feels instant (not only ones the user has hovered).
+  useEffect(() => {
+    const TOP_ROUTES = [
+      studentPath("/bai-tap"),
+      studentPath("/de-thi"),
+      studentPath("/luyen-tap"),
+    ];
+    const ric: any = (window as any).requestIdleCallback;
+    const schedule = ric
+      ? (cb: () => void) => ric(cb, { timeout: 2500 })
+      : (cb: () => void) => setTimeout(cb, 1500);
+    const handle = schedule(() => {
+      TOP_ROUTES.forEach(prefetchRoute);
+      // Also warm the exam data cache during idle so first visit has data ready
+      queryClient.prefetchQuery({
+        queryKey: ["student", "exams-browse", "ALL"],
+        queryFn: () => studentApi.browseExams(undefined),
+        staleTime: 5 * 60 * 1000,
+      });
+    });
+    return () => {
+      const cic: any = (window as any).cancelIdleCallback;
+      if (cic && ric) cic(handle);
+      else clearTimeout(handle as any);
+    };
+  }, []);
 
   const navItems = [
     { path: studentPath(), label: t("student.nav.dashboard"), exact: true },
@@ -107,16 +196,16 @@ export function StudentNavbar() {
         className="sticky top-0 z-50 transition-all duration-300"
         style={{
           background: scrolled
-            ? "rgba(255,255,255,0.85)"
-            : "rgba(255,255,255,1)",
-          backdropFilter: scrolled ? "blur(16px)" : "none",
-          WebkitBackdropFilter: scrolled ? "blur(16px)" : "none",
+            ? "rgba(245,243,255,0.88)"
+            : "rgba(250,249,255,1)",
+          backdropFilter: scrolled ? "blur(18px)" : "blur(0px)",
+          WebkitBackdropFilter: scrolled ? "blur(18px)" : "blur(0px)",
           borderBottom: scrolled
-            ? "1px solid rgba(124,58,237,0.12)"
-            : "1px solid rgba(229,231,235,0.8)",
+            ? "1px solid rgba(124,58,237,0.18)"
+            : "1px solid rgba(124,58,237,0.10)",
           boxShadow: scrolled
-            ? "0 4px 32px rgba(124,58,237,0.12)"
-            : "none",
+            ? "0 4px 32px rgba(124,58,237,0.13)"
+            : "0 1px 12px rgba(124,58,237,0.07)",
         }}
       >
         {/* ── Top accent gradient ── */}
@@ -144,31 +233,52 @@ export function StudentNavbar() {
             {/* ── Logo ── */}
             <Link
               to={studentPath()}
-              className="flex items-center gap-2.5"
+              className="flex items-center gap-3 group cursor-pointer select-none"
               style={{ textDecoration: "none" }}
             >
               <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm"
+                className="w-9 h-9 rounded-xl flex items-center justify-center relative overflow-hidden transition-all duration-300 ease-out group-hover:scale-105 group-hover:shadow-[0_0_15px_rgba(124,58,237,0.35)]"
                 style={{
                   background: `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})`,
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
                 }}
               >
-                <BookOpen className="w-[18px] h-[18px] text-white" />
+                {/* Micro-shine reflection effect */}
+                <div 
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" 
+                  style={{ pointerEvents: "none" }}
+                />
+                
+                <BookOpen className="w-[18px] h-[18px] text-white transition-transform duration-500 ease-out group-hover:rotate-[-6deg] group-hover:scale-110" />
               </div>
-              <div className="flex flex-col leading-none">
+              <div className="flex flex-col justify-center leading-none">
                 <span
+                  className="transition-colors duration-300 ease-out group-hover:text-purple-700"
                   style={{
                     fontSize: 17,
-                    fontWeight: 800,
+                    fontWeight: 900,
                     color: "#1F1344",
-                    letterSpacing: "-0.03em",
+                    letterSpacing: "-0.025em",
                   }}
                 >
                   NamThu
-                  <span style={{ color: PURPLE }}>Edu</span>
+                  <span 
+                    className="transition-all duration-300 ease-out"
+                    style={{ 
+                      color: PURPLE,
+                      textShadow: "0 0 10px rgba(124,58,237,0.1)",
+                    }}
+                  >Edu</span>
                 </span>
                 <span
-                  style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 500 }}
+                  className="tracking-widest uppercase transition-colors duration-300 ease-out group-hover:text-purple-500"
+                  style={{ 
+                    fontSize: 8.5, 
+                    color: "#8B95A5", 
+                    fontWeight: 700,
+                    marginTop: 2.5,
+                    letterSpacing: "0.08em",
+                  }}
                 >
                   {t("student.nav.profile.student")}
                 </span>
@@ -180,17 +290,46 @@ export function StudentNavbar() {
             <div
               className="hidden md:flex items-center gap-0.5 rounded-2xl p-1"
               style={{
-                background: "#F5F3FF",
-                border: "1px solid #EDE9FE",
+                background: "linear-gradient(135deg, #EDE9FE 0%, #DDD6FE 100%)",
+                border: "1.5px solid rgba(124,58,237,0.22)",
+                boxShadow: "0 4px 18px rgba(124,58,237,0.13), inset 0 1px 0 rgba(255,255,255,0.85)",
               }}
             >
+              <style>{`
+                .student-nav-link {
+                  position: relative;
+                }
+                .student-nav-link:not(.active-nav)::after {
+                  content: '';
+                  position: absolute;
+                  bottom: 4px;
+                  left: 12px;
+                  right: 12px;
+                  height: 2px;
+                  border-radius: 2px;
+                  background: ${PURPLE};
+                  transform: scaleX(0);
+                  transform-origin: left center;
+                  transition: transform 0.22s cubic-bezier(0.4,0,0.2,1);
+                }
+                .student-nav-link:not(.active-nav):hover::after {
+                  transform: scaleX(1);
+                }
+                .student-nav-link:not(.active-nav):hover {
+                  color: ${PURPLE} !important;
+                }
+              `}</style>
               {navItems.map((item) => {
                 const active = isActive(item.path, item.exact);
+                const handlePrefetch = () => { prefetchRoute(item.path); dataPrefetchMap[item.path]?.(queryClient); };
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
-                    className="px-4 py-1.5 transition-all duration-200 rounded-xl whitespace-nowrap"
+                    onMouseEnter={handlePrefetch}
+                    onFocus={handlePrefetch}
+                    onTouchStart={handlePrefetch}
+                    className={`student-nav-link px-4 py-1.5 transition-all duration-200 rounded-xl whitespace-nowrap${active ? " active-nav" : ""}`}
                     style={{
                       fontSize: 13,
                       fontWeight: active ? 700 : 500,
@@ -211,62 +350,88 @@ export function StudentNavbar() {
             <div className="flex items-center gap-2">
 
               {/* Streak badge */}
-              <div
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-                style={{
-                  background: "linear-gradient(135deg, #F97316, #FBBF24)",
-                  boxShadow: "0 2px 10px rgba(249,115,22,0.38)",
-                }}
-              >
-                <Flame className="w-3.5 h-3.5 text-white" />
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
-                  7
-                </span>
-              </div>
-
-              {/* XP badge */}
-              <div
-                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-                style={{
-                  background: `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})`,
-                  boxShadow: `0 2px 10px ${PURPLE}45`,
-                }}
-              >
-                <Zap className="w-3 h-3 text-white" />
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>
-                  1,240 XP
-                </span>
-              </div>
-
-              {/* Language switcher */}
-              <div
-                className="hidden lg:flex items-center gap-0.5 p-0.5 rounded-lg"
-                style={{ background: "#F3F4F6" }}
-              >
-                {["vi", "en"].map((lng) => (
-                  <button
-                    key={lng}
-                    onClick={() => changeLanguage(lng)}
-                    className="px-2.5 py-1 text-xs font-semibold rounded-md transition-all duration-150"
+              {currentStreak > 0 && (
+                <div className="relative group hidden sm:flex">
+                  <div
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-default"
                     style={{
-                      color: i18n.language === lng ? PURPLE : "#9CA3AF",
-                      background: i18n.language === lng ? "#fff" : "transparent",
-                      boxShadow:
-                        i18n.language === lng
-                          ? "0 1px 4px rgba(0,0,0,0.1)"
-                          : "none",
+                      background: "linear-gradient(135deg, #F97316, #FBBF24)",
+                      boxShadow: "0 2px 10px rgba(249,115,22,0.38)",
                     }}
                   >
-                    {lng.toUpperCase()}
-                  </button>
-                ))}
-              </div>
+                    <Flame className="w-3.5 h-3.5 text-white" />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
+                      {currentStreak}
+                    </span>
+                  </div>
+                  {/* Tooltip */}
+                  <div
+                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 rounded-2xl px-3.5 py-3 text-xs pointer-events-none
+                      opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-[200]"
+                    style={{
+                      background: "#FFFFFF",
+                      border: "1px solid #FFEDD5",
+                      boxShadow: "0 8px 24px rgba(249,115,22,0.12), 0 2px 8px rgba(0,0,0,0.06)",
+                    }}
+                  >
+                    {/* Arrow up */}
+                    <div
+                      className="absolute bottom-full left-1/2 -translate-x-1/2"
+                      style={{
+                        width: 0, height: 0,
+                        borderLeft: "6px solid transparent",
+                        borderRight: "6px solid transparent",
+                        borderBottom: "6px solid #FFEDD5",
+                      }}
+                    />
+                    <p style={{ fontWeight: 700, color: "#EA580C", marginBottom: 4, fontSize: 12 }}>
+                      🔥 Chuỗi {currentStreak} ngày liên tiếp!
+                    </p>
+                    <p style={{ color: "#78716C", lineHeight: 1.55, marginBottom: 8 }}>
+                      Đăng nhập mỗi ngày để duy trì chuỗi. Bỏ 1 ngày là mất chuỗi và bắt đầu lại từ đầu.
+                    </p>
+                    <p
+                      style={{
+                        fontWeight: 600,
+                        fontSize: 11,
+                        lineHeight: 1.5,
+                        padding: "6px 8px",
+                        borderRadius: 8,
+                        background: "linear-gradient(135deg, #FFF7ED, #FEF3C7)",
+                        border: "1px solid #FDE68A",
+                        color: "#92400E",
+                        animation: "pulseText 2s ease-in-out infinite",
+                      }}
+                    >
+                      ✨ Cố gắng duy trì việc học tập để đạt kết quả tốt!
+                    </p>
+                    <style>{`
+                      @keyframes pulseText {
+                        0%, 100% { opacity: 1; }
+                        50% { opacity: 0.7; }
+                      }
+                    `}</style>
+                  </div>
+                </div>
+              )}
+
+
 
               {/* Notifications dropdown */}
               <NotificationDropdown />
 
               {/* Profile dropdown */}
-              <div className="relative">
+              <div
+                className="relative"
+                onMouseEnter={() => {
+                  if (profileHoverTimeout[0]) clearTimeout(profileHoverTimeout[0]);
+                  setProfileMenuOpen(true);
+                }}
+                onMouseLeave={() => {
+                  const t = setTimeout(() => setProfileMenuOpen(false), 120);
+                  profileHoverTimeout[1](t);
+                }}
+              >
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -282,13 +447,15 @@ export function StudentNavbar() {
                     }}
                   >
                     <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-white text-sm font-bold overflow-hidden"
                       style={{
                         background: `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})`,
                         border: "2px solid white",
                       }}
                     >
-                      H
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
+                      ) : initials}
                     </div>
                   </div>
                   <ChevronDown
@@ -301,14 +468,20 @@ export function StudentNavbar() {
                 </button>
 
                 {/* Dropdown */}
+                <AnimatePresence>
                 {profileMenuOpen && (
-                  <div
+                  <motion.div
+                    key="profile-dropdown"
+                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                    transition={{ type: "spring", stiffness: 380, damping: 28, mass: 0.6 }}
                     className="absolute right-0 mt-2 w-52 rounded-2xl shadow-xl border overflow-hidden"
                     style={{
                       background: "#FFFFFF",
                       borderColor: "#E5E7EB",
-                      boxShadow:
-                        "0 20px 48px rgba(124,58,237,0.15), 0 4px 12px rgba(0,0,0,0.08)",
+                      boxShadow: "0 20px 48px rgba(124,58,237,0.15), 0 4px 12px rgba(0,0,0,0.08)",
+                      transformOrigin: "top right",
                     }}
                   >
                     {/* Header */}
@@ -327,13 +500,15 @@ export function StudentNavbar() {
                           }}
                         >
                           <div
-                            className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-base"
+                            className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-base overflow-hidden"
                             style={{
                               background: `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})`,
                               border: "2px solid white",
                             }}
                           >
-                            H
+                            {avatarUrl ? (
+                              <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
+                            ) : initials}
                           </div>
                         </div>
                         <div>
@@ -357,6 +532,8 @@ export function StudentNavbar() {
                     <div className="p-2">
                       <Link
                         to={studentPath("/ho-so")}
+                        onMouseEnter={() => prefetchRoute(studentPath("/ho-so"))}
+                        onFocus={() => prefetchRoute(studentPath("/ho-so"))}
                         className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors hover:bg-purple-50"
                         style={{ fontSize: 14, color: "#374151" }}
                       >
@@ -365,17 +542,6 @@ export function StudentNavbar() {
                           style={{ color: PURPLE }}
                         />
                         {t("student.nav.profile.myProfile")}
-                      </Link>
-                      <Link
-                        to={studentPath("/cai-dat")}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors hover:bg-purple-50"
-                        style={{ fontSize: 14, color: "#374151" }}
-                      >
-                        <Settings
-                          className="w-4 h-4"
-                          style={{ color: "#6B7280" }}
-                        />
-                        {t("student.nav.profile.settings")}
                       </Link>
                       <div
                         className="my-1.5 mx-1"
@@ -393,8 +559,9 @@ export function StudentNavbar() {
                         {t("student.nav.profile.logout")}
                       </button>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
@@ -451,6 +618,9 @@ export function StudentNavbar() {
                   <Link
                     key={item.path}
                     to={item.path}
+                    onMouseEnter={() => prefetchRoute(item.path)}
+                    onFocus={() => prefetchRoute(item.path)}
+                    onTouchStart={() => prefetchRoute(item.path)}
                     className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-150"
                     style={{
                       background: active ? `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})` : "transparent",
@@ -508,6 +678,7 @@ export function StudentNavbar() {
               <Link
                 key={item.path}
                 to={item.path}
+                onTouchStart={() => prefetchRoute(item.path)}
                 className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-200"
                 style={{
                   color: active ? PURPLE : "#9CA3AF",

@@ -46,6 +46,49 @@ export interface ScoreTrendPoint {
   avg_score: number;
 }
 
+export interface AtRiskStudent {
+  student_id: number;
+  student_name: string;
+  avatar_url?: string | null;
+  class_name: string;
+  avg_score_recent_3: number | null;
+  last_activity_at: string | null;
+  last_login_at: string | null;
+  is_online: boolean;
+  days_inactive: number | null;
+  reasons: Array<'low_score' | 'inactive' | 'declining_trend'>;
+}
+
+export interface OverdueStudent {
+  student_id: number;
+  student_name: string;
+  avatar_url?: string | null;
+  class_name: string;
+  exam_id: number;
+  exam_title: string;
+  deadline: string;
+  is_overdue: boolean;
+  hours_late: number | null;
+  hours_left: number | null;
+}
+
+export interface ImprovingClass {
+  class_id: number;
+  class_name: string;
+  student_count: number;
+  first_half_avg: number;
+  second_half_avg: number;
+  improvement: number;
+  submission_count: number;
+}
+
+export interface SkillBreakdown {
+  listening: { avg_score: number | null; submission_count: number };
+  reading:   { avg_score: number | null; submission_count: number };
+  writing:   { avg_score: number | null; submission_count: number };
+  speaking:  { avg_score: number | null; submission_count: number };
+}
+
 export interface Insight {
   type: 'warning' | 'success' | 'info';
   icon: string;
@@ -73,6 +116,10 @@ export interface ReportsOverview {
   top_classes: TopClass[];
   top_students: TopStudent[];
   classes_need_attention: ClassNeedAttention[];
+  at_risk_students: AtRiskStudent[];
+  overdue_students: OverdueStudent[];
+  top_improving_classes: ImprovingClass[];
+  skill_breakdown: SkillBreakdown;
   score_trend: ScoreTrendPoint[];
   insights: Insight[];
   generated_at: string;

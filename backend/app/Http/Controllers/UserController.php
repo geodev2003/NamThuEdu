@@ -3139,90 +3139,6 @@ class UserController extends Controller
     }
 
     /**
-     * GET /api/teacher/student/{id}/view-password
-     * Xem mật khẩu hiện tại của học viên (Teacher only)
-     */
-    /**
-     * @OA\Get(
-     *     path="/teacher/student/{id}/view-password",
-     *     tags={"Student Management"},
-     *     summary="View student password",
-     *     description="View current password for a student (teacher only)",
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         @OA\Schema(type="integer")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Password retrieved successfully"
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Student not found or password not available"
-     *     ),
-     *     @OA\Response(
-     *         response=401,
-     *         description="Unauthorized"
-     *     )
-     * )
-     */
-    public function viewStudentPassword(Request $request, $id)
-    {
-        $user = $request->user();
-
-        if (!$user || $user->uRole !== 'teacher') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Bạn không có quyền thực hiện hành động này.'
-            ], 401);
-        }
-
-        $student = User::where('uId', $id)
-                      ->where('uRole', 'student')
-                      ->whereNull('uDeleted_at')
-                      ->first();
-
-        if (!$student) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Không tìm thấy học viên.'
-            ], 404);
-        }
-
-        if (!$student->plain_password) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Mật khẩu không khả dụng. Vui lòng đặt lại mật khẩu mới.'
-            ], 404);
-        }
-
-        try {
-            $plainPassword = decrypt($student->plain_password);
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Lấy mật khẩu thành công.',
-                'data' => [
-                    'student_id' => $student->uId,
-                    'student_name' => $student->uName,
-                    'student_phone' => $student->uPhone,
-                    'password' => $plainPassword,
-                    'viewed_by' => $user->uId,
-                    'viewed_at' => now()->toISOString(),
-                ]
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Không thể giải mã mật khẩu. Vui lòng đặt lại mật khẩu mới.'
-            ], 500);
-        }
-    }
-
-    /**
      * POST /api/user/avatar
      * Upload avatar for current user
      */
@@ -3345,6 +3261,7 @@ class UserController extends Controller
                 'address' => $user->uAddress,
                 'dob' => $user->uDoB,
                 'gender' => $user->uGender,
+                'scheduled_delete_at' => $user->scheduled_delete_at ? $user->scheduled_delete_at->toISOString() : null,
             ]
         ]);
     }
@@ -3417,5 +3334,259 @@ class UserController extends Controller
                 'message' => 'Failed to update profile: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Change the authenticated user's password.
+     */
+    public function changePassword(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'current_password'      => 'required|string',
+            'new_password'          => 'required|string|min:8',
+            'new_password_confirmation' => 'required|same:new_password',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
+
+        if (!\Hash::check($request->current_password, $user->uPassword)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Mật khẩu hiện tại không đúng',
+            ], 422);
+        }
+
+        try {
+            $user->uPassword = \Hash::make($request->new_password);
+            $user->save();
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Đổi mật khẩu thành công',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Failed to change password: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * List all active Sanctum sessions (tokens) for the authenticated user.
+     */
+    public function getSessions(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        try {
+            $currentToken = $request->bearerToken();
+            $currentTokenId = optional($user->currentAccessToken())->id;
+
+            $tokens = $user->tokens()
+                ->orderByDesc('last_used_at')
+                ->get()
+                ->map(function ($token) use ($currentTokenId, $request) {
+                    $ip = $token->last_used_ip ?? null;
+                    $deviceName = $token->name;
+                    $isCurrent = $token->id === $currentTokenId;
+
+                    if ($deviceName === 'auth_token' || empty($deviceName)) {
+                        if ($isCurrent) {
+                            $ua = $request->userAgent() ?? '';
+                            $browser = 'Unknown Browser';
+                            $os = 'Unknown OS';
+                            if (preg_match('/(Edg|OPR|Chrome|Firefox|Safari|MSIE|Trident)/i', $ua, $bm)) {
+                                $browserMap = ['Edg' => 'Edge', 'OPR' => 'Opera', 'Trident' => 'IE'];
+                                $browser = $browserMap[$bm[1]] ?? ucfirst($bm[1]);
+                            }
+                            if (preg_match('/(iPhone|iPad|Android|Windows|Macintosh|Linux|Ubuntu)/i', $ua, $om)) {
+                                $osMap = ['Macintosh' => 'macOS', 'iPhone' => 'iPhone', 'iPad' => 'iPad'];
+                                $os = $osMap[$om[1]] ?? ucfirst($om[1]);
+                            }
+                            $deviceName = "$browser trên $os";
+                        } else {
+                            $deviceName = 'Thiết bị khác (chưa rõ)';
+                        }
+                    }
+
+                    return [
+                        'id'          => (string) $token->id,
+                        'device'      => $deviceName,
+                        'ip_address'  => $ip,
+                        'last_active' => optional($token->last_used_at)->toISOString()
+                                         ?? optional($token->created_at)->toISOString(),
+                        'created_at'  => optional($token->created_at)->toISOString(),
+                        'is_current'  => $isCurrent,
+                    ];
+                });
+
+            return response()->json([
+                'status' => 'success',
+                'data'   => $tokens,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Failed to fetch sessions: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Revoke (logout) a specific Sanctum session.
+     */
+    public function logoutSession(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        $token = $user->tokens()->where('id', $id)->first();
+        if (!$token) {
+            return response()->json(['status' => 'error', 'message' => 'Session not found'], 404);
+        }
+
+        $currentTokenId = optional($user->currentAccessToken())->id;
+        if ($token->id === $currentTokenId) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Không thể đăng xuất phiên hiện tại',
+            ], 422);
+        }
+
+        $token->delete();
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Đã đăng xuất phiên thành công',
+        ]);
+    }
+
+    /**
+     * POST /api/user/request-delete
+     * Yêu cầu xóa tài khoản (sau 3 ngày tự động xóa)
+     */
+    public function requestDeleteAccount(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        try {
+            $user->scheduled_delete_at = now()->addDays(3);
+            $user->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Yêu cầu xóa tài khoản đã được tiếp nhận. Tài khoản sẽ tự động xóa sau 3 ngày.',
+                'scheduled_delete_at' => $user->scheduled_delete_at->toISOString()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/user/cancel-delete
+     * Hủy yêu cầu xóa tài khoản
+     */
+    public function cancelDeleteAccount(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        try {
+            $user->scheduled_delete_at = null;
+            $user->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Đã hủy yêu cầu xóa tài khoản thành công.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/user/notification-settings
+     */
+    public function getNotificationSettings(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        $defaultSettings = [
+            'email' => [
+                'student_registered' => true,
+                'assignment_submitted' => true,
+                'new_message' => true,
+                'weekly_report' => true,
+            ],
+            'push' => [
+                'class_reminder' => true,
+                'system_notification' => true,
+                'notification_sound' => true,
+            ]
+        ];
+
+        $settings = $user->notification_settings ?? [];
+        $mergedSettings = array_replace_recursive($defaultSettings, $settings);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $mergedSettings
+        ]);
+    }
+
+    /**
+     * PUT /api/user/notification-settings
+     */
+    public function updateNotificationSettings(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        $validated = $request->validate([
+            'email' => 'array',
+            'push' => 'array',
+        ]);
+
+        $user->notification_settings = $validated;
+        $user->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Cập nhật cấu hình thông báo thành công!',
+            'data' => $user->notification_settings
+        ]);
     }
 }

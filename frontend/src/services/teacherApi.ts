@@ -1,97 +1,4 @@
-import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import { getAuthToken } from '../utils/authStorage';
-
-// API Base URL from environment
-const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
-const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 30000;
-
-/**
- * Core Axios instance for Teacher API
- * Configured with authentication, error handling, and development logging
- */
-const apiClient: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: API_TIMEOUT,
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-});
-
-/**
- * Request Interceptor
- * - Attaches Bearer token from localStorage
- * - Logs requests in development mode
- */
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    // Attach authentication token
-    const token = getAuthToken();
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    // Development mode logging
-    if (import.meta.env.DEV) {
-      console.group('🚀 API Request');
-      console.log('Endpoint:', config.url);
-      console.log('Method:', config.method?.toUpperCase());
-      console.log('Params:', config.params);
-      console.log('Data:', config.data);
-      console.groupEnd();
-    }
-
-    return config;
-  },
-  (error: AxiosError) => {
-    if (import.meta.env.DEV) {
-      console.error('❌ Request Error:', error);
-    }
-    return Promise.reject(error);
-  }
-);
-
-/**
- * Response Interceptor
- * - Handles 401 Unauthorized errors (redirect to login)
- * - Logs responses in development mode
- */
-apiClient.interceptors.response.use(
-  (response: AxiosResponse) => {
-    // Development mode logging
-    if (import.meta.env.DEV) {
-      console.group('✅ API Response');
-      console.log('Endpoint:', response.config.url);
-      console.log('Status:', response.status);
-      console.log('Data:', response.data);
-      console.groupEnd();
-    }
-
-    return response;
-  },
-  (error: AxiosError) => {
-    // Development mode logging
-    if (import.meta.env.DEV) {
-      console.group('❌ API Error');
-      console.error('Endpoint:', error.config?.url);
-      console.error('Method:', error.config?.method?.toUpperCase());
-      console.error('Status:', error.response?.status);
-      console.error('Data:', error.response?.data);
-      console.error('Message:', error.message);
-      console.groupEnd();
-    }
-
-    // Handle 401 Unauthorized - Clear token and redirect to login
-    if (error.response?.status === 401) {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('auth_role');
-      window.location.href = '/giao-vien/dang-nhap';
-    }
-
-    return Promise.reject(error);
-  }
-);
-
+import { api } from './api';
 import {
   ApiResponse,
   PaginatedResponse,
@@ -137,7 +44,7 @@ import { cacheManager, generateCacheKey, withCache } from '../utils/cacheManager
  */
 export const teacherApi = {
   // Core API client for direct access if needed
-  client: apiClient,
+  client: api,
 
   /**
    * Dashboard & Monitoring Module
@@ -152,7 +59,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey(`/teacher/dashboard/test-statistics/${examId}`);
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<TestStatistics>>(
+        const response = await api.get<ApiResponse<TestStatistics>>(
           `/teacher/dashboard/test-statistics/${examId}`
         );
         return response.data;
@@ -167,7 +74,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey('/teacher/dashboard/active-sessions');
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<ActiveSession[]>>(
+        const response = await api.get<ApiResponse<ActiveSession[]>>(
           '/teacher/dashboard/active-sessions'
         );
         return response.data;
@@ -181,7 +88,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async sendMessage(submissionId: number, message: string): Promise<ApiResponse<void>> {
-      const response = await apiClient.post<ApiResponse<void>>(
+      const response = await api.post<ApiResponse<void>>(
         `/teacher/dashboard/send-message`,
         { submission_id: submissionId, message }
       );
@@ -197,7 +104,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey(`/teacher/dashboard/connection-logs/${submissionId}`);
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<ConnectionLog[]>>(
+        const response = await api.get<ApiResponse<ConnectionLog[]>>(
           `/teacher/dashboard/connection-logs/${submissionId}`
         );
         return response.data;
@@ -212,7 +119,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey('/teacher/dashboard/overview');
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<any>>(
+        const response = await api.get<ApiResponse<any>>(
           '/teacher/dashboard/overview'
         );
         return response.data;
@@ -227,7 +134,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey('/teacher/dashboard/performance-data');
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<any[]>>(
+        const response = await api.get<ApiResponse<any[]>>(
           '/teacher/dashboard/performance-data'
         );
         return response.data;
@@ -242,7 +149,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey('/teacher/dashboard/recent-activities');
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<any[]>>(
+        const response = await api.get<ApiResponse<any[]>>(
           '/teacher/dashboard/recent-activities'
         );
         return response.data;
@@ -267,7 +174,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey('/teacher/courses', params);
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<PaginatedResponse<Course>>>(
+        const response = await api.get<ApiResponse<PaginatedResponse<Course>>>(
           '/teacher/courses',
           { params }
         );
@@ -284,7 +191,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey(`/teacher/courses/${id}`);
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<Course>>(
+        const response = await api.get<ApiResponse<Course>>(
           `/teacher/courses/${id}`
         );
         return response.data;
@@ -297,7 +204,7 @@ export const teacherApi = {
      * @returns Created course
      */
     async create(data: CreateCourseRequest): Promise<ApiResponse<Course>> {
-      const response = await apiClient.post<ApiResponse<Course>>(
+      const response = await api.post<ApiResponse<Course>>(
         '/teacher/courses',
         data
       );
@@ -315,7 +222,7 @@ export const teacherApi = {
      * @returns Updated course
      */
     async update(id: number, data: UpdateCourseRequest): Promise<ApiResponse<Course>> {
-      const response = await apiClient.put<ApiResponse<Course>>(
+      const response = await api.put<ApiResponse<Course>>(
         `/teacher/courses/${id}`,
         data
       );
@@ -332,7 +239,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async delete(id: number): Promise<ApiResponse<void>> {
-      const response = await apiClient.delete<ApiResponse<void>>(
+      const response = await api.delete<ApiResponse<void>>(
         `/teacher/courses/${id}`
       );
       
@@ -351,7 +258,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey(`/teacher/courses/${id}/students`);
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<any[]>>(
+        const response = await api.get<ApiResponse<any[]>>(
           `/teacher/courses/${id}/students`
         );
         return response.data;
@@ -365,7 +272,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async enrollStudent(id: number, data: EnrollStudentRequest): Promise<ApiResponse<void>> {
-      const response = await apiClient.post<ApiResponse<void>>(
+      const response = await api.post<ApiResponse<void>>(
         `/teacher/courses/${id}/enroll`,
         data
       );
@@ -384,7 +291,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async removeStudent(courseId: number, studentId: number): Promise<ApiResponse<void>> {
-      const response = await apiClient.delete<ApiResponse<void>>(
+      const response = await api.delete<ApiResponse<void>>(
         `/teacher/courses/${courseId}/students/${studentId}`
       );
       
@@ -404,7 +311,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey(`/teacher/courses/${id}/statistics`);
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<CourseStatistics>>(
+        const response = await api.get<ApiResponse<CourseStatistics>>(
           `/teacher/courses/${id}/statistics`
         );
         return response.data;
@@ -420,7 +327,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey('/teacher/classes');
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<Class[]>>(
+        const response = await api.get<ApiResponse<Class[]>>(
           '/teacher/classes'
         );
         return response.data;
@@ -436,7 +343,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey(`/teacher/classes/${id}`);
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<Class>>(
+        const response = await api.get<ApiResponse<Class>>(
           `/teacher/classes/${id}`
         );
         return response.data;
@@ -449,7 +356,7 @@ export const teacherApi = {
      * @returns Created class
      */
     async create(data: CreateClassRequest): Promise<ApiResponse<Class>> {
-      const response = await apiClient.post<ApiResponse<Class>>(
+      const response = await api.post<ApiResponse<Class>>(
         '/teacher/classes',
         data
       );
@@ -467,7 +374,7 @@ export const teacherApi = {
      * @returns Updated class
      */
     async update(id: number, data: UpdateClassRequest): Promise<ApiResponse<Class>> {
-      const response = await apiClient.put<ApiResponse<Class>>(
+      const response = await api.put<ApiResponse<Class>>(
         `/teacher/classes/${id}`,
         data
       );
@@ -484,7 +391,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async delete(id: number): Promise<ApiResponse<void>> {
-      const response = await apiClient.delete<ApiResponse<void>>(
+      const response = await api.delete<ApiResponse<void>>(
         `/teacher/classes/${id}`
       );
       
@@ -501,7 +408,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async enrollStudents(id: number, studentIds: number[]): Promise<ApiResponse<void>> {
-      const response = await apiClient.post<ApiResponse<void>>(
+      const response = await api.post<ApiResponse<void>>(
         `/teacher/classes/${id}/enroll`,
         { student_ids: studentIds }
       );
@@ -529,7 +436,7 @@ export const teacherApi = {
       reason: string,
       notes?: string
     ): Promise<ApiResponse<void>> {
-      const response = await apiClient.post<ApiResponse<void>>(
+      const response = await api.post<ApiResponse<void>>(
         `/teacher/classes/${fromId}/transfer/${toId}`,
         {
           student_ids: studentIds,
@@ -554,7 +461,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey(`/teacher/classes/${id}/transfer-history`, { days });
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<ClassTransferHistory[]>>(
+        const response = await api.get<ApiResponse<ClassTransferHistory[]>>(
           `/teacher/classes/${id}/transfer-history`,
           { params: { days } }
         );
@@ -569,7 +476,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async removeStudent(id: number, studentId: number): Promise<ApiResponse<void>> {
-      const response = await apiClient.delete<ApiResponse<void>>(
+      const response = await api.delete<ApiResponse<void>>(
         `/teacher/classes/${id}/students/${studentId}`
       );
       
@@ -588,7 +495,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey('/teacher/classes/statistics');
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<ClassStatistics>>(
+        const response = await api.get<ApiResponse<ClassStatistics>>(
           '/teacher/classes/statistics'
         );
         return response.data;
@@ -614,7 +521,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey('/teacher/students', params);
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<PaginatedResponse<Student>>>(
+        const response = await api.get<ApiResponse<PaginatedResponse<Student>>>(
           '/teacher/students',
           { params }
         );
@@ -631,7 +538,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey(`/teacher/students/${id}`);
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<Student>>(
+        const response = await api.get<ApiResponse<Student>>(
           `/teacher/students/${id}`
         );
         return response.data;
@@ -644,7 +551,7 @@ export const teacherApi = {
      * @returns Created student(s) or bulk import result
      */
     async create(data: CreateStudentRequest | CreateStudentRequest[]): Promise<ApiResponse<Student | BulkImportResult>> {
-      const response = await apiClient.post<ApiResponse<Student | BulkImportResult>>(
+      const response = await api.post<ApiResponse<Student | BulkImportResult>>(
         '/teacher/students',
         Array.isArray(data) ? { students: data } : data
       );
@@ -662,7 +569,7 @@ export const teacherApi = {
      * @returns Updated student
      */
     async update(id: number, data: UpdateStudentRequest): Promise<ApiResponse<Student>> {
-      const response = await apiClient.put<ApiResponse<Student>>(
+      const response = await api.put<ApiResponse<Student>>(
         `/teacher/students/${id}`,
         data
       );
@@ -679,7 +586,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async delete(id: number): Promise<ApiResponse<void>> {
-      const response = await apiClient.delete<ApiResponse<void>>(
+      const response = await api.delete<ApiResponse<void>>(
         `/teacher/students/${id}`
       );
       
@@ -697,7 +604,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey('/teacher/students/statistics');
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<StudentStatistics>>(
+        const response = await api.get<ApiResponse<StudentStatistics>>(
           '/teacher/students/statistics'
         );
         return response.data;
@@ -710,7 +617,7 @@ export const teacherApi = {
      * @returns File blob
      */
     async exportStudents(format: 'csv' | 'json'): Promise<Blob> {
-      const response = await apiClient.get(
+      const response = await api.get(
         '/teacher/students/export',
         {
           params: { format },
@@ -731,7 +638,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey('/teacher/exams');
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<Exam[]>>(
+        const response = await api.get<ApiResponse<Exam[]>>(
           '/teacher/exams'
         );
         return response.data;
@@ -747,7 +654,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey(`/teacher/exams/${id}`);
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<Exam>>(
+        const response = await api.get<ApiResponse<Exam>>(
           `/teacher/exams/${id}`
         );
         return response.data;
@@ -760,7 +667,7 @@ export const teacherApi = {
      * @returns Created exam
      */
     async create(data: CreateExamRequest): Promise<ApiResponse<Exam>> {
-      const response = await apiClient.post<ApiResponse<Exam>>(
+      const response = await api.post<ApiResponse<Exam>>(
         '/teacher/exams',
         data
       );
@@ -778,7 +685,7 @@ export const teacherApi = {
      * @returns Updated exam
      */
     async update(id: number, data: UpdateExamRequest): Promise<ApiResponse<Exam>> {
-      const response = await apiClient.put<ApiResponse<Exam>>(
+      const response = await api.put<ApiResponse<Exam>>(
         `/teacher/exams/${id}`,
         data
       );
@@ -795,7 +702,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async delete(id: number): Promise<ApiResponse<void>> {
-      const response = await apiClient.delete<ApiResponse<void>>(
+      const response = await api.delete<ApiResponse<void>>(
         `/teacher/exams/${id}`
       );
       
@@ -812,7 +719,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async addQuestions(id: number, questions: CreateQuestionRequest[]): Promise<ApiResponse<void>> {
-      const response = await apiClient.post<ApiResponse<void>>(
+      const response = await api.post<ApiResponse<void>>(
         `/teacher/exams/${id}/questions`,
         { questions }
       );
@@ -831,7 +738,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async updateQuestion(examId: number, questionId: number, data: UpdateQuestionRequest): Promise<ApiResponse<void>> {
-      const response = await apiClient.put<ApiResponse<void>>(
+      const response = await api.put<ApiResponse<void>>(
         `/teacher/exams/${examId}/questions/${questionId}`,
         data
       );
@@ -849,7 +756,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async deleteQuestion(examId: number, questionId: number): Promise<ApiResponse<void>> {
-      const response = await apiClient.delete<ApiResponse<void>>(
+      const response = await api.delete<ApiResponse<void>>(
         `/teacher/exams/${examId}/questions/${questionId}`
       );
       
@@ -868,7 +775,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey(`/teacher/exams/${id}/sections`);
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<ExamSection[]>>(
+        const response = await api.get<ApiResponse<ExamSection[]>>(
           `/teacher/exams/${id}/sections`
         );
         return response.data;
@@ -883,7 +790,7 @@ export const teacherApi = {
      * @returns Cloned exam
      */
     async clone(id: number, title: string, description?: string): Promise<ApiResponse<Exam>> {
-      const response = await apiClient.post<ApiResponse<Exam>>(
+      const response = await api.post<ApiResponse<Exam>>(
         `/teacher/exams/${id}/clone`,
         { title, description }
       );
@@ -903,7 +810,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey(`/teacher/exams/${id}/preview`);
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<Exam>>(
+        const response = await api.get<ApiResponse<Exam>>(
           `/teacher/exams/${id}/preview`
         );
         return response.data;
@@ -916,7 +823,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async publish(id: number): Promise<ApiResponse<void>> {
-      const response = await apiClient.post<ApiResponse<void>>(
+      const response = await api.post<ApiResponse<void>>(
         `/teacher/exams/${id}/publish`
       );
       
@@ -932,7 +839,7 @@ export const teacherApi = {
      * @returns Import result with exam ID
      */
     async importExam(data: any): Promise<ApiResponse<{ examId: number; title: string; questions_count: number; total_points: number }>> {
-      const response = await apiClient.post<ApiResponse<{ examId: number; title: string; questions_count: number; total_points: number }>>(
+      const response = await api.post<ApiResponse<{ examId: number; title: string; questions_count: number; total_points: number }>>(
         '/teacher/exams/import',
         data
       );
@@ -961,7 +868,7 @@ export const teacherApi = {
         duration: number;
       };
     }>> {
-      const response = await apiClient.post(
+      const response = await api.post(
         '/teacher/exams/import/validate',
         data
       );
@@ -984,7 +891,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey('/teacher/assignments', params);
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<TestAssignment[]>>(
+        const response = await api.get<ApiResponse<TestAssignment[]>>(
           '/teacher/assignments',
           { params }
         );
@@ -1010,7 +917,7 @@ export const teacherApi = {
       maxAttempt: number,
       isPublic: boolean
     ): Promise<ApiResponse<TestAssignment>> {
-      const response = await apiClient.post<ApiResponse<TestAssignment>>(
+      const response = await api.post<ApiResponse<TestAssignment>>(
         `/teacher/exams/${examId}/assign`,
         {
           target_type: targetType,
@@ -1043,7 +950,7 @@ export const teacherApi = {
       maxAttempt: number,
       isPublic: boolean
     ): Promise<ApiResponse<void>> {
-      const response = await apiClient.post<ApiResponse<void>>(
+      const response = await api.post<ApiResponse<void>>(
         `/teacher/exams/${examId}/bulk-assign`,
         {
           targets,
@@ -1068,7 +975,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey(`/teacher/assignments/${id}/progress`);
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<AssignmentProgress>>(
+        const response = await api.get<ApiResponse<AssignmentProgress>>(
           `/teacher/assignments/${id}/progress`
         );
         return response.data;
@@ -1081,7 +988,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async sendReminders(id: number): Promise<ApiResponse<void>> {
-      const response = await apiClient.post<ApiResponse<void>>(
+      const response = await api.post<ApiResponse<void>>(
         `/teacher/assignments/${id}/reminders`
       );
       
@@ -1094,7 +1001,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async delete(id: number): Promise<ApiResponse<void>> {
-      const response = await apiClient.delete<ApiResponse<void>>(
+      const response = await api.delete<ApiResponse<void>>(
         `/teacher/assignments/${id}`
       );
       
@@ -1112,7 +1019,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey('/teacher/assignments/statistics');
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<AssignmentStatistics>>(
+        const response = await api.get<ApiResponse<AssignmentStatistics>>(
           '/teacher/assignments/statistics'
         );
         return response.data;
@@ -1134,7 +1041,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey('/teacher/submissions', params);
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<Submission[]>>(
+        const response = await api.get<ApiResponse<Submission[]>>(
           '/teacher/submissions',
           { params }
         );
@@ -1151,7 +1058,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey(`/teacher/submissions/${id}`);
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<Submission>>(
+        const response = await api.get<ApiResponse<Submission>>(
           `/teacher/submissions/${id}`
         );
         return response.data;
@@ -1174,7 +1081,7 @@ export const teacherApi = {
       teacherFeedback?: string,
       questionScores?: Array<{ question_id: number; saPoints_awarded: number }>
     ): Promise<ApiResponse<void>> {
-      const response = await apiClient.post<ApiResponse<void>>(
+      const response = await api.post<ApiResponse<void>>(
         `/teacher/submissions/${id}/grade`,
         {
           score,
@@ -1196,7 +1103,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async autoGrade(id: number): Promise<ApiResponse<void>> {
-      const response = await apiClient.post<ApiResponse<void>>(
+      const response = await api.post<ApiResponse<void>>(
         `/teacher/submissions/${id}/auto-grade`
       );
       
@@ -1222,7 +1129,7 @@ export const teacherApi = {
       strengths?: string[],
       improvements?: string[]
     ): Promise<ApiResponse<void>> {
-      const response = await apiClient.post<ApiResponse<void>>(
+      const response = await api.post<ApiResponse<void>>(
         `/teacher/submissions/${id}/detailed-grade`,
         {
           question_grades: questionGrades,
@@ -1248,7 +1155,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey(`/teacher/classes/${classId}/report`, { exam_id: examId });
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<ClassReport>>(
+        const response = await api.get<ApiResponse<ClassReport>>(
           `/teacher/classes/${classId}/report`,
           { params: { exam_id: examId } }
         );
@@ -1264,7 +1171,7 @@ export const teacherApi = {
       const cacheKey = generateCacheKey('/teacher/grading/statistics');
       
       return withCache(cacheKey, async () => {
-        const response = await apiClient.get<ApiResponse<GradingStatistics>>(
+        const response = await api.get<ApiResponse<GradingStatistics>>(
           '/teacher/grading/statistics'
         );
         return response.data;
@@ -1274,21 +1181,21 @@ export const teacherApi = {
 
   monitoring: {
     async getActiveSessions(): Promise<ApiResponse<ActiveSession[]>> {
-      const response = await apiClient.get<ApiResponse<ActiveSession[]>>(
+      const response = await api.get<ApiResponse<ActiveSession[]>>(
         '/teacher/dashboard/active-sessions'
       );
       return response.data;
     },
 
     async getConnectionLogs(submissionId: number): Promise<ApiResponse<ConnectionLog[]>> {
-      const response = await apiClient.get<ApiResponse<ConnectionLog[]>>(
+      const response = await api.get<ApiResponse<ConnectionLog[]>>(
         `/teacher/dashboard/connection-logs/${submissionId}`
       );
       return response.data;
     },
 
     async sendMessage(submissionId: number, message: string): Promise<ApiResponse<void>> {
-      const response = await apiClient.post<ApiResponse<void>>(
+      const response = await api.post<ApiResponse<void>>(
         '/teacher/dashboard/send-message',
         { submission_id: submissionId, message }
       );
@@ -1298,94 +1205,94 @@ export const teacherApi = {
 
   practiceSessions: {
     async getAll(params?: { type?: string; skill?: string; purpose?: string }): Promise<ApiResponse<any[]>> {
-      const response = await apiClient.get<ApiResponse<any[]>>('/teacher/practice-sessions', { params });
+      const response = await api.get<ApiResponse<any[]>>('/teacher/practice-sessions', { params });
       return response.data;
     },
 
     async getStatistics(): Promise<ApiResponse<any>> {
-      const response = await apiClient.get<ApiResponse<any>>('/teacher/practice-sessions/statistics');
+      const response = await api.get<ApiResponse<any>>('/teacher/practice-sessions/statistics');
       return response.data;
     },
 
     async getById(id: number): Promise<ApiResponse<any>> {
-      const response = await apiClient.get<ApiResponse<any>>(`/teacher/practice-sessions/${id}`);
+      const response = await api.get<ApiResponse<any>>(`/teacher/practice-sessions/${id}`);
       return response.data;
     },
 
     async createTopicBased(data: any): Promise<ApiResponse<any>> {
-      const response = await apiClient.post<ApiResponse<any>>('/teacher/practice-sessions/topic-based', data);
+      const response = await api.post<ApiResponse<any>>('/teacher/practice-sessions/topic-based', data);
       cacheManager.invalidate('/teacher/practice-sessions');
       return response.data;
     },
 
     async createTemplateBased(data: any): Promise<ApiResponse<any>> {
-      const response = await apiClient.post<ApiResponse<any>>('/teacher/practice-sessions/template-based', data);
+      const response = await api.post<ApiResponse<any>>('/teacher/practice-sessions/template-based', data);
       cacheManager.invalidate('/teacher/practice-sessions');
       return response.data;
     },
 
     async createRandom(data: any): Promise<ApiResponse<any>> {
-      const response = await apiClient.post<ApiResponse<any>>('/teacher/practice-sessions/random', data);
+      const response = await api.post<ApiResponse<any>>('/teacher/practice-sessions/random', data);
       cacheManager.invalidate('/teacher/practice-sessions');
       return response.data;
     },
 
     async update(id: number, data: any): Promise<ApiResponse<any>> {
-      const response = await apiClient.put<ApiResponse<any>>(`/teacher/practice-sessions/${id}`, data);
+      const response = await api.put<ApiResponse<any>>(`/teacher/practice-sessions/${id}`, data);
       cacheManager.invalidate('/teacher/practice-sessions');
       return response.data;
     },
 
     async delete(id: number): Promise<ApiResponse<void>> {
-      const response = await apiClient.delete<ApiResponse<void>>(`/teacher/practice-sessions/${id}`);
+      const response = await api.delete<ApiResponse<void>>(`/teacher/practice-sessions/${id}`);
       cacheManager.invalidate('/teacher/practice-sessions');
       return response.data;
     },
 
     async getTemplates(): Promise<ApiResponse<any[]>> {
-      const response = await apiClient.get<ApiResponse<any[]>>('/teacher/templates');
+      const response = await api.get<ApiResponse<any[]>>('/teacher/templates');
       return response.data;
     },
   },
 
   blogs: {
     async getAll(): Promise<ApiResponse<any[]>> {
-      const response = await apiClient.get<ApiResponse<any[]>>('/teacher/blogs');
+      const response = await api.get<ApiResponse<any[]>>('/teacher/blogs');
       return response.data;
     },
 
     async getById(id: number): Promise<ApiResponse<any>> {
-      const response = await apiClient.get<ApiResponse<any>>(`/teacher/blogs/${id}`);
+      const response = await api.get<ApiResponse<any>>(`/teacher/blogs/${id}`);
       return response.data;
     },
 
     async create(data: any): Promise<ApiResponse<any>> {
-      const response = await apiClient.post<ApiResponse<any>>('/teacher/blogs', data);
+      const response = await api.post<ApiResponse<any>>('/teacher/blogs', data);
       cacheManager.invalidate('/teacher/blogs');
       return response.data;
     },
 
     async update(id: number, data: any): Promise<ApiResponse<any>> {
-      const response = await apiClient.put<ApiResponse<any>>(`/teacher/blogs/${id}`, data);
+      const response = await api.put<ApiResponse<any>>(`/teacher/blogs/${id}`, data);
       cacheManager.invalidate('/teacher/blogs');
       return response.data;
     },
 
     async delete(id: number): Promise<ApiResponse<void>> {
-      const response = await apiClient.delete<ApiResponse<void>>(`/teacher/blogs/${id}`);
+      const response = await api.delete<ApiResponse<void>>(`/teacher/blogs/${id}`);
       cacheManager.invalidate('/teacher/blogs');
       return response.data;
     },
 
     async getBlogTypes(): Promise<ApiResponse<any[]>> {
-      const response = await apiClient.get<ApiResponse<any[]>>('/teacher/blog-types');
+      const response = await api.get<ApiResponse<any[]>>('/teacher/blog-types');
       return response.data;
     },
   },
 
   categories: {
     async getAll(): Promise<ApiResponse<any[]>> {
-      const response = await apiClient.get<ApiResponse<any[]>>('/teacher/categories');
+      const response = await api.get<ApiResponse<any[]>>('/teacher/categories');
       return response.data;
     },
   },
@@ -1432,7 +1339,7 @@ export const teacherApi = {
         scoreTrendValue: number;
       }>;
     }>> {
-      const response = await apiClient.get('/teacher/students/progress', {
+      const response = await api.get('/teacher/students/progress', {
         params
       });
       return response.data;
@@ -1448,7 +1355,7 @@ export const teacherApi = {
      * @returns User profile data
      */
     async getProfile(): Promise<ApiResponse<any>> {
-      const response = await apiClient.get<ApiResponse<any>>('/user/profile');
+      const response = await api.get<ApiResponse<any>>('/user/profile');
       return response.data;
     },
 
@@ -1458,7 +1365,7 @@ export const teacherApi = {
      * @returns Updated profile
      */
     async updateProfile(data: any): Promise<ApiResponse<any>> {
-      const response = await apiClient.put<ApiResponse<any>>('/user/profile', data);
+      const response = await api.put<ApiResponse<any>>('/user/profile', data);
       return response.data;
     },
 
@@ -1468,7 +1375,7 @@ export const teacherApi = {
      * @returns Success response with avatar URL
      */
     async uploadAvatar(formData: FormData): Promise<ApiResponse<any>> {
-      const response = await apiClient.post<ApiResponse<any>>('/user/avatar', formData, {
+      const response = await api.post<ApiResponse<any>>('/user/avatar', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -1481,7 +1388,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async removeAvatar(): Promise<ApiResponse<any>> {
-      const response = await apiClient.delete<ApiResponse<any>>('/user/avatar');
+      const response = await api.delete<ApiResponse<any>>('/user/avatar');
       return response.data;
     },
 
@@ -1493,7 +1400,7 @@ export const teacherApi = {
      * @returns Success response
      */
     async changePassword(currentPassword: string, newPassword: string, confirmPassword: string): Promise<ApiResponse<any>> {
-      const response = await apiClient.post<ApiResponse<any>>('/user/change-password', {
+      const response = await api.post<ApiResponse<any>>('/user/change-password', {
         current_password: currentPassword,
         new_password: newPassword,
         new_password_confirmation: confirmPassword,
@@ -1506,7 +1413,7 @@ export const teacherApi = {
      * @returns List of active sessions
      */
     async getSessions(): Promise<ApiResponse<any>> {
-      const response = await apiClient.get<ApiResponse<any>>('/user/sessions');
+      const response = await api.get<ApiResponse<any>>('/user/sessions');
       return response.data;
     },
 
@@ -1516,7 +1423,39 @@ export const teacherApi = {
      * @returns Success response
      */
     async logoutSession(sessionId: string): Promise<ApiResponse<any>> {
-      const response = await apiClient.delete<ApiResponse<any>>(`/user/sessions/${sessionId}`);
+      const response = await api.delete<ApiResponse<any>>(`/user/sessions/${sessionId}`);
+      return response.data;
+    },
+
+    /**
+     * Request account deletion (scheduled in 3 days)
+     */
+    async requestDeleteAccount(): Promise<ApiResponse<any>> {
+      const response = await api.post<ApiResponse<any>>('/user/request-delete');
+      return response.data;
+    },
+
+    /**
+     * Cancel account deletion request
+     */
+    async cancelDeleteAccount(): Promise<ApiResponse<any>> {
+      const response = await api.post<ApiResponse<any>>('/user/cancel-delete');
+      return response.data;
+    },
+
+    /**
+     * Get user notification settings
+     */
+    async getNotificationSettings(): Promise<ApiResponse<any>> {
+      const response = await api.get<ApiResponse<any>>('/user/notification-settings');
+      return response.data;
+    },
+
+    /**
+     * Update user notification settings
+     */
+    async updateNotificationSettings(settings: any): Promise<ApiResponse<any>> {
+      const response = await api.put<ApiResponse<any>>('/user/notification-settings', settings);
       return response.data;
     },
   },

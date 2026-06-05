@@ -47,10 +47,13 @@ function Confetti() {
 }
 
 // ─── Score Circle ─────────────────────────────────────────────────────────────
-function ScoreCircle({ score }: { score: number }) {
+function ScoreCircle({ score: rawScore, maxScore: rawMaxScore = 100 }: { score: number | string; maxScore?: number | string }) {
+  const score = typeof rawScore === "number" ? rawScore : parseFloat(rawScore) || 0;
+  const maxScore = typeof rawMaxScore === "number" ? rawMaxScore : parseFloat(rawMaxScore) || 100;
   const circumference = 2 * Math.PI * 54;
-  const offset = circumference - (score / 100) * circumference;
-  const color = score >= 80 ? "#10B981" : score >= 60 ? PRIMARY : score >= 40 ? "#F59E0B" : "#EF4444";
+  const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
+  const offset = circumference - (percentage / 100) * circumference;
+  const color = percentage >= 80 ? "#10B981" : percentage >= 60 ? PRIMARY : percentage >= 40 ? "#F59E0B" : "#EF4444";
 
   return (
     <div className="relative w-40 h-40 mx-auto">
@@ -67,19 +70,20 @@ function ScoreCircle({ score }: { score: number }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span style={{ fontSize: 32, fontWeight: 900, color, lineHeight: 1 }}>
-          {score.toFixed(0)}
+          {score % 1 === 0 ? score.toFixed(0) : score.toFixed(1)}
         </span>
-        <span style={{ fontSize: 12, color: "#9CA3AF" }}>điểm</span>
+        <span style={{ fontSize: 12, color: "#9CA3AF" }}>/ {maxScore} điểm</span>
       </div>
     </div>
   );
 }
 
-function getGrade(score: number) {
-  if (score >= 90) return { label: "Xuất sắc", color: "#10B981", bg: "#D1FAE5" };
-  if (score >= 80) return { label: "Giỏi", color: "#059669", bg: "#D1FAE5" };
-  if (score >= 70) return { label: "Khá", color: PRIMARY, bg: PRIMARY_LIGHT };
-  if (score >= 60) return { label: "Trung bình", color: "#F59E0B", bg: "#FEF3C7" };
+function getGrade(score: number, maxScore: number = 100) {
+  const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
+  if (percentage >= 90) return { label: "Xuất sắc", color: "#10B981", bg: "#D1FAE5" };
+  if (percentage >= 80) return { label: "Giỏi", color: "#059669", bg: "#D1FAE5" };
+  if (percentage >= 70) return { label: "Khá", color: PRIMARY, bg: PRIMARY_LIGHT };
+  if (percentage >= 60) return { label: "Trung bình", color: "#F59E0B", bg: "#FEF3C7" };
   return { label: "Chưa đạt", color: "#EF4444", bg: "#FEE2E2" };
 }
 
@@ -96,10 +100,15 @@ export function ResultDetail() {
   });
 
   const submission = (data as any)?.data?.data ?? (data as any)?.data;
-  const score = submission?.sScore ?? 0;
-  const grade = getGrade(score);
-  const showConfetti = score >= 80 && !confettiShown.current;
-  if (score >= 80) confettiShown.current = true;
+  const scoreRaw = submission?.sScore ?? 0;
+  const score = typeof scoreRaw === "number" ? scoreRaw : parseFloat(scoreRaw) || 0;
+  const maxScoreRaw = submission?.exam?.eMax_score ?? 100;
+  const maxScore = typeof maxScoreRaw === "number" ? maxScoreRaw : parseFloat(maxScoreRaw) || 100;
+
+  const grade = getGrade(score, maxScore);
+  const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
+  const showConfetti = percentage >= 80 && !confettiShown.current;
+  if (percentage >= 80) confettiShown.current = true;
 
   if (isLoading) {
     return (
@@ -134,7 +143,7 @@ export function ResultDetail() {
           {submission?.exam?.eTitle ?? "Bài thi"}
         </h1>
 
-        <ScoreCircle score={score} />
+        <ScoreCircle score={score} maxScore={maxScore} />
 
         <div className="mt-4">
           <span className="px-4 py-1.5 rounded-full text-sm font-bold"

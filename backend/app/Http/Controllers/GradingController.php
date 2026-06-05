@@ -132,6 +132,81 @@ class GradingController extends Controller
             ], 404);
         }
 
+        $isVstep = strtoupper($submission->exam->eType ?? '') === 'VSTEP';
+        if ($isVstep) {
+            $raw = $submission->sGemini_feedback
+                ? (is_array($submission->sGemini_feedback)
+                    ? $submission->sGemini_feedback
+                    : json_decode($submission->sGemini_feedback, true))
+                : [];
+            
+            $speakingAudio = $raw['speaking_audio'] ?? [];
+            if (!empty($speakingAudio)) {
+                // VSTEP Speaking: 1 part = 1 audio = 1 grading task
+                // Group all speaking questions by part, pick the FIRST question in each part
+                // as the representative for the placeholder answer row.
+                $speakingQuestions = \App\Models\Question::where('exam_id', $submission->exam_id)
+                    ->where(function($query) {
+                        $query->whereRaw('LOWER(qSkill) = ?', ['speaking'])
+                              ->orWhereRaw('LOWER(qSection) = ?', ['speaking']);
+                    })
+                    ->orderBy('qPart')
+                    ->orderBy('qId')
+                    ->get();
+
+                // Build: part => first question of that part
+                $firstQuestionByPart = [];
+                foreach ($speakingQuestions as $q) {
+                    $p = $q->qPart ?? 1;
+                    if (!isset($firstQuestionByPart[$p])) {
+                        $firstQuestionByPart[$p] = $q;
+                    }
+                }
+
+                // Build: part => existing answer row (so we don't duplicate)
+                $existingByPart = [];
+                foreach ($submission->answers as $ans) {
+                    $sec = strtolower($ans->question->qSkill ?? $ans->question->qSection ?? '');
+                    if ($sec !== 'speaking') continue;
+                    $p = $ans->question->qPart ?? 1;
+                    if (!isset($existingByPart[$p])) {
+                        $existingByPart[$p] = $ans;
+                    }
+                }
+
+                $createdAny = false;
+                foreach ($speakingAudio as $part => $audioUrl) {
+                    if (empty($audioUrl)) continue;
+                    if (isset($existingByPart[$part])) continue; // already has a row for this part
+                    if (!isset($firstQuestionByPart[$part])) continue; // no question matches this part
+
+                    $question = $firstQuestionByPart[$part];
+                    $saAiScore = null;
+                    if (isset($raw['speaking_results']["part_{$part}"]['score'])) {
+                        $saAiScore = $raw['speaking_results']["part_{$part}"]['score'];
+                    }
+
+                    \App\Models\SubmissionAnswer::create([
+                        'submission_id'    => $submission->sId,
+                        'question_id'      => $question->qId,
+                        'saAnswer_text'    => $audioUrl,
+                        'saPoints_awarded' => null,
+                        'saIs_correct'     => null,
+                        'saReview_status'  => 'pending',
+                        'saAi_score'       => $saAiScore,
+                    ]);
+                    $createdAny = true;
+                }
+
+                if ($createdAny) {
+                    // Reload submission with answers to include the newly created placeholder rows
+                    $submission = Submission::where('sId', $id)
+                                            ->with(['user', 'exam.questions.answers', 'answers.question'])
+                                            ->first();
+                }
+            }
+        }
+
         return response()->json([
             'status' => 'success',
             'data' => $submission
@@ -183,7 +258,8 @@ class GradingController extends Controller
             ], 401);
         }
 
-        $submission = Submission::where('sId', $id)
+        $submission = Submission::with('exam')
+                                ->where('sId', $id)
                                 ->whereHas('exam', function($q) use ($user) {
                                     $q->where('eTeacher_id', $user->uId);
                                 })
@@ -221,6 +297,8 @@ class GradingController extends Controller
         }
 
         try {
+            $isVstep = strtoupper($submission->exam->eType ?? '') === 'VSTEP';
+
             // Update individual question scores if provided
             if ($request->has('questionScores')) {
                 foreach ($request->questionScores as $scoreData) {
@@ -234,20 +312,102 @@ class GradingController extends Controller
                         ]);
                     }
                 }
-                // Recalculate total score from question scores
-                $totalScore = $this->calculateTotalScore($id);
-            } else {
-                // Use provided total score
-                $totalScore = $request->score ?? $this->calculateTotalScore($id);
             }
 
-            // Update submission
-            $submission->update([
-                'sTeacher_feedback' => $request->feedback ?? $request->sTeacher_feedback,
-                'sScore' => $totalScore,
-                'sStatus' => 'graded',
-                'teacher_reviewed_at' => now(),
-            ]);
+            if ($isVstep) {
+                // For VSTEP: calculate skill scores and update sGemini_feedback + sScore
+                $sub = Submission::with(['answers.question'])->find($id);
+                
+                $listeningCorrect = 0;
+                $listeningMax = 0;
+                $readingCorrect = 0;
+                $readingMax = 0;
+                
+                $writingScores = [];
+                $speakingScores = [];
+                
+                foreach ($sub->answers as $ans) {
+                    $sec = strtolower($ans->question->qSkill ?? $ans->question->qSection ?? '');
+                    $qPoints = $ans->question->qPoints ?? 1;
+                    $pointsAwarded = $ans->saPoints_awarded ?? 0;
+                    
+                    if ($sec === 'listening') {
+                        $listeningMax += $qPoints;
+                        $listeningCorrect += $pointsAwarded;
+                    } elseif ($sec === 'reading') {
+                        $readingMax += $qPoints;
+                        $readingCorrect += $pointsAwarded;
+                    } elseif ($sec === 'writing') {
+                        $writingScores[] = $pointsAwarded;
+                    } elseif ($sec === 'speaking') {
+                        $speakingScores[] = $pointsAwarded;
+                    }
+                }
+                
+                $listeningScore = $listeningMax > 0 ? round(($listeningCorrect / $listeningMax) * 10, 2) : null;
+                $readingScore = $readingMax > 0 ? round(($readingCorrect / $readingMax) * 10, 2) : null;
+                $writingScore = count($writingScores) > 0 ? round(array_sum($writingScores) / count($writingScores), 2) : null;
+                $speakingScore = count($speakingScores) > 0 ? round(array_sum($speakingScores) / count($speakingScores), 2) : null;
+                
+                // Read and update sGemini_feedback
+                $raw = $sub->sGemini_feedback ? (json_decode($sub->sGemini_feedback, true) ?: []) : [];
+                $vstepScores = $raw['vstep_scores'] ?? [];
+                
+                if (!is_null($listeningScore)) $vstepScores['listening'] = $listeningScore;
+                if (!is_null($readingScore)) $vstepScores['reading'] = $readingScore;
+                if (!is_null($writingScore)) $vstepScores['writing'] = $writingScore;
+                if (!is_null($speakingScore)) $vstepScores['speaking'] = $speakingScore;
+                
+                $raw['vstep_scores'] = $vstepScores;
+                
+                // Also update speaking_results parts in JSON if they exist, to stay in sync with answers
+                if (isset($raw['speaking_results']) && is_array($raw['speaking_results'])) {
+                    foreach ($sub->answers as $ans) {
+                        $sec = strtolower($ans->question->qSkill ?? $ans->question->qSection ?? '');
+                        if ($sec === 'speaking') {
+                            $part = $ans->question->qPart ?? 1;
+                            if (isset($raw['speaking_results']["part_{$part}"])) {
+                                $raw['speaking_results']["part_{$part}"]['score'] = $ans->saPoints_awarded;
+                            }
+                        }
+                    }
+                }
+                
+                // Recalculate average
+                $available = array_filter([
+                    $vstepScores['listening'] ?? null,
+                    $vstepScores['reading']   ?? null,
+                    $vstepScores['writing']   ?? null,
+                    $vstepScores['speaking']  ?? null,
+                ], fn($v) => !is_null($v));
+                
+                $overallAvg = count($available) > 0 ? round(array_sum($available) / count($available), 2) : 0;
+                $totalScore = round($overallAvg * 10, 2);
+                
+                $submission->update([
+                    'sGemini_feedback' => json_encode($raw),
+                    'sTeacher_feedback' => $request->feedback ?? $request->sTeacher_feedback,
+                    'sScore' => $totalScore,
+                    'sStatus' => 'graded',
+                    'sGraded_time' => now(),
+                    'teacher_reviewed_at' => now(),
+                ]);
+            } else {
+                // Non-VSTEP calculation
+                if ($request->has('questionScores')) {
+                    $totalScore = $this->calculateTotalScore($id);
+                } else {
+                    $totalScore = $request->score ?? $this->calculateTotalScore($id);
+                }
+                
+                $submission->update([
+                    'sTeacher_feedback' => $request->feedback ?? $request->sTeacher_feedback,
+                    'sScore' => $totalScore,
+                    'sStatus' => 'graded',
+                    'sGraded_time' => now(),
+                    'teacher_reviewed_at' => now(),
+                ]);
+            }
 
             return response()->json([
                 'status' => 'success',
@@ -640,8 +800,13 @@ class GradingController extends Controller
                                  ->get();
 
         $totalSubmissions = $submissions->count();
-        $gradedSubmissions = $submissions->where('sStatus', 'graded')->count();
-        $pendingSubmissions = $submissions->whereIn('sStatus', ['submitted', 'partially_graded'])->count();
+        // "Đã chấm" = đã có giáo viên xét duyệt (teacher_reviewed_at NOT NULL)
+        // — đồng bộ với KPI "Đã xét duyệt" trên trang queue.
+        $gradedSubmissions  = $submissions->whereNotNull('teacher_reviewed_at')->count();
+        // "Chờ chấm" = mọi submission còn lại (chưa được GV xét duyệt).
+        // Bao gồm: submitted, partially_graded, in_progress, ai_graded, và cả những bài
+        // sStatus='graded' nhưng GV chưa xác nhận review.
+        $pendingSubmissions = $totalSubmissions - $gradedSubmissions;
 
         // Average scores by exam type
         $scoresByExamType = $submissions->where('sStatus', 'graded')
@@ -695,9 +860,11 @@ class GradingController extends Controller
                 $student = $group->first()->user;
                 $sc = $group->pluck('sScore')->filter();
                 return [
-                    'name'  => $student ? $student->uName : 'Unknown',
-                    'count' => $group->count(),
-                    'avg'   => $sc->count() ? round($sc->avg(), 1) : 0,
+                    'name'       => $student ? $student->uName : 'Unknown',
+                    'avatar_url' => $student ? $student->avatar_url : null,
+                    'user_id'    => $student ? $student->uId : null,
+                    'count'      => $group->count(),
+                    'avg'        => $sc->count() ? round($sc->avg(), 1) : 0,
                 ];
             })
             ->sortByDesc('avg')
@@ -719,6 +886,94 @@ class GradingController extends Controller
             ->take(5)
             ->values();
 
+        // Top 8 most ACTIVE students — those who submit & take exams the most.
+        // Active score = total submissions (any status) regardless of grade outcome.
+        $mostActiveStudents = $submissions->groupBy('user_id')
+            ->map(function($group) {
+                $student = $group->first()->user;
+                $graded  = $group->where('sStatus', 'graded');
+                $sc      = $graded->pluck('sScore')->filter();
+                $lastAt  = $group->max('sSubmit_time');
+                return [
+                    'user_id'         => $student ? $student->uId : null,
+                    'name'            => $student ? $student->uName : 'Unknown',
+                    'avatar_url'      => $student ? $student->avatar_url : null,
+                    'submissions'     => $group->count(),
+                    'graded'          => $graded->count(),
+                    'avg_score'       => $sc->count() ? round($sc->avg(), 1) : 0,
+                    'last_submit_at'  => $lastAt ? (string) $lastAt : null,
+                ];
+            })
+            ->sortByDesc('submissions')
+            ->take(8)
+            ->values();
+
+        // Top 5 students by ACTIVITY STREAK — longest run of consecutive days with submissions.
+        // Streak counted from the most recent submission day backwards. If the latest day
+        // is older than yesterday, the streak ends (current streak = 0 logic-wise, but we
+        // use the longest historical streak per student so consistent learners are highlighted).
+        $studentStreaks = $submissions->groupBy('user_id')->map(function($group) {
+            $student = $group->first()->user;
+            // Distinct submission days (Y-m-d), sorted ascending
+            $days = $group->pluck('sSubmit_time')
+                ->filter()
+                ->map(function($t) { return date('Y-m-d', strtotime((string) $t)); })
+                ->unique()
+                ->values()
+                ->sort()
+                ->values();
+
+            if ($days->isEmpty()) {
+                return null;
+            }
+
+            // Walk through days, track longest run of consecutive days
+            $longest = 1;
+            $current = 1;
+            for ($i = 1; $i < $days->count(); $i++) {
+                $prev = strtotime($days[$i - 1]);
+                $curr = strtotime($days[$i]);
+                $diffDays = (int) round(($curr - $prev) / 86400);
+                if ($diffDays === 1) {
+                    $current++;
+                    if ($current > $longest) $longest = $current;
+                } else {
+                    $current = 1;
+                }
+            }
+
+            // Current streak — count back from most recent submission day if it's today/yesterday
+            $today = date('Y-m-d');
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $lastDay = $days->last();
+            $currentStreak = 0;
+            if ($lastDay === $today || $lastDay === $yesterday) {
+                $currentStreak = 1;
+                for ($i = $days->count() - 1; $i > 0; $i--) {
+                    $prev = strtotime($days[$i - 1]);
+                    $curr = strtotime($days[$i]);
+                    if ((int) round(($curr - $prev) / 86400) === 1) {
+                        $currentStreak++;
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            return [
+                'user_id'        => $student ? $student->uId : null,
+                'name'           => $student ? $student->uName : 'Unknown',
+                'avatar_url'     => $student ? $student->avatar_url : null,
+                'longest_streak' => $longest,
+                'current_streak' => $currentStreak,
+                'active_days'    => $days->count(),
+                'last_active_at' => $lastDay,
+            ];
+        })->filter()->sortByDesc(function($s) {
+            // Prioritize current streak > longest streak > active days
+            return ($s['current_streak'] * 10000) + ($s['longest_streak'] * 100) + $s['active_days'];
+        })->take(5)->values();
+
         return response()->json([
             'status' => 'success',
             'data' => [
@@ -733,6 +988,8 @@ class GradingController extends Controller
                 'by_skill'                => $bySkill,
                 'score_dist'              => $scoreDist,
                 'top_students'            => $topStudents,
+                'most_active_students'    => $mostActiveStudents,
+                'student_streaks'         => $studentStreaks,
                 'pending_by_exam'         => $pendingByExam,
             ]
         ]);
@@ -952,5 +1209,152 @@ class GradingController extends Controller
         }
 
         return round(($totalPoints / $maxPoints) * 100, 2);
+    }
+
+    /**
+     * POST /api/teacher/questions/{questionId}/override-correct-answer
+     * Sửa đáp án đúng của câu hỏi và cập nhật bài chấm hiện tại (nếu có)
+     */
+    public function overrideCorrectAnswer(Request $request, $questionId)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'correct_answer_id' => 'required|integer',
+            'submission_id' => 'nullable|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        $correctAnswerId = $request->correct_answer_id;
+        $submissionId = $request->submission_id;
+
+        // 1. Verify question and answers exist
+        $question = \App\Models\Question::with('answers')->find($questionId);
+        if (!$question) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy câu hỏi.'
+            ], 404);
+        }
+
+        // Verify teacher owns the exam of this question
+        $exam = \App\Models\Exam::where('eId', $question->exam_id)
+                                ->where('eTeacher_id', $user->uId)
+                                ->first();
+        if (!$exam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền chỉnh sửa câu hỏi này.'
+            ], 403);
+        }
+
+        // Verify the correct_answer_id exists in question's answers
+        $targetAnswer = $question->answers->where('aId', $correctAnswerId)->first();
+        if (!$targetAnswer) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đáp án được chọn không thuộc câu hỏi này.'
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // 2. Set the selected answer to correct, others to incorrect
+            foreach ($question->answers as $ans) {
+                $ans->update([
+                    'aIs_correct' => ($ans->aId == $correctAnswerId)
+                ]);
+            }
+
+            $responseData = [
+                'message' => 'Cập nhật đáp án đúng thành công.'
+            ];
+
+            // 3. If submission_id is provided, update the submission's answer and score
+            if ($submissionId) {
+                $submission = Submission::where('sId', $submissionId)
+                                        ->where('exam_id', $question->exam_id)
+                                        ->first();
+                if ($submission) {
+                    $subAnswer = SubmissionAnswer::where('submission_id', $submissionId)
+                                                 ->where('question_id', $questionId)
+                                                 ->first();
+                    if ($subAnswer) {
+                        // Grade the student's answer against the new correct answer
+                        $studentAnswerText = trim(strtolower($subAnswer->saAnswer_text));
+                        $newCorrectText = trim(strtolower($targetAnswer->aContent));
+                        
+                        // We also check letter-based matching (A, B, C, D)
+                        // Retrieve all answers of the question sorted by aId
+                        $allAnswers = $question->answers()->orderBy('aId')->get();
+                        $targetIndex = -1;
+                        foreach ($allAnswers as $idx => $ans) {
+                            if ($ans->aId == $correctAnswerId) {
+                                $targetIndex = $idx;
+                                break;
+                            }
+                        }
+                        
+                        $letters = ['a', 'b', 'c', 'd'];
+                        $targetLetter = ($targetIndex >= 0 && $targetIndex < count($letters)) ? $letters[$targetIndex] : '';
+                        
+                        $isCorrect = false;
+                        if ($studentAnswerText === $newCorrectText) {
+                            $isCorrect = true;
+                        } else if (!empty($targetLetter) && $studentAnswerText === $targetLetter) {
+                            $isCorrect = true;
+                        }
+
+                        $points = $isCorrect ? ($question->qPoints ?? 1) : 0;
+
+                        $subAnswer->update([
+                            'saIs_correct' => $isCorrect,
+                            'saPoints_awarded' => $points,
+                        ]);
+
+                        // Recalculate total score of submission
+                        $totalScore = $this->calculateTotalScore($submissionId);
+                        $submission->update([
+                            'sScore' => $totalScore
+                        ]);
+
+                        $responseData['submission'] = [
+                            'sScore' => $totalScore,
+                            'question_points' => $points,
+                            'question_is_correct' => $isCorrect
+                        ];
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $responseData
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Lỗi hệ thống khi cập nhật đáp án đúng.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
