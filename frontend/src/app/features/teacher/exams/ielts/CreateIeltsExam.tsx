@@ -216,19 +216,9 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
   };
 
   // ── Save draft to backend ──────────────────────────────────────────────
+  // Nháp = lưu tự do, không chặn dù thiếu gì. Validation chỉ áp dụng cho Xuất bản.
   const handleSaveDraft = async () => {
     if (!examId) return;
-    // Cảnh báo nhưng cho phép lưu nháp dù còn thiếu sót — chỉ khi validation đã bật
-    if (validationEnabled && errorCount > 0) {
-      const ok = window.confirm(
-        `Đề thi còn ${errorCount} lỗi cần sửa. Bạn có muốn lưu nháp tạm? (sẽ KHÔNG xuất bản được cho đến khi sửa hết)`
-      );
-      if (!ok) {
-        setActiveTab("edit");
-        setShowWarnings(true);
-        return;
-      }
-    }
     setIsSaving(true);
     try {
       await api.put(`/teacher/exams/${examId}/ielts`, {
@@ -243,7 +233,11 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
         ielts_data: skillData ? { [getDataKey(skill)]: extractSkillItems(skill, skillData) } : null,
       });
       setHasUnsavedChanges(false);
-      success("Đã lưu nháp");
+      if (validationEnabled && errorCount > 0) {
+        success(`Đã lưu nháp · còn ${errorCount} lỗi cần sửa trước khi xuất bản`);
+      } else {
+        success("Đã lưu nháp");
+      }
     } catch (err: any) {
       error(err?.response?.data?.message || "Lưu nháp thất bại");
     } finally {
