@@ -277,7 +277,7 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
         play_modes: playMode,
       });
       success("Đã xuất bản đề thi IELTS");
-      setTimeout(() => navigate("/giao-vien/de-thi/cua-toi"), 600);
+      setTimeout(() => navigate("/giao-vien/de-thi"), 600);
     } catch (err: any) {
       error(err?.response?.data?.message || "Không thể xuất bản đề thi");
     } finally {

@@ -56,7 +56,6 @@ const navigationData: MenuItem[] = [
     submenu: [
       { name: "allExams", href: "/giao-vien/de-thi" },
       { name: "createExam", href: "/giao-vien/de-thi/tao-moi" },
-      { name: "myExams", href: "/giao-vien/de-thi/cua-toi" },
     ],
   },
   {
