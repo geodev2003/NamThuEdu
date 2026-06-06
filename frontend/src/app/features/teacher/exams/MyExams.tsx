@@ -53,6 +53,23 @@ interface Exam {
   avgScore: number;
   completionRate: number;
   avgTimeSpent: number;
+  // Internal fields để route Sửa/Xem đúng
+  _eType?: string;
+  _ielts_skill?: string;
+  _eId?: number;
+}
+
+/**
+ * Map eStatus từ backend sang status UI.
+ * Backend dùng: 'draft' | 'published' | 'active' | 'inactive' | 'archived' | 'private'
+ */
+function deriveStatus(exam: any): "Draft" | "Published" | "Private" {
+  const s = (exam.eStatus || "").toLowerCase();
+  if (s === "published" || s === "active") return "Published";
+  if (s === "private") return "Private";
+  if (exam.eIs_private === true) return "Private";
+  if (exam.eIs_published === true) return "Published";
+  return "Draft";
 }
 
 const typeColors = {
@@ -107,7 +124,7 @@ export function MyExams() {
       try {
         setLoading(true);
         const response = await teacherApi.exams.getAll();
-        if (response.success && response.data) {
+        if (response.status === 'success' && response.data) {
           // Transform API data to match our Exam interface
           const transformedExams: Exam[] = response.data
             .map((exam: any) => ({
@@ -119,7 +136,7 @@ export function MyExams() {
               duration: exam.eDuration_minutes || exam.duration || 60,
               questions: exam.questions_count || exam.questionsCount || 0,
               points: exam.total_points || exam.totalPoints || 100,
-              status: exam.eIs_published ? "Published" : exam.eIs_private ? "Private" : "Draft",
+              status: deriveStatus(exam),
               source: (exam.eSource_type || exam.sourceType || "manual") === "manual" ? "Manual" : 
                       (exam.eSource_type || exam.sourceType) === "template" ? "Template" : "Upload",
               createdAt: exam.created_at || exam.createdAt || new Date().toISOString(),
@@ -130,13 +147,14 @@ export function MyExams() {
               avgScore: exam.avg_score || exam.avgScore || 0,
               completionRate: exam.completion_rate || exam.completionRate || 0,
               avgTimeSpent: exam.avg_time_spent || exam.avgTimeSpent || 0,
+              // Lưu thêm field gốc để route Sửa/Xem đúng loại đề
+              _eType: exam.eType,
+              _ielts_skill: exam.ielts_skill,
+              _eId: exam.eId,
             }))
-            // Chỉ hiển thị đề thi chính thức: đã xuất bản VÀ có câu hỏi
-            .filter((exam) => {
-              const isPublished = exam.status === "Published";
-              const hasQuestions = exam.questions > 0;
-              return isPublished && hasQuestions;
-            });
+            // Hiện tất cả đề của tôi: đã xuất bản, nháp, riêng tư
+            // (bỏ filter cũ chỉ hiện published có questions)
+            ;
           setExams(transformedExams);
         }
       } catch (err: any) {
@@ -228,6 +246,40 @@ export function MyExams() {
   const cancelDelete = () => {
     setShowDeleteModal(false);
     setExamToDelete(null);
+  };
+
+  // Build edit URL theo loại đề
+  const getEditUrl = (exam: Exam): string => {
+    const eType = (exam._eType || exam.type || "").toUpperCase();
+    if (eType === "IELTS") {
+      const skill = (exam._ielts_skill || exam.skill || "").toLowerCase();
+      const validSkills = ["listening", "reading", "writing", "speaking"];
+      const s = validSkills.includes(skill) ? skill : "listening";
+      return `/giao-vien/de-thi/ielts/${s}/sua/${exam.id}`;
+    }
+    if (eType === "VSTEP") {
+      const skill = (exam.skill || "").toLowerCase();
+      if (["listening", "reading", "writing", "speaking"].includes(skill)) {
+        return `/giao-vien/de-thi/vstep/${skill}/sua/${exam.id}`;
+      }
+      return `/giao-vien/de-thi/${exam.id}/chinh-sua`;
+    }
+    return `/giao-vien/de-thi/${exam.id}/chinh-sua`;
+  };
+
+  // Build preview URL theo loại đề
+  const getPreviewUrl = (exam: Exam): string => {
+    const eType = (exam._eType || exam.type || "").toUpperCase();
+    if (eType === "IELTS") {
+      const skill = (exam._ielts_skill || exam.skill || "").toLowerCase();
+      const validSkills = ["listening", "reading", "writing", "speaking"];
+      const s = validSkills.includes(skill) ? skill : "listening";
+      return `/giao-vien/de-thi/ielts/${s}/xem/${exam.id}`;
+    }
+    if (eType === "VSTEP") {
+      return `/giao-vien/de-thi/${exam.id}/vstep`;
+    }
+    return `/giao-vien/de-thi/${exam.id}/xem`;
   };
 
   return (
@@ -675,13 +727,13 @@ export function MyExams() {
                   {/* Card Footer */}
                   <div className="px-4 pb-4 flex items-center gap-2">
                     <Link
-                      to={`/de-thi/${exam.id}`}
+                      to={getPreviewUrl(exam)}
                       className="flex-1 px-3 py-1.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all text-center text-xs font-medium"
                     >
                       Xem chi tiết
                     </Link>
                     <Link
-                      to={`/de-thi/${exam.id}/chinh-sua`}
+                      to={getEditUrl(exam)}
                       className="flex-1 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all text-center text-xs font-medium"
                     >
                       Chỉnh sửa
@@ -752,7 +804,7 @@ export function MyExams() {
                         </td>
                         <td className="px-6 py-4">
                           <Link
-                            to={`/de-thi/${exam.id}`}
+                            to={getPreviewUrl(exam)}
                             className="font-semibold text-gray-900 hover:text-orange-600 transition-colors flex items-center gap-2"
                           >
                             <SkillIcon className={`w-4 h-4 ${skillColors[exam.skill]}`} />
@@ -800,14 +852,14 @@ export function MyExams() {
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end gap-2">
                             <Link
-                              to={`/de-thi/${exam.id}`}
+                              to={getPreviewUrl(exam)}
                               className="p-2 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
                               title="Xem chi tiết"
                             >
                               <Eye className="w-4 h-4" />
                             </Link>
                             <Link
-                              to={`/de-thi/${exam.id}/chinh-sua`}
+                              to={getEditUrl(exam)}
                               className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
                               title="Chỉnh sửa"
                             >
