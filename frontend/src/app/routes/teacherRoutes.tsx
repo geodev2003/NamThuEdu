@@ -39,6 +39,7 @@ import { CreateVstepWriting } from "../features/teacher/exams/vstep/CreateVstepW
 import { CreateVstepSpeaking } from "../features/teacher/exams/vstep/CreateVstepSpeaking";
 import { CreateVstepFull } from "../features/teacher/exams/vstep/CreateVstepFull";
 import CreateIeltsExam from "../features/teacher/exams/ielts/CreateIeltsExam";
+import { IeltsPreviewPage } from "../features/teacher/exams/ielts/IeltsPreviewPage";
 import { TestExamPlayer } from "../features/test";
 
 // Assignment
@@ -139,6 +140,9 @@ export const teacherRoutes = {
     { path: "de-thi/ielts/writing/sua/:examId", Component: () => <CreateIeltsExam initialSkill="writing" /> },
     { path: "de-thi/ielts/speaking/tao-moi", Component: () => <CreateIeltsExam initialSkill="speaking" /> },
     { path: "de-thi/ielts/speaking/sua/:examId", Component: () => <CreateIeltsExam initialSkill="speaking" /> },
+    // IELTS preview (read-only): /giao-vien/de-thi/ielts/:skill/xem/:examId
+    { path: "de-thi/ielts/:skill/xem/:examId", Component: IeltsPreviewPage },
+
     { path: "de-thi/mau-de", Component: ExamTemplates },
     { path: "de-thi/cua-toi", Component: MyExams },
     { path: "de-thi/:examId", Component: ExamDetail },

@@ -42,6 +42,8 @@ interface KidsExam {
   eCreated_at: string;
   eType?: string;
   eSkill?: string;
+  ielts_skill?: string;
+  ielts_test_type?: string;
   age_group?: string;
   kids_exam_config?: {
     exam_type: string;
@@ -403,20 +405,60 @@ export function AllExams() {
 
   // Đường dẫn chỉnh sửa tuỳ theo loại đề
   const getEditLink = (exam: KidsExam) => {
-    // Kids exam ưu tiên check age_group / kids_exam_config trước
+    const eType = (exam.eType || "").toUpperCase();
+    const group = (exam as any)._group || "";
+
+    // IELTS: detect qua eType hoặc _group, cần biết skill để route đúng
+    if (eType === "IELTS" || group === "ielts") {
+      const skill = (
+        exam.ielts_skill ||
+        (exam.eSkill || "").toLowerCase()
+      ).toLowerCase();
+      const validSkills = ["listening", "reading", "writing", "speaking"];
+      const s = validSkills.includes(skill) ? skill : "listening";
+      return `/giao-vien/de-thi/ielts/${s}/sua/${exam.eId}`;
+    }
+
+    // Kids exam — check age_group / kids_exam_config
     const isKidsExam =
       (exam as any).age_group === "kids" || exam.kids_exam_config !== undefined;
     if (isKidsExam) {
       return `/giao-vien/de-thi/kids/tao-moi/${exam.eId}`;
     }
-    if (exam.eType === "VSTEP") {
+
+    // VSTEP
+    if (eType === "VSTEP" || group === "vstep") {
       const skill = (exam.eSkill || "").toLowerCase();
       if (skill === "mixed") return `/giao-vien/de-thi/vstep/full/sua/${exam.eId}`;
       if (skill && ["listening", "reading", "writing", "speaking"].includes(skill))
         return `/giao-vien/de-thi/vstep/${skill}/sua/${exam.eId}`;
       return `/giao-vien/de-thi/${exam.eId}`;
     }
+
     return `/giao-vien/de-thi/${exam.eId}`;
+  };
+
+  // Đường dẫn preview tuỳ theo loại đề
+  const getPreviewLink = (exam: KidsExam) => {
+    const eType = (exam.eType || "").toUpperCase();
+    const group = (exam as any)._group || "";
+
+    // IELTS preview: cần skill để route đúng
+    if (eType === "IELTS" || group === "ielts") {
+      const skill = (
+        exam.ielts_skill ||
+        (exam.eSkill || "").toLowerCase()
+      ).toLowerCase();
+      const validSkills = ["listening", "reading", "writing", "speaking"];
+      const s = validSkills.includes(skill) ? skill : "listening";
+      return `/giao-vien/de-thi/ielts/${s}/xem/${exam.eId}`;
+    }
+
+    if (eType === "VSTEP" || group === "vstep") {
+      return `/giao-vien/de-thi/${exam.eId}/vstep`;
+    }
+
+    return `/giao-vien/de-thi/${exam.eId}/xem`;
   };
 
   return (
@@ -635,22 +677,10 @@ export function AllExams() {
                   </button>
                 </div>
 
-                {/* Status Filter Tabs (Tất cả / Đã xuất bản / Nháp) */}
+                {/* Status Filter Tabs (Đã xuất bản / Nháp) */}
                 <div className="inline-flex items-center bg-gray-100 rounded-lg p-0.5 border border-gray-200">
                   <button
-                    onClick={() => setFilterStatus("all")}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                      filterStatus === "all"
-                        ? "bg-white text-orange-600 shadow-sm"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
-                    title="Tất cả trạng thái"
-                  >
-                    Tất cả
-                    <span className="ml-1 text-[10px] font-mono opacity-70">({stats.total})</span>
-                  </button>
-                  <button
-                    onClick={() => setFilterStatus("published")}
+                    onClick={() => setFilterStatus(filterStatus === "published" ? "all" : "published")}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                       filterStatus === "published"
                         ? "bg-white text-emerald-600 shadow-sm"
@@ -663,7 +693,7 @@ export function AllExams() {
                     <span className="ml-1 text-[10px] font-mono opacity-70">({stats.published})</span>
                   </button>
                   <button
-                    onClick={() => setFilterStatus("draft")}
+                    onClick={() => setFilterStatus(filterStatus === "draft" ? "all" : "draft")}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                       filterStatus === "draft"
                         ? "bg-white text-amber-600 shadow-sm"
@@ -943,11 +973,7 @@ export function AllExams() {
                           Sửa
                         </Link>
                         <Link
-                          to={
-                            exam.eType === "VSTEP"
-                              ? `/giao-vien/de-thi/${exam.eId}/vstep`
-                              : `/giao-vien/de-thi/${exam.eId}/xem`
-                          }
+                          to={getPreviewLink(exam)}
                           className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-lg hover:from-orange-700 hover:to-orange-600 transition-all text-sm font-medium shadow-sm cursor-pointer"
                         >
                           <Eye className="w-3.5 h-3.5" />
@@ -964,11 +990,7 @@ export function AllExams() {
                     ) : (
                       // Đề từ giáo viên khác — chỉ cho phép xem
                       <Link
-                        to={
-                          exam.eType === "VSTEP"
-                            ? `/giao-vien/de-thi/${exam.eId}/vstep`
-                            : `/giao-vien/de-thi/${exam.eId}/xem`
-                        }
+                        to={getPreviewLink(exam)}
                         className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all text-sm font-medium shadow-sm cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5" />
