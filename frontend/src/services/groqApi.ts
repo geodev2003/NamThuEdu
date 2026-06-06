@@ -685,3 +685,278 @@ RULES:
 
   return out;
 };
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * IELTS exam PDF → IELTS skill data
+ * Mỗi skill có schema khác nhau (sections / passages / tasks / parts)
+ * Hỗ trợ cả Academic và General Training.
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+export type IeltsImportSkill = 'listening' | 'reading' | 'writing' | 'speaking';
+export type IeltsImportTestType = 'Academic' | 'General Training';
+
+export interface IeltsListeningImport {
+  sections: Array<{
+    sectionNumber: 1 | 2 | 3 | 4;
+    transcript?: string;
+    audioUrl?: string;
+    questions: Array<{
+      questionNumber: number;
+      questionType: string;       // multiple-choice | form-completion | note-completion | ...
+      questionText: string;
+      options?: { A?: string; B?: string; C?: string; D?: string };
+      correctAnswer: string;
+    }>;
+  }>;
+}
+
+export interface IeltsReadingImport {
+  passages: Array<{
+    passageNumber: 1 | 2 | 3;
+    title?: string;
+    body: string;
+    wordCount?: number;
+    questions: Array<{
+      questionNumber: number;
+      questionType: string;
+      questionText: string;
+      options?: { A?: string; B?: string; C?: string; D?: string };
+      correctAnswer: string;
+    }>;
+  }>;
+}
+
+export interface IeltsWritingImport {
+  tasks: Array<{
+    taskNumber: 1 | 2;
+    prompt: string;
+    chartType?: 'bar' | 'line' | 'pie' | 'table' | 'process' | 'map';
+    tone?: 'formal' | 'semi-formal' | 'informal';
+    essayType?: 'opinion' | 'discuss' | 'problem-solution' | 'advantages-disadvantages';
+    modelAnswer?: string;
+  }>;
+}
+
+export interface IeltsSpeakingImport {
+  parts: Array<
+    | {
+        partNumber: 1 | 3;
+        questions: Array<{ topic?: string; text: string }>;
+      }
+    | {
+        partNumber: 2;
+        cueCard: {
+          topic: string;
+          bullets: string[];
+          followUp?: string;
+        };
+      }
+  >;
+}
+
+export type IeltsSkillImport =
+  | IeltsListeningImport
+  | IeltsReadingImport
+  | IeltsWritingImport
+  | IeltsSpeakingImport;
+
+/* ───── Skill-specific prompts ───────────────────────────────────────────── */
+
+const IELTS_LISTENING_PROMPT = (testType: IeltsImportTestType) => `You are an IELTS ${testType} exam parser. Extract the LISTENING section.
+
+Return ONLY valid JSON in this exact format (no markdown, no explanation):
+{
+  "sections": [
+    {
+      "sectionNumber": 1,
+      "transcript": "...optional transcript...",
+      "questions": [
+        {
+          "questionNumber": 1,
+          "questionType": "form-completion",
+          "questionText": "Full name: Sarah ___1___",
+          "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
+          "correctAnswer": "Thompson"
+        }
+      ]
+    }
+  ]
+}
+
+IELTS Listening structure:
+- 4 sections × 10 questions = 40 total
+- Section 1: everyday social context (form/note completion)
+- Section 2: monologue everyday (note/map)
+- Section 3: educational discussion (MCQ)
+- Section 4: academic lecture (note completion)
+
+questionType MUST be one of:
+"multiple-choice", "form-completion", "note-completion", "table-completion",
+"flow-chart-completion", "summary-completion", "sentence-completion",
+"short-answer", "matching", "plan-map-diagram"
+
+RULES:
+- For fill-blank style questions, use "___N___" pattern in questionText where N = question number
+- For multiple-choice, fill options A/B/C/D and correctAnswer = letter
+- For other types, options can be omitted; correctAnswer = expected word/phrase or letter
+- Default correctAnswer = "" if not in source
+- Only return sections present in the text`;
+
+const IELTS_READING_PROMPT = (testType: IeltsImportTestType) => `You are an IELTS ${testType} exam parser. Extract the READING section.
+
+Return ONLY valid JSON in this exact format:
+{
+  "passages": [
+    {
+      "passageNumber": 1,
+      "title": "Passage title",
+      "body": "...full passage text...",
+      "wordCount": 850,
+      "questions": [
+        {
+          "questionNumber": 1,
+          "questionType": "true-false-not-given",
+          "questionText": "Statement to verify",
+          "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
+          "correctAnswer": "TRUE"
+        }
+      ]
+    }
+  ]
+}
+
+IELTS Reading (${testType}):
+- 3 passages × ~13/13/14 questions = 40 total
+${testType === 'Academic'
+  ? '- All 3 passages are long academic texts (700–1100 words each)'
+  : '- Section 1: short everyday texts. Section 2: workplace texts. Section 3: longer general-interest text.'}
+
+questionType MUST be one of:
+"multiple-choice", "true-false-not-given", "yes-no-not-given",
+"matching-headings", "matching-information", "matching-features",
+"matching-sentence-endings", "sentence-completion", "summary-completion",
+"short-answer", "diagram-labelling"
+
+RULES:
+- For T/F/NG: correctAnswer = "TRUE"/"FALSE"/"NOT GIVEN"
+- For Y/N/NG: correctAnswer = "YES"/"NO"/"NOT GIVEN"
+- For MCQ: options A-D + correctAnswer letter
+- For other: options can be omitted; correctAnswer = expected word/phrase
+- Include the full passage body and an estimated wordCount`;
+
+const IELTS_WRITING_PROMPT = (testType: IeltsImportTestType) => `You are an IELTS ${testType} exam parser. Extract the WRITING section.
+
+Return ONLY valid JSON in this exact format:
+{
+  "tasks": [
+    {
+      "taskNumber": 1,
+      "prompt": "...full prompt...",
+      ${testType === 'Academic' ? '"chartType": "bar"' : '"tone": "semi-formal"'},
+      "modelAnswer": ""
+    },
+    {
+      "taskNumber": 2,
+      "prompt": "...full prompt...",
+      "essayType": "opinion",
+      "modelAnswer": ""
+    }
+  ]
+}
+
+IELTS Writing (${testType}):
+- Task 1 (≥150 words, 20 min): ${testType === 'Academic'
+  ? 'Describe a chart/graph/diagram. chartType ∈ {bar, line, pie, table, process, map}'
+  : 'Write a letter. tone ∈ {formal, semi-formal, informal}'}
+- Task 2 (≥250 words, 40 min): essay. essayType ∈ {opinion, discuss, problem-solution, advantages-disadvantages}
+
+RULES:
+- Extract FULL prompt text including all sub-bullets
+- modelAnswer = "" unless explicitly provided in source`;
+
+const IELTS_SPEAKING_PROMPT = `You are an IELTS exam parser. Extract the SPEAKING section.
+
+Return ONLY valid JSON in this exact format:
+{
+  "parts": [
+    {
+      "partNumber": 1,
+      "questions": [
+        { "topic": "Hometown", "text": "Where are you from?" }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "cueCard": {
+        "topic": "Describe a memorable journey",
+        "bullets": ["Where", "When", "Who with", "Why memorable"],
+        "followUp": "Will you go again?"
+      }
+    },
+    {
+      "partNumber": 3,
+      "questions": [
+        { "text": "How has travel changed in recent years?" }
+      ]
+    }
+  ]
+}
+
+IELTS Speaking structure:
+- Part 1 (4-5 min): Interview, 2-3 topics × 3-4 questions
+- Part 2 (3-4 min): Long turn with cue card (topic + 4 bullets + follow-up)
+- Part 3 (4-5 min): Discussion, 3-5 follow-up questions related to Part 2 theme
+
+RULES:
+- Part 1 & 3: extract every question with optional topic label
+- Part 2: extract topic, all bullet points, and the final follow-up question
+- Only include parts present in the text`;
+
+/**
+ * Parse 1 skill từ PDF text. Trả về `null` nếu fail / Groq không trả về JSON hợp lệ.
+ */
+export const parseIeltsSkillFromText = async (
+  fullText: string,
+  skill: IeltsImportSkill,
+  testType: IeltsImportTestType = 'Academic',
+): Promise<IeltsSkillImport | null> => {
+  if (!GROQ_API_KEY) throw new Error('Missing VITE_GROQ_API_KEY');
+
+  const text = fullText.slice(0, 18_000); // safety cap để tránh vượt token
+  let prompt: string;
+  let maxTokens = 3000;
+  switch (skill) {
+    case 'listening':
+      prompt = IELTS_LISTENING_PROMPT(testType);
+      maxTokens = 3500;
+      break;
+    case 'reading':
+      prompt = IELTS_READING_PROMPT(testType);
+      maxTokens = 4000;
+      break;
+    case 'writing':
+      prompt = IELTS_WRITING_PROMPT(testType);
+      maxTokens = 1500;
+      break;
+    case 'speaking':
+      prompt = IELTS_SPEAKING_PROMPT;
+      maxTokens = 2000;
+      break;
+  }
+
+  const result = await callGroqJson(
+    prompt,
+    `Extract IELTS ${testType} ${skill} from:\n\n${text}`,
+    maxTokens,
+  );
+
+  if (!result || typeof result !== 'object') return null;
+
+  // Validate shape per skill
+  if (skill === 'listening' && Array.isArray(result.sections)) return result as IeltsListeningImport;
+  if (skill === 'reading' && Array.isArray(result.passages)) return result as IeltsReadingImport;
+  if (skill === 'writing' && Array.isArray(result.tasks)) return result as IeltsWritingImport;
+  if (skill === 'speaking' && Array.isArray(result.parts)) return result as IeltsSpeakingImport;
+  return null;
+};

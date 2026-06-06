@@ -1,0 +1,186 @@
+/**
+ * IELTS Reading — student view (3 passages × ~13–14 Q = 40 total).
+ *
+ * Layout (matches CD-IELTS):
+ *  • Tab bar at top: Passage 1 / 2 / 3 — student can switch freely
+ *  • Split view: passage on the left (scrollable), questions on the right
+ *  • 60 minutes total, no automatic skill end (managed by parent timer)
+ */
+import { useMemo, useState } from "react";
+import { BookOpen, FileText } from "lucide-react";
+import type { IeltsReadingPayload, AnswerMap } from "../types";
+import { IeltsQuestionRenderer } from "../components/IeltsQuestionRenderer";
+import { type QuestionMeta } from "../components/IeltsBottomNav";
+import { IeltsQuestionNavigator } from "../components/IeltsQuestionNavigator";
+
+interface IeltsReadingViewProps {
+  payload: IeltsReadingPayload;
+  answers: AnswerMap;
+  flagged: Record<number, boolean>;
+  onAnswer: (qId: number, value: any) => void;
+  onToggleFlag: (qId: number) => void;
+  onSubmit: () => void;
+  timeLeft?: number;
+  showTimer?: boolean;
+}
+
+export function IeltsReadingView({
+  payload,
+  answers,
+  flagged,
+  onAnswer,
+  onToggleFlag,
+  onSubmit,
+  timeLeft,
+  showTimer,
+}: IeltsReadingViewProps) {
+  const passages = payload.passages ?? [];
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  const currentPassage = passages[activeIdx];
+
+  const allMeta: QuestionMeta[] = useMemo(() => {
+    const out: QuestionMeta[] = [];
+    passages.forEach((p, idx) => {
+      p.questions.forEach((q) => {
+        out.push({
+          number: q.questionNumber,
+          qId: q.qId,
+          groupIndex: idx,
+          groupLabel: p.passageName,
+        });
+      });
+    });
+    return out.sort((a, b) => a.number - b.number);
+  }, [passages]);
+
+  const jumpToQuestion = (q: QuestionMeta) => {
+    setActiveIdx(q.groupIndex);
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`ielts-q-${q.qId}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  };
+
+  if (!currentPassage) {
+    return (
+      <div className="p-8 text-center text-gray-500">
+        No passages available for this exam.
+      </div>
+    );
+  }
+
+  const currentAnswered = currentPassage.questions.filter(
+    (q) => answers[q.qId] != null && answers[q.qId] !== ""
+  ).length;
+
+  return (
+    <div className="min-h-[calc(100vh-4rem)] bg-[#F5F5F5] flex flex-col">
+      {/* Passage tab bar */}
+      <div className="bg-white border-b border-gray-200 px-4 py-2.5">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1">
+            {passages.map((p, idx) => {
+              const active = idx === activeIdx;
+              const answered = p.questions.filter(
+                (q) => answers[q.qId] != null && answers[q.qId] !== ""
+              ).length;
+              return (
+                <button
+                  key={p.passageNumber}
+                  type="button"
+                  onClick={() => setActiveIdx(idx)}
+                  className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    active
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-white text-gray-700 hover:bg-blue-50 border border-gray-200"
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Passage {p.passageNumber}</span>
+                  <span className={`ml-1 px-1.5 rounded text-[10px] tabular-nums font-bold ${
+                    active
+                      ? "bg-white/20 text-white"
+                      : answered === p.questions.length
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-gray-100 text-gray-500"
+                  }`}>
+                    {answered}/{p.questions.length}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="hidden sm:block text-xs text-gray-500">
+            Q{currentPassage.questionStart}–Q{currentPassage.questionEnd}
+            {currentPassage.wordCount > 0 && (
+              <span className="ml-2 text-gray-400">· ~{currentPassage.wordCount} words</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 2-col split: passage | questions */}
+      <div className="flex-1 px-4 py-4 max-w-7xl w-full mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[calc(100vh-12rem)]">
+          {/* Passage panel */}
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+            <div className="px-5 py-3 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex items-center gap-2 mb-0.5">
+                <BookOpen className="w-4 h-4 text-blue-600" />
+                <h2 className="text-sm font-bold text-gray-900">
+                  {currentPassage.passageName}
+                </h2>
+              </div>
+              {currentPassage.title && (
+                <p className="text-xs text-gray-700 italic">{currentPassage.title}</p>
+              )}
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <div
+                className="prose prose-sm max-w-none text-gray-800 leading-relaxed [&>p]:mb-4"
+                dangerouslySetInnerHTML={{ __html: currentPassage.body || "<p><em>No passage</em></p>" }}
+              />
+            </div>
+          </div>
+
+          {/* Questions panel */}
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+            <div className="px-5 py-3 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-900">
+                Questions {currentPassage.questionStart}–{currentPassage.questionEnd}
+              </h3>
+              <div className="text-xs text-gray-500">
+                {currentAnswered} / {currentPassage.questions.length} answered
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+              {currentPassage.questions.map((q) => (
+                <div key={q.qId} id={`ielts-q-${q.qId}`}>
+                  <IeltsQuestionRenderer
+                    question={q}
+                    answer={answers[q.qId] ?? null}
+                    onAnswer={onAnswer}
+                    flagged={!!flagged[q.qId]}
+                    onToggleFlag={onToggleFlag}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <IeltsQuestionNavigator
+        questions={allMeta}
+        answers={answers}
+        flagged={flagged}
+        activeGroupIndex={activeIdx}
+        onJump={jumpToQuestion}
+        timeLeft={timeLeft}
+        showTimer={showTimer}
+        onSubmit={onSubmit}
+      />
+    </div>
+  );
+}

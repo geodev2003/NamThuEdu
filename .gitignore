@@ -2,12 +2,18 @@
 .kiro/
 .vscode/
 .idea/
+.history/
+.ai_sync/
+.agent/
+.devin/
 
 # Documentation and test files
 docs/
 *.md
 !README.md
 !QUICK_START.md
+!.ai_sync/**/*.md
+!.ai_sync/*.md
 .kiro/docs/
 .kiro/test-scripts/
 .kiro/specs/

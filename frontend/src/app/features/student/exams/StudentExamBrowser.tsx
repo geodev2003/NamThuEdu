@@ -468,19 +468,29 @@ function ExamCard({
   recentAttemptTime?: number;
 }) {
   const isVstep    = exam.type === "VSTEP";
+  const isIelts    = exam.type === "IELTS";
   const typeColor  = isVstep ? VSTEP_COLOR  : IELTS_COLOR;
   const typeDark   = isVstep ? VSTEP_DARK   : IELTS_DARK;
   const typeBg     = isVstep ? VSTEP_BG     : IELTS_BG;
-  const examPath   = `/hoc-vien/lam-bai-vstep/${exam.id}`;
+  const examPath   = isIelts
+    ? `/hoc-vien/de-thi/ielts/${exam.id}`        // Trang detail (chọn mode practice/full test)
+    : `/hoc-vien/lam-bai-vstep/${exam.id}`;
+  const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [mobileBlocked, setMobileBlocked] = useState(false);
 
   const handleStartExam = () => {
     if (isMobileDevice()) {
       setMobileBlocked(true);
-    } else {
-      setShowModal(true);
+      return;
     }
+    // IELTS: skip pre-exam modal, navigate thẳng vào trang detail (Practice/Full test selector)
+    if (isIelts) {
+      navigate(examPath);
+      return;
+    }
+    // VSTEP: hiện pre-exam modal (camera/mic check)
+    setShowModal(true);
   };
 
   return (

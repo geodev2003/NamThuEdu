@@ -859,7 +859,6 @@ class IELTSService
                 Answer::create([
                     'question_id' => $question->qId,
                     'aContent'    => (string) ($options[$letter] ?? ''),
-                    'aOrder'      => $idx,
                     'aIs_correct' => (strtoupper($correctAnswer) === $letter),
                 ]);
             }
@@ -869,7 +868,6 @@ class IELTSService
         Answer::create([
             'question_id' => $question->qId,
             'aContent'    => $correctAnswer,
-            'aOrder'      => 0,
             'aIs_correct' => true,
         ]);
     }

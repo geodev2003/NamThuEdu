@@ -42,6 +42,10 @@ const StudentVstepExamPage = lazy(() =>
   import('../features/student/exams/StudentVstepExamPage').then(m => ({ default: m.StudentVstepExamPage })));
 const VstepResultPage = lazy(() =>
   import('../features/student/exams/VstepResultPage').then(m => ({ default: m.VstepResultPage })));
+const StudentIeltsExamPage = lazy(() =>
+  import('../features/student/exams/ielts/StudentIeltsExamPage').then(m => ({ default: m.StudentIeltsExamPage })));
+const StudentIeltsExamDetail = lazy(() =>
+  import('../features/student/exams/ielts/StudentIeltsExamDetail').then(m => ({ default: m.StudentIeltsExamDetail })));
 
 // ─── New pages (gap-filled) ───────────────────────────────────────────────────
 const TestTaking = lazy(() =>
@@ -221,6 +225,31 @@ export const studentRoutes: RouteObject = {
     {
       path: 'lam-bai-vstep/:examId',
       element: <Suspense fallback={<LoadingFallback />}><StudentVstepExamPage /></Suspense>,
+    },
+    // ─── IELTS exam routes (full test + per-skill) ─────────────────────
+    {
+      path: 'de-thi/ielts/:examId',
+      element: <Suspense fallback={<LoadingFallback />}><StudentIeltsExamDetail /></Suspense>,
+    },
+    {
+      path: 'lam-bai-ielts/:examId',
+      element: <Suspense fallback={<LoadingFallback />}><StudentIeltsExamPage fullTest /></Suspense>,
+    },
+    {
+      path: 'lam-bai-ielts/:examId/listening',
+      element: <Suspense fallback={<LoadingFallback />}><StudentIeltsExamPage skill="listening" /></Suspense>,
+    },
+    {
+      path: 'lam-bai-ielts/:examId/reading',
+      element: <Suspense fallback={<LoadingFallback />}><StudentIeltsExamPage skill="reading" /></Suspense>,
+    },
+    {
+      path: 'lam-bai-ielts/:examId/writing',
+      element: <Suspense fallback={<LoadingFallback />}><StudentIeltsExamPage skill="writing" /></Suspense>,
+    },
+    {
+      path: 'lam-bai-ielts/:examId/speaking',
+      element: <Suspense fallback={<LoadingFallback />}><StudentIeltsExamPage skill="speaking" /></Suspense>,
     },
     {
       path: 'ket-qua/:id',

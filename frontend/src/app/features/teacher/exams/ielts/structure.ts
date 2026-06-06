@@ -41,7 +41,7 @@ export interface IeltsSkillStructure {
 export const IELTS_STRUCTURE: Record<IeltsSkill, IeltsSkillStructure> = {
   listening: {
     name: "Listening",
-    duration: 30,
+    duration: 40, // 30 phút nghe + 10 phút chuyển đáp án (chuẩn IELTS thực tế)
     totalQuestions: 40,
     sameForBothTestTypes: true,
     parts: [

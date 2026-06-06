@@ -18,7 +18,7 @@ interface ListeningQuestion {
   questionNumber: number;
   questionType: string;
   questionText: string;
-  options?: { A: string; B: string; C: string; D: string };
+  options?: Record<string, string>;
   correctAnswer: string;
 }
 
@@ -370,7 +370,9 @@ function ListeningQuestionRow({
 
           {isMcq && question.options ? (
             <div className="grid grid-cols-2 gap-2">
-              {(["A", "B", "C", "D"] as const).map((k) => (
+              {(Object.keys(question.options).filter((k) => k.length === 1) as string[])
+                .sort()
+                .map((k) => (
                 <label
                   key={k}
                   className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-gray-200 hover:border-blue-300 transition-all cursor-pointer text-xs"
@@ -389,10 +391,10 @@ function ListeningQuestionRow({
                   <span className="font-bold text-gray-700">{k}.</span>
                   <input
                     type="text"
-                    value={question.options![k]}
+                    value={(question.options as any)![k] || ""}
                     onChange={(e) =>
                       onChange({
-                        options: { ...question.options!, [k]: e.target.value },
+                        options: { ...question.options!, [k]: e.target.value } as any,
                       })
                     }
                     placeholder={`Đáp án ${k}`}

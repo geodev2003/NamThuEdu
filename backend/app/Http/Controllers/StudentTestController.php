@@ -2698,6 +2698,325 @@ class StudentTestController extends Controller
         return response()->json(['status' => 'success', 'data' => ['exam_id' => $exam->eId, 'title' => $exam->eTitle, 'parts' => $parts]]);
     }
 
+    // ════════════════════════════════════════════════════════════════════
+    //  IELTS — Student Loading APIs
+    //  Mirror the VSTEP variants but use IELTS structure: 4 sections × 10
+    //  for Listening, 3 passages × 13/13/14 for Reading, 2 tasks for
+    //  Writing, 3 parts (Part 2 = cue card) for Speaking.
+    // ════════════════════════════════════════════════════════════════════
+
+    /**
+     * Resolve & load the IELTS exam for a student/teacher viewer.
+     * Throws 404 if exam not found, returns the model otherwise.
+     */
+    private function findIeltsExamForLoad($examId)
+    {
+        return Exam::where('eId', $examId)
+            ->where('eType', 'IELTS')
+            ->where(function ($q) { $q->whereNull('eIs_private')->orWhere('eIs_private', false); })
+            ->with([
+                'contentBlocks' => fn($q) => $q->orderBy('display_order'),
+                'questions'     => fn($q) => $q->orderBy('qPart')->orderBy('qSection_order'),
+                'questions.answers',
+            ])
+            ->first();
+    }
+
+    /**
+     * GET /api/student/exams/{examId}/ielts/listening
+     * Returns 4 sections × 10 questions, each with audio (one play only).
+     */
+    public function loadIeltsListening(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || !in_array($user->uRole, ['student', 'teacher'])) {
+            return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
+        }
+
+        $exam = $this->findIeltsExamForLoad($examId);
+        if (!$exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy đề thi IELTS.'], 404);
+        }
+
+        $sections = [];
+        $isTeacher = $user->uRole === 'teacher';
+        for ($sectionNumber = 1; $sectionNumber <= 4; $sectionNumber++) {
+            // Find audio block for this section
+            $block = $exam->contentBlocks->first(function ($b) use ($sectionNumber) {
+                $meta = $b->metadata ?? [];
+                return ($b->block_type === 'audio')
+                    && (($meta['section_number'] ?? null) == $sectionNumber);
+            });
+
+            // Regenerate audio URL from filename (avoid stale host/port)
+            $storedAudio   = $block->content ?? '';
+            $audioFilename = ($block->metadata['audio_filename'] ?? '')
+                ?: ($storedAudio ? basename(parse_url($storedAudio, PHP_URL_PATH)) : '');
+            $freshAudioUrl = $audioFilename ? url('files/audio/' . $audioFilename) : '';
+
+            $sectionQuestions = $exam->questions
+                ->where('qSkill', 'listening')
+                ->where('qPart', $sectionNumber)
+                ->sortBy('qSection_order')
+                ->values();
+
+            $sections[] = [
+                'sectionNumber' => $sectionNumber,
+                'sectionName'   => "Section {$sectionNumber}",
+                'audioUrl'      => $freshAudioUrl,
+                'audioDuration' => $block->metadata['audio_duration'] ?? 0,
+                'questionStart' => ($sectionNumber - 1) * 10 + 1,
+                'questionsPerSection' => 10,
+                'instructions'  => $block->metadata['instructions'] ?? '',
+                'context'       => $block->metadata['context'] ?? '',
+                'transcript'    => $isTeacher ? ($block->metadata['transcript'] ?? '') : null,
+                'questionType'  => $block->metadata['question_type'] ?? 'multiple_choice',
+                'questions'     => $sectionQuestions->map(fn($q) => $this->serializeIeltsQuestion($q, $isTeacher))->values()->toArray(),
+            ];
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => [
+                'exam_id'      => $exam->eId,
+                'title'        => $exam->eTitle,
+                'testType'     => $exam->ielts_test_type ?? 'Academic',
+                'totalQuestions' => 40,
+                'duration'     => $exam->eDuration_minutes ?? 40,
+                'sections'     => $sections,
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/student/exams/{examId}/ielts/reading
+     * Returns 3 passages × ~13–14 questions (40 total).
+     */
+    public function loadIeltsReading(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || !in_array($user->uRole, ['student', 'teacher'])) {
+            return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
+        }
+
+        $exam = $this->findIeltsExamForLoad($examId);
+        if (!$exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy đề thi IELTS.'], 404);
+        }
+
+        $passages = [];
+        $isTeacher = $user->uRole === 'teacher';
+        $runningQNumber = 1;
+        for ($passageNumber = 1; $passageNumber <= 3; $passageNumber++) {
+            $block = $exam->contentBlocks->first(function ($b) use ($passageNumber) {
+                $meta = $b->metadata ?? [];
+                return ($b->block_type === 'passage')
+                    && (($meta['part_number'] ?? null) == $passageNumber);
+            });
+
+            $passageQuestions = $exam->questions
+                ->where('qSkill', 'reading')
+                ->where('qPart', $passageNumber)
+                ->sortBy('qSection_order')
+                ->values();
+
+            $count = $passageQuestions->count();
+            $questionStart = $runningQNumber;
+
+            $passages[] = [
+                'passageNumber' => $passageNumber,
+                'passageName'   => "Passage {$passageNumber}",
+                'title'         => $block->metadata['passage_title'] ?? '',
+                'body'          => $block->content ?? '',
+                'wordCount'     => $block->metadata['word_count'] ?? 0,
+                'questionStart' => $questionStart,
+                'questionEnd'   => $questionStart + max(0, $count - 1),
+                'questions'     => $passageQuestions->map(fn($q) => $this->serializeIeltsQuestion($q, $isTeacher))->values()->toArray(),
+            ];
+
+            $runningQNumber += $count;
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => [
+                'exam_id'        => $exam->eId,
+                'title'          => $exam->eTitle,
+                'testType'       => $exam->ielts_test_type ?? 'Academic',
+                'totalQuestions' => 40,
+                'duration'       => 60,
+                'passages'       => $passages,
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/student/exams/{examId}/ielts/writing
+     * Returns 2 tasks (Task 1 + Task 2). Academic Task 1 carries chart image.
+     */
+    public function loadIeltsWriting(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || !in_array($user->uRole, ['student', 'teacher'])) {
+            return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
+        }
+
+        $exam = $this->findIeltsExamForLoad($examId);
+        if (!$exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy đề thi IELTS.'], 404);
+        }
+
+        $tasks = [];
+        for ($taskNumber = 1; $taskNumber <= 2; $taskNumber++) {
+            $block = $exam->contentBlocks->first(function ($b) use ($taskNumber) {
+                $meta = $b->metadata ?? [];
+                return ($b->block_type === 'instruction')
+                    && (($meta['part_number'] ?? null) == $taskNumber)
+                    && (isset($meta['image_url']) || isset($meta['tone']) || isset($meta['chart_type']) || isset($meta['essay_type']));
+            });
+            $question = $exam->questions
+                ->where('qSkill', 'writing')
+                ->where('qPart', $taskNumber)
+                ->first();
+
+            if (!$question) continue;
+
+            $tasks[] = [
+                'taskNumber' => $taskNumber,
+                'taskName'   => "Task {$taskNumber}",
+                'prompt'     => $block->content ?? '',
+                'imageUrl'   => $block->metadata['image_url'] ?? null,
+                'tone'       => $block->metadata['tone'] ?? null,
+                'chartType'  => $block->metadata['chart_type'] ?? null,
+                'essayType'  => $block->metadata['essay_type'] ?? null,
+                'minWords'   => $taskNumber === 1 ? 150 : 250,
+                'recommendedMinutes' => $taskNumber === 1 ? 20 : 40,
+                'questionId' => $question->qId,
+            ];
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => [
+                'exam_id'  => $exam->eId,
+                'title'    => $exam->eTitle,
+                'testType' => $exam->ielts_test_type ?? 'Academic',
+                'duration' => 60,
+                'tasks'    => $tasks,
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/student/exams/{examId}/ielts/speaking
+     * Returns 3 parts (Part 1 questions, Part 2 cue card, Part 3 questions).
+     */
+    public function loadIeltsSpeaking(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || !in_array($user->uRole, ['student', 'teacher'])) {
+            return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
+        }
+
+        $exam = $this->findIeltsExamForLoad($examId);
+        if (!$exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy đề thi IELTS.'], 404);
+        }
+
+        $parts = [];
+        for ($partNumber = 1; $partNumber <= 3; $partNumber++) {
+            $block = $exam->contentBlocks->first(function ($b) use ($partNumber) {
+                $meta = $b->metadata ?? [];
+                return ($b->block_type === 'instruction')
+                    && (($meta['part_number'] ?? null) == $partNumber)
+                    && (isset($meta['cue_card']) || $partNumber !== 2);
+            });
+
+            $partQuestions = $exam->questions
+                ->where('qSkill', 'speaking')
+                ->where('qPart', $partNumber)
+                ->sortBy('qSection_order')
+                ->values();
+
+            $partData = [
+                'partNumber' => $partNumber,
+                'partName'   => "Part {$partNumber}",
+                'recommendedMinutes' => $partNumber === 1 ? 5 : ($partNumber === 2 ? 4 : 5),
+            ];
+
+            if ($partNumber === 2) {
+                $cueCard = $block->metadata['cue_card'] ?? null;
+                $partData['cueCard'] = $cueCard ?: [
+                    'topic'   => $partQuestions->first()->qContent ?? '',
+                    'bullets' => [],
+                ];
+                $partData['questionId'] = $partQuestions->first()->qId ?? null;
+                $partData['prepSeconds'] = 60;  // 1 min prep (IELTS standard)
+                $partData['speakSeconds'] = 120; // 1-2 min speak
+            } else {
+                $partData['questions'] = $partQuestions->map(fn($q) => [
+                    'qId'      => $q->qId,
+                    'order'    => $q->qSection_order,
+                    'topic'    => $q->qData['topic'] ?? null,
+                    'text'     => $q->qContent,
+                ])->values()->toArray();
+            }
+
+            $parts[] = $partData;
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => [
+                'exam_id'  => $exam->eId,
+                'title'    => $exam->eTitle,
+                'testType' => $exam->ielts_test_type ?? 'Academic',
+                'duration' => 14, // upper bound 11-14 min
+                'parts'    => $parts,
+            ],
+        ]);
+    }
+
+    /**
+     * Serialize a question from DB into shape used by IELTS student UI.
+     * Handles MCQ, fill-blank, TFNG/YNNG, completion, matching, etc.
+     *
+     * @param mixed $q Question model
+     * @param bool  $includeAnswer When true (teacher mode), keeps correct_answer in `data`.
+     */
+    private function serializeIeltsQuestion($q, bool $includeAnswer = false): array
+    {
+        $qData = $q->qData ?? [];
+        $type  = (string) ($q->qType ?? 'multiple_choice');
+
+        // Build MCQ options if available
+        $options = $qData['options'] ?? null;
+        if (!$options && $q->relationLoaded('answers')) {
+            $sorted = $q->answers->sortBy(fn($a) => $a->aOrder !== null ? $a->aOrder : $a->aId)->values();
+            if ($sorted->count() >= 2) {
+                $options = [];
+                $letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+                foreach ($sorted as $idx => $ans) {
+                    if (!isset($letters[$idx])) break;
+                    $options[$letters[$idx]] = $ans->aContent;
+                }
+            }
+        }
+
+        $extraData = $includeAnswer
+            ? $qData
+            : array_diff_key($qData, ['correct_answer' => 1]);
+
+        return [
+            'qId'            => $q->qId,
+            'questionNumber' => $qData['question_number'] ?? $q->qSection_order,
+            'questionType'   => $type,
+            'questionText'   => $q->qContent,
+            'options'        => $options,
+            'data'           => $extraData,
+        ];
+    }
+
     /**
      * POST /api/student/submissions/{submissionId}/speaking/{partNumber}/upload
      * Upload student speaking audio recording for a given part.
@@ -2812,10 +3131,20 @@ class StudentTestController extends Controller
         }
 
         $type = $request->query('type');
+        $skill = $request->query('skill');     // listening|reading|writing|speaking
+        $testType = $request->query('test_type'); // Academic | "General Training"
 
         $query = Exam::withCount('questions')
             ->whereIn('eType', ['VSTEP', 'IELTS'])
-            ->whereIn('eSkill', ['mixed', 'full'])
+            ->where('eStatus', 'published')
+            ->where(function ($q) {
+                // VSTEP: chỉ lấy đề full 4 skills (mixed/full)
+                // IELTS: theo concept mới, 1 đề = 1 skill, nên không filter eSkill
+                $q->where(function ($sub) {
+                    $sub->where('eType', 'VSTEP')
+                        ->whereIn('eSkill', ['mixed', 'full', 'Mixed', 'Full']);
+                })->orWhere('eType', 'IELTS');
+            })
             ->where(function ($q) {
                 $q->whereNull('age_group')
                   ->orWhereIn('age_group', ['adults', 'all']);
@@ -2829,17 +3158,27 @@ class StudentTestController extends Controller
             $query->where('eType', strtoupper($type));
         }
 
+        if ($skill && in_array(strtolower($skill), ['listening', 'reading', 'writing', 'speaking'])) {
+            $query->where('ielts_skill', strtolower($skill));
+        }
+
+        if ($testType && in_array($testType, ['Academic', 'General Training'])) {
+            $query->where('ielts_test_type', $testType);
+        }
+
         $exams = $query->get()->map(function ($exam) {
             return [
-                'id'          => $exam->eId,
-                'title'       => $exam->eTitle,
-                'type'        => $exam->eType,
-                'skill'       => $exam->eSkill,
-                'duration'    => $exam->eDuration_minutes,
-                'description' => $exam->eDescription,
-                'age_group'   => $exam->age_group,
+                'id'              => $exam->eId,
+                'title'           => $exam->eTitle,
+                'type'            => $exam->eType,
+                'skill'           => $exam->eSkill,
+                'ielts_skill'     => $exam->ielts_skill,
+                'ielts_test_type' => $exam->ielts_test_type,
+                'duration'        => $exam->eDuration_minutes,
+                'description'     => $exam->eDescription,
+                'age_group'       => $exam->age_group,
                 'questions_count' => $exam->questions_count,
-                'created_at'  => $exam->eCreated_at,
+                'created_at'      => $exam->eCreated_at,
             ];
         });
 

@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Submission;
 use App\Services\VstepGradingService;
+use App\Services\IELTSGradingService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -31,7 +32,7 @@ class GradeVstepSubjectiveJob implements ShouldQueue
         $this->submissionId = $submissionId;
     }
 
-    public function handle(VstepGradingService $service): void
+    public function handle(VstepGradingService $vstep, IELTSGradingService $ielts): void
     {
         $submission = Submission::with(['exam.questions', 'answers.question'])
             ->find($this->submissionId);
@@ -46,12 +47,16 @@ class GradeVstepSubjectiveJob implements ShouldQueue
             return;
         }
 
-        Log::info("GradeVstepSubjectiveJob: starting for submission {$this->submissionId}");
+        $examType = strtoupper($submission->exam->eType ?? '');
+        $service  = $examType === 'IELTS' ? $ielts : $vstep;
+
+        Log::info("GradeVstepSubjectiveJob: starting for submission {$this->submissionId} type={$examType}");
 
         try {
             // Skip AI for short/empty writing answers — auto-grade as 0
             $hasRealWriting = $submission->answers->contains(function ($a) {
-                if (strtolower($a->question->qSection ?? '') !== 'writing') return false;
+                $sec = strtolower($a->question->qSkill ?? $a->question->qSection ?? '');
+                if ($sec !== 'writing') return false;
                 return strlen(trim($a->saAnswer_text ?? '')) >= 30;
             });
             $writingScore  = $hasRealWriting ? $service->gradeWriting($submission) : 0;
@@ -59,6 +64,7 @@ class GradeVstepSubjectiveJob implements ShouldQueue
             $service->updateSubmission($submission, $writingScore, $speakingScore);
 
             Log::info("GradeVstepSubjectiveJob: completed for submission {$this->submissionId}", [
+                'type'     => $examType,
                 'writing'  => $writingScore,
                 'speaking' => $speakingScore,
             ]);

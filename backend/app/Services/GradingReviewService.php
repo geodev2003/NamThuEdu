@@ -19,10 +19,12 @@ use Illuminate\Support\Facades\DB;
 class GradingReviewService
 {
     private VstepGradingService $vstepGrading;
+    private IELTSGradingService $ieltsGrading;
 
-    public function __construct(VstepGradingService $vstepGrading)
+    public function __construct(VstepGradingService $vstepGrading, IELTSGradingService $ieltsGrading)
     {
         $this->vstepGrading = $vstepGrading;
+        $this->ieltsGrading = $ieltsGrading;
     }
 
     /**
@@ -127,7 +129,8 @@ class GradingReviewService
         $prev  = $answer->saAi_score;
 
         if ($skill === 'writing') {
-            // Re-grade single writing task
+            // Re-grade single writing task — branch by exam type
+            $examType   = strtoupper($submission->exam->eType ?? '');
             $taskNum    = (int) ($answer->question->qPart ?? 1);
             $taskPrompt = strip_tags($answer->question->qContent ?? '');
             $response   = trim($answer->saAnswer_text ?? '');
@@ -135,8 +138,14 @@ class GradingReviewService
                 $taskPrompt .= "\n\n[Teacher hint for re-evaluation]: {$hint}";
             }
 
-            $result = $this->vstepGrading->gradeSingleWritingTask($taskNum, $taskPrompt, $response);
-            $score  = $result['score'];
+            if ($examType === 'IELTS') {
+                $isAcademic = ($submission->exam->ielts_test_type ?? 'Academic') === 'Academic';
+                $result = $this->ieltsGrading->gradeSingleWritingTask($taskNum, $isAcademic, $taskPrompt, $response);
+                $score  = $result['band'];
+            } else {
+                $result = $this->vstepGrading->gradeSingleWritingTask($taskNum, $taskPrompt, $response);
+                $score  = $result['score'];
+            }
 
             DB::transaction(function () use ($answer, $score, $result, $prev, $hint) {
                 $answer->update([
@@ -194,32 +203,42 @@ class GradingReviewService
         }
 
         DB::transaction(function () use ($submission, $data, $teacher) {
+            $examType = strtoupper($submission->exam->eType ?? '');
+            $isIelts  = $examType === 'IELTS';
+
             $raw = $submission->sGemini_feedback
                 ? (json_decode($submission->sGemini_feedback, true) ?: [])
                 : [];
 
-            $vstepScores = $raw['vstep_scores'] ?? [];
+            // Pick scores key + max range based on exam type
+            $scoresKey  = $isIelts ? 'ielts_scores' : 'vstep_scores';
+            $maxScore   = $isIelts ? 9.0 : 10.0;
+            $skillScores = $raw[$scoresKey] ?? [];
 
-            // Apply teacher overrides
+            // Apply teacher overrides (clamped + IELTS rounded to 0.5)
             $overrides = $data['skill_overrides'] ?? [];
             foreach (['listening', 'reading', 'writing', 'speaking'] as $skill) {
                 if (isset($overrides[$skill]) && is_numeric($overrides[$skill])) {
-                    $vstepScores[$skill] = round((float) $overrides[$skill], 2);
+                    $val = (float) $overrides[$skill];
+                    $val = max(0.0, min($maxScore, $val));
+                    $skillScores[$skill] = $isIelts ? (round($val * 2) / 2) : round($val, 2);
                 }
             }
-            $raw['vstep_scores'] = $vstepScores;
+            $raw[$scoresKey] = $skillScores;
 
-            // Overall = average of available skills
+            // Overall = average of available skills (IELTS rounds to 0.5)
             $available = array_filter([
-                $vstepScores['listening'] ?? null,
-                $vstepScores['reading']   ?? null,
-                $vstepScores['writing']   ?? null,
-                $vstepScores['speaking']  ?? null,
+                $skillScores['listening'] ?? null,
+                $skillScores['reading']   ?? null,
+                $skillScores['writing']   ?? null,
+                $skillScores['speaking']  ?? null,
             ], fn($v) => !is_null($v));
 
-            $overallAvg = count($available) > 0
-                ? round(array_sum($available) / count($available), 2)
-                : null;
+            $overallAvg = null;
+            if (count($available) > 0) {
+                $avg = array_sum($available) / count($available);
+                $overallAvg = $isIelts ? (round($avg * 2) / 2) : round($avg, 2);
+            }
 
             $update = [
                 'sGemini_feedback'    => json_encode($raw),
@@ -242,7 +261,7 @@ class GradingReviewService
                 'ghAction'      => GradingHistory::ACTION_TEACHER_SAVE,
                 'ghActor_id'    => $teacher->uId,
                 'ghNew_score'   => $overallAvg,
-                'ghMetadata'    => ['vstep_scores' => $vstepScores],
+                'ghMetadata'    => [$scoresKey => $skillScores],
             ]);
         });
 

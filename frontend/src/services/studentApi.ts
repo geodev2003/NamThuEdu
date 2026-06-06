@@ -307,6 +307,19 @@ export const studentApi = {
   loadStudentVstepSpeaking: (examId: number) =>
     api.get(`/student/exams/${examId}/vstep/speaking`),
 
+  // ─── IELTS student loading APIs ────────────────────────────────────────
+  loadStudentIeltsListening: (examId: number) =>
+    api.get(`/student/exams/${examId}/ielts/listening`),
+
+  loadStudentIeltsReading: (examId: number) =>
+    api.get(`/student/exams/${examId}/ielts/reading`),
+
+  loadStudentIeltsWriting: (examId: number) =>
+    api.get(`/student/exams/${examId}/ielts/writing`),
+
+  loadStudentIeltsSpeaking: (examId: number) =>
+    api.get(`/student/exams/${examId}/ielts/speaking`),
+
   uploadCheckinPhoto: (examId: number, blob: Blob) => {
     const form = new FormData();
     form.append('photo', blob, `checkin_${examId}.jpg`);

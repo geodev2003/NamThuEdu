@@ -54,6 +54,7 @@ import { PracticeSessionEdit } from "../features/teacher/practice/PracticeSessio
 
 // Grading
 import { StudentVstepExamPage } from "../features/student/exams/StudentVstepExamPage";
+import { IeltsExamPreview } from "../features/teacher/exams/IeltsExamPreview";
 import { GradingQueue } from "../features/teacher/grading/GradingQueue";
 import { GradingDetail } from "../features/teacher/grading/GradingDetail";
 import { GradingStats } from "../features/teacher/grading/GradingStats";
@@ -129,9 +130,7 @@ export const teacherRoutes = {
     { path: "de-thi/vstep/full/tao-moi", Component: CreateVstepFull },
     { path: "de-thi/vstep/full/sua/:examId", Component: CreateVstepFull },
 
-    // ── IELTS routes ──────────────────────────────────────────────────────
-    { path: "de-thi/ielts/full/tao-moi", Component: () => <CreateIeltsExam /> },
-    { path: "de-thi/ielts/full/sua/:examId", Component: () => <CreateIeltsExam /> },
+    // ── IELTS routes (1 đề = 1 skill, không có "full" mode) ──────────────
     { path: "de-thi/ielts/listening/tao-moi", Component: () => <CreateIeltsExam initialSkill="listening" /> },
     { path: "de-thi/ielts/listening/sua/:examId", Component: () => <CreateIeltsExam initialSkill="listening" /> },
     { path: "de-thi/ielts/reading/tao-moi", Component: () => <CreateIeltsExam initialSkill="reading" /> },
@@ -168,6 +167,7 @@ export const teacherRoutes = {
     { path: "cham-diem", Component: GradingQueue },
     { path: "cham-diem/:submissionId", Component: GradingDetail },
     { path: "xem-vstep/:examId", Component: StudentVstepExamPage },
+    { path: "xem-ielts/:examId", Component: IeltsExamPreview },
     { path: "cham-diem/thong-ke", Component: GradingStats },
 
     // Giám sát trực tiếp

@@ -1,4 +1,4 @@
-import { Fragment, useState, useMemo, useEffect, useRef, useLayoutEffect } from "react";
+import { Fragment, useState, useMemo, useEffect, useRef, useLayoutEffect, lazy, Suspense } from "react";
 import { api } from "../../../../services/api";
 import { gradingApi } from "../../../../services/gradingApi";
 import { useTranslation } from "react-i18next";
@@ -114,8 +114,8 @@ function MiniScoreBar({ score, max, color }: { score: number; max: number; color
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-export function GradingDetail() {
+// ─── Main Component (VSTEP-specific implementation) ─────────────────────────
+function VstepGradingDetailInternal() {
   const { t } = useTranslation();
   const { submissionId } = useParams();
   const toast = useToastContext();
@@ -2016,4 +2016,53 @@ export function GradingDetail() {
       )}
     </div>
   );
+}
+
+
+// ─── Smart Router ────────────────────────────────────────────────────────────
+// Detects the exam type and renders the appropriate grading detail component.
+// Today: VSTEP → VstepGradingDetailInternal (this file), IELTS → IeltsGradingDetail.
+// Falls back to VSTEP layout for any other type (Cambridge / Kids / General) since
+// it handles generic objective grading reasonably.
+export function GradingDetail() {
+  const { submissionId } = useParams();
+  const [examType, setExamType] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!submissionId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get(`/teacher/submissions/${submissionId}`);
+        const t = (res.data?.data?.exam?.eType ?? res.data?.exam?.eType ?? "").toString().toUpperCase();
+        if (!cancelled) setExamType(t);
+      } catch {
+        if (!cancelled) setExamType("");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [submissionId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-slate-200 border-t-orange-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (examType === "IELTS") {
+    // Lazy-load to avoid pulling IELTS bundle for VSTEP users
+    const Lazy = lazy(() => import("./IeltsGradingDetail").then((m) => ({ default: m.IeltsGradingDetail })));
+    return (
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500">Loading IELTS grading…</div>}>
+        <Lazy />
+      </Suspense>
+    );
+  }
+
+  return <VstepGradingDetailInternal />;
 }

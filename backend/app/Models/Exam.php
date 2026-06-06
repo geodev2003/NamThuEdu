@@ -49,6 +49,7 @@ class Exam extends Model
         'kids_exam_config',
         // IELTS fields
         'ielts_test_type',
+        'ielts_skill',
         'ielts_config',
     ];
 

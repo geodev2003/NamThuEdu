@@ -302,7 +302,9 @@ class GradingController extends Controller
         }
 
         try {
-            $isVstep = strtoupper($submission->exam->eType ?? '') === 'VSTEP';
+            $examType = strtoupper($submission->exam->eType ?? '');
+            $isVstep = $examType === 'VSTEP';
+            $isIelts = $examType === 'IELTS';
 
             // Update individual question scores if provided
             if ($request->has('questionScores')) {
@@ -405,8 +407,112 @@ class GradingController extends Controller
                     'sGraded_time' => now(),
                     'teacher_reviewed_at' => now(),
                 ]);
+            } elseif ($isIelts) {
+                // For IELTS: similar to VSTEP but on band scale 0-9
+                $sub = Submission::with(['answers.question'])->find($id);
+
+                $listeningCorrect = 0;
+                $listeningMax = 0;
+                $readingCorrect = 0;
+                $readingMax = 0;
+                $writingBands = [];
+                $speakingBands = [];
+
+                foreach ($sub->answers as $ans) {
+                    $sec = strtolower($ans->question->qSkill ?? $ans->question->qSection ?? '');
+                    $qPoints = $ans->question->qPoints ?? 1;
+                    $pointsAwarded = $ans->saPoints_awarded ?? 0;
+
+                    if ($sec === 'listening') {
+                        $listeningMax += $qPoints;
+                        $listeningCorrect += $pointsAwarded;
+                    } elseif ($sec === 'reading') {
+                        $readingMax += $qPoints;
+                        $readingCorrect += $pointsAwarded;
+                    } elseif ($sec === 'writing') {
+                        $writingBands[] = $pointsAwarded;
+                    } elseif ($sec === 'speaking') {
+                        $speakingBands[] = $pointsAwarded;
+                    }
+                }
+
+                // IELTS raw-to-band conversion (40 questions Listening/Reading)
+                // Approximate IDP/BC conversion table
+                $rawToBand = function ($correct, $max) {
+                    if ($max <= 0) return null;
+                    $pct = $correct / $max;
+                    // Approximate band conversion
+                    if ($pct >= 0.975) return 9.0;
+                    if ($pct >= 0.925) return 8.5;
+                    if ($pct >= 0.875) return 8.0;
+                    if ($pct >= 0.800) return 7.5;
+                    if ($pct >= 0.725) return 7.0;
+                    if ($pct >= 0.650) return 6.5;
+                    if ($pct >= 0.575) return 6.0;
+                    if ($pct >= 0.500) return 5.5;
+                    if ($pct >= 0.400) return 5.0;
+                    if ($pct >= 0.325) return 4.5;
+                    if ($pct >= 0.250) return 4.0;
+                    if ($pct >= 0.175) return 3.5;
+                    if ($pct >= 0.100) return 3.0;
+                    return 2.5;
+                };
+
+                $listeningBand = $rawToBand($listeningCorrect, $listeningMax);
+                $readingBand   = $rawToBand($readingCorrect, $readingMax);
+                $writingBand   = count($writingBands) > 0 ? array_sum($writingBands) / count($writingBands) : null;
+                $speakingBand  = count($speakingBands) > 0 ? array_sum($speakingBands) / count($speakingBands) : null;
+
+                // Round to nearest 0.5 (IELTS rule)
+                $halfRound = fn($v) => is_null($v) ? null : round($v * 2) / 2;
+                $listeningBand = $halfRound($listeningBand);
+                $readingBand   = $halfRound($readingBand);
+                $writingBand   = $halfRound($writingBand);
+                $speakingBand  = $halfRound($speakingBand);
+
+                $raw = $sub->sGemini_feedback ? (json_decode($sub->sGemini_feedback, true) ?: []) : [];
+                $ieltsScores = $raw['ielts_scores'] ?? [];
+
+                if (!is_null($listeningBand)) $ieltsScores['listening'] = $listeningBand;
+                if (!is_null($readingBand))   $ieltsScores['reading']   = $readingBand;
+                if (!is_null($writingBand))   $ieltsScores['writing']   = $writingBand;
+                if (!is_null($speakingBand))  $ieltsScores['speaking']  = $speakingBand;
+
+                // Manual band overrides (range 0-9 for IELTS)
+                if ($request->has('skill_overrides') && is_array($request->skill_overrides)) {
+                    foreach (['listening', 'reading', 'writing', 'speaking'] as $skill) {
+                        if (isset($request->skill_overrides[$skill]) && is_numeric($request->skill_overrides[$skill])) {
+                            $ieltsScores[$skill] = $halfRound((float) $request->skill_overrides[$skill]);
+                        }
+                    }
+                }
+
+                $raw['ielts_scores'] = $ieltsScores;
+
+                $available = array_filter([
+                    $ieltsScores['listening'] ?? null,
+                    $ieltsScores['reading']   ?? null,
+                    $ieltsScores['writing']   ?? null,
+                    $ieltsScores['speaking']  ?? null,
+                ], fn($v) => !is_null($v));
+
+                $overallBand = count($available) > 0
+                    ? $halfRound(array_sum($available) / count($available))
+                    : 0;
+
+                // Persist sScore as 0-100 (band × 10) for compatibility with reports/sScore-based filters
+                $totalScore = round($overallBand * 10, 2);
+
+                $submission->update([
+                    'sGemini_feedback'   => json_encode($raw),
+                    'sTeacher_feedback'  => $request->feedback ?? $request->sTeacher_feedback,
+                    'sScore'             => $totalScore,
+                    'sStatus'            => 'graded',
+                    'sGraded_time'       => now(),
+                    'teacher_reviewed_at' => now(),
+                ]);
             } else {
-                // Non-VSTEP calculation
+                // Non-VSTEP / non-IELTS calculation (Cambridge / General / Kids)
                 if ($request->has('questionScores')) {
                     $totalScore = $this->calculateTotalScore($id);
                 } else {
