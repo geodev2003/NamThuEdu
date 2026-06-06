@@ -67,6 +67,7 @@ export function AllExams() {
   const [filterType, setFilterType] = useState<string>("all");
   const [filterAgeGroup, setFilterAgeGroup] = useState<string>("all");
   const [filterOwner, setFilterOwner] = useState<"all" | "mine" | "others">("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "published" | "draft">("all");
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -258,7 +259,7 @@ export function AllExams() {
     setCurrentPage(1);
     // Clear selection khi filter thay đổi để tránh xóa nhầm
     setSelectedIds(new Set());
-  }, [searchQuery, filterType, filterAgeGroup, filterOwner]);
+  }, [searchQuery, filterType, filterAgeGroup, filterOwner, filterStatus]);
 
   // Validate exam tồn tại khi mount - lọc bỏ exam không hợp lệ khỏi state
   useEffect(() => {
@@ -333,7 +334,19 @@ export function AllExams() {
       matchesOwner = exam._is_owner === false;
     }
 
-    return matchesSearch && matchesType && matchesAgeGroup && matchesOwner;
+    // Status filter: nháp / đã xuất bản / tất cả
+    // eStatus có thể là 'draft', 'published', 'active', 'inactive', 'archived'
+    let matchesStatus = true;
+    if (filterStatus !== "all") {
+      const status = (exam.eStatus || "").toLowerCase();
+      if (filterStatus === "draft") {
+        matchesStatus = status === "draft";
+      } else if (filterStatus === "published") {
+        matchesStatus = status === "published" || status === "active";
+      }
+    }
+
+    return matchesSearch && matchesType && matchesAgeGroup && matchesOwner && matchesStatus;
   });
 
   const stats = {
@@ -343,6 +356,11 @@ export function AllExams() {
     adults: exams.filter(e => getAgeGroup(e) === "adults").length,
     mine: exams.filter(e => e._is_owner === true).length,
     others: exams.filter(e => e._is_owner === false).length,
+    draft: exams.filter(e => (e.eStatus || "").toLowerCase() === "draft").length,
+    published: exams.filter(e => {
+      const s = (e.eStatus || "").toLowerCase();
+      return s === "published" || s === "active";
+    }).length,
   };
 
   // Pagination - lọc thêm lần nữa để chắc chắn không có exam không hợp lệ
@@ -614,6 +632,48 @@ export function AllExams() {
                     <Users className="w-3.5 h-3.5" />
                     Từ giáo viên khác
                     <span className="ml-1 text-[10px] font-mono opacity-70">({stats.others})</span>
+                  </button>
+                </div>
+
+                {/* Status Filter Tabs (Tất cả / Đã xuất bản / Nháp) */}
+                <div className="inline-flex items-center bg-gray-100 rounded-lg p-0.5 border border-gray-200">
+                  <button
+                    onClick={() => setFilterStatus("all")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                      filterStatus === "all"
+                        ? "bg-white text-orange-600 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="Tất cả trạng thái"
+                  >
+                    Tất cả
+                    <span className="ml-1 text-[10px] font-mono opacity-70">({stats.total})</span>
+                  </button>
+                  <button
+                    onClick={() => setFilterStatus("published")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                      filterStatus === "published"
+                        ? "bg-white text-emerald-600 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="Đề đã xuất bản, học viên có thể làm"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    Đã xuất bản
+                    <span className="ml-1 text-[10px] font-mono opacity-70">({stats.published})</span>
+                  </button>
+                  <button
+                    onClick={() => setFilterStatus("draft")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                      filterStatus === "draft"
+                        ? "bg-white text-amber-600 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="Đề nháp đang soạn dở (thiếu file/câu hỏi/đáp án)"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    Nháp
+                    <span className="ml-1 text-[10px] font-mono opacity-70">({stats.draft})</span>
                   </button>
                 </div>
                 

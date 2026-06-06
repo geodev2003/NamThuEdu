@@ -238,6 +238,8 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
       } else {
         success("Đã lưu nháp");
       }
+      // Sau khi lưu nháp xong → quay về danh sách đề thi
+      setTimeout(() => navigate("/giao-vien/de-thi"), 600);
     } catch (err: any) {
       error(err?.response?.data?.message || "Lưu nháp thất bại");
     } finally {
