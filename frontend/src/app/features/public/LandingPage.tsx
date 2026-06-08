@@ -289,7 +289,9 @@ export function LandingPage() {
         <StatsSection />
 
         {/* ── COURSES ──────────────────────────────────────────────────────── */}
-        <CourseTypesSection />
+        <div id="khoa-hoc">
+          <CourseTypesSection />
+        </div>
 
         {/* ── TESTS ────────────────────────────────────────────────────────── */}
         <section id="tests" className="bg-gray-50 px-4 py-16">

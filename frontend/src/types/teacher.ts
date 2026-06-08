@@ -3,34 +3,9 @@
  * Comprehensive interfaces for all teacher-related data structures
  */
 
-// ============================================================================
-// Generic API Response Types
-// ============================================================================
+import type { ApiResponse, PaginatedResponse } from './index';
 
-export interface ApiResponse<T> {
-  status: 'success' | 'error';
-  data: T;
-  message?: string;
-  errors?: Record<string, string[]>;
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  current_page: number;
-  last_page: number;
-  per_page: number;
-  total: number;
-  from: number;
-  to: number;
-}
-
-export interface ValidationError {
-  status: 'error';
-  message: string;
-  errors: {
-    [field: string]: string[];
-  };
-}
+export type { ApiResponse, PaginatedResponse };
 
 // ============================================================================
 // Course Types

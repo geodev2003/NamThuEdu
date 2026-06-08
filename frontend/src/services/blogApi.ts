@@ -1,4 +1,5 @@
 import { api } from './api';
+import type { ApiResponse } from '../types/index';
 
 // Types
 export interface CreateBlogDto {
@@ -85,8 +86,8 @@ export interface CreateBlogTypeDto {
 }
 
 export const blogTypeApi = {
-  getBlogTypes: () => api.get<{ status: string; data: BlogType[] }>('/teacher/blog-types'),
-  createBlogType: (data: CreateBlogTypeDto) => api.post<{ status: string; data: BlogType; message: string }>('/teacher/blog-types', data),
+  getBlogTypes: () => api.get<ApiResponse<BlogType[]>>('/teacher/blog-types'),
+  createBlogType: (data: CreateBlogTypeDto) => api.post<ApiResponse<BlogType>>('/teacher/blog-types', data),
 };
 
 // Public Blog (no auth required)
@@ -106,15 +107,16 @@ function cacheKey(url: string, params?: unknown): string {
   return url + (params ? JSON.stringify(params) : "");
 }
 
-async function cachedGet(url: string, params?: unknown): Promise<unknown> {
+async function cachedGet<T = unknown>(url: string, params?: unknown): Promise<T> {
   const key = cacheKey(url, params);
   const hit = _cache.get(key);
   if (hit && Date.now() - hit.ts < CACHE_TTL) {
-    return hit.data;
+    return hit.data as T;
   }
-  const res = await api.get(url, params ? { params } : undefined);
-  _cache.set(key, { data: res, ts: Date.now() });
-  return res;
+  const res = await api.get<ApiResponse<T>>(url, params ? { params } : undefined);
+  const payload = res.data.data;
+  _cache.set(key, { data: payload, ts: Date.now() });
+  return payload;
 }
 
 /** Call this after a mutation so the next read is always fresh */

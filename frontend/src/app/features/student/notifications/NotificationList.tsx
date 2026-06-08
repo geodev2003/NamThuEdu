@@ -249,21 +249,43 @@ export function NotificationList() {
                           </span>
                         </div>
 
-                        {notif.action_url && (
-                          <Link
-                            to={resolveStudentActionUrl(notif.action_url)}
-                            onClick={() => !isUnread || markAsReadMutation.mutate(notif.id)}
-                            className="px-3 py-1.5 rounded-lg transition-all hover:opacity-90"
-                            style={{
-                              background: notif.color,
-                              color: "white",
-                              fontSize: 12,
-                              fontWeight: 600,
-                            }}
-                          >
-                            {notif.action_label}
-                          </Link>
-                        )}
+                        {notif.action_url && (() => {
+                          const url = resolveStudentActionUrl(notif.action_url);
+                          const isResultUrl = url?.includes("/ket-qua/");
+                          
+                          const handleActionClick = (e: React.MouseEvent) => {
+                            if (isUnread) {
+                              markAsReadMutation.mutate(notif.id as any);
+                            }
+                            if (isResultUrl) {
+                              e.preventDefault();
+                              const parts = url.split("/");
+                              const subId = Number(parts[parts.length - 1]);
+                              if (subId) {
+                                window.dispatchEvent(new CustomEvent("open-result-modal", { detail: { submissionId: subId } }));
+                              }
+                            }
+                          };
+
+                          return isResultUrl ? (
+                            <button
+                              onClick={handleActionClick}
+                              className="px-3 py-1.5 rounded-lg transition-all hover:opacity-90 text-white font-semibold text-xs text-center"
+                              style={{ background: notif.color }}
+                            >
+                              {notif.action_label}
+                            </button>
+                          ) : (
+                            <Link
+                              to={url}
+                              onClick={handleActionClick}
+                              className="px-3 py-1.5 rounded-lg transition-all hover:opacity-90 text-white font-semibold text-xs text-center"
+                              style={{ background: notif.color }}
+                            >
+                              {notif.action_label}
+                            </Link>
+                          );
+                        })()}
                       </div>
                     </div>
 

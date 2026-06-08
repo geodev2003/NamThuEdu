@@ -7,6 +7,19 @@ export function Header() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
+  const scrollToCourses = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const performScroll = () =>
+      document.getElementById('khoa-hoc')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (pathname === '/') {
+      performScroll();
+    } else {
+      navigate('/');
+      setTimeout(performScroll, 350);
+    }
+    setCoursesDropdownOpen(false);
+  };
+
   const navItem = (path: string) =>
     `relative cursor-pointer pb-0.5 text-base font-medium transition-colors duration-200 hover:text-orange-600
     after:absolute after:bottom-0 after:left-0 after:h-[2px] after:bg-orange-500 after:transition-all after:duration-200
@@ -108,7 +121,8 @@ export function Header() {
               onMouseLeave={() => setCoursesDropdownOpen(false)}
             >
               <a
-                href="#courses"
+                href="#khoa-hoc"
+                onClick={scrollToCourses}
                 className="flex cursor-pointer items-center gap-1 text-base font-medium text-slate-700 transition-colors duration-200 hover:text-orange-600"
               >
                 Khóa học
@@ -120,27 +134,21 @@ export function Header() {
                 <div className="absolute left-0 top-full pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="w-56 rounded-lg bg-white shadow-lg ring-1 ring-black/5 overflow-hidden">
                     <div className="py-2">
-                      <a
-                        href="#vstep"
-                        className="block px-4 py-2.5 text-sm text-slate-700 transition-all duration-200 hover:bg-orange-50 hover:text-orange-600 hover:pl-5"
-                      >
-                        <div className="font-semibold">VSTEP</div>
-                        <div className="text-xs text-slate-500">Chứng chỉ tiếng Anh quốc gia</div>
-                      </a>
-                      <a
-                        href="#ielts"
-                        className="block px-4 py-2.5 text-sm text-slate-700 transition-all duration-200 hover:bg-orange-50 hover:text-orange-600 hover:pl-5"
-                      >
-                        <div className="font-semibold">IELTS</div>
-                        <div className="text-xs text-slate-500">Chứng chỉ tiếng Anh quốc tế</div>
-                      </a>
-                      <a
-                        href="#kids"
-                        className="block px-4 py-2.5 text-sm text-slate-700 transition-all duration-200 hover:bg-orange-50 hover:text-orange-600 hover:pl-5"
-                      >
-                        <div className="font-semibold">Tiếng Anh cho thiếu niên</div>
-                        <div className="text-xs text-slate-500">Dành cho học sinh 6-18 tuổi</div>
-                      </a>
+                      {[
+                        { label: "VSTEP", desc: "Chứng chỉ tiếng Anh quốc gia" },
+                        { label: "IELTS", desc: "Chứng chỉ tiếng Anh quốc tế" },
+                        { label: "Tiếng Anh cho thiếu niên", desc: "Dành cho học sinh 6-18 tuổi" },
+                      ].map((item) => (
+                        <a
+                          key={item.label}
+                          href="#khoa-hoc"
+                          onClick={scrollToCourses}
+                          className="block px-4 py-2.5 text-sm text-slate-700 transition-all duration-200 hover:bg-orange-50 hover:text-orange-600 hover:pl-5"
+                        >
+                          <div className="font-semibold">{item.label}</div>
+                          <div className="text-xs text-slate-500">{item.desc}</div>
+                        </a>
+                      ))}
                     </div>
                   </div>
                 </div>

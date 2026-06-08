@@ -8,18 +8,34 @@ export interface User {
   avatar?: string;
 }
 
+/**
+ * Standard API response shape matching backend Laravel responses.
+ * Used by ALL services — do not redefine this elsewhere.
+ */
 export interface ApiResponse<T> {
+  status: 'success' | 'error';
   data: T;
   message?: string;
-  success: boolean;
+  errors?: Record<string, string[]>;
 }
 
+/**
+ * Paginated response matching Laravel paginator output.
+ */
 export interface PaginatedResponse<T> {
   data: T[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
   total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
+  from: number;
+  to: number;
+}
+
+export interface ValidationError {
+  status: 'error';
+  message: string;
+  errors: Record<string, string[]>;
 }
 
 export interface ApiError {

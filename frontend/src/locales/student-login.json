@@ -15,6 +15,8 @@
     "securityNote": "Hãy liên hệ với giáo viên để cấp lại mật khẩu ",
     "errorWrongRole": "Tài khoản này không thuộc cổng học viên.",
     "errorDefault": "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.",
+    "successTitle": "Đăng nhập thành công!",
+    "successRedirecting": "Đang chuyển đến trang học tập...",
     "required": "*"
   },
   "en": {
@@ -33,6 +35,8 @@
     "securityNote": "Only login from trusted devices.",
     "errorWrongRole": "This account does not belong to the student portal.",
     "errorDefault": "Login failed. Please check your information.",
+    "successTitle": "Login Successful!",
+    "successRedirecting": "Redirecting to learning portal...",
     "required": "*"
   }
 }

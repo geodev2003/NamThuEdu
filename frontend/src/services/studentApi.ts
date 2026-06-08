@@ -244,6 +244,18 @@ export const studentApi = {
   getGamificationOverview: () =>
     api.get('/student/gamification/overview'),
 
+  getStreak: () =>
+    api.get('/student/gamification/streak'),
+
+  getSessions: () =>
+    api.get('/student/profile/sessions'),
+
+  revokeSession: (id: number) =>
+    api.delete(`/student/profile/sessions/${id}`),
+
+  revokeAllSessions: () =>
+    api.delete('/student/profile/sessions'),
+
   getAchievements: () =>
     api.get('/student/gamification/achievements'),
 
@@ -295,6 +307,19 @@ export const studentApi = {
   loadStudentVstepSpeaking: (examId: number) =>
     api.get(`/student/exams/${examId}/vstep/speaking`),
 
+  // ─── IELTS student loading APIs ────────────────────────────────────────
+  loadStudentIeltsListening: (examId: number) =>
+    api.get(`/student/exams/${examId}/ielts/listening`),
+
+  loadStudentIeltsReading: (examId: number) =>
+    api.get(`/student/exams/${examId}/ielts/reading`),
+
+  loadStudentIeltsWriting: (examId: number) =>
+    api.get(`/student/exams/${examId}/ielts/writing`),
+
+  loadStudentIeltsSpeaking: (examId: number) =>
+    api.get(`/student/exams/${examId}/ielts/speaking`),
+
   uploadCheckinPhoto: (examId: number, blob: Blob) => {
     const form = new FormData();
     form.append('photo', blob, `checkin_${examId}.jpg`);
@@ -310,4 +335,30 @@ export const studentApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+
+  // Reading Highlights
+  getHighlights: (examId: number, partNumber: number) =>
+    api.get(`/student/exams/${examId}/highlights`, { params: { part: partNumber } }),
+
+  saveHighlight: (examId: number, data: {
+    skill: string;
+    part_number: number;
+    start_offset: number;
+    end_offset: number;
+    color: string;
+    selected_text: string;
+  }) => api.post(`/student/exams/${examId}/highlights`, data),
+
+  deleteHighlight: (examId: number, highlightId: number) =>
+    api.delete(`/student/exams/${examId}/highlights/${highlightId}`),
+
+  // Vocab Notes
+  getVocab: (examId: number) =>
+    api.get(`/student/exams/${examId}/vocab`),
+
+  saveVocab: (examId: number, word: string, context?: string) =>
+    api.post(`/student/exams/${examId}/vocab`, { word, context }),
+
+  deleteVocab: (examId: number, vocabId: number) =>
+    api.delete(`/student/exams/${examId}/vocab/${vocabId}`),
 };

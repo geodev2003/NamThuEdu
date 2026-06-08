@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -18,15 +18,13 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { api } from "../../../../services/api";
-
-// ─── Types ─────────────────────────────────────────────────────────────────
-interface VstepScores {
-  listening?: number;
-  reading?: number;
-  writing?: number;
-  speaking?: number;
-  total?: number;
-}
+import {
+  parseVstepScores,
+  calcVstepAvg,
+  isVstepExam,
+  getSubmissionDisplayScore,
+  type SubmissionScoreUpdate,
+} from "../../../../utils/gradeHelpers";
 
 interface ReviewSubmission {
   id: string;
@@ -48,7 +46,8 @@ interface Props {
   submission: ReviewSubmission | null;
   open: boolean;
   onClose: () => void;
-  onReviewed: (id: string) => void;
+  /** Called after a successful save. The update object lets the parent sync its list immediately. */
+  onReviewed: (update: SubmissionScoreUpdate) => void;
 }
 
 // ─── Skill config ──────────────────────────────────────────────────────────
@@ -60,17 +59,25 @@ const SKILLS = [
 ] as const;
 
 // ─── Score ring ─────────────────────────────────────────────────────────────
-function ScoreRing({ score, max = 10, color }: { score: number; max?: number; color: string }) {
+interface ScoreRingProps {
+  score: number;
+  max?: number;
+  size?: number;
+  strokeWidth?: number;
+  color: string;
+}
+
+function ScoreRing({ score, max = 10, size = 52, strokeWidth = 4, color }: ScoreRingProps) {
   const pct = Math.min((score / max) * 100, 100);
-  const r = 28;
+  const r = (size - strokeWidth) / 2;
   const circ = 2 * Math.PI * r;
   const dash = (pct / 100) * circ;
   return (
-    <svg width="72" height="72" viewBox="0 0 72 72" className="-rotate-90">
-      <circle cx="36" cy="36" r={r} fill="none" stroke="#E5E7EB" strokeWidth="7" />
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#F1F5F9" strokeWidth={strokeWidth} />
       <circle
-        cx="36" cy="36" r={r} fill="none"
-        stroke={color} strokeWidth="7"
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke={color} strokeWidth={strokeWidth}
         strokeDasharray={`${dash} ${circ}`}
         strokeLinecap="round"
         style={{ transition: "stroke-dasharray 0.8s cubic-bezier(.4,0,.2,1)" }}
@@ -82,35 +89,57 @@ function ScoreRing({ score, max = 10, color }: { score: number; max?: number; co
 // ─── Main Modal ─────────────────────────────────────────────────────────────
 export function TeacherReviewModal({ submission, open, onClose, onReviewed }: Props) {
   const { t } = useTranslation();
-  const aiScores: VstepScores = (() => {
-    try { return JSON.parse(submission?.sGemini_feedback ?? "{}").vstep_scores ?? {}; }
-    catch { return {}; }
-  })();
+  const aiScores = parseVstepScores(submission?.sGemini_feedback);
 
   const [scores, setScores] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Remember initial AI-filled values to detect whether teacher actually changed anything
+  const initialScoresRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
     if (!submission) return;
     const initial: Record<string, string> = {};
     SKILLS.forEach(({ key }) => {
-      const ai = (aiScores as any)[key];
-      initial[key] = ai !== undefined && ai !== null ? String(Number(ai).toFixed(1)) : "";
+      const ai = aiScores[key as keyof typeof aiScores];
+      initial[key] = ai !== null ? String(Number(ai).toFixed(1)) : "";
     });
+    initialScoresRef.current = initial;  // snapshot for dirty-check
     setScores(initial);
     setFeedback(submission.sTeacher_feedback ?? "");
     setError(null);
   }, [submission?.id]);
 
-  const hasAiScores = Object.values(aiScores).some((v) => v !== undefined && v !== null);
+  const hasAiScores = Object.values(aiScores).some((v) => v !== null);
 
+  const isVstep = submission
+    ? isVstepExam(submission.examType, submission.examTitle)
+    : false;
+
+  const aiTotalScore = calcVstepAvg(aiScores);
+
+  // totalOverride is computed BEFORE displayScore so both panels share one source
   const totalOverride = (() => {
     const vals = SKILLS.map(({ key }) => parseFloat(scores[key] ?? ""));
     if (vals.some(isNaN)) return null;
     return vals.reduce((s, v) => s + v, 0) / vals.length;
   })();
+
+  // Left card: always raw AI score from DB — same source as the queue list
+  const displayData = submission
+    ? getSubmissionDisplayScore({
+        examType: submission.examType,
+        examTitle: submission.examTitle,
+        sGemini_feedback: submission.sGemini_feedback, // raw, never rounded
+        score: submission.score,
+        maxScore: submission.maxScore,
+      })
+    : null;
+
+  const displayScore = displayData ? displayData.value.toFixed(2) : "—";
+  const displayMaxScore = displayData ? displayData.max : 10;
+
 
   const handleSave = async () => {
     if (!submission) return;
@@ -121,11 +150,36 @@ export function TeacherReviewModal({ submission, open, onClose, onReviewed }: Pr
         feedback,
         sTeacher_feedback: feedback,
       };
-      if (totalOverride !== null) {
-        payload.score = Math.round(totalOverride * 10);
+
+      // Only send score if teacher actually changed an input (avoid drift from toFixed(1) rounding)
+      const scoresDirty = SKILLS.some(({ key }) => scores[key] !== initialScoresRef.current[key]);
+      const rawScore = (scoresDirty && totalOverride !== null)
+        ? Math.round(totalOverride * 10)
+        : undefined;
+      if (rawScore !== undefined) {
+        payload.score = rawScore;
       }
+
+      // Send individual skill overrides so they are persisted in database
+      if (scoresDirty) {
+        payload.skill_overrides = {
+          listening: scores.listening ? parseFloat(scores.listening) : null,
+          reading: scores.reading ? parseFloat(scores.reading) : null,
+          writing: scores.writing ? parseFloat(scores.writing) : null,
+          speaking: scores.speaking ? parseFloat(scores.speaking) : null,
+        };
+      }
+
       await api.post(`/teacher/submissions/${submission.id}/grade`, payload);
-      onReviewed(submission.id);
+
+      const now = new Date().toISOString();
+      onReviewed({
+        id: submission.id,
+        rawScore,
+        sTeacher_feedback: feedback,
+        sGemini_feedback: submission.sGemini_feedback,
+        teacher_reviewed_at: now,
+      });
       onClose();
     } catch (e: any) {
       setError(e?.response?.data?.message ?? t("teacher.grading.reviewModal.saveError"));
@@ -161,19 +215,19 @@ export function TeacherReviewModal({ submission, open, onClose, onReviewed }: Pr
             transition={{ type: "spring", stiffness: 340, damping: 30 }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-violet-600 to-purple-600">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
-                  <UserCheck className="w-5 h-5 text-white" />
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-white">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center border border-violet-100/50">
+                  <UserCheck className="w-5 h-5 text-violet-600" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-white">{t("teacher.grading.reviewModal.submitTitle")}</h2>
-                  <p className="text-xs text-violet-200">{submission.examTitle}</p>
+                  <h2 className="text-lg font-bold text-slate-850 tracking-tight">{t("teacher.grading.reviewModal.submitTitle")}</h2>
+                  <p className="text-xs text-slate-400 font-semibold mt-0.5">{submission.examTitle}</p>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition-colors border border-slate-100"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -184,172 +238,177 @@ export function TeacherReviewModal({ submission, open, onClose, onReviewed }: Pr
               <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
 
                 {/* ─── LEFT: AI results ─── */}
-                <div className="p-6 space-y-5">
+                <div className="p-6 md:p-8 space-y-6">
                   {/* Student info */}
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/60 border border-slate-100">
+                    <div className="w-12 h-12 rounded-xl bg-violet-50 text-violet-750 border border-violet-100/50 flex items-center justify-center font-bold text-base flex-shrink-0 shadow-sm">
                       {submission.studentAvatar}
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-slate-800 text-sm truncate">{submission.studentName}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-slate-400 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-slate-800 text-base truncate leading-snug">{submission.studentName}</p>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
+                          <Clock className="w-3.5 h-3.5" />
                           {submission.submissionTime.toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </span>
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-700">
+                        <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-violet-50 text-violet-700 border border-violet-100/30">
                           {t("teacher.grading.queuePage.attempt")} {submission.attemptNumber}
                         </span>
+                        {submission.status && (
+                          <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${
+                            submission.status === "graded" 
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-100/50" 
+                              : "bg-amber-50 text-amber-700 border-amber-100/50"
+                          }`}>
+                            {submission.status === "graded" ? t("teacher.grading.statsPage.graded") : t("teacher.grading.statsPage.pendingGrading")}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div className="ml-auto text-right flex-shrink-0">
-                      <p className="text-2xl font-black text-slate-800">{submission.score ?? "—"}</p>
-                      <p className="text-[10px] text-slate-400 uppercase tracking-wide">/ {submission.maxScore}</p>
+                    <div className="text-right flex-shrink-0 bg-white border border-slate-100 px-4 py-3 rounded-2xl shadow-sm min-w-[90px] flex flex-col justify-center items-center gap-0.5">
+                      <p className="text-[9px] text-slate-400 font-bold tracking-widest uppercase leading-none">Hiện tại</p>
+                      <p className="text-2xl font-black text-slate-800 leading-none mt-0.5">{displayScore}</p>
+                      <p className="text-[9px] text-slate-400 font-bold tracking-wide uppercase">/ {displayMaxScore}</p>
                     </div>
                   </div>
 
                   {/* AI scores */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-6 h-6 rounded-md bg-amber-100 flex items-center justify-center">
-                        <Bot className="w-3.5 h-3.5 text-amber-600" />
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center">
+                        <Bot className="w-4 h-4 text-amber-600" />
                       </div>
-                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{t("teacher.grading.reviewModal.aiScore")}</span>
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("teacher.grading.reviewModal.aiScore")}</span>
                     </div>
 
                     {hasAiScores ? (
-                      <div className="grid grid-cols-2 gap-3">
-                        {SKILLS.map(({ key, labelKey, icon: Icon, color, bg }) => {
-                          const val = (aiScores as any)[key];
-                          const n = val !== undefined && val !== null ? Number(val) : null;
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {SKILLS.map(({ key, labelKey, icon: Icon, color, weight }) => {
+                          const n = aiScores[key as keyof typeof aiScores];
                           return (
                             <div
                               key={key}
-                              className="rounded-xl p-3 flex items-center gap-3"
-                              style={{ background: bg }}
+                              className="bg-white border border-slate-100 rounded-2xl p-4 flex items-center gap-4 shadow-sm hover:border-slate-200/80 transition-all duration-200"
                             >
                               <div className="relative flex-shrink-0">
                                 {n !== null ? (
                                   <>
-                                    <ScoreRing score={n} max={10} color={color} />
+                                    <ScoreRing score={n} max={10} color={color} size={52} strokeWidth={4} />
                                     <div className="absolute inset-0 flex items-center justify-center">
-                                      <span className="text-sm font-black" style={{ color }}>{n.toFixed(1)}</span>
+                                      <span className="text-sm font-bold text-slate-800">{n.toFixed(1)}</span>
                                     </div>
                                   </>
                                 ) : (
-                                  <div className="w-[72px] h-[72px] rounded-full border-4 border-dashed border-slate-200 flex items-center justify-center">
+                                  <div className="w-[52px] h-[52px] rounded-full border-2 border-dashed border-slate-200 flex items-center justify-center">
                                     <span className="text-xs text-slate-400">N/A</span>
                                   </div>
                                 )}
                               </div>
-                              <div>
-                                <div className="flex items-center gap-1 mb-0.5">
-                                  <Icon className="w-3.5 h-3.5" style={{ color }} />
-                                  <span className="text-xs font-semibold text-slate-700">{t(labelKey)}</span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <Icon className="w-4 h-4 text-slate-400" />
+                                  <span className="text-sm font-bold text-slate-700 truncate leading-none">{t(labelKey)}</span>
                                 </div>
-                                <span className="text-[10px] text-slate-400">/ 10</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-slate-400">/ 10</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-slate-50 text-[10px] text-slate-400 border border-slate-100 font-semibold leading-none">
+                                    Hệ số: {weight}%
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           );
                         })}
                       </div>
                     ) : (
-                      <div className="rounded-xl bg-slate-50 border border-dashed border-slate-200 py-8 flex flex-col items-center gap-2">
-                        <BarChart3 className="w-8 h-8 text-slate-300" />
-                        <p className="text-sm text-slate-400">{t("teacher.grading.reviewModal.noAiScore")}</p>
-                        <p className="text-xs text-slate-300">{t("teacher.grading.reviewModal.onlyTotal")} {submission.score ?? "—"}/{submission.maxScore}</p>
+                      <div className="rounded-2xl bg-slate-50 border border-dashed border-slate-200 py-10 flex flex-col items-center justify-center gap-2.5">
+                        <BarChart3 className="w-9 h-9 text-slate-350" />
+                        <p className="text-sm font-medium text-slate-500">{t("teacher.grading.reviewModal.noAiScore")}</p>
+                        <p className="text-xs text-slate-400">{t("teacher.grading.reviewModal.onlyTotal")} {submission.score ?? "—"}/{submission.maxScore}</p>
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* ─── RIGHT: Teacher override ─── */}
-                <div className="p-6 space-y-5">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-6 h-6 rounded-md bg-violet-100 flex items-center justify-center">
-                      <UserCheck className="w-3.5 h-3.5 text-violet-600" />
+                <div className="p-6 md:p-8 space-y-6 bg-slate-50/20">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-violet-50 border border-violet-100 flex items-center justify-center">
+                        <UserCheck className="w-4 h-4 text-violet-600" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("teacher.grading.reviewModal.adjustScore")}</span>
                     </div>
-                    <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{t("teacher.grading.reviewModal.adjustScore")}</span>
-                  </div>
 
-                  <div className="space-y-3">
-                    {SKILLS.map(({ key, labelKey, icon: Icon, color, bg }) => {
-                      const aiVal = (aiScores as any)[key];
-                      const aiN = aiVal !== undefined && aiVal !== null ? Number(aiVal) : null;
-                      return (
-                        <div key={key} className="flex items-center gap-3">
-                          <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                            style={{ background: bg }}
-                          >
-                            <Icon className="w-4 h-4" style={{ color }} />
+                    <div className="space-y-3">
+                      {SKILLS.map(({ key, labelKey, icon: Icon, color }) => {
+                        const aiN = aiScores[key as keyof typeof aiScores];
+                        return (
+                          <div key={key} className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center flex-shrink-0 text-slate-400">
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <span className="text-sm font-bold text-slate-650 w-14 flex-shrink-0">{t(labelKey)}</span>
+                            <div className="flex-1 relative">
+                              <input
+                                type="number"
+                                min={0}
+                                max={10}
+                                step={0.1}
+                                value={scores[key] ?? ""}
+                                onChange={(e) => setScores((prev) => ({ ...prev, [key]: e.target.value }))}
+                                placeholder={aiN !== null ? `AI: ${aiN.toFixed(1)}` : "—"}
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 transition-all font-semibold text-slate-800 placeholder:text-slate-400"
+                              />
+                            </div>
+                            <span className="text-xs text-slate-400 w-8 text-right flex-shrink-0">/ 10</span>
                           </div>
-                          <span className="text-sm text-slate-700 w-10 flex-shrink-0">{t(labelKey)}</span>
-                          <div className="flex-1 relative">
-                            <input
-                              type="number"
-                              min={0}
-                              max={10}
-                              step={0.1}
-                              value={scores[key] ?? ""}
-                              onChange={(e) => setScores((prev) => ({ ...prev, [key]: e.target.value }))}
-                              placeholder={aiN !== null ? `AI: ${aiN.toFixed(1)}` : "—"}
-                              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-violet-400 transition-all"
-                            />
-                          </div>
-                          <span className="text-xs text-slate-400 flex-shrink-0">/ 10</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Calculated override total */}
-                  {totalOverride !== null && (
-                    <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-violet-50 border border-violet-100">
-                      <span className="text-sm text-violet-700 font-medium">{t("teacher.grading.reviewModal.newTotal")}</span>
-                      <span className="text-lg font-black text-violet-700">{Math.round(totalOverride * 10)}/100</span>
+                        );
+                      })}
                     </div>
-                  )}
+                  </div>
 
                   {/* Feedback */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
                       <MessageSquare className="w-4 h-4 text-slate-400" />
-                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{t("teacher.grading.reviewModal.feedback")}</span>
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("teacher.grading.reviewModal.feedback")}</span>
                     </div>
                     <textarea
                       rows={4}
                       value={feedback}
                       onChange={(e) => setFeedback(e.target.value)}
                       placeholder={t("teacher.grading.reviewModal.feedbackPlaceholder")}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-violet-400 transition-all placeholder:text-slate-300"
+                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-white text-sm resize-none focus:outline-none focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 transition-all placeholder:text-slate-400 text-slate-700 leading-relaxed font-medium"
                     />
                   </div>
 
                   {/* Error */}
                   {error && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-50 border border-rose-100">
+                    <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-rose-50 border border-rose-100">
                       <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0" />
-                      <p className="text-xs text-rose-600">{error}</p>
+                      <p className="text-xs font-semibold text-rose-700">{error}</p>
                     </div>
                   )}
 
                   {/* CTA */}
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-violet-200 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
-                  >
-                    {saving ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /> {t("teacher.grading.reviewModal.saving")}</>
-                    ) : (
-                      <><CheckCircle2 className="w-4 h-4" /> {t("teacher.grading.reviewModal.confirmSave")}</>
-                    )}
-                  </button>
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="w-full py-3.5 rounded-2xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-650/15 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                    >
+                      {saving ? (
+                        <><Loader2 className="w-4.5 h-4.5 animate-spin" /> {t("teacher.grading.reviewModal.saving")}</>
+                      ) : (
+                        <><CheckCircle2 className="w-4.5 h-4.5" /> {t("teacher.grading.reviewModal.confirmSave")}</>
+                      )}
+                    </button>
 
-                  <p className="text-center text-[11px] text-slate-400">
-                    {t("teacher.grading.reviewModal.afterConfirm")} <strong>{t("teacher.grading.reviewModal.statusReviewed")}</strong>
-                  </p>
+                    <p className="text-center text-[11px] font-medium text-slate-400">
+                      {t("teacher.grading.reviewModal.afterConfirm")} <strong className="text-slate-500">{t("teacher.grading.reviewModal.statusReviewed")}</strong>
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

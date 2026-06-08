@@ -18,13 +18,16 @@ import {
 } from "lucide-react";
 import { Header } from "../../../components/shared/Header";
 import { api } from "../../../../services/api";
+import { getAssetUrl } from "../../../../utils/apiConfig";
 import { TeacherReviewModal } from "./TeacherReviewModal";
+import { getSubmissionDisplayScore, type SubmissionScoreUpdate } from "../../../../utils/gradeHelpers";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface Submission {
   id: string;
   studentName: string;
   studentAvatar: string;
+  studentAvatarUrl?: string | null;
   examTitle: string;
   examType: string;
   examId: string;
@@ -36,6 +39,8 @@ interface Submission {
   sGemini_feedback?: string;
   sTeacher_feedback?: string;
   teacher_reviewed_at?: string;
+  sGraded_time?: string;
+  gradedTime?: Date;
 }
 
 type ReviewTab = "all" | "pending" | "reviewed";
@@ -88,6 +93,8 @@ export function GradingQueue() {
   const [searchQuery, setSearchQuery]   = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [reviewTab, setReviewTab]       = useState<ReviewTab>("all");
+  const [sortField, setSortField] = useState<'score' | 'time' | 'gradedTime' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [submissions, setSubmissions]   = useState<Submission[]>([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState<string | null>(null);
@@ -102,6 +109,7 @@ export function GradingQueue() {
     id: String(sub.sId),
     studentName: sub.user?.uName || "Unknown",
     studentAvatar: (sub.user?.uName ?? "?").split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase(),
+    studentAvatarUrl: sub.user?.avatar_url ?? null,
     examTitle: sub.exam?.eTitle || "—",
     examType: sub.exam?.eType || "General",
     examId: String(sub.exam?.eId ?? sub.sExam_id ?? ""),
@@ -113,6 +121,8 @@ export function GradingQueue() {
     sGemini_feedback: sub.sGemini_feedback,
     sTeacher_feedback: sub.sTeacher_feedback,
     teacher_reviewed_at: sub.teacher_reviewed_at,
+    sGraded_time: sub.sGraded_time,
+    gradedTime: sub.sGraded_time ? new Date(sub.sGraded_time) : (sub.teacher_reviewed_at ? new Date(sub.teacher_reviewed_at) : undefined),
   });
 
   const fetchSubmissions = useCallback(async (silent = false) => {
@@ -181,6 +191,43 @@ export function GradingQueue() {
     const q = searchQuery.toLowerCase();
     return s.studentName.toLowerCase().includes(q) || s.examTitle.toLowerCase().includes(q);
   }), [baseList, searchQuery]);
+
+  const handleSort = (field: 'score' | 'time' | 'gradedTime') => {
+    if (sortField === field) {
+      if (sortDirection === 'desc') {
+        setSortDirection('asc');
+      } else {
+        setSortField(null);
+      }
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const sortedAndFiltered = useMemo(() => {
+    let list = [...filtered];
+    if (sortField === "score") {
+      list.sort((a, b) => {
+        const scoreA = a.score !== undefined ? a.score / (a.maxScore / 10) : -1;
+        const scoreB = b.score !== undefined ? b.score / (b.maxScore / 10) : -1;
+        return sortDirection === "asc" ? scoreA - scoreB : scoreB - scoreA;
+      });
+    } else if (sortField === "time") {
+      list.sort((a, b) => {
+        const timeA = a.submissionTime.getTime();
+        const timeB = b.submissionTime.getTime();
+        return sortDirection === "asc" ? timeA - timeB : timeB - timeA;
+      });
+    } else if (sortField === "gradedTime") {
+      list.sort((a, b) => {
+        const timeA = a.gradedTime ? a.gradedTime.getTime() : 0;
+        const timeB = b.gradedTime ? b.gradedTime.getTime() : 0;
+        return sortDirection === "asc" ? timeA - timeB : timeB - timeA;
+      });
+    }
+    return list;
+  }, [filtered, sortField, sortDirection]);
 
   const TABS: { key: ReviewTab; label: string; count: number; icon: typeof Clock }[] = [
     { key: "all",      label: t("teacher.grading.queuePage.tabs.all"),      count: submissions.length, icon: Inbox },
@@ -305,14 +352,65 @@ export function GradingQueue() {
             <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100">
-                    {[t("teacher.grading.table.student"), t("teacher.grading.table.exam"), t("teacher.grading.table.submissionTime"), t("teacher.grading.table.status"), t("teacher.grading.table.aiScore"), t("teacher.grading.table.review"), t("teacher.grading.table.actions")].map((h) => (
-                      <th key={h} className="px-5 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">{h}</th>
-                    ))}
+                  <tr className="bg-slate-50 border-b border-slate-100 select-none">
+                    <th className="px-5 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      {t("teacher.grading.table.student")}
+                    </th>
+                    <th className="px-5 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      {t("teacher.grading.table.exam")}
+                    </th>
+                    <th 
+                      onClick={() => handleSort("time")}
+                      className="px-5 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors group"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>{t("teacher.grading.table.submissionTime")}</span>
+                        {sortField === "time" ? (
+                          <span className="text-violet-600 font-bold">{sortDirection === "asc" ? "▲" : "▼"}</span>
+                        ) : (
+                          <span className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">↕</span>
+                        )}
+                      </div>
+                    </th>
+                    <th className="px-5 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      {t("teacher.grading.table.status")}
+                    </th>
+                    <th 
+                      onClick={() => handleSort("score")}
+                      className="px-5 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors group"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>{t("teacher.grading.table.aiScore")}</span>
+                        {sortField === "score" ? (
+                          <span className="text-violet-600 font-bold">{sortDirection === "asc" ? "▲" : "▼"}</span>
+                        ) : (
+                          <span className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">↕</span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort("gradedTime")}
+                      className="px-5 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors group"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>{t("teacher.grading.table.gradedAt")}</span>
+                        {sortField === "gradedTime" ? (
+                          <span className="text-violet-600 font-bold">{sortDirection === "asc" ? "▲" : "▼"}</span>
+                        ) : (
+                          <span className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">↕</span>
+                        )}
+                      </div>
+                    </th>
+                    <th className="px-5 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      {t("teacher.grading.table.review")}
+                    </th>
+                    <th className="px-5 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      {t("teacher.grading.table.actions")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {filtered.map((sub) => {
+                  {sortedAndFiltered.map((sub) => {
                     const cfg = STATUS_CONFIG[sub.status] ?? STATUS_CONFIG.submitted;
                     const isReviewed = !!sub.teacher_reviewed_at;
                     const isChanged = changedIds.has(sub.id);
@@ -328,9 +426,18 @@ export function GradingQueue() {
                         {/* Student */}
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                              {sub.studentAvatar}
-                            </div>
+                            <img
+                              src={sub.studentAvatarUrl ? getAssetUrl(sub.studentAvatarUrl) : "/images/default-avatar.png"}
+                              alt={sub.studentName}
+                              className="w-9 h-9 rounded-full object-cover bg-slate-100 border border-slate-200 flex-shrink-0"
+                              onError={(e) => {
+                                // Fallback to bundled default avatar if remote image fails
+                                const target = e.currentTarget;
+                                if (!target.src.endsWith("/images/default-avatar.png")) {
+                                  target.src = "/images/default-avatar.png";
+                                }
+                              }}
+                            />
                             <div>
                               <p className="text-sm font-semibold text-slate-800">{sub.studentName}</p>
                               <p className="text-xs text-slate-400">{t("teacher.grading.queuePage.attempt")} {sub.attemptNumber}</p>
@@ -375,10 +482,21 @@ export function GradingQueue() {
                         </td>
                         {/* AI score */}
                         <td className="px-5 py-4 whitespace-nowrap">
-                          {sub.score !== undefined ? (
-                            <span className="text-sm font-bold text-slate-800">
-                              {(sub.score / (sub.maxScore / 10)).toFixed(2)}<span className="text-slate-400 font-normal text-xs">/10</span>
-                            </span>
+                          {(() => {
+                            const ds = getSubmissionDisplayScore(sub);
+                            return ds ? (
+                              <span className="text-sm font-bold text-slate-800">
+                                {ds.value.toFixed(2)}<span className="text-slate-400 font-normal text-xs">/{ds.max}</span>
+                              </span>
+                            ) : (
+                              <span className="text-slate-300 text-sm">—</span>
+                            );
+                          })()}
+                        </td>
+                        {/* Graded time */}
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          {sub.gradedTime ? (
+                            <p className="text-sm text-slate-600">{formatTime(sub.gradedTime)}</p>
                           ) : (
                             <span className="text-slate-300 text-sm">—</span>
                           )}
@@ -450,9 +568,20 @@ export function GradingQueue() {
         submission={reviewTarget}
         open={!!reviewTarget}
         onClose={() => setReviewTarget(null)}
-        onReviewed={(id) => {
+        onReviewed={(update: SubmissionScoreUpdate) => {
           setSubmissions((prev) =>
-            prev.map((s) => s.id === id ? { ...s, teacher_reviewed_at: new Date().toISOString() } : s)
+            prev.map((s) => {
+              if (s.id !== update.id) return s;
+              return {
+                ...s,
+                // Apply new score if teacher changed it
+                ...(update.rawScore !== undefined ? { score: update.rawScore } : {}),
+                sTeacher_feedback: update.sTeacher_feedback ?? s.sTeacher_feedback,
+                sGemini_feedback:  update.sGemini_feedback  ?? s.sGemini_feedback,
+                teacher_reviewed_at: update.teacher_reviewed_at,
+                status: "graded" as const,
+              };
+            })
           );
           setReviewTarget(null);
         }}

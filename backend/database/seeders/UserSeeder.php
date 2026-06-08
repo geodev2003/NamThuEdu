@@ -29,7 +29,7 @@ class UserSeeder extends Seeder
         ]);
 
         // Create/update teacher user
-        User::updateOrCreate([
+        $teacher = User::updateOrCreate([
             'uPhone' => '0336695863',
         ], [
             'uName' => 'Nhựt Tuấn',
@@ -39,6 +39,14 @@ class UserSeeder extends Seeder
             'uDoB' => '1990-01-01',
             'uGender' => true,
             'uAddress' => 'Cần Thơ',
+        ]);
+
+        // Create a default class for students
+        $classId = \Illuminate\Support\Facades\DB::table('classes')->insertGetId([
+            'cName' => 'Lớp Học Mẫu',
+            'cTeacher_id' => $teacher->uId,
+            'cStatus' => 'active',
+            'age_group' => 'adults',
         ]);
 
         // Create sample students
@@ -51,6 +59,8 @@ class UserSeeder extends Seeder
                 'uDoB' => '2003-02-15',
                 'uAddress' => '123 Đường 3/2, Xuân Khánh, Ninh Kiều, Cần Thơ',
                 'uClass' => 3,
+                'class_id' => $classId,
+                'age_group' => 'adults',
                 'uStatus' => 'active',
                 'uRole' => 'student'
             ],
@@ -62,6 +72,8 @@ class UserSeeder extends Seeder
                 'uDoB' => '2003-05-20',
                 'uAddress' => '456 Cách Mạng Tháng 8, Bùi Hữu Nghĩa, Bình Thủy, Cần Thơ',
                 'uClass' => 3,
+                'class_id' => $classId,
+                'age_group' => 'adults',
                 'uStatus' => 'active',
                 'uRole' => 'student'
             ],
@@ -73,6 +85,8 @@ class UserSeeder extends Seeder
                 'uDoB' => '2003-08-10',
                 'uAddress' => '789 Nguyễn Văn Cừ, An Khánh, Ninh Kiều, Cần Thơ',
                 'uClass' => 3,
+                'class_id' => $classId,
+                'age_group' => 'adults',
                 'uStatus' => 'active',
                 'uRole' => 'student'
             ],

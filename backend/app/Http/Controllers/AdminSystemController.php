@@ -184,11 +184,33 @@ class AdminSystemController extends Controller
         $current = $user->currentAccessToken();
         $tokens  = $user->tokens()->orderByDesc('last_used_at')->take(20)->get();
 
-        $data = $tokens->map(function ($token) use ($current) {
+        $data = $tokens->map(function ($token) use ($current, $request) {
+            $deviceName = $token->name;
+            $isCurrent = $current && $token->id === $current->id;
+
+            if ($deviceName === 'auth_token' || empty($deviceName)) {
+                if ($isCurrent) {
+                    $ua = $request->userAgent() ?? '';
+                    $browser = 'Unknown Browser';
+                    $os = 'Unknown OS';
+                    if (preg_match('/(Edg|OPR|Chrome|Firefox|Safari|MSIE|Trident)/i', $ua, $bm)) {
+                        $browserMap = ['Edg' => 'Edge', 'OPR' => 'Opera', 'Trident' => 'IE'];
+                        $browser = $browserMap[$bm[1]] ?? ucfirst($bm[1]);
+                    }
+                    if (preg_match('/(iPhone|iPad|Android|Windows|Macintosh|Linux|Ubuntu)/i', $ua, $om)) {
+                        $osMap = ['Macintosh' => 'macOS', 'iPhone' => 'iPhone', 'iPad' => 'iPad'];
+                        $os = $osMap[$om[1]] ?? ucfirst($om[1]);
+                    }
+                    $deviceName = "$browser trên $os";
+                } else {
+                    $deviceName = 'Thiết bị khác (chưa rõ)';
+                }
+            }
+
             return [
                 'id'           => $token->id,
-                'name'         => $token->name,
-                'is_current'   => $token->id === $current->id,
+                'name'         => $deviceName,
+                'is_current'   => $isCurrent,
                 'created_at'   => $token->created_at ? $token->created_at->diffForHumans() : null,
                 'last_used_at' => $token->last_used_at ? $token->last_used_at->diffForHumans() : 'Chưa sử dụng',
             ];

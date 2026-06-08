@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   BookOpen,
@@ -26,6 +26,8 @@ import {
   CheckCircle2,
   Loader2,
   Upload,
+  ArrowUpDown,
+  Filter,
 } from "lucide-react";
 import { studentApi, BrowseExam } from "../../../../services/studentApi";
 
@@ -41,8 +43,34 @@ const IELTS_DARK   = "#065F46";
 const IELTS_BG     = "#D1FAE5";
 
 type TabType = "ALL" | "VSTEP" | "IELTS";
+type SortType = "default" | "title_asc" | "title_desc" | "duration_asc" | "duration_desc" | "recent_attempt";
+type DurationFilter = "all" | "short" | "long" | "attempted" | "unattempted";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Highlights occurrences of `query` inside `text` with a yellow mark. */
+function Highlight({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? (
+          <mark
+            key={i}
+            style={{ background: '#FDE68A', color: '#78350F', borderRadius: 3, padding: '0 2px', fontWeight: 700 }}
+          >
+            {part}
+          </mark>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
+
 const SKILLS = [
   { key: "listening", label: "Nghe",  icon: Headphones, color: "#F59E0B" },
   { key: "reading",   label: "Đọc",   icon: BookOpen,   color: "#0EA5E9" },
@@ -415,22 +443,54 @@ function isMobileDevice(): boolean {
   return mobileRegex.test(ua) || isTouchSmall;
 }
 
+const formatTimeAgo = (timestamp: number) => {
+  const diff = Date.now() - timestamp;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Vừa xong";
+  if (mins < 60) return `${mins} phút trước`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} giờ trước`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} ngày trước`;
+  return new Date(timestamp).toLocaleDateString("vi-VN");
+};
+
 // ─── Exam Card ────────────────────────────────────────────────────────────────
-function ExamCard({ exam, idx }: { exam: BrowseExam; idx: number }) {
+function ExamCard({
+  exam,
+  idx,
+  highlight = '',
+  recentAttemptTime,
+}: {
+  exam: BrowseExam;
+  idx: number;
+  highlight?: string;
+  recentAttemptTime?: number;
+}) {
   const isVstep    = exam.type === "VSTEP";
+  const isIelts    = exam.type === "IELTS";
   const typeColor  = isVstep ? VSTEP_COLOR  : IELTS_COLOR;
   const typeDark   = isVstep ? VSTEP_DARK   : IELTS_DARK;
   const typeBg     = isVstep ? VSTEP_BG     : IELTS_BG;
-  const examPath   = `/hoc-vien/lam-bai-vstep/${exam.id}`;
+  const examPath   = isIelts
+    ? `/hoc-vien/de-thi/ielts/${exam.id}`        // Trang detail (chọn mode practice/full test)
+    : `/hoc-vien/lam-bai-vstep/${exam.id}`;
+  const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [mobileBlocked, setMobileBlocked] = useState(false);
 
   const handleStartExam = () => {
     if (isMobileDevice()) {
       setMobileBlocked(true);
-    } else {
-      setShowModal(true);
+      return;
     }
+    // IELTS: skip pre-exam modal, navigate thẳng vào trang detail (Practice/Full test selector)
+    if (isIelts) {
+      navigate(examPath);
+      return;
+    }
+    // VSTEP: hiện pre-exam modal (camera/mic check)
+    setShowModal(true);
   };
 
   return (
@@ -456,17 +516,25 @@ function ExamCard({ exam, idx }: { exam: BrowseExam; idx: number }) {
 
         {/* Type + number badge row */}
         <div className="flex items-center justify-between mb-3 relative z-10">
-          <span
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide"
-            style={{
-              background: typeBg,
-              color: typeDark,
-              border: `1px solid ${typeColor}30`,
-            }}
-          >
-            <Sparkles className="w-3 h-3" />
-            {exam.type}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide"
+              style={{
+                background: typeBg,
+                color: typeDark,
+                border: `1px solid ${typeColor}30`,
+              }}
+            >
+              <Sparkles className="w-3 h-3" />
+              {exam.type}
+            </span>
+            {recentAttemptTime && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                Vừa làm {formatTimeAgo(recentAttemptTime)}
+              </span>
+            )}
+          </div>
           <span
             className="text-xs font-bold opacity-40"
             style={{ color: PURPLE }}
@@ -480,7 +548,7 @@ function ExamCard({ exam, idx }: { exam: BrowseExam; idx: number }) {
           className="font-extrabold leading-snug line-clamp-2 relative z-10 mb-2"
           style={{ fontSize: 16, color: "#1A1040", letterSpacing: "-0.01em" }}
         >
-          {exam.title}
+          <Highlight text={exam.title} query={highlight} />
         </h3>
 
         {/* 4 skill chips */}
@@ -503,7 +571,7 @@ function ExamCard({ exam, idx }: { exam: BrowseExam; idx: number }) {
         {/* Description */}
         {exam.description ? (
           <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">
-            {exam.description}
+            <Highlight text={exam.description} query={highlight} />
           </p>
         ) : (
           <p className="text-sm text-gray-400 italic">Đề thi toàn kỹ năng VSTEP chuẩn Bộ GD&ĐT</p>
@@ -599,24 +667,150 @@ function SkeletonCard() {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
+const RECENT_KEY = 'ebrs'; // exam browser recent searches
+
 export function StudentExamBrowser() {
-  const [activeTab, setActiveTab] = useState<TabType>("ALL");
-  const [search, setSearch]       = useState("");
+  const [activeTab, setActiveTab]       = useState<TabType>("ALL");
+  const [search, setSearch]             = useState("");
+  const [sortBy, setSortBy]             = useState<SortType>("default");
+  const [durationFilter, setDurationFilter] = useState<DurationFilter>("all");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); }
+    catch { return []; }
+  });
+
+  // Debounced search — filter only 280ms after user stops typing
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 280);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcut: '/' or Ctrl+K → focus search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (document.activeElement as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === '/' || ((e.ctrlKey || e.metaKey) && e.key === 'k')) {
+        e.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  const addRecent = useCallback((q: string) => {
+    const trimmed = q.trim();
+    if (trimmed.length < 2) return;
+    setRecentSearches((prev) => {
+      const updated = [trimmed, ...prev.filter((s) => s !== trimmed)].slice(0, 6);
+      localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const removeRecent = useCallback((q: string) => {
+    setRecentSearches((prev) => {
+      const updated = prev.filter((s) => s !== q);
+      localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const clearAllRecents = useCallback(() => {
+    setRecentSearches([]);
+    localStorage.removeItem(RECENT_KEY);
+  }, []);
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setSearch('');
+      setShowDropdown(false);
+      inputRef.current?.blur();
+    }
+    if (e.key === 'Enter' && search.trim().length >= 2) {
+      addRecent(search.trim());
+      setShowDropdown(false);
+    }
+  };
+
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["student", "exams-browse", activeTab],
     queryFn: () =>
       studentApi.browseExams(activeTab !== "ALL" ? { type: activeTab } : undefined),
+    staleTime: 5 * 60 * 1000,
+    gcTime:    10 * 60 * 1000,
+    placeholderData: keepPreviousData,
   });
+
+  // Background-prefetch the other two tabs so switching tabs is instant
+  useEffect(() => {
+    const tabs: Array<"VSTEP" | "IELTS"> = ["VSTEP", "IELTS"];
+    tabs.forEach((tab) => {
+      queryClient.prefetchQuery({
+        queryKey: ["student", "exams-browse", tab],
+        queryFn: () => studentApi.browseExams({ type: tab }),
+        staleTime: 5 * 60 * 1000,
+      });
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const exams: BrowseExam[] = data?.data?.data ?? [];
 
-  const filtered = exams.filter(
-    (e) =>
-      search.trim() === "" ||
-      e.title.toLowerCase().includes(search.toLowerCase()) ||
-      (e.description ?? "").toLowerCase().includes(search.toLowerCase())
-  );
+  const { data: submissionsRes } = useQuery({
+    queryKey: ["student", "submissions-all"],
+    queryFn: () => studentApi.getSubmissions(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const submissions = submissionsRes?.data?.data?.submissions ?? [];
+
+  const recentAttemptsMap = useMemo(() => {
+    const map = new Map<number, number>();
+    submissions.forEach((s: any) => {
+      const examId = s.exam?.eId;
+      if (!examId) return;
+      const time = new Date(s.sSubmit_time).getTime();
+      const existing = map.get(examId);
+      if (!existing || time > existing) {
+        map.set(examId, time);
+      }
+    });
+    return map;
+  }, [submissions]);
+
+  const filtered = exams
+    .filter((e) =>
+      debouncedSearch.trim() === "" ||
+      e.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      (e.description ?? "").toLowerCase().includes(debouncedSearch.toLowerCase())
+    )
+    .filter((e) => {
+      if (durationFilter === "short") return e.duration > 0 && e.duration <= 90;
+      if (durationFilter === "long")  return e.duration > 90;
+      if (durationFilter === "attempted") return recentAttemptsMap.has(e.id);
+      if (durationFilter === "unattempted") return !recentAttemptsMap.has(e.id);
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === "title_asc")      return a.title.localeCompare(b.title);
+      if (sortBy === "title_desc")     return b.title.localeCompare(a.title);
+      if (sortBy === "duration_asc")   return a.duration - b.duration;
+      if (sortBy === "duration_desc")  return b.duration - a.duration;
+      if (sortBy === "recent_attempt") {
+        const timeA = recentAttemptsMap.get(a.id) ?? 0;
+        const timeB = recentAttemptsMap.get(b.id) ?? 0;
+        if (timeA !== timeB) return timeB - timeA;
+        return b.id - a.id;
+      }
+      return 0;
+    });
 
   const vstepCount = exams.filter((e) => e.type === "VSTEP").length;
   const ieltsCount = exams.filter((e) => e.type === "IELTS").length;
@@ -704,20 +898,86 @@ export function StudentExamBrowser() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           {/* Search */}
           <div className="relative flex-1 w-full">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-colors duration-200"
+              style={{ color: showDropdown || search ? PURPLE : '#9CA3AF' }}
+            />
             <input
+              ref={inputRef}
               type="text"
               placeholder="Tìm kiếm đề thi..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl outline-none text-sm font-medium transition-all"
+              onFocus={() => setShowDropdown(true)}
+              onBlur={() => setTimeout(() => setShowDropdown(false), 180)}
+              onKeyDown={handleSearchKeyDown}
+              className="w-full pl-10 py-2.5 rounded-xl outline-none text-sm font-medium transition-all duration-200"
               style={{
+                paddingRight: search ? 36 : 64,
                 background: "#fff",
-                border: "1.5px solid #DDD6FE",
+                border: `1.5px solid ${showDropdown || search ? PURPLE : '#DDD6FE'}`,
                 color: "#1A1040",
-                boxShadow: "0 1px 4px rgba(124,58,237,0.06)",
+                boxShadow: showDropdown || search
+                  ? `0 0 0 3px ${PURPLE}18, 0 1px 4px rgba(124,58,237,0.06)`
+                  : '0 1px 4px rgba(124,58,237,0.06)',
               }}
             />
+            {/* Clear button */}
+            {search ? (
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); setSearch(''); inputRef.current?.focus(); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full transition-all duration-150 hover:scale-110"
+                style={{ background: '#E5E7EB' }}
+              >
+                <X className="w-3 h-3 text-gray-500" />
+              </button>
+            ) : (
+              /* Keyboard shortcut hint */
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none select-none">
+                <kbd className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: '#F3F4F6', color: '#9CA3AF', border: '1px solid #E5E7EB', fontFamily: 'monospace' }}>
+                  /
+                </kbd>
+              </span>
+            )}
+
+            {/* Recent searches dropdown */}
+            {showDropdown && !search && recentSearches.length > 0 && (
+              <div
+                className="absolute top-full left-0 right-0 mt-1.5 rounded-xl overflow-hidden z-50"
+                style={{ background: '#fff', border: '1.5px solid #DDD6FE', boxShadow: '0 8px 24px rgba(124,58,237,0.12)' }}
+              >
+                <div className="flex items-center justify-between px-3.5 pt-2.5 pb-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                    Tìm kiếm gần đây
+                  </span>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); clearAllRecents(); }}
+                    className="text-[10px] font-semibold text-slate-400 hover:text-red-400 transition-colors"
+                  >
+                    Xóa tất cả
+                  </button>
+                </div>
+                {recentSearches.map((q) => (
+                  <div
+                    key={q}
+                    className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-purple-50 cursor-pointer transition-colors group"
+                    onMouseDown={(e) => { e.preventDefault(); setSearch(q); addRecent(q); setShowDropdown(false); }}
+                  >
+                    <Clock className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#C4B5FD' }} />
+                    <span className="flex-1 text-sm text-slate-700 font-medium truncate">{q}</span>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); removeRecent(q); }}
+                      className="w-5 h-5 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-slate-200"
+                    >
+                      <X className="w-3 h-3 text-slate-400" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Tab switcher */}
@@ -731,7 +991,9 @@ export function StudentExamBrowser() {
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all duration-200"
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all duration-200 active:scale-95 ${
+                    active ? "" : "hover:bg-purple-50 hover:text-purple-600"
+                  }`}
                   style={{
                     background: active ? tab.color : "transparent",
                     color: active ? "#fff" : "#6B7280",
@@ -753,6 +1015,55 @@ export function StudentExamBrowser() {
                 </button>
               );
             })}
+          </div>
+
+          {/* Duration & Attempt filter */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <Filter className="w-3.5 h-3.5 text-slate-400" />
+            {([
+              { key: "all",   label: "Tất cả" },
+              { key: "short", label: "≤ 90 phút" },
+              { key: "long",  label: "> 90 phút" },
+              { key: "attempted", label: "Đã làm" },
+              { key: "unattempted", label: "Chưa làm" },
+            ] as { key: DurationFilter; label: string }[]).map((d) => (
+              <button
+                key={d.key}
+                onClick={() => setDurationFilter(d.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 active:scale-95 ${
+                  durationFilter === d.key
+                    ? "text-white shadow-sm"
+                    : "bg-white text-gray-500 border-purple-200 hover:border-purple-400 hover:text-purple-600 hover:-translate-y-0.5 hover:shadow-sm"
+                }`}
+                style={durationFilter === d.key ? {
+                  background: PURPLE,
+                  borderColor: PURPLE,
+                } : undefined}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Sort */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortType)}
+              className="pl-2 pr-6 py-1.5 rounded-lg text-xs font-semibold outline-none appearance-none cursor-pointer transition-all border border-purple-200 hover:border-purple-400 hover:shadow-sm hover:-translate-y-0.5 active:scale-95"
+              style={{
+                background: "#fff",
+                color: sortBy !== "default" ? PURPLE : "#6B7280",
+              }}
+            >
+              <option value="default">Mặc định</option>
+              <option value="recent_attempt">Vừa làm (Gần nhất)</option>
+              <option value="title_asc">Tên A → Z</option>
+              <option value="title_desc">Tên Z → A</option>
+              <option value="duration_asc">Thời gian ↑</option>
+              <option value="duration_desc">Thời gian ↓</option>
+            </select>
           </div>
         </div>
       </div>
@@ -807,7 +1118,13 @@ export function StudentExamBrowser() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filtered.map((exam, idx) => (
-              <ExamCard key={exam.id} exam={exam} idx={idx} />
+              <ExamCard
+                key={exam.id}
+                exam={exam}
+                idx={idx}
+                highlight={debouncedSearch}
+                recentAttemptTime={recentAttemptsMap.get(exam.id)}
+              />
             ))}
           </div>
         )}

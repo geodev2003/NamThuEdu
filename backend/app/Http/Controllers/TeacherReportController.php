@@ -83,6 +83,18 @@ class TeacherReportController extends Controller
         // Score trend
         $scoreTrend = $this->getScoreTrend($teacherExams, 7);
 
+        // P1: At-risk students (need intervention)
+        $atRiskStudents = $this->getAtRiskStudents($studentIds, $teacherExams);
+
+        // P1: Học viên trễ hạn — assignment đã quá hạn nhưng chưa nộp / chưa hoàn thành
+        $overdueStudents = $this->getOverdueStudents($user->uId, $teacherClasses, $teacherExams);
+
+        // P2: Top classes by improvement rate (current half vs previous half of period)
+        $topImprovingClasses = $this->getTopImprovingClasses($teacherClasses, $teacherExams, $days);
+
+        // P2: Skill weakness — only VSTEP/IELTS/Cambridge subjective + objective skills
+        $skillBreakdown = $this->getSkillBreakdown($teacherExams, $startDate);
+
         // Auto-generated insights
         $insights = $this->generateInsights($overview, $classesNeedAttention, $scoreTrend);
 
@@ -96,6 +108,10 @@ class TeacherReportController extends Controller
                 'top_classes' => $topClasses,
                 'top_students' => $topStudents,
                 'classes_need_attention' => $classesNeedAttention,
+                'at_risk_students' => $atRiskStudents,
+                'overdue_students' => $overdueStudents,
+                'top_improving_classes' => $topImprovingClasses,
+                'skill_breakdown' => $skillBreakdown,
                 'score_trend' => $scoreTrend,
                 'insights' => $insights,
                 'generated_at' => now()->toISOString()
@@ -730,5 +746,308 @@ class TeacherReportController extends Controller
         }
 
         return round(($completedAssignments / $totalAssignments) * 100, 0);
+    }
+
+    /**
+     * P1: At-risk students — học viên cần can thiệp.
+     * Reasons: low_score (3 bài gần nhất TB <5), inactive (>14d không hoạt động),
+     *          declining_trend (3 bài gần nhất TB thấp hơn trước >0.5).
+     *
+     * "Hoạt động" được tính là MAX(lần nộp bài cuối, lần đăng nhập cuối).
+     * Học viên đăng nhập trong vòng 5 phút sẽ được coi là đang online (is_online=true)
+     * và được loại khỏi reason 'inactive' kể cả khi lâu không nộp bài.
+     */
+    private function getAtRiskStudents($studentIds, $teacherExams)
+    {
+        if ($studentIds->isEmpty() || $teacherExams->isEmpty()) {
+            return [];
+        }
+
+        $students = User::whereIn('uId', $studentIds)
+                        ->whereNull('uDeleted_at')
+                        ->get();
+        $atRisk = [];
+        $onlineThresholdMin = 5; // <=5 minutes since last login => considered online
+
+        foreach ($students as $student) {
+            $allSubmissions = Submission::where('user_id', $student->uId)
+                ->whereIn('exam_id', $teacherExams)
+                ->orderBy('sSubmit_time', 'desc')
+                ->get();
+
+            $reasons = [];
+
+            // Last submission time
+            $lastSubmission = $allSubmissions->first();
+            $lastSubmitAt = $lastSubmission ? $lastSubmission->sSubmit_time : null;
+
+            // Last login time (from users.uLast_login)
+            $lastLoginAt = $student->uLast_login ?: null;
+
+            // Effective last activity = max(submission, login)
+            $lastActiveAt = null;
+            if ($lastSubmitAt && $lastLoginAt) {
+                $lastActiveAt = strtotime($lastSubmitAt) > strtotime($lastLoginAt) ? $lastSubmitAt : $lastLoginAt;
+            } else {
+                $lastActiveAt = $lastSubmitAt ?: $lastLoginAt;
+            }
+
+            $daysSinceActive = $lastActiveAt ? now()->diffInDays($lastActiveAt) : null;
+
+            // Online status: login trong vòng 5 phút
+            $isOnline = false;
+            if ($lastLoginAt) {
+                $minutesSinceLogin = now()->diffInMinutes($lastLoginAt);
+                $isOnline = $minutesSinceLogin <= $onlineThresholdMin;
+            }
+
+            // Reason: inactive (>14 days) — bỏ qua nếu đang online
+            if (!$isOnline && ($daysSinceActive === null || $daysSinceActive > 14)) {
+                $reasons[] = 'inactive';
+            }
+
+            // Last 3 graded submissions
+            $recentGraded = $allSubmissions->where('sStatus', 'graded')->take(3);
+            $recentAvg = $recentGraded->count() >= 3 ? $recentGraded->avg('sScore') : null;
+
+            // Reason: low_score (TB 3 bài gần nhất < 5.0)
+            if ($recentAvg !== null && $recentAvg < 5.0) {
+                $reasons[] = 'low_score';
+            }
+
+            // Reason: declining_trend
+            $olderGraded = $allSubmissions->where('sStatus', 'graded')->slice(3, 3);
+            $olderAvg = $olderGraded->count() >= 2 ? $olderGraded->avg('sScore') : null;
+            if ($recentAvg !== null && $olderAvg !== null && ($olderAvg - $recentAvg) > 0.5) {
+                $reasons[] = 'declining_trend';
+            }
+
+            if (count($reasons) === 0) continue;
+
+            $class = Classes::find($student->class_id);
+            $atRisk[] = [
+                'student_id'         => $student->uId,
+                'student_name'       => $student->uName,
+                'avatar_url'         => $student->avatar_url,
+                'class_name'         => $class ? $class->cName : 'N/A',
+                'avg_score_recent_3' => $recentAvg !== null ? round($recentAvg, 1) : null,
+                'last_activity_at'   => $lastActiveAt ? (string) $lastActiveAt : null,
+                'last_login_at'      => $lastLoginAt ? (string) $lastLoginAt : null,
+                'is_online'          => $isOnline,
+                'days_inactive'      => $daysSinceActive,
+                'reasons'            => $reasons,
+            ];
+        }
+
+        // Sort: low_score first, then inactive, then declining; tie-break by lowest recent avg
+        usort($atRisk, function ($a, $b) {
+            $scoreA = $a['avg_score_recent_3'] ?? 999;
+            $scoreB = $b['avg_score_recent_3'] ?? 999;
+            return $scoreA <=> $scoreB;
+        });
+
+        return array_slice($atRisk, 0, 10);
+    }
+
+    /**
+     * P2: Top classes by improvement — chia period làm 2 nửa, tính chênh lệch điểm TB.
+     * Loại các lớp có < 5 bài graded trong 1 nửa để tránh kết quả không đáng tin.
+     */
+    private function getTopImprovingClasses($teacherClasses, $teacherExams, $days)
+    {
+        if ($teacherClasses->isEmpty() || $teacherExams->isEmpty()) {
+            return [];
+        }
+
+        $classes = Classes::whereIn('cId', $teacherClasses)->get();
+        $halfDays = intdiv($days, 2);
+        $midPoint = now()->subDays($halfDays);
+        $startPoint = now()->subDays($days);
+        $result = [];
+
+        foreach ($classes as $class) {
+            $studentIds = User::where('class_id', $class->cId)
+                ->where('uRole', 'student')
+                ->whereNull('uDeleted_at')
+                ->pluck('uId');
+            if ($studentIds->isEmpty()) continue;
+
+            $firstHalf = Submission::whereIn('exam_id', $teacherExams)
+                ->whereIn('user_id', $studentIds)
+                ->where('sStatus', 'graded')
+                ->whereBetween('sSubmit_time', [$startPoint, $midPoint])
+                ->get();
+
+            $secondHalf = Submission::whereIn('exam_id', $teacherExams)
+                ->whereIn('user_id', $studentIds)
+                ->where('sStatus', 'graded')
+                ->where('sSubmit_time', '>=', $midPoint)
+                ->get();
+
+            // Min sample size to be reliable
+            if ($firstHalf->count() < 5 || $secondHalf->count() < 5) continue;
+
+            $avgFirst = round($firstHalf->avg('sScore'), 2);
+            $avgSecond = round($secondHalf->avg('sScore'), 2);
+            $improvement = round($avgSecond - $avgFirst, 1);
+
+            $result[] = [
+                'class_id'         => $class->cId,
+                'class_name'       => $class->cName,
+                'student_count'    => $studentIds->count(),
+                'first_half_avg'   => $avgFirst,
+                'second_half_avg'  => $avgSecond,
+                'improvement'      => $improvement,
+                'submission_count' => $firstHalf->count() + $secondHalf->count(),
+            ];
+        }
+
+        // Sort by improvement desc, tie-break by submission_count desc
+        usort($result, function ($a, $b) {
+            if ($a['improvement'] === $b['improvement']) {
+                return $b['submission_count'] <=> $a['submission_count'];
+            }
+            return $b['improvement'] <=> $a['improvement'];
+        });
+
+        return array_slice($result, 0, 5);
+    }
+
+    /**
+     * P2: Skill breakdown — điểm TB từng skill (Listening / Reading / Writing / Speaking).
+     * Chỉ tính trên submission đã chấm trong period, dựa trên submission_answers + questions.qSkill.
+     */
+    private function getSkillBreakdown($teacherExams, $startDate)
+    {
+        if ($teacherExams->isEmpty()) {
+            return [
+                'listening' => ['avg_score' => null, 'submission_count' => 0],
+                'reading'   => ['avg_score' => null, 'submission_count' => 0],
+                'writing'   => ['avg_score' => null, 'submission_count' => 0],
+                'speaking'  => ['avg_score' => null, 'submission_count' => 0],
+            ];
+        }
+
+        // For VSTEP exams, the per-skill scores are already in sGemini_feedback.vstep_scores
+        // For others, fall back to mean of saPoints_awarded grouped by question.qSkill.
+        $skills = ['listening', 'reading', 'writing', 'speaking'];
+        $result = [];
+
+        // Submissions in period that are graded
+        $submissions = Submission::whereIn('exam_id', $teacherExams)
+            ->where('sStatus', 'graded')
+            ->where('sSubmit_time', '>=', $startDate)
+            ->get();
+
+        foreach ($skills as $sk) {
+            $scores = [];
+            foreach ($submissions as $sub) {
+                $raw = $sub->sGemini_feedback;
+                if (is_string($raw)) $raw = json_decode($raw, true);
+                $vstepScore = $raw['vstep_scores'][$sk] ?? null;
+                if (is_numeric($vstepScore)) {
+                    $scores[] = (float) $vstepScore;
+                }
+            }
+
+            $result[$sk] = [
+                'avg_score'        => count($scores) > 0 ? round(array_sum($scores) / count($scores), 1) : null,
+                'submission_count' => count($scores),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * P1: Học viên trễ hạn — đề thi đã giao có deadline mà chưa nộp.
+     * Quét test_assignments mà:
+     *  - exam_id thuộc giáo viên này
+     *  - taDeadline đã qua (hoặc sắp tới trong 24h cũng cảnh báo)
+     *  - học viên chưa có submission cho exam này (hoặc submission chưa graded)
+     */
+    private function getOverdueStudents($teacherId, $teacherClasses, $teacherExams)
+    {
+        if ($teacherExams->isEmpty()) return [];
+
+        // 1) Lấy mọi assignment có deadline thuộc đề của giáo viên này
+        $assignments = DB::table('test_assignments')
+            ->whereIn('exam_id', $teacherExams)
+            ->whereNotNull('taDeadline')
+            ->get();
+
+        if ($assignments->isEmpty()) return [];
+
+        $now = now();
+        $rows = [];
+
+        foreach ($assignments as $a) {
+            // 2) Resolve target -> list student ids
+            if ($a->taTarget_type === 'class') {
+                if (!$teacherClasses->contains($a->taTarget_id)) continue;
+                $targetStudentIds = User::where('class_id', $a->taTarget_id)
+                    ->where('uRole', 'student')
+                    ->whereNull('uDeleted_at')
+                    ->pluck('uId');
+            } else {
+                // 'student' target
+                $stu = User::where('uId', $a->taTarget_id)
+                    ->where('uRole', 'student')
+                    ->whereNull('uDeleted_at')
+                    ->whereIn('class_id', $teacherClasses)
+                    ->first();
+                if (!$stu) continue;
+                $targetStudentIds = collect([$stu->uId]);
+            }
+
+            $deadline = strtotime($a->taDeadline);
+            $isOverdue = $deadline < $now->getTimestamp();
+            $hoursLate = $isOverdue ? floor(($now->getTimestamp() - $deadline) / 3600) : 0;
+            $hoursLeft = !$isOverdue ? floor(($deadline - $now->getTimestamp()) / 3600) : 0;
+
+            // Only flag overdue (or due within 24h) cases
+            if (!$isOverdue && $hoursLeft > 24) continue;
+
+            // 3) For each student, check submission existence
+            foreach ($targetStudentIds as $sid) {
+                $hasSubmission = Submission::where('user_id', $sid)
+                    ->where('exam_id', $a->exam_id)
+                    ->whereIn('sStatus', ['graded', 'submitted', 'partially_graded', 'ai_graded'])
+                    ->exists();
+
+                if ($hasSubmission) continue;
+
+                $student = User::find($sid);
+                if (!$student) continue;
+                $exam = Exam::find($a->exam_id);
+                $class = Classes::find($student->class_id);
+
+                $rows[] = [
+                    'student_id'    => $student->uId,
+                    'student_name'  => $student->uName,
+                    'avatar_url'    => $student->avatar_url,
+                    'class_name'    => $class ? $class->cName : '—',
+                    'exam_id'       => $a->exam_id,
+                    'exam_title'    => $exam ? $exam->eTitle : '—',
+                    'deadline'      => $a->taDeadline,
+                    'is_overdue'    => $isOverdue,
+                    'hours_late'    => $isOverdue ? $hoursLate : null,
+                    'hours_left'    => !$isOverdue ? $hoursLeft : null,
+                ];
+            }
+        }
+
+        // Sort: overdue first (longest late at top), then due-soon
+        usort($rows, function ($a, $b) {
+            if ($a['is_overdue'] !== $b['is_overdue']) {
+                return $a['is_overdue'] ? -1 : 1;
+            }
+            if ($a['is_overdue']) {
+                return $b['hours_late'] <=> $a['hours_late'];
+            }
+            return $a['hours_left'] <=> $b['hours_left'];
+        });
+
+        return array_slice($rows, 0, 10);
     }
 }

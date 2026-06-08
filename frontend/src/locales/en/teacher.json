@@ -178,8 +178,9 @@
         "new": "New",
         "updatedAt": "Updated At",
         "submissionTime": "Submission Time",
-        "aiScore": "AI Score",
-        "review": "Review"
+        "aiScore": "Score",
+        "review": "Review",
+        "gradedAt": "Graded At"
       },
       "refreshing": "Refreshing...",
       "queuePage": {
@@ -384,7 +385,7 @@
         "feedbackPlaceholder": "Write feedback for the student... (optional)",
         "score": "Score",
         "status": "Review Status",
-        "aiScore": "AI Score",
+        "aiScore": "Graded Score",
         "noAiScore": "No detailed AI score",
         "onlyTotal": "Total score only:",
         "adjustScore": "Adjust Scores (optional)",

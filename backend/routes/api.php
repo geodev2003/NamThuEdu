@@ -9,6 +9,7 @@ use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\ExamController;
+use App\Http\Controllers\IeltsExamController;
 use App\Http\Controllers\ExamTemplateController;
 use App\Http\Controllers\TestAssignmentController;
 use App\Http\Controllers\GradingController;
@@ -26,11 +27,12 @@ use App\Http\Controllers\TestGamificationController;
 use App\Http\Controllers\GamificationTestController;
 use App\Http\Controllers\StudentAnalyticsController;
 use App\Http\Controllers\FileUploadController;
-use App\Http\Controllers\AddressProxyController;
+use App\Http\Controllers\GeminiPdfController;
 use App\Http\Controllers\AgeGroupContentController;
 use App\Http\Controllers\AdminSystemController;
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\PushController;
+use App\Http\Controllers\ExamHighlightController;
 
 /*
 |--------------------------------------------------------------------------
@@ -134,6 +136,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/profile', [UserController::class, 'updateProfile']);
         Route::post('/avatar', [UserController::class, 'uploadAvatar']);
         Route::delete('/avatar', [UserController::class, 'removeAvatar']);
+        Route::post('/change-password', [UserController::class, 'changePassword']);
+        Route::get('/sessions', [UserController::class, 'getSessions']);
+        Route::delete('/sessions/{id}', [UserController::class, 'logoutSession']);
+        Route::post('/request-delete', [UserController::class, 'requestDeleteAccount']);
+        Route::post('/cancel-delete', [UserController::class, 'cancelDeleteAccount']);
+        Route::get('/notification-settings', [UserController::class, 'getNotificationSettings']);
+        Route::put('/notification-settings', [UserController::class, 'updateNotificationSettings']);
         Route::get('/age-group', [AgeGroupController::class, 'getAgeGroup']);
         Route::post('/age-group', [AgeGroupController::class, 'updateAgeGroup']);
         Route::get('/theme-preference', [AgeGroupController::class, 'getThemePreference']);
@@ -166,7 +175,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/student/{id}', [UserController::class, 'update']); // _method=PUT spoofing for file uploads
         Route::delete('/student/{id}', [UserController::class, 'destroyStudent']); // Soft delete
         Route::post('/student/{id}/restore', [UserController::class, 'restoreStudent']); // Restore deleted
-        Route::get('/student/{id}/view-password', [UserController::class, 'viewStudentPassword']); // View password
         Route::post('/student/{id}/reset-password', [UserController::class, 'resetStudentPassword']); // Reset password
         Route::delete('/student/{id}/permanent', [UserController::class, 'permanentDeleteStudent']); // Permanent delete
         Route::get('/students/statistics', [UserController::class, 'studentStatistics']);
@@ -233,6 +241,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/exams/{examId}/vstep/parts/{partNumber}', [ExamController::class, 'saveVstepPart']);
         Route::post('/exams/{examId}/vstep/publish', [ExamController::class, 'publishVstepExam']);
         Route::get('/exams/{examId}/vstep/load', [ExamController::class, 'loadVstepExam']);
+        
+        // IELTS-specific routes
+        Route::post('/ielts/parse-pdf', [GeminiPdfController::class, 'parsePdf']); // Gemini PDF → JSON
+        Route::post('/exams/{examId}/ielts/listening/sections/{sectionNumber}/audio', [ExamController::class, 'uploadIeltsListeningAudio']);
+
+        // ── IELTS exam CRUD (NEW: 1 đề = 1 skill) ──────────────────────────────
+        Route::post('/exams/ielts',                       [IeltsExamController::class, 'createDraft']);
+        Route::put('/exams/{examId}/ielts',               [IeltsExamController::class, 'updateDraft']);
+        Route::post('/exams/{examId}/ielts/publish',      [IeltsExamController::class, 'publish']);
+        Route::get('/exams/{examId}/ielts/draft',         [IeltsExamController::class, 'getDraft']);
         
         // Listening
         Route::post('/exams/{examId}/vstep/listening/parts/{partNumber}', [ExamController::class, 'saveVstepListeningPart']);
@@ -321,6 +339,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/exams/{examId}/vstep/writing',   [StudentTestController::class, 'loadVstepWriting']);
         Route::get('/exams/{examId}/vstep/speaking',  [StudentTestController::class, 'loadVstepSpeaking']);
 
+        // IELTS exam structure (for teacher preview/review)
+        Route::get('/exams/{examId}/ielts/listening', [StudentTestController::class, 'loadIeltsListening']);
+        Route::get('/exams/{examId}/ielts/reading',   [StudentTestController::class, 'loadIeltsReading']);
+        Route::get('/exams/{examId}/ielts/writing',   [StudentTestController::class, 'loadIeltsWriting']);
+        Route::get('/exams/{examId}/ielts/speaking',  [StudentTestController::class, 'loadIeltsSpeaking']);
+
         // Live Monitoring
         Route::get('/dashboard/active-sessions', [MonitoringController::class, 'activeSessions']);
         Route::get('/dashboard/monitoring-stats', [MonitoringController::class, 'stats']);
@@ -334,8 +358,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/submissions/{id}/grade', [GradingController::class, 'grade']);
         Route::post('/submissions/{id}/auto-grade', [GradingController::class, 'autoGrade']);
         Route::post('/submissions/{id}/detailed-grade', [GradingController::class, 'detailedGrade']);
+        Route::post('/questions/{questionId}/override-correct-answer', [GradingController::class, 'overrideCorrectAnswer']);
         Route::get('/classes/{classId}/report', [GradingController::class, 'classReport']);
         Route::get('/grading/statistics', [GradingController::class, 'gradingStatistics']);
+
+        // AI-Assisted Grading Review
+        Route::post('/submissions/{id}/ai-grade',                     [App\Http\Controllers\GradingReviewController::class, 'triggerAiGrade']);
+        Route::get ('/submissions/{id}/ai-status',                    [App\Http\Controllers\GradingReviewController::class, 'aiStatus']);
+        Route::post('/submissions/{id}/answers/{ansId}/regrade',       [App\Http\Controllers\GradingReviewController::class, 'regradeAnswer']);
+        Route::post('/submissions/{id}/answers/{ansId}/accept-ai',     [App\Http\Controllers\GradingReviewController::class, 'acceptAi']);
+        Route::post('/submissions/{id}/answers/{ansId}/teacher-grade', [App\Http\Controllers\GradingReviewController::class, 'teacherGrade']);
+        Route::post('/submissions/{id}/save-all',                     [App\Http\Controllers\GradingReviewController::class, 'saveAll']);
+        Route::get ('/submissions/{id}/grading-history',               [App\Http\Controllers\GradingReviewController::class, 'history']);
 
         // Teacher Reports
         Route::get('/reports/overview', [TeacherReportController::class, 'overview']);
@@ -378,6 +412,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/exams/{examId}/vstep/reading',   [StudentTestController::class, 'loadVstepReading']);
         Route::get('/exams/{examId}/vstep/writing',   [StudentTestController::class, 'loadVstepWriting']);
         Route::get('/exams/{examId}/vstep/speaking',  [StudentTestController::class, 'loadVstepSpeaking']);
+
+        // IELTS direct exam (load by skill — same `start-direct` endpoint reused for session creation)
+        Route::get('/exams/{examId}/ielts/detail',    [IeltsExamController::class, 'studentDetail']);
+        Route::get('/exams/{examId}/ielts/listening', [StudentTestController::class, 'loadIeltsListening']);
+        Route::get('/exams/{examId}/ielts/reading',   [StudentTestController::class, 'loadIeltsReading']);
+        Route::get('/exams/{examId}/ielts/writing',   [StudentTestController::class, 'loadIeltsWriting']);
+        Route::get('/exams/{examId}/ielts/speaking',  [StudentTestController::class, 'loadIeltsSpeaking']);
+
         Route::post('/submissions/{submissionId}/speaking/{partNumber}/upload', [StudentTestController::class, 'uploadSpeakingAudio'])->where(['submissionId' => '[0-9]+', 'partNumber' => '[0-9]+']);
         Route::post('/exams/{examId}/checkin-photo', [StudentTestController::class, 'uploadCheckinPhoto'])->where('examId', '[0-9]+');
 
@@ -426,8 +468,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/profile/avatar', [StudentProfileController::class, 'uploadAvatar']);
         Route::delete('/profile/avatar', [StudentProfileController::class, 'deleteAvatar']);
         Route::put('/profile/password', [StudentProfileController::class, 'changePassword']);
+        Route::get('/profile/sessions', [StudentProfileController::class, 'getSessions']);
+        Route::delete('/profile/sessions/{id}', [StudentProfileController::class, 'revokeSession']);
+        Route::delete('/profile/sessions', [StudentProfileController::class, 'revokeAllSessions']);
         Route::get('/settings', [StudentProfileController::class, 'getSettings']);
         Route::put('/settings', [StudentProfileController::class, 'updateSettings']);
+
+        // Exam Highlights & Vocab
+        Route::get('/exams/{examId}/highlights', [ExamHighlightController::class, 'getHighlights']);
+        Route::post('/exams/{examId}/highlights', [ExamHighlightController::class, 'saveHighlight']);
+        Route::delete('/exams/{examId}/highlights/{highlightId}', [ExamHighlightController::class, 'deleteHighlight']);
+        Route::get('/exams/{examId}/vocab', [ExamHighlightController::class, 'getVocab']);
+        Route::post('/exams/{examId}/vocab', [ExamHighlightController::class, 'saveVocab']);
+        Route::delete('/exams/{examId}/vocab/{vocabId}', [ExamHighlightController::class, 'deleteVocab']);
         
         // Courses & Classes
         Route::get('/courses', [StudentCourseController::class, 'getCourses']);

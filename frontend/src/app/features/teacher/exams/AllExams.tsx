@@ -17,10 +17,21 @@ import {
   Baby,
   GraduationCap,
   BookOpen,
-  Briefcase,
+  Check,
+  CheckSquare,
+  Square,
+  X,
+  User,
+  Users,
 } from "lucide-react";
 import { getKidsExams, deleteKidsExam } from "../../../../services/kidsExamApi";
 import { api } from "../../../../services/api";
+import { useToastContext } from "../../../../contexts/ToastContext";
+import {
+  getVstepFullExams,
+  getIeltsFullExams,
+  getAdultExams,
+} from "../../../../services/examGroupsApi";
 
 interface KidsExam {
   eId: number;
@@ -31,6 +42,8 @@ interface KidsExam {
   eCreated_at: string;
   eType?: string;
   eSkill?: string;
+  ielts_skill?: string;
+  ielts_test_type?: string;
   age_group?: string;
   kids_exam_config?: {
     exam_type: string;
@@ -39,19 +52,46 @@ interface KidsExam {
     age_range: string;
   };
   questions?: any[];
+  _group?: "vstep" | "ielts" | "adult" | "kids" | "teens";
+  _is_owner?: boolean;
+  _owner_name?: string;
+  eTeacher_id?: number;
+  eIs_private?: boolean;
 }
 
 export function AllExams() {
   usePageTitle(PAGE_TITLES.TEACHER_EXAMS);
+  const toast = useToastContext();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exams, setExams] = useState<KidsExam[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterAgeGroup, setFilterAgeGroup] = useState<string>("all");
+  const [filterOwner, setFilterOwner] = useState<"all" | "mine" | "others">("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "published" | "draft">("all");
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const itemsPerPage = 20;
+
+  // Toggle chọn 1 exam
+  const toggleSelect = (examId: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(examId)) {
+        next.delete(examId);
+      } else {
+        next.add(examId);
+      }
+      return next;
+    });
+  };
+
+  // Bỏ chọn tất cả
+  const clearSelection = () => setSelectedIds(new Set());
 
   useEffect(() => {
     loadExams();
@@ -61,20 +101,44 @@ export function AllExams() {
     try {
       setLoading(true);
       setError(null);
-      // Fetch song song: Kids exams + tất cả exams (VSTEP, IELTS, ...)
-      const [kidsRes, allRes] = await Promise.all([
+      // Fetch 4 nhóm song song:
+      // 1. VSTEP Full (đề đầy đủ 4 kỹ năng)
+      // 2. IELTS Full (đề đầy đủ 4 sections)
+      // 3. Adult (General, Business, TOEIC...)
+      // 4. Kids (YLE Starters/Movers/Flyers)
+      // 5. Teens (để trống cho sau)
+      const [vstepRes, ieltsRes, adultRes, kidsRes, teensRes] = await Promise.all([
+        getVstepFullExams().catch(() => []),
+        getIeltsFullExams().catch(() => []),
+        getAdultExams().catch(() => []),
         getKidsExams().catch(() => []),
-        api.get("/teacher/exams").then((r) => r.data?.data || []).catch(() => []),
+        api.get("/teacher/exams", { params: { group: "teens" } })
+          .then((r) => r.data?.data || []).catch(() => []),
       ]);
-      const kidsList: KidsExam[] = Array.isArray(kidsRes) ? kidsRes : (kidsRes?.data || []);
-      const allList: KidsExam[] = Array.isArray(allRes) ? allRes : [];
-      // Merge & dedupe theo eId (kids exam có thêm kids_exam_config)
-      const map = new Map<number, KidsExam>();
-      allList.forEach((e) => map.set(e.eId, e));
-      kidsList.forEach((e) => map.set(e.eId, { ...map.get(e.eId), ...e }));
-      const merged = Array.from(map.values()).sort(
-        (a, b) => new Date(b.eCreated_at).getTime() - new Date(a.eCreated_at).getTime()
-      );
+
+      const vstepList: KidsExam[] = Array.isArray(vstepRes) ? vstepRes : [];
+      const ieltsList: KidsExam[] = Array.isArray(ieltsRes) ? ieltsRes : [];
+      const adultList: KidsExam[] = Array.isArray(adultRes) ? adultRes : [];
+      const kidsList: KidsExam[] = Array.isArray(kidsRes) ? kidsRes : [];
+      const teensList: KidsExam[] = Array.isArray(teensRes) ? teensRes : [];
+
+      // Gắn nhãn group cho từng exam (để dùng cho filter/stats)
+      const tagged = [
+        ...vstepList.map((e) => ({ ...e, _group: "vstep" as const })),
+        ...ieltsList.map((e) => ({ ...e, _group: "ielts" as const })),
+        ...adultList.map((e) => ({ ...e, _group: "adult" as const })),
+        ...kidsList.map((e) => ({ ...e, _group: "kids" as const })),
+        ...teensList.map((e) => ({ ...e, _group: "teens" as const })),
+      ];
+
+      // Lọc bỏ exam không hợp lệ + sort theo ngày tạo
+      const merged = tagged
+        .filter((e) => e && e.eId && e.eTitle)
+        .sort(
+          (a, b) =>
+            new Date(b.eCreated_at).getTime() -
+            new Date(a.eCreated_at).getTime()
+        );
       setExams(merged);
     } catch (err: any) {
       console.error("Failed to load exams:", err);
@@ -87,74 +151,227 @@ export function AllExams() {
   const handleDelete = async (examId: number) => {
     try {
       const exam = exams.find((e) => e.eId === examId);
-      if (exam?.eType && exam.eType !== "GENERAL") {
-        // VSTEP / IELTS ... dùng endpoint exam thường
-        await api.delete(`/teacher/exams/${examId}`);
-      } else {
-        await deleteKidsExam(examId);
+      if (!exam) {
+        // Đề thi không tồn tại trong danh sách local → xóa khỏi UI
+        setExams((prev) => prev.filter((e) => e.eId !== examId));
+        setDeleteConfirm(null);
+        // Vẫn refetch để đồng bộ
+        await loadExams();
+        return;
       }
-      setExams(exams.filter((e) => e.eId !== examId));
+
+      // Xác định endpoint dựa trên age_group hoặc kids_exam_config
+      const isKidsExam =
+        (exam as any).age_group === "kids" || exam.kids_exam_config !== undefined;
+
+      if (isKidsExam) {
+        await deleteKidsExam(examId);
+      } else {
+        // VSTEP / IELTS / General ...
+        await api.delete(`/teacher/exams/${examId}`);
+      }
+
+      // Cập nhật local state ngay
+      setExams((prev) => prev.filter((e) => e.eId !== examId));
       setDeleteConfirm(null);
+
+      // ✅ Toast thành công
+      toast.success(`Đã xóa đề thi "${exam.eTitle}" thành công!`);
+
+      // Refetch để đảm bảo đồng bộ với server (loại bỏ các đề thi khác đã bị xóa trước)
+      await loadExams();
     } catch (err: any) {
-      alert("Không thể xóa đề thi: " + (err.response?.data?.message || err.message));
+      const status = err?.response?.status;
+      if (status === 404) {
+        // Đề thi đã bị xóa trước đó → xóa khỏi UI + refetch để đồng bộ các đề thi khác
+        setExams((prev) => prev.filter((e) => e.eId !== examId));
+        setDeleteConfirm(null);
+        toast.info("Đề thi đã được xóa trước đó - đang đồng bộ danh sách");
+        // Refetch quan trọng: các đề thi khác đã xóa trên server sẽ bị loại bỏ
+        await loadExams();
+      } else {
+        toast.error(
+          "Không thể xóa đề thi: " + (err.response?.data?.message || err.message)
+        );
+      }
     }
   };
 
-  // Filter exams
-  const filteredExams = exams.filter(exam => {
-    const matchesSearch = exam.eTitle.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = filterType === "all" || exam.kids_exam_config?.exam_type === filterType;
-    
-    // Age group filter
-    let matchesAgeGroup = filterAgeGroup === "all";
-    if (!matchesAgeGroup) {
-      // Prefer exam.age_group field, fallback to kids_exam_config.age_range
-      const examAgeGroup = (exam as any).age_group || exam.kids_exam_config?.age_range || "all";
-      // "all" age group matches every filter — applies to everyone
-      if (examAgeGroup === "all") {
-        matchesAgeGroup = true;
-      } else if (filterAgeGroup === "kids") {
-        matchesAgeGroup = examAgeGroup === "kids" || examAgeGroup.includes("6-8") || examAgeGroup.includes("8-11") || examAgeGroup.includes("9-12");
-      } else if (filterAgeGroup === "teens") {
-        matchesAgeGroup = examAgeGroup === "teens" || examAgeGroup.includes("13-17");
-      } else if (filterAgeGroup === "adults") {
-        matchesAgeGroup = examAgeGroup === "adults" || examAgeGroup.includes("18+") || examAgeGroup.includes("university");
-      } else if (filterAgeGroup === "professionals") {
-        matchesAgeGroup = examAgeGroup === "professionals" || examAgeGroup.includes("working");
+  // Xóa nhiều exam
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkDeleting(true);
+    const ids = Array.from(selectedIds);
+    const targetExams = exams.filter((e) => selectedIds.has(e.eId));
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const exam of targetExams) {
+      const isKidsExam =
+        (exam as any).age_group === "kids" || exam.kids_exam_config !== undefined;
+      try {
+        if (isKidsExam) {
+          await deleteKidsExam(exam.eId);
+        } else {
+          await api.delete(`/teacher/exams/${exam.eId}`);
+        }
+        successCount++;
+        setExams((prev) => prev.filter((e) => e.eId !== exam.eId));
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(exam.eId);
+          return next;
+        });
+      } catch (err: any) {
+        const status = err?.response?.status;
+        if (status === 404) {
+          // đã bị xóa trước đó
+          successCount++;
+          setExams((prev) => prev.filter((e) => e.eId !== exam.eId));
+          setSelectedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(exam.eId);
+            return next;
+          });
+        } else {
+          failCount++;
+        }
       }
     }
-    
-    return matchesSearch && matchesType && matchesAgeGroup;
-  });
 
-  // Pagination
-  const totalPages = Math.ceil(filteredExams.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedExams = filteredExams.slice(startIndex, endIndex);
+    setBulkDeleting(false);
+    setBulkDeleteConfirm(false);
+
+    if (failCount > 0) {
+      toast.warning(
+        `Đã xóa ${successCount} đề thi. ${failCount} đề thi xóa thất bại.`
+      );
+    } else {
+      toast.success(`Đã xóa thành công ${successCount} đề thi!`);
+    }
+
+    // Refetch để đồng bộ
+    await loadExams();
+  };
+
+  // Filter exams - đã move lên trên (trước stats)
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterType, filterAgeGroup]);
+    // Clear selection khi filter thay đổi để tránh xóa nhầm
+    setSelectedIds(new Set());
+  }, [searchQuery, filterType, filterAgeGroup, filterOwner, filterStatus]);
 
-  // Calculate stats by age group
-  const getAgeGroup = (exam: KidsExam) => {
+  // Validate exam tồn tại khi mount - lọc bỏ exam không hợp lệ khỏi state
+  useEffect(() => {
+    setExams((prev) =>
+      prev.filter((e) => e && e.eId && e.eTitle)
+    );
+  }, []);
+
+  // Calculate stats by age group - ưu tiên dùng _group tag từ API
+  // Mapping (chỉ có 3 nhóm học viên thực tế: kids / teens / adults):
+  //   Kids   → "kids" (Trẻ em 6-12)
+  //   Teens  → "teens" (Học sinh 13-17)
+  //   Adult / VSTEP / IELTS → "adults" (Sinh viên + người trưởng thành)
+  const getAgeGroup = (exam: KidsExam & { _group?: string }) => {
+    if (exam._group === "kids") return "kids";
+    if (exam._group === "teens") return "teens";
+    // VSTEP, IELTS, Adult, General... đều thuộc adults
+    if (exam._group === "vstep" || exam._group === "ielts" || exam._group === "adult") {
+      return "adults";
+    }
+
+    // Fallback: check kids_exam_config / age_range
     const ageRange = exam.kids_exam_config?.age_range || "all";
     if (ageRange === "kids" || ageRange.includes("6-8") || ageRange.includes("8-11") || ageRange.includes("9-12")) return "kids";
     if (ageRange === "teens" || ageRange.includes("13-17")) return "teens";
-    if (ageRange === "adults" || ageRange.includes("18+") || ageRange.includes("university")) return "adults";
-    if (ageRange === "professionals" || ageRange.includes("working")) return "professionals";
+    if (ageRange === "adults" || ageRange.includes("18+") || ageRange.includes("university") || ageRange === "professionals" || ageRange.includes("working")) return "adults";
     return "all";
   };
+
+  // Filter exams - dùng getAgeGroup() để áp dụng mapping mới (VSTEP/IELTS → adults)
+  const filteredExams = exams.filter(exam => {
+    const matchesSearch = exam.eTitle.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // Type filter: check cả kids_exam_config, eType, và _group
+    let matchesType = filterType === "all";
+    if (!matchesType) {
+      const kidsType = exam.kids_exam_config?.exam_type;
+      const eType = (exam.eType || "").toLowerCase();
+      const group = exam._group;
+      const filterLower = filterType.toLowerCase();
+
+      if (kidsType && kidsType.toLowerCase() === filterLower) {
+        matchesType = true;
+      } else if (eType === filterLower) {
+        matchesType = true;
+      } else if (
+        // VSTEP/IELTS mapping
+        (filterLower === "vstep" && (group === "vstep" || eType === "vstep")) ||
+        (filterLower === "ielts" && (group === "ielts" || eType === "ielts"))
+      ) {
+        matchesType = true;
+      }
+    }
+
+    // Age group filter - dùng getAgeGroup để nhất quán với stats
+    let matchesAgeGroup = filterAgeGroup === "all";
+    if (!matchesAgeGroup) {
+      const examAgeGroup = getAgeGroup(exam);
+      // Nếu age_group="all" (chưa phân loại) → match mọi filter
+      if (examAgeGroup === "all") {
+        matchesAgeGroup = true;
+      } else {
+        matchesAgeGroup = examAgeGroup === filterAgeGroup;
+      }
+    }
+
+    // Owner filter: của tôi / từ giáo viên khác / tất cả
+    let matchesOwner = true;
+    if (filterOwner === "mine") {
+      matchesOwner = exam._is_owner === true;
+    } else if (filterOwner === "others") {
+      matchesOwner = exam._is_owner === false;
+    }
+
+    // Status filter: nháp / đã xuất bản / tất cả
+    // eStatus có thể là 'draft', 'published', 'active', 'inactive', 'archived'
+    let matchesStatus = true;
+    if (filterStatus !== "all") {
+      const status = (exam.eStatus || "").toLowerCase();
+      if (filterStatus === "draft") {
+        matchesStatus = status === "draft";
+      } else if (filterStatus === "published") {
+        matchesStatus = status === "published" || status === "active";
+      }
+    }
+
+    return matchesSearch && matchesType && matchesAgeGroup && matchesOwner && matchesStatus;
+  });
 
   const stats = {
     total: exams.length,
     kids: exams.filter(e => getAgeGroup(e) === "kids").length,
     teens: exams.filter(e => getAgeGroup(e) === "teens").length,
     adults: exams.filter(e => getAgeGroup(e) === "adults").length,
-    professionals: exams.filter(e => getAgeGroup(e) === "professionals").length,
+    mine: exams.filter(e => e._is_owner === true).length,
+    others: exams.filter(e => e._is_owner === false).length,
+    draft: exams.filter(e => (e.eStatus || "").toLowerCase() === "draft").length,
+    published: exams.filter(e => {
+      const s = (e.eStatus || "").toLowerCase();
+      return s === "published" || s === "active";
+    }).length,
   };
+
+  // Pagination - lọc thêm lần nữa để chắc chắn không có exam không hợp lệ
+  const totalPages = Math.ceil(filteredExams.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedExams = filteredExams
+    .filter((exam) => exam && exam.eId && exam.eTitle)
+    .slice(startIndex, endIndex);
 
   // Get exam type display info
   const getExamTypeInfo = (exam: KidsExam) => {
@@ -188,14 +405,60 @@ export function AllExams() {
 
   // Đường dẫn chỉnh sửa tuỳ theo loại đề
   const getEditLink = (exam: KidsExam) => {
-    if (exam.eType === "VSTEP") {
+    const eType = (exam.eType || "").toUpperCase();
+    const group = (exam as any)._group || "";
+
+    // IELTS: detect qua eType hoặc _group, cần biết skill để route đúng
+    if (eType === "IELTS" || group === "ielts") {
+      const skill = (
+        exam.ielts_skill ||
+        (exam.eSkill || "").toLowerCase()
+      ).toLowerCase();
+      const validSkills = ["listening", "reading", "writing", "speaking"];
+      const s = validSkills.includes(skill) ? skill : "listening";
+      return `/giao-vien/de-thi/ielts/${s}/sua/${exam.eId}`;
+    }
+
+    // Kids exam — check age_group / kids_exam_config
+    const isKidsExam =
+      (exam as any).age_group === "kids" || exam.kids_exam_config !== undefined;
+    if (isKidsExam) {
+      return `/giao-vien/de-thi/kids/tao-moi/${exam.eId}`;
+    }
+
+    // VSTEP
+    if (eType === "VSTEP" || group === "vstep") {
       const skill = (exam.eSkill || "").toLowerCase();
       if (skill === "mixed") return `/giao-vien/de-thi/vstep/full/sua/${exam.eId}`;
       if (skill && ["listening", "reading", "writing", "speaking"].includes(skill))
         return `/giao-vien/de-thi/vstep/${skill}/sua/${exam.eId}`;
       return `/giao-vien/de-thi/${exam.eId}`;
     }
-    return `/giao-vien/de-thi/kids/tao-moi/${exam.eId}`;
+
+    return `/giao-vien/de-thi/${exam.eId}`;
+  };
+
+  // Đường dẫn preview tuỳ theo loại đề
+  const getPreviewLink = (exam: KidsExam) => {
+    const eType = (exam.eType || "").toUpperCase();
+    const group = (exam as any)._group || "";
+
+    // IELTS preview: cần skill để route đúng
+    if (eType === "IELTS" || group === "ielts") {
+      const skill = (
+        exam.ielts_skill ||
+        (exam.eSkill || "").toLowerCase()
+      ).toLowerCase();
+      const validSkills = ["listening", "reading", "writing", "speaking"];
+      const s = validSkills.includes(skill) ? skill : "listening";
+      return `/giao-vien/de-thi/ielts/${s}/xem/${exam.eId}`;
+    }
+
+    if (eType === "VSTEP" || group === "vstep") {
+      return `/giao-vien/de-thi/${exam.eId}/vstep`;
+    }
+
+    return `/giao-vien/de-thi/${exam.eId}/xem`;
   };
 
   return (
@@ -245,125 +508,112 @@ export function AllExams() {
           </div>
         )}
 
-        {/* Refined Stats Cards - Compact & Professional */}
-        {!loading && !error && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            <button
-              onClick={() => setFilterAgeGroup("all")}
-              className={`group p-4 rounded-xl border transition-all text-left ${
-                filterAgeGroup === "all"
-                  ? "bg-gradient-to-br from-orange-600 to-orange-500 border-orange-600 shadow-lg shadow-orange-200/50"
-                  : "bg-white/80 backdrop-blur-sm border-gray-200 hover:border-orange-300 hover:shadow-md"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 mb-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                  filterAgeGroup === "all" ? "bg-white/20" : "bg-orange-50 group-hover:bg-orange-100"
-                }`}>
-                  <Layers className={`w-4 h-4 ${filterAgeGroup === "all" ? "text-white" : "text-orange-600"}`} />
-                </div>
-                <div className={`text-xs font-medium ${filterAgeGroup === "all" ? "text-white/90" : "text-gray-600"}`}>
-                  Tất cả
-                </div>
-              </div>
-              <div className={`text-2xl font-bold ${filterAgeGroup === "all" ? "text-white" : "text-gray-900"}`}>
-                {stats.total}
-              </div>
-            </button>
+        {/* Stats & Age Group Filter - Unified compact panel */}
+        {!loading && !error && (() => {
+          const total = stats.total || 1; // tránh chia 0
+          const kidsPct = (stats.kids / total) * 100;
+          const teensPct = (stats.teens / total) * 100;
+          const adultsPct = (stats.adults / total) * 100;
 
-            <button
-              onClick={() => setFilterAgeGroup("kids")}
-              className={`group p-4 rounded-xl border transition-all text-left ${
-                filterAgeGroup === "kids"
-                  ? "bg-gradient-to-br from-pink-600 to-pink-500 border-pink-600 shadow-lg shadow-pink-200/50"
-                  : "bg-white/80 backdrop-blur-sm border-gray-200 hover:border-pink-300 hover:shadow-md"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 mb-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                  filterAgeGroup === "kids" ? "bg-white/20" : "bg-pink-50 group-hover:bg-pink-100"
-                }`}>
-                  <Baby className={`w-4 h-4 ${filterAgeGroup === "kids" ? "text-white" : "text-pink-600"}`} />
-                </div>
-                <div className={`text-xs font-medium ${filterAgeGroup === "kids" ? "text-white/90" : "text-gray-600"}`}>
-                  Trẻ em
-                </div>
-              </div>
-              <div className={`text-2xl font-bold ${filterAgeGroup === "kids" ? "text-white" : "text-gray-900"}`}>
-                {stats.kids}
-              </div>
-            </button>
+          const groups = [
+            { key: "all", label: "Tất cả", icon: Layers, count: stats.total, color: "orange" },
+            { key: "kids", label: "Trẻ em", icon: Baby, count: stats.kids, color: "pink" },
+            { key: "teens", label: "Học sinh", icon: BookOpen, count: stats.teens, color: "blue" },
+            { key: "adults", label: "Sinh viên / Người đi làm", icon: GraduationCap, count: stats.adults, color: "violet" },
+          ] as const;
 
-            <button
-              onClick={() => setFilterAgeGroup("teens")}
-              className={`group p-4 rounded-xl border transition-all text-left ${
-                filterAgeGroup === "teens"
-                  ? "bg-gradient-to-br from-blue-600 to-blue-500 border-blue-600 shadow-lg shadow-blue-200/50"
-                  : "bg-white/80 backdrop-blur-sm border-gray-200 hover:border-blue-300 hover:shadow-md"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 mb-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                  filterAgeGroup === "teens" ? "bg-white/20" : "bg-blue-50 group-hover:bg-blue-100"
-                }`}>
-                  <BookOpen className={`w-4 h-4 ${filterAgeGroup === "teens" ? "text-white" : "text-blue-600"}`} />
-                </div>
-                <div className={`text-xs font-medium ${filterAgeGroup === "teens" ? "text-white/90" : "text-gray-600"}`}>
-                  Học sinh
-                </div>
-              </div>
-              <div className={`text-2xl font-bold ${filterAgeGroup === "teens" ? "text-white" : "text-gray-900"}`}>
-                {stats.teens}
-              </div>
-            </button>
+          // Mapping color → tailwind classes (active state)
+          const colorMap: Record<string, { bg: string; text: string; ring: string; dot: string; iconBg: string; iconText: string }> = {
+            orange: { bg: "bg-orange-50", text: "text-orange-700", ring: "ring-orange-200", dot: "bg-orange-500", iconBg: "bg-orange-100", iconText: "text-orange-600" },
+            pink:   { bg: "bg-pink-50",   text: "text-pink-700",   ring: "ring-pink-200",   dot: "bg-pink-500",   iconBg: "bg-pink-100",   iconText: "text-pink-600" },
+            blue:   { bg: "bg-blue-50",   text: "text-blue-700",   ring: "ring-blue-200",   dot: "bg-blue-500",   iconBg: "bg-blue-100",   iconText: "text-blue-600" },
+            violet: { bg: "bg-violet-50", text: "text-violet-700", ring: "ring-violet-200", dot: "bg-violet-500", iconBg: "bg-violet-100", iconText: "text-violet-600" },
+          };
 
-            <button
-              onClick={() => setFilterAgeGroup("adults")}
-              className={`group p-4 rounded-xl border transition-all text-left ${
-                filterAgeGroup === "adults"
-                  ? "bg-gradient-to-br from-violet-600 to-violet-500 border-violet-600 shadow-lg shadow-violet-200/50"
-                  : "bg-white/80 backdrop-blur-sm border-gray-200 hover:border-violet-300 hover:shadow-md"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 mb-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                  filterAgeGroup === "adults" ? "bg-white/20" : "bg-violet-50 group-hover:bg-violet-100"
-                }`}>
-                  <GraduationCap className={`w-4 h-4 ${filterAgeGroup === "adults" ? "text-white" : "text-violet-600"}`} />
-                </div>
-                <div className={`text-xs font-medium ${filterAgeGroup === "adults" ? "text-white/90" : "text-gray-600"}`}>
-                  Sinh viên
-                </div>
-              </div>
-              <div className={`text-2xl font-bold ${filterAgeGroup === "adults" ? "text-white" : "text-gray-900"}`}>
-                {stats.adults}
-              </div>
-            </button>
+          return (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              {/* Header: Total + Breakdown bar */}
+              <div className="px-5 pt-5 pb-4">
+                <div className="flex items-start justify-between gap-6 flex-wrap">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md shadow-orange-200/60">
+                      <Layers className="w-5 h-5 text-white" strokeWidth={2.25} />
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Tổng đề thi</div>
+                      <div className="flex items-baseline gap-1.5 mt-0.5">
+                        <span className="text-3xl font-bold text-gray-900 leading-none tracking-tight">{stats.total}</span>
+                        <span className="text-xs text-gray-500">đề</span>
+                      </div>
+                    </div>
+                  </div>
 
-            <button
-              onClick={() => setFilterAgeGroup("professionals")}
-              className={`group p-4 rounded-xl border transition-all text-left ${
-                filterAgeGroup === "professionals"
-                  ? "bg-gradient-to-br from-emerald-600 to-emerald-500 border-emerald-600 shadow-lg shadow-emerald-200/50"
-                  : "bg-white/80 backdrop-blur-sm border-gray-200 hover:border-emerald-300 hover:shadow-md"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 mb-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                  filterAgeGroup === "professionals" ? "bg-white/20" : "bg-emerald-50 group-hover:bg-emerald-100"
-                }`}>
-                  <Briefcase className={`w-4 h-4 ${filterAgeGroup === "professionals" ? "text-white" : "text-emerald-600"}`} />
-                </div>
-                <div className={`text-xs font-medium ${filterAgeGroup === "professionals" ? "text-white/90" : "text-gray-600"}`}>
-                  Người đi làm
+                  {/* Visual distribution bar - 3 nhóm học viên */}
+                  <div className="flex-1 min-w-[260px]">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Phân bổ theo nhóm tuổi</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden flex">
+                      {kidsPct > 0 && <div className="bg-pink-500 transition-all" style={{ width: `${kidsPct}%` }} title={`Trẻ em: ${stats.kids}`} />}
+                      {teensPct > 0 && <div className="bg-blue-500 transition-all" style={{ width: `${teensPct}%` }} title={`Học sinh: ${stats.teens}`} />}
+                      {adultsPct > 0 && <div className="bg-violet-500 transition-all" style={{ width: `${adultsPct}%` }} title={`Sinh viên: ${stats.adults}`} />}
+                    </div>
+                    <div className="flex items-center gap-x-4 gap-y-1 mt-2 text-[11px] flex-wrap">
+                      <span className="inline-flex items-center gap-1.5 text-gray-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-pink-500" />
+                        Trẻ em <span className="font-semibold text-gray-900">{stats.kids}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 text-gray-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        Học sinh <span className="font-semibold text-gray-900">{stats.teens}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 text-gray-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                        Sinh viên / Người đi làm <span className="font-semibold text-gray-900">{stats.adults}</span>
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className={`text-2xl font-bold ${filterAgeGroup === "professionals" ? "text-white" : "text-gray-900"}`}>
-                {stats.professionals}
+
+              {/* Divider */}
+              <div className="h-px bg-gray-100" />
+
+              {/* Segmented filter — chips kéo ngang trên mobile */}
+              <div className="px-3 py-3 overflow-x-auto">
+                <div className="flex items-center gap-1.5 min-w-max">
+                  {groups.map(({ key, label, icon: Icon, count, color }) => {
+                    const isActive = filterAgeGroup === key;
+                    const c = colorMap[color];
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => setFilterAgeGroup(key)}
+                        className={`group relative inline-flex items-center gap-2 pl-2.5 pr-3 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                          isActive
+                            ? `${c.bg} ${c.text} ring-1 ${c.ring} shadow-sm`
+                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                        }`}
+                      >
+                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md transition-colors ${
+                          isActive ? c.iconBg : "bg-gray-100 group-hover:bg-gray-200"
+                        }`}>
+                          <Icon className={`w-3.5 h-3.5 ${isActive ? c.iconText : "text-gray-500"}`} strokeWidth={2.25} />
+                        </span>
+                        <span>{label}</span>
+                        <span className={`inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-md text-[11px] font-bold tabular-nums ${
+                          isActive ? "bg-white/80 text-gray-900" : "bg-gray-100 text-gray-600 group-hover:bg-white"
+                        }`}>
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </button>
-          </div>
-        )}
+            </div>
+          );
+        })()}
 
         {/* Refined Search & Filters - Inline Design */}
         {!loading && !error && (
@@ -384,6 +634,78 @@ export function AllExams() {
               {/* Filters - Inline */}
               <div className="flex flex-wrap items-center gap-3">
                 <span className="text-xs font-semibold text-gray-600">Lọc theo:</span>
+
+                {/* Owner Filter Tabs */}
+                <div className="inline-flex items-center bg-gray-100 rounded-lg p-0.5 border border-gray-200">
+                  <button
+                    onClick={() => setFilterOwner("all")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                      filterOwner === "all"
+                        ? "bg-white text-orange-600 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="Hiển thị đề của bạn và đề public của giáo viên khác"
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    Tất cả
+                    <span className="ml-1 text-[10px] font-mono opacity-70">({stats.total})</span>
+                  </button>
+                  <button
+                    onClick={() => setFilterOwner("mine")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                      filterOwner === "mine"
+                        ? "bg-white text-orange-600 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    Của tôi
+                    <span className="ml-1 text-[10px] font-mono opacity-70">({stats.mine})</span>
+                  </button>
+                  <button
+                    onClick={() => setFilterOwner("others")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                      filterOwner === "others"
+                        ? "bg-white text-orange-600 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="Đề công khai từ các giáo viên khác trong hệ thống"
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    Từ giáo viên khác
+                    <span className="ml-1 text-[10px] font-mono opacity-70">({stats.others})</span>
+                  </button>
+                </div>
+
+                {/* Status Filter Tabs (Đã xuất bản / Nháp) */}
+                <div className="inline-flex items-center bg-gray-100 rounded-lg p-0.5 border border-gray-200">
+                  <button
+                    onClick={() => setFilterStatus(filterStatus === "published" ? "all" : "published")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                      filterStatus === "published"
+                        ? "bg-white text-emerald-600 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="Đề đã xuất bản, học viên có thể làm"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    Đã xuất bản
+                    <span className="ml-1 text-[10px] font-mono opacity-70">({stats.published})</span>
+                  </button>
+                  <button
+                    onClick={() => setFilterStatus(filterStatus === "draft" ? "all" : "draft")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                      filterStatus === "draft"
+                        ? "bg-white text-amber-600 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="Đề nháp đang soạn dở (thiếu file/câu hỏi/đáp án)"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    Nháp
+                    <span className="ml-1 text-[10px] font-mono opacity-70">({stats.draft})</span>
+                  </button>
+                </div>
                 
                 {/* Age Group Filter */}
                 <select
@@ -394,8 +716,7 @@ export function AllExams() {
                   <option value="all">Tất cả nhóm tuổi</option>
                   <option value="kids">Trẻ em (6-12)</option>
                   <option value="teens">Học sinh (13-17)</option>
-                  <option value="adults">Sinh viên (18+)</option>
-                  <option value="professionals">Người đi làm</option>
+                  <option value="adults">Sinh viên / Người đi làm (18+)</option>
                 </select>
                 
                 {/* Exam Type Filter */}
@@ -418,31 +739,23 @@ export function AllExams() {
                   {/* Teens/Adults exam types */}
                   {(filterAgeGroup === "all" || filterAgeGroup === "teens" || filterAgeGroup === "adults") && (
                     <>
+                      <option value="vstep">VSTEP</option>
                       <option value="ielts">IELTS</option>
                       <option value="toefl">TOEFL</option>
+                      <option value="toeic">TOEIC</option>
                     </>
                   )}
                   
-                  {/* Adults/Professionals exam types */}
-                  {(filterAgeGroup === "all" || filterAgeGroup === "adults" || filterAgeGroup === "professionals") && (
-                    <option value="toeic">TOEIC</option>
-                  )}
-                  
-                  {/* Professionals only */}
-                  {(filterAgeGroup === "all" || filterAgeGroup === "professionals") && (
-                    <option value="business">Business English</option>
-                  )}
-                  
-                  {/* General - available for all */}
+                  {/* General - available for all except kids */}
                   {filterAgeGroup !== "kids" && (
                     <option value="general">Đề tổng hợp</option>
                   )}
                 </select>
                 
                 {/* Clear filters */}
-                {(filterAgeGroup !== "all" || filterType !== "all") && (
+                {(filterAgeGroup !== "all" || filterType !== "all" || filterOwner !== "all") && (
                   <button 
-                    onClick={() => { setFilterAgeGroup("all"); setFilterType("all"); }}
+                    onClick={() => { setFilterAgeGroup("all"); setFilterType("all"); setFilterOwner("all"); }}
                     className="text-xs text-orange-600 hover:text-orange-700 font-semibold ml-auto transition-colors"
                   >
                     Xóa bộ lọc
@@ -458,24 +771,148 @@ export function AllExams() {
           </div>
         )}
 
+        {/* Bulk Action Bar */}
+        {!loading && !error && paginatedExams.length > 0 && (
+          <div className="flex items-center justify-between bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 p-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  // Chỉ select đề của chính mình (không thể bulk delete đề của giáo viên khác)
+                  const ownedPageExams = paginatedExams.filter((e) => e._is_owner !== false);
+                  const pageIds = ownedPageExams.map((e) => e.eId);
+                  if (pageIds.length === 0) return;
+                  const allSelected = pageIds.every((id) => selectedIds.has(id));
+                  setSelectedIds((prev) => {
+                    const next = new Set(prev);
+                    if (allSelected) {
+                      pageIds.forEach((id) => next.delete(id));
+                    } else {
+                      pageIds.forEach((id) => next.add(id));
+                    }
+                    return next;
+                  });
+                }}
+                className="group flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:text-orange-600 rounded-lg hover:bg-orange-50 transition-colors cursor-pointer"
+              >
+                {(() => {
+                  const ownedExams = paginatedExams.filter((e) => e._is_owner !== false);
+                  const allOwnedSelected = ownedExams.length > 0 && ownedExams.every((e) => selectedIds.has(e.eId));
+                  return (
+                    <>
+                      {allOwnedSelected ? (
+                        <CheckSquare className="w-4 h-4 text-orange-600" />
+                      ) : (
+                        <Square className="w-4 h-4 text-gray-400 group-hover:text-orange-500" />
+                      )}
+                      <span>
+                        {allOwnedSelected ? "Bỏ chọn tất cả" : "Chọn tất cả trang này"}
+                      </span>
+                    </>
+                  );
+                })()}
+              </button>
+              {selectedIds.size > 0 && (
+                <span className="text-xs text-gray-500">
+                  • Đã chọn{" "}
+                  <span className="font-semibold text-orange-600">
+                    {selectedIds.size}
+                  </span>{" "}
+                  đề thi
+                </span>
+              )}
+            </div>
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={clearSelection}
+                  className="px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  Hủy chọn
+                </button>
+                <button
+                  onClick={() => setBulkDeleteConfirm(true)}
+                  className="group flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 rounded-lg shadow-sm hover:shadow-md hover:shadow-red-500/30 transition-all active:scale-95"
+                >
+                  <Trash2 className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" />
+                  Xóa {selectedIds.size} đề thi
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Refined Exam Cards Grid */}
         {!loading && !error && paginatedExams.length > 0 && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {paginatedExams.map((exam) => {
+              if (!exam || !exam.eId || !exam.eTitle) return null;
               const typeInfo = getExamTypeInfo(exam);
+              const isSelected = selectedIds.has(exam.eId);
+              const isOwner = exam._is_owner !== false;
               return (
                 <div
                   key={exam.eId}
-                  className="group relative bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 p-5 hover:border-orange-300 hover:shadow-lg transition-all cursor-pointer"
+                  onClick={(e) => {
+                    // Click vào card nhưng không phải link/button thì toggle select
+                    // Chỉ cho phép select đề của chính mình (vì bulk delete chỉ xóa được đề của mình)
+                    if (!isOwner) return;
+                    const target = e.target as HTMLElement;
+                    if (
+                      !target.closest("a") &&
+                      !target.closest("button") &&
+                      !target.closest("input")
+                    ) {
+                      toggleSelect(exam.eId);
+                    }
+                  }}
+                  className={`group relative bg-white/90 backdrop-blur-sm rounded-xl border p-5 transition-all ${
+                    isOwner ? "cursor-pointer" : ""
+                  } ${
+                    isSelected
+                      ? "border-orange-500 ring-2 ring-orange-200 shadow-lg shadow-orange-100"
+                      : isOwner
+                        ? "border-gray-200 hover:border-orange-300 hover:shadow-lg"
+                        : "border-blue-100 bg-blue-50/30 hover:border-blue-300 hover:shadow-md"
+                  }`}
                 >
+                  {/* Checkbox top-left - chỉ hiện cho đề của mình */}
+                  {isOwner && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSelect(exam.eId);
+                      }}
+                      className={`absolute top-2 left-2 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-gradient-to-br from-orange-500 to-orange-600 border-orange-600 shadow-md shadow-orange-500/30"
+                          : "bg-white border-gray-300 hover:border-orange-400"
+                      }`}
+                    >
+                      {isSelected && (
+                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                      )}
+                    </button>
+                  )}
+
+                  {/* Owner badge - chỉ hiện nếu đề không phải của mình */}
+                  {!isOwner && (
+                    <div
+                      className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200"
+                      title={`Đề công khai từ ${exam._owner_name || "giáo viên khác"}`}
+                    >
+                      <Users className="w-3 h-3" />
+                      <span className="truncate max-w-[120px]">{exam._owner_name || "Giáo viên khác"}</span>
+                    </div>
+                  )}
+
                   {/* ID badge top-right corner */}
                   <span className="absolute top-2 right-2 text-[10px] font-mono font-semibold text-gray-400 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded">
                     #{exam.eId}
                   </span>
 
                   {/* Header */}
-                  <div className="flex items-start justify-between mb-3 pr-12">
+                  <div className="flex items-start justify-between mb-3 pl-7 pr-12">
                     <span
                       className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold"
                       style={{
@@ -526,30 +963,40 @@ export function AllExams() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2">
-                    <Link
-                      to={getEditLink(exam)}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium"
-                    >
-                      <Edit className="w-3.5 h-3.5" />
-                      Sửa
-                    </Link>
-                    <Link
-                      to={
-                        exam.eType === "VSTEP"
-                          ? `/giao-vien/de-thi/${exam.eId}/vstep`
-                          : `/giao-vien/de-thi/${exam.eId}/xem`
-                      }
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-lg hover:from-orange-700 hover:to-orange-600 transition-all text-sm font-medium shadow-sm"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      Xem
-                    </Link>
-                    <button
-                      onClick={() => setDeleteConfirm(exam.eId)}
-                      className="inline-flex items-center justify-center p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {isOwner ? (
+                      <>
+                        <Link
+                          to={getEditLink(exam)}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium cursor-pointer"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                          Sửa
+                        </Link>
+                        <Link
+                          to={getPreviewLink(exam)}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-lg hover:from-orange-700 hover:to-orange-600 transition-all text-sm font-medium shadow-sm cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          Xem
+                        </Link>
+                        <button
+                          onClick={() => setDeleteConfirm(exam.eId)}
+                          className="inline-flex items-center justify-center p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors cursor-pointer"
+                          title="Xóa đề thi"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      // Đề từ giáo viên khác — chỉ cho phép xem
+                      <Link
+                        to={getPreviewLink(exam)}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all text-sm font-medium shadow-sm cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        Xem chi tiết
+                      </Link>
+                    )}
                   </div>
                 </div>
               );
@@ -662,33 +1109,182 @@ export function AllExams() {
 
       {/* Refined Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <div className="flex items-start gap-4 mb-6">
-              <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <AlertCircle className="w-6 h-6 text-red-600" />
+        <div className="fixed inset-0 z-50 p-4 flex items-center justify-center bg-black/50 backdrop-blur-md animate-in fade-in duration-200">
+          <div
+            className="relative bg-white rounded-3xl p-7 max-w-md w-full shadow-2xl border border-gray-100
+                       transform transition-all animate-in zoom-in-95 duration-300
+                       hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]"
+          >
+            {/* Decorative gradient blob */}
+            <div className="absolute -top-12 -right-12 w-40 h-40 bg-gradient-to-br from-red-200/40 to-orange-200/40 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-gradient-to-br from-red-100/40 to-pink-200/40 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative flex items-start gap-4 mb-6">
+              <div className="relative w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-red-500/30 group-hover:scale-110 transition-transform">
+                <div className="absolute inset-0 bg-red-500 rounded-2xl animate-ping opacity-20" />
+                <AlertCircle className="relative w-7 h-7 text-white" strokeWidth={2.5} />
               </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-900 mb-1.5 tracking-tight">
                   Xác nhận xóa đề thi
                 </h3>
-                <p className="text-sm text-gray-600">
-                  Bạn có chắc chắn muốn xóa đề thi này? Hành động này không thể hoàn tác.
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Bạn có chắc chắn muốn xóa đề thi này?
+                  <span className="block mt-1 text-red-600 font-medium">
+                    Hành động này không thể hoàn tác.
+                  </span>
                 </p>
               </div>
             </div>
-            <div className="flex gap-3">
+
+            {/* Warning info box */}
+            <div className="relative mb-6 px-4 py-3 bg-red-50/70 border border-red-100 rounded-xl">
+              <div className="flex items-center gap-2 text-xs text-red-700">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                <span className="font-medium">Đề thi và tất cả câu hỏi sẽ bị xóa vĩnh viễn</span>
+              </div>
+            </div>
+
+            <div className="relative flex gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                className="group flex-1 relative overflow-hidden px-4 py-3 bg-gray-100 text-gray-700 rounded-xl
+                           hover:bg-gray-900 hover:text-white
+                           active:scale-95
+                           transition-all duration-300 ease-out
+                           text-sm font-semibold
+                           hover:shadow-lg hover:shadow-gray-900/20
+                           hover:-translate-y-0.5"
               >
-                Hủy
+                <span className="relative z-10">Hủy</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-gray-200 to-gray-300 opacity-0 group-hover:opacity-0 transition-opacity" />
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
-                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-500 text-white rounded-lg hover:from-red-700 hover:to-red-600 transition-all text-sm font-medium shadow-sm"
+                className="group flex-1 relative overflow-hidden px-4 py-3 text-white rounded-xl
+                           bg-gradient-to-r from-red-600 via-red-500 to-orange-500
+                           hover:from-red-700 hover:via-red-600 hover:to-orange-600
+                           active:scale-95
+                           transition-all duration-300 ease-out
+                           text-sm font-semibold
+                           shadow-lg shadow-red-500/40
+                           hover:shadow-2xl hover:shadow-red-500/60
+                           hover:-translate-y-0.5
+                           ring-1 ring-red-400/50
+                           hover:ring-2 hover:ring-red-300"
               >
-                Xóa
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  <Trash2 className="w-4 h-4 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-300" />
+                  <span>Xóa đề thi</span>
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {bulkDeleteConfirm && (
+        <div className="fixed inset-0 z-50 p-4 flex items-center justify-center bg-black/50 backdrop-blur-md animate-in fade-in duration-200">
+          <div
+            className="relative bg-white rounded-3xl p-7 max-w-md w-full shadow-2xl border border-gray-100
+                       transform transition-all animate-in zoom-in-95 duration-300
+                       hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]"
+          >
+            <div className="absolute -top-12 -right-12 w-40 h-40 bg-gradient-to-br from-red-200/40 to-orange-200/40 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-gradient-to-br from-red-100/40 to-pink-200/40 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative flex items-start gap-4 mb-6">
+              <div className="relative w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-red-500/30">
+                <div className="absolute inset-0 bg-red-500 rounded-2xl animate-ping opacity-20" />
+                <Trash2 className="relative w-7 h-7 text-white" strokeWidth={2.5} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-900 mb-1.5 tracking-tight">
+                  Xóa {selectedIds.size} đề thi?
+                </h3>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Bạn đang chọn xóa{" "}
+                  <span className="font-bold text-red-600">
+                    {selectedIds.size}
+                  </span>{" "}
+                  đề thi cùng lúc.
+                  <span className="block mt-1 text-red-600 font-medium">
+                    Hành động này không thể hoàn tác.
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            <div className="relative mb-6 px-4 py-3 bg-red-50/70 border border-red-100 rounded-xl max-h-40 overflow-y-auto">
+              <div className="text-xs text-red-700 font-medium mb-2">
+                Danh sách đề thi sẽ bị xóa:
+              </div>
+              <ul className="space-y-1">
+                {Array.from(selectedIds).map((id) => {
+                  const exam = exams.find((e) => e.eId === id);
+                  return (
+                    <li
+                      key={id}
+                      className="flex items-center gap-2 text-xs text-red-700"
+                    >
+                      <span className="w-1 h-1 bg-red-500 rounded-full" />
+                      <span className="font-mono text-red-500">#{id}</span>
+                      <span className="truncate">
+                        {exam?.eTitle || "(không tồn tại)"}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            <div className="relative flex gap-3">
+              <button
+                onClick={() => setBulkDeleteConfirm(false)}
+                disabled={bulkDeleting}
+                className="group flex-1 relative overflow-hidden px-4 py-3 bg-gray-100 text-gray-700 rounded-xl
+                           hover:bg-gray-900 hover:text-white
+                           active:scale-95
+                           transition-all duration-300 ease-out
+                           text-sm font-semibold
+                           hover:shadow-lg hover:shadow-gray-900/20
+                           hover:-translate-y-0.5
+                           disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="relative z-10">Hủy</span>
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={bulkDeleting}
+                className="group flex-1 relative overflow-hidden px-4 py-3 text-white rounded-xl
+                           bg-gradient-to-r from-red-600 via-red-500 to-orange-500
+                           hover:from-red-700 hover:via-red-600 hover:to-orange-600
+                           active:scale-95
+                           transition-all duration-300 ease-out
+                           text-sm font-semibold
+                           shadow-lg shadow-red-500/40
+                           hover:shadow-2xl hover:shadow-red-500/60
+                           hover:-translate-y-0.5
+                           ring-1 ring-red-400/50
+                           hover:ring-2 hover:ring-red-300
+                           disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  {bulkDeleting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Đang xóa...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-300" />
+                      <span>Xóa {selectedIds.size} đề thi</span>
+                    </>
+                  )}
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
               </button>
             </div>
           </div>

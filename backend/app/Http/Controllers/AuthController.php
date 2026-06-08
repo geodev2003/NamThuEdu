@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\OtpLog;
 use Laravel\Sanctum\PersonalAccessToken;
+use App\Services\GamificationService;
 
 class AuthController extends Controller
 {
@@ -107,6 +108,8 @@ class AuthController extends Controller
                 'date_of_birth' => $user->uDoB ? $user->uDoB->format('Y-m-d') : null,
                 'theme_preference' => $user->theme_preference ?? 'auto',
                 'theme_updated_at' => $user->theme_updated_at,
+                'avatar_url' => $user->avatar_url,
+                'avatar' => $user->avatar_url,
             ]
         ]);
     }
@@ -199,11 +202,37 @@ class AuthController extends Controller
         // Tính tuổi
         $age = $user->uDoB ? now()->diffInYears($user->uDoB) : null;
 
+        // Build human-readable device name from User-Agent
+        $ua        = $request->userAgent() ?? '';
+        $browser   = 'Unknown Browser';
+        $os        = 'Unknown OS';
+        if (preg_match('/(Edg|OPR|Chrome|Firefox|Safari|MSIE|Trident)/i', $ua, $bm)) {
+            $browserMap = ['Edg' => 'Edge', 'OPR' => 'Opera', 'Trident' => 'IE'];
+            $browser = $browserMap[$bm[1]] ?? ucfirst($bm[1]);
+        }
+        if (preg_match('/(iPhone|iPad|Android|Windows|Macintosh|Linux|Ubuntu)/i', $ua, $om)) {
+            $osMap = ['Macintosh' => 'macOS', 'iPhone' => 'iPhone', 'iPad' => 'iPad'];
+            $os = $osMap[$om[1]] ?? ucfirst($om[1]);
+        }
+        $deviceName = "$browser trên $os";
+
         // Tạo access token (sống 24h theo config sanctum.php)
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $newToken = $user->createToken($deviceName);
+        $token = $newToken->plainTextToken;
+        // Save client IP for session tracking
+        $newToken->accessToken->forceFill(['last_used_ip' => $request->ip()])->save();
 
         // Clear rate limit on successful login
         RateLimiter::clear($key);
+
+        // Update daily streak for students
+        if ($user->uRole === 'student') {
+            try {
+                (new GamificationService())->updateStreak($user->uId);
+            } catch (\Exception $e) {
+                \Log::warning('Streak update failed on login: ' . $e->getMessage());
+            }
+        }
 
         // Tạo refresh token (sống 30 ngày)
         $refreshToken = Str::random(64);
@@ -221,6 +250,8 @@ class AuthController extends Controller
             'role'  => $user->uRole,
             'age_group' => $user->age_group ?? 'teens',
             'theme_preference' => $user->theme_preference ?? 'auto',
+            'avatar_url' => $user->avatar_url,
+            'avatar' => $user->avatar_url,
         ];
         
         // Add class info for students

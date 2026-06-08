@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Bell, Check, ClipboardList, CheckCircle, AlertCircle,
-  MessageSquare, Trophy, Clock, ChevronRight,
+  MessageSquare, Trophy, Clock, ChevronRight, X,
 } from "lucide-react";
 import { studentApi } from "../../../services/studentApi";
 import { formatTimeAgo } from "../../../utils/formatters";
@@ -47,6 +47,64 @@ export function NotificationDropdown() {
   const [open, setOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isInitialLoadRef = useRef(true);
+  const prevNotificationsRef = useRef<NotificationDto[]>([]);
+
+  // Audio: single preloaded instance + autoplay unlock on first user gesture.
+  // Browsers block Audio.play() until the user interacts with the page,
+  // so we silently warm it up once on the first pointer/key/touch event.
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUnlockedRef = useRef(false);
+
+  useEffect(() => {
+    if (!audioRef.current) {
+      const a = new Audio("/sounds/sound-noti.mp3");
+      a.preload = "auto";
+      a.volume = 0.6;
+      audioRef.current = a;
+    }
+
+    if (audioUnlockedRef.current) return;
+
+    const unlock = () => {
+      const a = audioRef.current;
+      if (!a || audioUnlockedRef.current) return;
+      const prevMuted = a.muted;
+      a.muted = true;
+      a.play()
+        .then(() => {
+          a.pause();
+          a.currentTime = 0;
+          a.muted = prevMuted;
+          audioUnlockedRef.current = true;
+        })
+        .catch(() => {
+          /* will retry on next gesture */
+        });
+    };
+
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
+    window.addEventListener("touchstart", unlock);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("touchstart", unlock);
+    };
+  }, []);
+
+  const playNotificationSound = () => {
+    const a = audioRef.current;
+    if (!a) return;
+    try {
+      a.currentTime = 0;
+    } catch {
+      /* ignore */
+    }
+    a.play().catch((err) => {
+      console.warn("Notification audio play failed or blocked:", err);
+    });
+  };
 
   // Fetch notifications (auto-refetch every 60s while panel open or component mounted)
   const { data, isLoading } = useQuery({
@@ -91,12 +149,78 @@ export function NotificationDropdown() {
     },
   });
 
+  // Delete a single notification (dismiss permanently)
+  const deleteNotifMutation = useMutation({
+    mutationFn: (id: number | string) => studentApi.deleteNotification(Number(id)),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["student", "notifications", "dropdown"] });
+      const prev = queryClient.getQueryData(["student", "notifications", "dropdown"]);
+      queryClient.setQueryData(["student", "notifications", "dropdown"], (old: any) => {
+        if (!old) return old;
+        const inner = old?.data?.data;
+        const filtered = inner?.notifications?.filter((n: any) => String(n.id) !== String(id)) ?? [];
+        return {
+          ...old,
+          data: {
+            ...old.data,
+            data: {
+              ...inner,
+              notifications: filtered,
+              unread_count: filtered.filter((n: any) => !n.is_read).length,
+            },
+          },
+        };
+      });
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["student", "notifications", "dropdown"], ctx.prev);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["student", "notifications"] });
+    },
+  });
+
+  // Play sound when a new unread notification arrives
+  useEffect(() => {
+    if (isLoading) return;
+
+    if (isInitialLoadRef.current) {
+      prevNotificationsRef.current = notifications;
+      isInitialLoadRef.current = false;
+      // On first load: play sound if there are any unread notifications
+      const hasUnread = notifications.some(n => !n.is_read);
+      if (hasUnread) {
+        playNotificationSound();
+      }
+      return;
+    }
+
+    const prevIds = new Set(prevNotificationsRef.current.map(n => String(n.id)));
+    const newUnread = notifications.filter(
+      n => !n.is_read && !prevIds.has(String(n.id))
+    );
+
+    if (newUnread.length > 0) {
+      playNotificationSound();
+    }
+
+    prevNotificationsRef.current = notifications;
+  }, [notifications, isLoading]);
+
   const handleOpen = () => {
     setOpen(true);
     requestAnimationFrame(() =>
       requestAnimationFrame(() => setIsVisible(true))
     );
   };
+
+  // Auto mark all as read when dropdown opens (Facebook-style: opening = seen)
+  useEffect(() => {
+    if (open && unreadCount > 0) {
+      markAllReadMutation.mutate();
+    }
+  }, [open]);
 
   const handleClose = () => {
     setIsVisible(false);
@@ -131,6 +255,7 @@ export function NotificationDropdown() {
     const handler = (e: MessageEvent) => {
       if (e.data?.type === "NEW_NOTIFICATION") {
         queryClient.invalidateQueries({ queryKey: ["student", "notifications", "dropdown"] });
+        playNotificationSound();
       }
     };
     navigator.serviceWorker.addEventListener("message", handler);
@@ -138,7 +263,10 @@ export function NotificationDropdown() {
   }, [queryClient]);
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div
+      className="relative"
+      ref={containerRef}
+    >
       <button
         type="button"
         onClick={() => (open ? handleClose() : handleOpen())}
@@ -172,8 +300,8 @@ export function NotificationDropdown() {
             /* mobile: fixed full-width below navbar */
             "fixed left-2 right-2 top-[56px]",
             /* sm+: classic absolute dropdown */
-            "sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[380px]",
-            "z-[110] rounded-2xl overflow-hidden border bg-white",
+            "sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[400px]",
+            "z-[110] rounded-2xl overflow-hidden border bg-white/95 backdrop-blur-md",
             "transition-all duration-200 ease-out",
             isVisible
               ? "opacity-100 scale-100 translate-y-0"
@@ -182,22 +310,21 @@ export function NotificationDropdown() {
           style={{
             borderColor: "#E5E7EB",
             boxShadow:
-              "0 20px 48px rgba(124,58,237,0.18), 0 4px 12px rgba(0,0,0,0.08)",
+              "0 20px 48px rgba(124,58,237,0.12), 0 4px 12px rgba(0,0,0,0.06)",
           }}
         >
           {/* Header */}
           <div
-            className="flex items-center justify-between px-4 py-3 border-b"
-            style={{ borderColor: "#F3F4F6" }}
+            className="flex items-center justify-between px-4 py-3.5 border-b"
+            style={{ borderColor: "#F1F5F9" }}
           >
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold" style={{ color: "#1F1344" }}>
+              <h3 className="text-xs font-black text-slate-850 uppercase tracking-widest">
                 Thông báo
               </h3>
               {unreadCount > 0 && (
                 <span
-                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white"
-                  style={{ background: "#EF4444" }}
+                  className="text-[9px] font-black px-2 py-0.5 rounded-full text-white bg-red-500 animate-pulse"
                 >
                   {unreadCount} mới
                 </span>
@@ -207,10 +334,9 @@ export function NotificationDropdown() {
               <button
                 onClick={() => markAllReadMutation.mutate()}
                 disabled={markAllReadMutation.isPending}
-                className="text-[11px] font-semibold flex items-center gap-1 px-2 py-1 rounded-md hover:bg-purple-50 transition-colors"
-                style={{ color: PURPLE }}
+                className="text-[10px] font-black flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-slate-50 transition-colors border border-slate-100 text-slate-650 cursor-pointer"
               >
-                <Check className="w-3 h-3" />
+                <Check className="w-3.5 h-3.5 text-emerald-500" />
                 Đánh dấu tất cả
               </button>
             )}
@@ -245,73 +371,98 @@ export function NotificationDropdown() {
                 </p>
               </div>
             ) : (
-              <div>
+              <div className="divide-y divide-slate-50">
                 {notifications.map((notif) => {
                   const Icon = getIcon(notif.type);
                   const color = notif.color || "#7C3AED";
                   const isUnread = !notif.is_read;
                   const url = resolveStudentActionUrl(notif.action_url);
-                  const Wrapper: any = url ? Link : "div";
-                  const wrapperProps = url ? { to: url, onClick: () => handleClose() } : {};
+                  const isResultUrl = url?.includes("/ket-qua/");
+                  
+                  const handleNotifClick = (e: React.MouseEvent) => {
+                    if (isResultUrl && url) {
+                      e.preventDefault();
+                      const parts = url.split("/");
+                      const subId = Number(parts[parts.length - 1]);
+                      if (subId) {
+                        window.dispatchEvent(new CustomEvent("open-result-modal", { detail: { submissionId: subId } }));
+                        handleClose();
+                      }
+                    } else {
+                      handleClose();
+                    }
+                  };
+
+                  const Wrapper: any = (url && !isResultUrl) ? Link : "div";
+                  const wrapperProps = (url && !isResultUrl)
+                    ? { to: url, onClick: () => handleClose() }
+                    : { onClick: handleNotifClick };
 
                   return (
                     <Wrapper
                       key={notif.id}
                       {...wrapperProps}
-                      className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-gray-50 cursor-pointer relative"
+                      className="group flex items-start gap-3.5 px-4 py-3.5 transition-all duration-300 hover:bg-slate-50/50 cursor-pointer relative"
                       style={{
-                        background: isUnread ? "#FAF5FF" : "white",
-                        borderLeft: isUnread ? `3px solid ${color}` : "3px solid transparent",
+                        background: isUnread ? "rgba(124,58,237,0.02)" : "white",
+                        borderLeft: isUnread ? `4px solid ${color}` : "4px solid transparent",
                       }}
                     >
                       <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                        style={{ background: `${color}15` }}
+                        className="w-9.5 h-9.5 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 transition-transform duration-300 group-hover:scale-105"
+                        style={{ background: `${color}10`, border: `1px solid ${color}20` }}
                       >
-                        <Icon className="w-4 h-4" style={{ color }} />
+                        <Icon className="w-4.5 h-4.5" style={{ color }} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <h4
-                            className={`text-sm truncate ${
-                              isUnread ? "font-bold" : "font-semibold"
+                            className={`text-[13px] truncate ${
+                              isUnread ? "font-black text-slate-900" : "font-bold text-slate-700"
                             }`}
-                            style={{ color: "#1F1344" }}
                           >
                             {notif.title}
                           </h4>
-                          {isUnread && (
-                            <span
-                              className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
-                              style={{ background: color }}
-                            />
-                          )}
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {isUnread && (
+                              <span
+                                className="w-2 h-2 rounded-full mt-1.5"
+                                style={{ background: color }}
+                              />
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                deleteNotifMutation.mutate(notif.id);
+                              }}
+                              className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-red-50 transition-all"
+                              aria-label="Xóa thông báo"
+                            >
+                              <X className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
+                            </button>
+                          </div>
                         </div>
                         <p
-                          className="text-xs mt-0.5 line-clamp-2"
-                          style={{ color: "#6B7280" }}
+                          className="text-xs mt-1 leading-relaxed text-slate-500 line-clamp-2"
                         >
                           {notif.message}
                         </p>
-                        <div className="flex items-center gap-1 mt-1.5">
+                        <div className="flex items-center gap-1.5 mt-2 text-[10px] text-slate-400 font-bold">
                           <Clock
-                            className="w-3 h-3"
-                            style={{ color: "#9CA3AF" }}
+                            className="w-3.5 h-3.5 text-slate-350"
                           />
-                          <span
-                            className="text-[10px] font-medium"
-                            style={{ color: "#9CA3AF" }}
-                          >
-                            {formatTimeAgo(notif.created_at)}
-                          </span>
+                          <span>{formatTimeAgo(notif.created_at)}</span>
                           {notif.action_label && url && (
                             <>
-                              <span style={{ color: "#D1D5DB" }}>•</span>
+                              <span className="text-slate-200 font-normal">•</span>
                               <span
-                                className="text-[10px] font-semibold"
+                                className="font-black flex items-center gap-0.5"
                                 style={{ color }}
                               >
                                 {notif.action_label}
+                                <ChevronRight className="w-3 h-3" />
                               </span>
                             </>
                           )}
@@ -323,19 +474,6 @@ export function NotificationDropdown() {
               </div>
             )}
           </div>
-
-          {/* Footer */}
-          {notifications.length > 0 && (
-            <Link
-              to={`${STUDENT_BASE_PATH}/thong-bao`}
-              onClick={() => handleClose()}
-              className="flex items-center justify-center gap-1 py-3 border-t text-xs font-semibold transition-colors hover:bg-purple-50"
-              style={{ borderColor: "#F3F4F6", color: PURPLE }}
-            >
-              Xem tất cả thông báo
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          )}
         </div>
         </>
       )}

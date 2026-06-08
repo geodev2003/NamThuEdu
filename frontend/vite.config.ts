@@ -21,6 +21,20 @@ export default defineConfig({
     },
   },
 
+  server: {
+    proxy: {
+      '/storage': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/address-kit-api': {
+        target: 'https://production.cas.so',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/address-kit-api/, '/address-kit'),
+      },
+    },
+  },
+
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
 })

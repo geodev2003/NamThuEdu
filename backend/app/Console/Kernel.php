@@ -36,6 +36,13 @@ class Kernel extends ConsoleKernel
                  ->hourly()
                  ->withoutOverlapping()
                  ->runInBackground();
+
+        // Tự động xóa vĩnh viễn tài khoản đã yêu cầu xóa sau 3 ngày
+        $schedule->call(function () {
+            \App\Models\User::whereNotNull('scheduled_delete_at')
+                ->where('scheduled_delete_at', '<=', now())
+                ->forceDelete();
+        })->daily()->name('cleanup-scheduled-deletions');
     }
 
     /**

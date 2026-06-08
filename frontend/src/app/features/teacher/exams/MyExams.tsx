@@ -17,7 +17,7 @@ import {
   Edit,
   Copy,
   Trash2,
-  MoreVertical,
+  MoreVertical, 
   Users,
   Target,
   Calendar,
@@ -53,6 +53,23 @@ interface Exam {
   avgScore: number;
   completionRate: number;
   avgTimeSpent: number;
+  // Internal fields để route Sửa/Xem đúng
+  _eType?: string;
+  _ielts_skill?: string;
+  _eId?: number;
+}
+
+/**
+ * Map eStatus từ backend sang status UI.
+ * Backend dùng: 'draft' | 'published' | 'active' | 'inactive' | 'archived' | 'private'
+ */
+function deriveStatus(exam: any): "Draft" | "Published" | "Private" {
+  const s = (exam.eStatus || "").toLowerCase();
+  if (s === "published" || s === "active") return "Published";
+  if (s === "private") return "Private";
+  if (exam.eIs_private === true) return "Private";
+  if (exam.eIs_published === true) return "Published";
+  return "Draft";
 }
 
 const typeColors = {
@@ -92,6 +109,9 @@ export function MyExams() {
   const [sortBy, setSortBy] = useState("recent");
   const [selectedExams, setSelectedExams] = useState<string[]>([]);
   const [showActionMenu, setShowActionMenu] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Real data from API
   const [exams, setExams] = useState<Exam[]>([]);
@@ -104,7 +124,7 @@ export function MyExams() {
       try {
         setLoading(true);
         const response = await teacherApi.exams.getAll();
-        if (response.success && response.data) {
+        if (response.status === 'success' && response.data) {
           // Transform API data to match our Exam interface
           const transformedExams: Exam[] = response.data
             .map((exam: any) => ({
@@ -116,7 +136,7 @@ export function MyExams() {
               duration: exam.eDuration_minutes || exam.duration || 60,
               questions: exam.questions_count || exam.questionsCount || 0,
               points: exam.total_points || exam.totalPoints || 100,
-              status: exam.eIs_published ? "Published" : exam.eIs_private ? "Private" : "Draft",
+              status: deriveStatus(exam),
               source: (exam.eSource_type || exam.sourceType || "manual") === "manual" ? "Manual" : 
                       (exam.eSource_type || exam.sourceType) === "template" ? "Template" : "Upload",
               createdAt: exam.created_at || exam.createdAt || new Date().toISOString(),
@@ -127,13 +147,14 @@ export function MyExams() {
               avgScore: exam.avg_score || exam.avgScore || 0,
               completionRate: exam.completion_rate || exam.completionRate || 0,
               avgTimeSpent: exam.avg_time_spent || exam.avgTimeSpent || 0,
+              // Lưu thêm field gốc để route Sửa/Xem đúng loại đề
+              _eType: exam.eType,
+              _ielts_skill: exam.ielts_skill,
+              _eId: exam.eId,
             }))
-            // Chỉ hiển thị đề thi chính thức: đã xuất bản VÀ có câu hỏi
-            .filter((exam) => {
-              const isPublished = exam.status === "Published";
-              const hasQuestions = exam.questions > 0;
-              return isPublished && hasQuestions;
-            });
+            // Hiện tất cả đề của tôi: đã xuất bản, nháp, riêng tư
+            // (bỏ filter cũ chỉ hiện published có questions)
+            ;
           setExams(transformedExams);
         }
       } catch (err: any) {
@@ -190,6 +211,75 @@ export function MyExams() {
     setFilterSkill("all");
     setSearchTerm("");
     setSortBy("recent");
+  };
+
+  // Handle delete exam
+  const handleDeleteClick = (exam: Exam) => {
+    setExamToDelete(exam);
+    setShowDeleteModal(true);
+    setShowActionMenu(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!examToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await teacherApi.exams.delete(Number(examToDelete.id));
+      
+      // Remove from local state
+      setExams((prev) => prev.filter((e) => e.id !== examToDelete.id));
+      
+      // Show success message (if you have toast)
+      alert("Đã xóa đề thi thành công!");
+      
+      setShowDeleteModal(false);
+      setExamToDelete(null);
+    } catch (error: any) {
+      console.error("Error deleting exam:", error);
+      alert(error.message || "Không thể xóa đề thi. Vui lòng thử lại!");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setExamToDelete(null);
+  };
+
+  // Build edit URL theo loại đề
+  const getEditUrl = (exam: Exam): string => {
+    const eType = (exam._eType || exam.type || "").toUpperCase();
+    if (eType === "IELTS") {
+      const skill = (exam._ielts_skill || exam.skill || "").toLowerCase();
+      const validSkills = ["listening", "reading", "writing", "speaking"];
+      const s = validSkills.includes(skill) ? skill : "listening";
+      return `/giao-vien/de-thi/ielts/${s}/sua/${exam.id}`;
+    }
+    if (eType === "VSTEP") {
+      const skill = (exam.skill || "").toLowerCase();
+      if (["listening", "reading", "writing", "speaking"].includes(skill)) {
+        return `/giao-vien/de-thi/vstep/${skill}/sua/${exam.id}`;
+      }
+      return `/giao-vien/de-thi/${exam.id}/chinh-sua`;
+    }
+    return `/giao-vien/de-thi/${exam.id}/chinh-sua`;
+  };
+
+  // Build preview URL theo loại đề
+  const getPreviewUrl = (exam: Exam): string => {
+    const eType = (exam._eType || exam.type || "").toUpperCase();
+    if (eType === "IELTS") {
+      const skill = (exam._ielts_skill || exam.skill || "").toLowerCase();
+      const validSkills = ["listening", "reading", "writing", "speaking"];
+      const s = validSkills.includes(skill) ? skill : "listening";
+      return `/giao-vien/de-thi/ielts/${s}/xem/${exam.id}`;
+    }
+    if (eType === "VSTEP") {
+      return `/giao-vien/de-thi/${exam.id}/vstep`;
+    }
+    return `/giao-vien/de-thi/${exam.id}/xem`;
   };
 
   return (
@@ -540,7 +630,10 @@ export function MyExams() {
                                 Lưu trữ
                               </button>
                               <hr className="my-2" />
-                              <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600">
+                              <button 
+                                onClick={() => handleDeleteClick(exam)}
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 flex items-center gap-2 text-red-600 transition-colors"
+                              >
                                 <Trash2 className="w-4 h-4" />
                                 Xóa
                               </button>
@@ -634,13 +727,13 @@ export function MyExams() {
                   {/* Card Footer */}
                   <div className="px-4 pb-4 flex items-center gap-2">
                     <Link
-                      to={`/de-thi/${exam.id}`}
+                      to={getPreviewUrl(exam)}
                       className="flex-1 px-3 py-1.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all text-center text-xs font-medium"
                     >
                       Xem chi tiết
                     </Link>
                     <Link
-                      to={`/de-thi/${exam.id}/chinh-sua`}
+                      to={getEditUrl(exam)}
                       className="flex-1 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all text-center text-xs font-medium"
                     >
                       Chỉnh sửa
@@ -711,7 +804,7 @@ export function MyExams() {
                         </td>
                         <td className="px-6 py-4">
                           <Link
-                            to={`/de-thi/${exam.id}`}
+                            to={getPreviewUrl(exam)}
                             className="font-semibold text-gray-900 hover:text-orange-600 transition-colors flex items-center gap-2"
                           >
                             <SkillIcon className={`w-4 h-4 ${skillColors[exam.skill]}`} />
@@ -759,14 +852,14 @@ export function MyExams() {
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end gap-2">
                             <Link
-                              to={`/de-thi/${exam.id}`}
+                              to={getPreviewUrl(exam)}
                               className="p-2 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
                               title="Xem chi tiết"
                             >
                               <Eye className="w-4 h-4" />
                             </Link>
                             <Link
-                              to={`/de-thi/${exam.id}/chinh-sua`}
+                              to={getEditUrl(exam)}
                               className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
                               title="Chỉnh sửa"
                             >
@@ -830,6 +923,79 @@ export function MyExams() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && examToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-in fade-in duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Xác nhận xóa đề thi</h3>
+                  <p className="text-sm text-gray-500 mt-0.5">Hành động này không thể hoàn tác</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 py-5 space-y-4">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <p className="text-sm text-orange-800 font-medium mb-2">
+                  ⚠️ Bạn có chắc chắn muốn xóa đề thi này?
+                </p>
+                <div className="space-y-1 text-sm text-orange-700">
+                  <p><span className="font-semibold">Tên đề:</span> {examToDelete.title}</p>
+                  <p><span className="font-semibold">Loại:</span> {examToDelete.type} - {examToDelete.skill}</p>
+                  <p><span className="font-semibold">Số câu hỏi:</span> {examToDelete.questions} câu</p>
+                </div>
+              </div>
+
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-800">
+                  <strong>Lưu ý:</strong> Khi xóa đề thi, tất cả dữ liệu liên quan sẽ bị xóa vĩnh viễn bao gồm:
+                </p>
+                <ul className="list-disc list-inside text-sm text-red-700 mt-2 space-y-1">
+                  <li>Toàn bộ câu hỏi và đáp án</li>
+                  <li>Lịch sử giao bài (nếu có)</li>
+                  <li>Kết quả làm bài của học viên (nếu có)</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-gray-50 rounded-b-2xl flex items-center justify-end gap-3">
+              <button
+                onClick={cancelDelete}
+                disabled={isDeleting}
+                className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-medium shadow-lg shadow-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Đang xóa...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Xác nhận xóa
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

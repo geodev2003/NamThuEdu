@@ -476,24 +476,6 @@ class StudentTestController extends Controller
             ], 401);
         }
 
-        $submission = Submission::where('sId', $submissionId)
-                               ->where('user_id', $user->uId)
-                               ->first();
-
-        if (!$submission) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Không tìm thấy bài làm.'
-            ], 404);
-        }
-
-        if ($submission->sStatus !== 'in_progress') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Bài làm đã được nộp hoặc không thể chỉnh sửa.'
-            ], 400);
-        }
-
         $validator = Validator::make($request->all(), [
             'question_id' => 'required|integer|exists:questions,qId',
             'saAnswer_text' => 'required|string|max:50000',
@@ -507,34 +489,79 @@ class StudentTestController extends Controller
             ], 400);
         }
 
-        $question = Question::where('qId', $request->question_id)
-            ->where('exam_id', $submission->exam_id)
-            ->first();
+        try {
+            $result = DB::transaction(function () use ($request, $submissionId, $user) {
+                // Lock the submission row to prevent concurrent answer modifications / submissions
+                $submission = Submission::where('sId', $submissionId)
+                                       ->where('user_id', $user->uId)
+                                       ->lockForUpdate()
+                                       ->first();
 
-        if (!$question) {
+                if (!$submission) {
+                    return [
+                        'status' => 404,
+                        'data' => [
+                            'status' => 'error',
+                            'message' => 'Không tìm thấy bài làm.'
+                        ]
+                    ];
+                }
+
+                if ($submission->sStatus !== 'in_progress') {
+                    return [
+                        'status' => 400,
+                        'data' => [
+                            'status' => 'error',
+                            'message' => 'Bài làm đã được nộp hoặc không thể chỉnh sửa.'
+                        ]
+                    ];
+                }
+
+                $question = Question::where('qId', $request->question_id)
+                    ->where('exam_id', $submission->exam_id)
+                    ->first();
+
+                if (!$question) {
+                    return [
+                        'status' => 403,
+                        'data' => [
+                            'status' => 'error',
+                            'message' => 'Câu hỏi không thuộc bài thi này.'
+                        ]
+                    ];
+                }
+
+                // Check if answer already exists, update or create
+                SubmissionAnswer::updateOrCreate(
+                    [
+                        'submission_id' => $submissionId,
+                        'question_id' => $question->qId,
+                    ],
+                    [
+                        'saAnswer_text' => $request->saAnswer_text,
+                    ]
+                );
+
+                return [
+                    'status' => 200,
+                    'data' => [
+                        'status' => 'success',
+                        'data' => [
+                            'message' => 'Câu trả lời đã được lưu.'
+                        ]
+                    ]
+                ];
+            });
+
+            return response()->json($result['data'], $result['status']);
+
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Câu hỏi không thuộc bài thi này.'
-            ], 403);
+                'message' => 'Lỗi hệ thống khi lưu câu trả lời.',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        // Check if answer already exists, update or create
-        $submissionAnswer = SubmissionAnswer::updateOrCreate(
-            [
-                'submission_id' => $submissionId,
-                'question_id' => $question->qId,
-            ],
-            [
-                'saAnswer_text' => $request->saAnswer_text,
-            ]
-        );
-
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'message' => 'Câu trả lời đã được lưu.'
-            ]
-        ]);
     }
 
     /**
@@ -898,10 +925,15 @@ class StudentTestController extends Controller
             ], 401);
         }
 
-        $submission = Submission::with(['exam.questions.answers', 'answers.question'])
-                               ->where('sId', $id)
-                               ->where('user_id', $user->uId)
-                               ->first();
+        $submission = Submission::with([
+            'exam.questions.answers', 
+            'exam.teacher', 
+            'answers.question', 
+            'user'
+        ])
+        ->where('sId', $id)
+        ->where('user_id', $user->uId)
+        ->first();
 
         if (!$submission) {
             return response()->json([
@@ -1262,6 +1294,8 @@ class StudentTestController extends Controller
                     'sStatus' => $submission->sStatus,
                     'sSubmit_time' => $submission->sSubmit_time,
                     'exam_title' => $submission->exam->eTitle,
+                    'exam_id' => $submission->exam_id,
+                    'exam_type' => $submission->exam->eType,
                 ],
                 'detailed_answers' => $detailedAnswers,
                 'summary' => [
@@ -1828,10 +1862,42 @@ class StudentTestController extends Controller
 
         foreach ($recentGraded as $submission) {
             if (!$submission->exam) continue;
+
+            // Compute display score on 0–10 scale (match frontend gradeHelpers.getSubmissionDisplayScore)
+            // - VSTEP: average of 4 AI skill scores (hệ 10), fallback sScore/10
+            // - Other: sScore/10 (sScore is stored as percentage 0-100)
+            $displayScore = null;
+            $isVstep = strtoupper($submission->exam->eType ?? '') === 'VSTEP'
+                || stripos($submission->exam->eTitle ?? '', 'VSTEP') !== false;
+
+            if ($isVstep) {
+                $raw = is_string($submission->sGemini_feedback)
+                    ? (json_decode($submission->sGemini_feedback, true) ?: [])
+                    : ((array) ($submission->sGemini_feedback ?? []));
+                $vs = $raw['vstep_scores'] ?? [];
+                $vals = [];
+                foreach (['listening', 'reading', 'writing', 'speaking'] as $sk) {
+                    if (isset($vs[$sk]) && is_numeric($vs[$sk])) {
+                        $vals[] = (float) $vs[$sk];
+                    }
+                }
+                if (count($vals) === 4) {
+                    $displayScore = array_sum($vals) / 4;
+                } elseif ($submission->sScore !== null) {
+                    $displayScore = (float) $submission->sScore / 10;
+                }
+            } elseif ($submission->sScore !== null) {
+                $displayScore = (float) $submission->sScore / 10;
+            }
+
+            $scoreLabel = $displayScore !== null
+                ? number_format(round($displayScore, 1), 1, '.', '') . '/10'
+                : '—';
+
             $notifications[] = [
                 'id'           => 'graded_' . $submission->sId,
                 'title'        => 'Kết quả bài thi đã có',
-                'message'      => 'Bài thi ' . $submission->exam->eTitle . ' đã được chấm. Điểm: ' . round((float)$submission->sScore, 1),
+                'message'      => 'Bài thi ' . $submission->exam->eTitle . ' đã được chấm. Điểm: ' . $scoreLabel,
                 'type'         => 'graded',
                 'color'        => '#10B981',
                 'is_read'      => false,
@@ -1889,6 +1955,14 @@ class StudentTestController extends Controller
 
         $readAt = $request->user()->notifications_read_at;
 
+        // Filter out notifications the student has dismissed
+        $dismissedIds = $request->user()->dismissed_notification_ids ?? [];
+        $dismissedSet = array_flip((array) $dismissedIds);
+        $notifications = array_values(array_filter(
+            $notifications,
+            fn($n) => !isset($dismissedSet[(string) $n['id']])
+        ));
+
         foreach ($notifications as &$notif) {
             $notif['is_read'] = $readAt && strtotime((string)$notif['created_at']) <= $readAt->timestamp;
         }
@@ -1932,9 +2006,25 @@ class StudentTestController extends Controller
 
     /**
      * DELETE /api/student/notifications/{id}
+     * Persists the notification ID to dismissed_notification_ids so it
+     * stays hidden across sessions. Caps the list at 200 to prevent bloat.
      */
     public function deleteNotification(Request $request, $id)
     {
+        $user = $request->user();
+        $dismissed = array_values((array) ($user->dismissed_notification_ids ?? []));
+
+        $strId = (string) $id;
+        if (!in_array($strId, $dismissed, true)) {
+            $dismissed[] = $strId;
+            // Keep only the most recent 200 dismissed IDs
+            if (count($dismissed) > 200) {
+                $dismissed = array_slice($dismissed, -200);
+            }
+            $user->dismissed_notification_ids = $dismissed;
+            $user->save();
+        }
+
         return response()->json(['status' => 'success', 'message' => 'Đã xóa thông báo.']);
     }
 
@@ -2422,10 +2512,15 @@ class StudentTestController extends Controller
                     ->sortBy('qSection_order')
                     ->values();
 
+                // Regenerate audio URL from filename so stored port/host never causes breakage
+                $storedAudio = $block->content ?? '';
+                $audioFilename = $storedAudio ? basename(parse_url($storedAudio, PHP_URL_PATH)) : '';
+                $freshAudioUrl = $audioFilename ? url('files/audio/' . $audioFilename) : '';
+
                 $sections[] = [
                     'sectionNumber'       => $s,
                     'sectionName'         => $block->metadata['section_name'] ?? "{$layout['sectionLabel']} {$s}",
-                    'audioUrl'            => $block->content ?? '',
+                    'audioUrl'            => $freshAudioUrl,
                     'audioDuration'       => $block->metadata['audio_duration'] ?? 0,
                     'transcript'          => $block->metadata['transcript'] ?? '',
                     'questionStart'       => $qStart + ($s - 1) * $qPerSection,
@@ -2434,12 +2529,15 @@ class StudentTestController extends Controller
                         'qId'            => $q->qId,
                         'questionNumber' => $q->qData['question_number'] ?? $q->qSection_order,
                         'questionText'   => $q->qContent,
-                        'options'        => $q->qData['options'] ?? [
-                            'A' => $q->answers[0]->aContent ?? '',
-                            'B' => $q->answers[1]->aContent ?? '',
-                            'C' => $q->answers[2]->aContent ?? '',
-                            'D' => $q->answers[3]->aContent ?? '',
-                        ],
+                        'options'        => $q->qData['options'] ?? (function() use ($q) {
+                            $sorted = ($q->answers ?? collect())->sortBy(fn($ans) => $ans->aOrder !== null ? $ans->aOrder : $ans->aId)->values();
+                            return [
+                                'A' => $sorted[0]->aContent ?? '',
+                                'B' => $sorted[1]->aContent ?? '',
+                                'C' => $sorted[2]->aContent ?? '',
+                                'D' => $sorted[3]->aContent ?? '',
+                            ];
+                        })(),
                     ])->values()->toArray(),
                 ];
             }
@@ -2494,12 +2592,15 @@ class StudentTestController extends Controller
                     'qId'            => $q->qId,
                     'questionNumber' => $q->qData['question_number'] ?? $q->qSection_order,
                     'questionText'   => $q->qContent,
-                    'options'        => $q->qData['options'] ?? [
-                        'A' => $q->answers[0]->aContent ?? '',
-                        'B' => $q->answers[1]->aContent ?? '',
-                        'C' => $q->answers[2]->aContent ?? '',
-                        'D' => $q->answers[3]->aContent ?? '',
-                    ],
+                    'options'        => $q->qData['options'] ?? (function() use ($q) {
+                        $sorted = ($q->answers ?? collect())->sortBy(fn($ans) => $ans->aOrder !== null ? $ans->aOrder : $ans->aId)->values();
+                        return [
+                            'A' => $sorted[0]->aContent ?? '',
+                            'B' => $sorted[1]->aContent ?? '',
+                            'C' => $sorted[2]->aContent ?? '',
+                            'D' => $sorted[3]->aContent ?? '',
+                        ];
+                    })(),
                 ])->toArray(),
             ];
         }
@@ -2597,6 +2698,325 @@ class StudentTestController extends Controller
         return response()->json(['status' => 'success', 'data' => ['exam_id' => $exam->eId, 'title' => $exam->eTitle, 'parts' => $parts]]);
     }
 
+    // ════════════════════════════════════════════════════════════════════
+    //  IELTS — Student Loading APIs
+    //  Mirror the VSTEP variants but use IELTS structure: 4 sections × 10
+    //  for Listening, 3 passages × 13/13/14 for Reading, 2 tasks for
+    //  Writing, 3 parts (Part 2 = cue card) for Speaking.
+    // ════════════════════════════════════════════════════════════════════
+
+    /**
+     * Resolve & load the IELTS exam for a student/teacher viewer.
+     * Throws 404 if exam not found, returns the model otherwise.
+     */
+    private function findIeltsExamForLoad($examId)
+    {
+        return Exam::where('eId', $examId)
+            ->where('eType', 'IELTS')
+            ->where(function ($q) { $q->whereNull('eIs_private')->orWhere('eIs_private', false); })
+            ->with([
+                'contentBlocks' => fn($q) => $q->orderBy('display_order'),
+                'questions'     => fn($q) => $q->orderBy('qPart')->orderBy('qSection_order'),
+                'questions.answers',
+            ])
+            ->first();
+    }
+
+    /**
+     * GET /api/student/exams/{examId}/ielts/listening
+     * Returns 4 sections × 10 questions, each with audio (one play only).
+     */
+    public function loadIeltsListening(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || !in_array($user->uRole, ['student', 'teacher'])) {
+            return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
+        }
+
+        $exam = $this->findIeltsExamForLoad($examId);
+        if (!$exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy đề thi IELTS.'], 404);
+        }
+
+        $sections = [];
+        $isTeacher = $user->uRole === 'teacher';
+        for ($sectionNumber = 1; $sectionNumber <= 4; $sectionNumber++) {
+            // Find audio block for this section
+            $block = $exam->contentBlocks->first(function ($b) use ($sectionNumber) {
+                $meta = $b->metadata ?? [];
+                return ($b->block_type === 'audio')
+                    && (($meta['section_number'] ?? null) == $sectionNumber);
+            });
+
+            // Regenerate audio URL from filename (avoid stale host/port)
+            $storedAudio   = $block->content ?? '';
+            $audioFilename = ($block->metadata['audio_filename'] ?? '')
+                ?: ($storedAudio ? basename(parse_url($storedAudio, PHP_URL_PATH)) : '');
+            $freshAudioUrl = $audioFilename ? url('files/audio/' . $audioFilename) : '';
+
+            $sectionQuestions = $exam->questions
+                ->where('qSkill', 'listening')
+                ->where('qPart', $sectionNumber)
+                ->sortBy('qSection_order')
+                ->values();
+
+            $sections[] = [
+                'sectionNumber' => $sectionNumber,
+                'sectionName'   => "Section {$sectionNumber}",
+                'audioUrl'      => $freshAudioUrl,
+                'audioDuration' => $block->metadata['audio_duration'] ?? 0,
+                'questionStart' => ($sectionNumber - 1) * 10 + 1,
+                'questionsPerSection' => 10,
+                'instructions'  => $block->metadata['instructions'] ?? '',
+                'context'       => $block->metadata['context'] ?? '',
+                'transcript'    => $isTeacher ? ($block->metadata['transcript'] ?? '') : null,
+                'questionType'  => $block->metadata['question_type'] ?? 'multiple_choice',
+                'questions'     => $sectionQuestions->map(fn($q) => $this->serializeIeltsQuestion($q, $isTeacher))->values()->toArray(),
+            ];
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => [
+                'exam_id'      => $exam->eId,
+                'title'        => $exam->eTitle,
+                'testType'     => $exam->ielts_test_type ?? 'Academic',
+                'totalQuestions' => 40,
+                'duration'     => $exam->eDuration_minutes ?? 40,
+                'sections'     => $sections,
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/student/exams/{examId}/ielts/reading
+     * Returns 3 passages × ~13–14 questions (40 total).
+     */
+    public function loadIeltsReading(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || !in_array($user->uRole, ['student', 'teacher'])) {
+            return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
+        }
+
+        $exam = $this->findIeltsExamForLoad($examId);
+        if (!$exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy đề thi IELTS.'], 404);
+        }
+
+        $passages = [];
+        $isTeacher = $user->uRole === 'teacher';
+        $runningQNumber = 1;
+        for ($passageNumber = 1; $passageNumber <= 3; $passageNumber++) {
+            $block = $exam->contentBlocks->first(function ($b) use ($passageNumber) {
+                $meta = $b->metadata ?? [];
+                return ($b->block_type === 'passage')
+                    && (($meta['part_number'] ?? null) == $passageNumber);
+            });
+
+            $passageQuestions = $exam->questions
+                ->where('qSkill', 'reading')
+                ->where('qPart', $passageNumber)
+                ->sortBy('qSection_order')
+                ->values();
+
+            $count = $passageQuestions->count();
+            $questionStart = $runningQNumber;
+
+            $passages[] = [
+                'passageNumber' => $passageNumber,
+                'passageName'   => "Passage {$passageNumber}",
+                'title'         => $block->metadata['passage_title'] ?? '',
+                'body'          => $block->content ?? '',
+                'wordCount'     => $block->metadata['word_count'] ?? 0,
+                'questionStart' => $questionStart,
+                'questionEnd'   => $questionStart + max(0, $count - 1),
+                'questions'     => $passageQuestions->map(fn($q) => $this->serializeIeltsQuestion($q, $isTeacher))->values()->toArray(),
+            ];
+
+            $runningQNumber += $count;
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => [
+                'exam_id'        => $exam->eId,
+                'title'          => $exam->eTitle,
+                'testType'       => $exam->ielts_test_type ?? 'Academic',
+                'totalQuestions' => 40,
+                'duration'       => 60,
+                'passages'       => $passages,
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/student/exams/{examId}/ielts/writing
+     * Returns 2 tasks (Task 1 + Task 2). Academic Task 1 carries chart image.
+     */
+    public function loadIeltsWriting(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || !in_array($user->uRole, ['student', 'teacher'])) {
+            return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
+        }
+
+        $exam = $this->findIeltsExamForLoad($examId);
+        if (!$exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy đề thi IELTS.'], 404);
+        }
+
+        $tasks = [];
+        for ($taskNumber = 1; $taskNumber <= 2; $taskNumber++) {
+            $block = $exam->contentBlocks->first(function ($b) use ($taskNumber) {
+                $meta = $b->metadata ?? [];
+                return ($b->block_type === 'instruction')
+                    && (($meta['part_number'] ?? null) == $taskNumber)
+                    && (isset($meta['image_url']) || isset($meta['tone']) || isset($meta['chart_type']) || isset($meta['essay_type']));
+            });
+            $question = $exam->questions
+                ->where('qSkill', 'writing')
+                ->where('qPart', $taskNumber)
+                ->first();
+
+            if (!$question) continue;
+
+            $tasks[] = [
+                'taskNumber' => $taskNumber,
+                'taskName'   => "Task {$taskNumber}",
+                'prompt'     => $block->content ?? '',
+                'imageUrl'   => $block->metadata['image_url'] ?? null,
+                'tone'       => $block->metadata['tone'] ?? null,
+                'chartType'  => $block->metadata['chart_type'] ?? null,
+                'essayType'  => $block->metadata['essay_type'] ?? null,
+                'minWords'   => $taskNumber === 1 ? 150 : 250,
+                'recommendedMinutes' => $taskNumber === 1 ? 20 : 40,
+                'questionId' => $question->qId,
+            ];
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => [
+                'exam_id'  => $exam->eId,
+                'title'    => $exam->eTitle,
+                'testType' => $exam->ielts_test_type ?? 'Academic',
+                'duration' => 60,
+                'tasks'    => $tasks,
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/student/exams/{examId}/ielts/speaking
+     * Returns 3 parts (Part 1 questions, Part 2 cue card, Part 3 questions).
+     */
+    public function loadIeltsSpeaking(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || !in_array($user->uRole, ['student', 'teacher'])) {
+            return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
+        }
+
+        $exam = $this->findIeltsExamForLoad($examId);
+        if (!$exam) {
+            return response()->json(['status' => 'error', 'message' => 'Không tìm thấy đề thi IELTS.'], 404);
+        }
+
+        $parts = [];
+        for ($partNumber = 1; $partNumber <= 3; $partNumber++) {
+            $block = $exam->contentBlocks->first(function ($b) use ($partNumber) {
+                $meta = $b->metadata ?? [];
+                return ($b->block_type === 'instruction')
+                    && (($meta['part_number'] ?? null) == $partNumber)
+                    && (isset($meta['cue_card']) || $partNumber !== 2);
+            });
+
+            $partQuestions = $exam->questions
+                ->where('qSkill', 'speaking')
+                ->where('qPart', $partNumber)
+                ->sortBy('qSection_order')
+                ->values();
+
+            $partData = [
+                'partNumber' => $partNumber,
+                'partName'   => "Part {$partNumber}",
+                'recommendedMinutes' => $partNumber === 1 ? 5 : ($partNumber === 2 ? 4 : 5),
+            ];
+
+            if ($partNumber === 2) {
+                $cueCard = $block->metadata['cue_card'] ?? null;
+                $partData['cueCard'] = $cueCard ?: [
+                    'topic'   => $partQuestions->first()->qContent ?? '',
+                    'bullets' => [],
+                ];
+                $partData['questionId'] = $partQuestions->first()->qId ?? null;
+                $partData['prepSeconds'] = 60;  // 1 min prep (IELTS standard)
+                $partData['speakSeconds'] = 120; // 1-2 min speak
+            } else {
+                $partData['questions'] = $partQuestions->map(fn($q) => [
+                    'qId'      => $q->qId,
+                    'order'    => $q->qSection_order,
+                    'topic'    => $q->qData['topic'] ?? null,
+                    'text'     => $q->qContent,
+                ])->values()->toArray();
+            }
+
+            $parts[] = $partData;
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => [
+                'exam_id'  => $exam->eId,
+                'title'    => $exam->eTitle,
+                'testType' => $exam->ielts_test_type ?? 'Academic',
+                'duration' => 14, // upper bound 11-14 min
+                'parts'    => $parts,
+            ],
+        ]);
+    }
+
+    /**
+     * Serialize a question from DB into shape used by IELTS student UI.
+     * Handles MCQ, fill-blank, TFNG/YNNG, completion, matching, etc.
+     *
+     * @param mixed $q Question model
+     * @param bool  $includeAnswer When true (teacher mode), keeps correct_answer in `data`.
+     */
+    private function serializeIeltsQuestion($q, bool $includeAnswer = false): array
+    {
+        $qData = $q->qData ?? [];
+        $type  = (string) ($q->qType ?? 'multiple_choice');
+
+        // Build MCQ options if available
+        $options = $qData['options'] ?? null;
+        if (!$options && $q->relationLoaded('answers')) {
+            $sorted = $q->answers->sortBy(fn($a) => $a->aOrder !== null ? $a->aOrder : $a->aId)->values();
+            if ($sorted->count() >= 2) {
+                $options = [];
+                $letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+                foreach ($sorted as $idx => $ans) {
+                    if (!isset($letters[$idx])) break;
+                    $options[$letters[$idx]] = $ans->aContent;
+                }
+            }
+        }
+
+        $extraData = $includeAnswer
+            ? $qData
+            : array_diff_key($qData, ['correct_answer' => 1]);
+
+        return [
+            'qId'            => $q->qId,
+            'questionNumber' => $qData['question_number'] ?? $q->qSection_order,
+            'questionType'   => $type,
+            'questionText'   => $q->qContent,
+            'options'        => $options,
+            'data'           => $extraData,
+        ];
+    }
+
     /**
      * POST /api/student/submissions/{submissionId}/speaking/{partNumber}/upload
      * Upload student speaking audio recording for a given part.
@@ -2638,6 +3058,28 @@ class StudentTestController extends Controller
         try { $feedback = json_decode($submission->sGemini_feedback ?? '{}', true) ?: []; } catch (\Exception $e) {}
         $feedback['speaking_audio'][(int) $partNumber] = $publicUrl;
         $submission->update(['sGemini_feedback' => json_encode($feedback)]);
+
+        // Also create/update SubmissionAnswer placeholder row for this speaking question
+        $question = Question::where('exam_id', $submission->exam_id)
+            ->where(function($query) {
+                $query->whereRaw('LOWER(qSkill) = ?', ['speaking'])
+                      ->orWhereRaw('LOWER(qSection) = ?', ['speaking']);
+            })
+            ->where('qPart', (int) $partNumber)
+            ->first();
+            
+        if ($question) {
+            SubmissionAnswer::updateOrCreate(
+                [
+                    'submission_id' => $submission->sId,
+                    'question_id' => $question->qId,
+                ],
+                [
+                    'saAnswer_text' => $publicUrl,
+                    'saReview_status' => 'pending',
+                ]
+            );
+        }
 
         return response()->json([
             'status' => 'success',
@@ -2689,10 +3131,20 @@ class StudentTestController extends Controller
         }
 
         $type = $request->query('type');
+        $skill = $request->query('skill');     // listening|reading|writing|speaking
+        $testType = $request->query('test_type'); // Academic | "General Training"
 
         $query = Exam::withCount('questions')
             ->whereIn('eType', ['VSTEP', 'IELTS'])
-            ->whereIn('eSkill', ['mixed', 'full'])
+            ->where('eStatus', 'published')
+            ->where(function ($q) {
+                // VSTEP: chỉ lấy đề full 4 skills (mixed/full)
+                // IELTS: theo concept mới, 1 đề = 1 skill, nên không filter eSkill
+                $q->where(function ($sub) {
+                    $sub->where('eType', 'VSTEP')
+                        ->whereIn('eSkill', ['mixed', 'full', 'Mixed', 'Full']);
+                })->orWhere('eType', 'IELTS');
+            })
             ->where(function ($q) {
                 $q->whereNull('age_group')
                   ->orWhereIn('age_group', ['adults', 'all']);
@@ -2706,17 +3158,27 @@ class StudentTestController extends Controller
             $query->where('eType', strtoupper($type));
         }
 
+        if ($skill && in_array(strtolower($skill), ['listening', 'reading', 'writing', 'speaking'])) {
+            $query->where('ielts_skill', strtolower($skill));
+        }
+
+        if ($testType && in_array($testType, ['Academic', 'General Training'])) {
+            $query->where('ielts_test_type', $testType);
+        }
+
         $exams = $query->get()->map(function ($exam) {
             return [
-                'id'          => $exam->eId,
-                'title'       => $exam->eTitle,
-                'type'        => $exam->eType,
-                'skill'       => $exam->eSkill,
-                'duration'    => $exam->eDuration_minutes,
-                'description' => $exam->eDescription,
-                'age_group'   => $exam->age_group,
+                'id'              => $exam->eId,
+                'title'           => $exam->eTitle,
+                'type'            => $exam->eType,
+                'skill'           => $exam->eSkill,
+                'ielts_skill'     => $exam->ielts_skill,
+                'ielts_test_type' => $exam->ielts_test_type,
+                'duration'        => $exam->eDuration_minutes,
+                'description'     => $exam->eDescription,
+                'age_group'       => $exam->age_group,
                 'questions_count' => $exam->questions_count,
-                'created_at'  => $exam->eCreated_at,
+                'created_at'      => $exam->eCreated_at,
             ];
         });
 

@@ -494,4 +494,395 @@ class IELTSService
             ]
         ];
     }
+
+    /**
+     * Parse and publish IELTS exam data into content_blocks, questions, and answers tables.
+     * Ensure SOLID principles, DRY, and proper error handling.
+     *
+     * @param Exam $exam
+     * @param string $testType
+     * @param array $data
+     * @return array
+     * @throws \Exception
+     */
+    public static function publishIeltsExam(Exam $exam, string $testType, array $data)
+    {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($exam, $testType, $data) {
+            try {
+                self::clearExistingExamData($exam);
+                self::updateExamMetadata($exam, $testType, $data);
+
+                $total = 0;
+                $total += self::saveListeningSections($exam, $data['listening']['sections'] ?? []);
+                $total += self::saveReadingPassages($exam, $data['reading']['passages'] ?? []);
+                $total += self::saveWritingTasks($exam, $data['writing']['tasks'] ?? []);
+                $total += self::saveSpeakingParts($exam, $data['speaking']['parts'] ?? []);
+
+                return [
+                    'success' => true,
+                    'total_questions' => $total,
+                ];
+            } catch (\Throwable $e) {
+                \Log::error('IELTSService::publishIeltsExam failed', [
+                    'exam_id' => $exam->eId,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                // Re-throw so DB::transaction rolls back, controller can format response
+                throw $e;
+            }
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Configuration constants (DRY)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /** Map frontend kebab-case question types to DB snake_case enums */
+    private const QUESTION_TYPE_MAP = [
+        'multiple-choice'        => 'multiple_choice',
+        'fill-in-the-blank'      => 'fill_blank',
+        'fill-blank'             => 'fill_blank',
+        'true-false-not-given'   => 'true_false_not_given',
+        'yes-no-not-given'       => 'yes_no_not_given',
+        'short-answer'           => 'short_answer',
+        'sentence-completion'    => 'sentence_completion',
+        'summary-completion'     => 'summary_completion',
+        'matching-headings'      => 'matching_headings',
+        'matching-information'   => 'matching_information',
+        'matching-features'      => 'matching_features',
+        'matching-sentence-endings' => 'matching_sentence_endings',
+        'note-completion'        => 'note_completion',
+        'form-completion'        => 'form_completion',
+        'table-completion'       => 'table_completion',
+        'flow-chart-completion'  => 'flow_chart_completion',
+        'diagram-labelling'      => 'diagram_labelling',
+        'plan-map-diagram'       => 'plan_map_diagram',
+        'matching'               => 'matching',
+    ];
+
+    /** Writing task config (min words, recommended minutes) by task number */
+    private const WRITING_TASK_CONFIG = [
+        1 => ['min_words' => 150, 'minutes' => 20],
+        2 => ['min_words' => 250, 'minutes' => 40],
+    ];
+
+    /** MCQ option letters */
+    private const MCQ_LETTERS = ['A', 'B', 'C', 'D'];
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Pre-publish cleanup & metadata update (SRP)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Remove existing content blocks, questions, answers so we can rebuild
+     * from scratch. This is destructive and runs inside the publish transaction.
+     */
+    private static function clearExistingExamData(Exam $exam): void
+    {
+        $exam->contentBlocks()->delete();
+        foreach ($exam->questions as $q) {
+            $q->answers()->delete();
+            $q->delete();
+        }
+    }
+
+    /**
+     * Persist IELTS metadata + flip exam to published state.
+     */
+    private static function updateExamMetadata(Exam $exam, string $testType, array $data): void
+    {
+        $exam->update([
+            'ielts_test_type' => $testType,
+            'ielts_config'    => $data,
+            'eStatus'         => 'published',
+            'eIs_private'     => false,
+        ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Skill-specific savers (one method per skill — Open/Closed)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Save 4 listening sections (each with audio + transcript + 10 MCQs typically).
+     * Returns number of questions saved.
+     */
+    private static function saveListeningSections(Exam $exam, array $sections): int
+    {
+        $count = 0;
+        foreach ($sections as $section) {
+            $sectionNumber = (int) ($section['sectionNumber'] ?? 1);
+
+            $block = \App\Models\ContentBlock::create([
+                'exam_id'       => $exam->eId,
+                'block_type'    => 'audio',
+                'content'       => $section['audioUrl'] ?? '',
+                'metadata'      => [
+                    'section_number' => $sectionNumber,
+                    'audio_filename' => $section['audioFileName'] ?? '',
+                    'transcript'     => $section['transcript'] ?? '',
+                ],
+                'display_order' => $sectionNumber,
+            ]);
+
+            $count += self::saveQuestionsForBlock(
+                $exam,
+                $block,
+                $section['questions'] ?? [],
+                'listening',
+                'Listening',
+                $sectionNumber
+            );
+        }
+        return $count;
+    }
+
+    /**
+     * Save 3 reading passages (each with body + 13–14 questions of mixed types).
+     */
+    private static function saveReadingPassages(Exam $exam, array $passages): int
+    {
+        $count = 0;
+        foreach ($passages as $passage) {
+            $passageNumber = (int) ($passage['passageNumber'] ?? 1);
+
+            $block = \App\Models\ContentBlock::create([
+                'exam_id'       => $exam->eId,
+                'block_type'    => 'passage',
+                'content'       => $passage['body'] ?? '',
+                'metadata'      => [
+                    'part_number'    => $passageNumber,
+                    'part_name'      => "Passage {$passageNumber}",
+                    'passage_title'  => $passage['title'] ?? '',
+                    'word_count'     => (int) ($passage['wordCount'] ?? 0),
+                ],
+                'display_order' => $passageNumber,
+            ]);
+
+            $count += self::saveQuestionsForBlock(
+                $exam,
+                $block,
+                $passage['questions'] ?? [],
+                'reading',
+                'Reading',
+                $passageNumber
+            );
+        }
+        return $count;
+    }
+
+    /**
+     * Save 2 writing tasks (Task 1 + Task 2). Each task = 1 question of type 'essay'.
+     */
+    private static function saveWritingTasks(Exam $exam, array $tasks): int
+    {
+        $count = 0;
+        foreach ($tasks as $task) {
+            $taskNumber = (int) ($task['taskNumber'] ?? 1);
+            $config = self::WRITING_TASK_CONFIG[$taskNumber] ?? self::WRITING_TASK_CONFIG[2];
+
+            $block = \App\Models\ContentBlock::create([
+                'exam_id'       => $exam->eId,
+                'block_type'    => 'instruction',
+                'content'       => $task['prompt'] ?? '',
+                'metadata'      => [
+                    'part_number'    => $taskNumber,
+                    'part_name'      => "Task {$taskNumber}",
+                    'image_url'      => $task['imageUrl'] ?? null,
+                    'image_filename' => $task['imageFileName'] ?? null,
+                    'tone'           => $task['tone'] ?? null,
+                    'chart_type'     => $task['chartType'] ?? null,
+                    'essay_type'     => $task['essayType'] ?? null,
+                    'model_answer'   => $task['modelAnswer'] ?? null,
+                ],
+                'display_order' => $taskNumber,
+            ]);
+
+            Question::create([
+                'exam_id'          => $exam->eId,
+                'content_block_id' => $block->id,
+                'qContent'         => "IELTS Writing Task {$taskNumber}",
+                'qType'            => 'essay',
+                'qSkill'           => 'writing',
+                'qSection'         => 'Writing',
+                'qPart'            => $taskNumber,
+                'qSection_order'   => $taskNumber,
+                'qPoints'          => 9,
+                'qData'            => [
+                    'task_number'         => $taskNumber,
+                    'min_words'           => $config['min_words'],
+                    'recommended_minutes' => $config['minutes'],
+                    'tone'                => $task['tone'] ?? null,
+                    'chart_type'          => $task['chartType'] ?? null,
+                    'essay_type'          => $task['essayType'] ?? null,
+                    'model_answer'        => $task['modelAnswer'] ?? null,
+                ],
+            ]);
+            $count++;
+        }
+        return $count;
+    }
+
+    /**
+     * Save 3 speaking parts (Interview / Long turn / Discussion).
+     * Part 1 & 3: list of questions. Part 2: cue card stored as single question.
+     */
+    private static function saveSpeakingParts(Exam $exam, array $parts): int
+    {
+        $count = 0;
+        foreach ($parts as $part) {
+            $partNumber = (int) ($part['partNumber'] ?? 1);
+            $cueCard    = $part['cueCard'] ?? null;
+            $isCueCardPart = ($partNumber === 2 && is_array($cueCard));
+
+            $block = \App\Models\ContentBlock::create([
+                'exam_id'       => $exam->eId,
+                'block_type'    => 'instruction',
+                'content'       => $isCueCardPart
+                    ? (string) ($cueCard['topic'] ?? '')
+                    : "IELTS Speaking Part {$partNumber}",
+                'metadata'      => [
+                    'part_number' => $partNumber,
+                    'part_name'   => "Part {$partNumber}",
+                    'cue_card'    => $cueCard,
+                ],
+                'display_order' => $partNumber,
+            ]);
+
+            if ($isCueCardPart) {
+                Question::create([
+                    'exam_id'          => $exam->eId,
+                    'content_block_id' => $block->id,
+                    'qContent'         => (string) ($cueCard['topic'] ?? ''),
+                    'qType'            => 'speaking',
+                    'qSkill'           => 'speaking',
+                    'qSection'         => 'Speaking',
+                    'qPart'            => 2,
+                    'qSection_order'   => 1,
+                    'qPoints'          => 9,
+                    'qData'            => [
+                        'part_number' => 2,
+                        'cue_card'    => $cueCard,
+                    ],
+                ]);
+                $count++;
+                continue;
+            }
+
+            // Part 1 / Part 3: regular question list
+            $questions = $part['questions'] ?? [];
+            foreach ($questions as $idx => $qVal) {
+                $qText = trim((string) ($qVal['text'] ?? ''));
+                if ($qText === '') continue;
+
+                Question::create([
+                    'exam_id'          => $exam->eId,
+                    'content_block_id' => $block->id,
+                    'qContent'         => $qText,
+                    'qType'            => 'speaking',
+                    'qSkill'           => 'speaking',
+                    'qSection'         => 'Speaking',
+                    'qPart'            => $partNumber,
+                    'qSection_order'   => $idx + 1,
+                    'qPoints'          => 9,
+                    'qData'            => [
+                        'part_number' => $partNumber,
+                        'topic'       => $qVal['topic'] ?? null,
+                    ],
+                ]);
+                $count++;
+            }
+        }
+        return $count;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Generic question persister (shared by Listening + Reading) — DRY
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Persist a list of objective questions (MCQ / TFNG / fill-blank / etc.)
+     * tied to a content block. Used by both Listening and Reading.
+     */
+    private static function saveQuestionsForBlock(
+        Exam $exam,
+        \App\Models\ContentBlock $block,
+        array $questions,
+        string $skill,
+        string $sectionName,
+        int $partNumber
+    ): int {
+        $count = 0;
+        foreach ($questions as $qVal) {
+            $qNum   = (int) ($qVal['questionNumber'] ?? 1);
+            $rawType = (string) ($qVal['questionType'] ?? 'multiple-choice');
+            $qType  = self::normalizeQuestionType($rawType);
+            $qText  = (string) ($qVal['questionText'] ?? '');
+            $options = $qVal['options'] ?? null;
+            $correctAnswer = (string) ($qVal['correctAnswer'] ?? '');
+
+            $question = Question::create([
+                'exam_id'          => $exam->eId,
+                'content_block_id' => $block->id,
+                'qContent'         => $qText,
+                'qType'            => $qType,
+                'qSkill'           => $skill,
+                'qSection'         => $sectionName,
+                'qPart'            => $partNumber,
+                'qSection_order'   => $qNum,
+                'qPoints'          => 1,
+                'qData'            => [
+                    'question_number' => $qNum,
+                    'options'         => $options,
+                    'correct_answer'  => $correctAnswer,
+                ],
+            ]);
+
+            self::createAnswersForQuestion($question, $qType, $options, $correctAnswer);
+            $count++;
+        }
+        return $count;
+    }
+
+    /**
+     * Create Answer rows for a question. MCQ → 4 rows (A/B/C/D); other types → 1 row.
+     */
+    private static function createAnswersForQuestion(
+        Question $question,
+        string $qType,
+        $options,
+        string $correctAnswer
+    ): void {
+        if ($qType === 'multiple_choice' && is_array($options)) {
+            foreach (self::MCQ_LETTERS as $idx => $letter) {
+                Answer::create([
+                    'question_id' => $question->qId,
+                    'aContent'    => (string) ($options[$letter] ?? ''),
+                    'aIs_correct' => (strtoupper($correctAnswer) === $letter),
+                ]);
+            }
+            return;
+        }
+
+        Answer::create([
+            'question_id' => $question->qId,
+            'aContent'    => $correctAnswer,
+            'aIs_correct' => true,
+        ]);
+    }
+
+    /**
+     * Normalize frontend question type slug → DB enum value.
+     * Falls back to original (lowercased, hyphens→underscores) when unmapped.
+     */
+    private static function normalizeQuestionType(string $rawType): string
+    {
+        $key = strtolower(trim($rawType));
+        if (isset(self::QUESTION_TYPE_MAP[$key])) {
+            return self::QUESTION_TYPE_MAP[$key];
+        }
+        // Generic fallback: kebab → snake
+        return str_replace('-', '_', $key);
+    }
 }

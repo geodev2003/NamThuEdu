@@ -86,6 +86,87 @@ const VSTEP_STRUCTURE = {
   },
 };
 
+// IELTS Structure - 4 Sections, 165 minutes total
+// Source: idp.com / britishcouncil official
+const IELTS_STRUCTURE = {
+  listening: {
+    name: "Listening",
+    icon: "🎧",
+    duration: 30,
+    totalQuestions: 40,
+    sameForBothTestTypes: true,
+    parts: [
+      { part: 1, name: "Section 1", questions: 10, description: "Conversation in everyday social context" },
+      { part: 2, name: "Section 2", questions: 10, description: "Monologue in everyday social context" },
+      { part: 3, name: "Section 3", questions: 10, description: "Conversation in educational/training context" },
+      { part: 4, name: "Section 4", questions: 10, description: "Monologue on academic subject (lecture)" },
+    ],
+  },
+  reading: {
+    name: "Reading",
+    icon: "📖",
+    duration: 60,
+    totalQuestions: 40,
+    sameForBothTestTypes: false,
+    variants: {
+      Academic: "3 long academic texts",
+      "General Training": "Texts from everyday social/work contexts",
+    },
+    parts: [
+      { part: 1, name: "Passage 1", questions: 13, description: "Academic / everyday context" },
+      { part: 2, name: "Passage 2", questions: 13, description: "Academic / workplace context" },
+      { part: 3, name: "Passage 3", questions: 14, description: "Long academic text / general interest" },
+    ],
+  },
+  writing: {
+    name: "Writing",
+    icon: "✍️",
+    duration: 60,
+    totalQuestions: 2,
+    sameForBothTestTypes: false,
+    variants: {
+      Academic: { task_1: "Describe visual info (chart, table, process, map)", task_2: "Essay" },
+      "General Training": { task_1: "Write a letter", task_2: "Essay" },
+    },
+    assessmentCriteria: [
+      "task_achievement_or_task_response",
+      "coherence_and_cohesion",
+      "lexical_resource",
+      "grammatical_range_and_accuracy",
+    ],
+    parts: [
+      { part: 1, name: "Task 1", questions: 1, description: "Letter / report (≥150 words, ~20 min)", minWords: 150 },
+      { part: 2, name: "Task 2", questions: 1, description: "Essay (≥250 words, ~40 min)", minWords: 250 },
+    ],
+  },
+  speaking: {
+    name: "Speaking",
+    icon: "🗣️",
+    duration: 14, // 11–14 minutes
+    totalQuestions: 3,
+    sameForBothTestTypes: true,
+    assessmentCriteria: [
+      "fluency_and_coherence",
+      "lexical_resource",
+      "grammatical_range_and_accuracy",
+      "pronunciation",
+    ],
+    parts: [
+      { part: 1, name: "Introduction and interview", questions: 1, description: "Introduce yourself, familiar topics (4–5 min)" },
+      { part: 2, name: "Long turn", questions: 1, description: "Cue card, speak 1–2 min after 1 min prep (3–4 min)" },
+      { part: 3, name: "Discussion", questions: 1, description: "Two-way discussion related to Part 2 (4–5 min)" },
+    ],
+  },
+};
+
+// IELTS official band scale
+const IELTS_BAND = {
+  range: [0, 9] as [number, number],
+  step: 0.5,
+  calculation: "average_of_4_section_bands",
+  rounding: "rounded_to_nearest_half_band",
+};
+
 type ExamType = "VSTEP" | "IELTS" | "Cambridge" | "General" | null;
 type ExamSkill = "Listening" | "Reading" | "Writing" | "Speaking" | "Mixed" | null;
 type QuestionType =
@@ -182,6 +263,57 @@ const questionTypes = [
   { value: "speaking", label: "Nói (có ghi âm)", icon: Volume2 },
 ];
 
+// ─── Suggestion helpers ──────────────────────────────────────────────────────
+// Generate a default exam title based on type + skill
+function suggestExamTitle(type: ExamType, skill: ExamSkill): string {
+  if (!type || !skill) return "";
+  const skillLabel = skill === "Mixed" ? "Full Test" : `${skill} Practice`;
+  switch (type) {
+    case "VSTEP":
+      return `VSTEP B2 - ${skillLabel}`;
+    case "IELTS":
+      return skill === "Mixed"
+        ? "IELTS Academic - Full Test"
+        : `IELTS Academic - ${skill} Practice`;
+    case "Cambridge":
+      return `Cambridge B2 First - ${skillLabel}`;
+    case "General":
+    default:
+      return `Đề thi ${skillLabel}`;
+  }
+}
+
+// Generate a default description based on type + skill
+function suggestExamDescription(type: ExamType, skill: ExamSkill): string {
+  if (!type || !skill) return "";
+  if (type === "VSTEP") {
+    if (skill === "Mixed") {
+      return "Đề thi VSTEP B2 đầy đủ 4 kỹ năng (Listening, Reading, Writing, Speaking) theo chuẩn Bộ Giáo dục. Đề thi bao gồm 80 câu hỏi với thời gian làm bài 172 phút, giúp đánh giá toàn diện năng lực tiếng Anh của thí sinh.";
+    }
+    if (skill === "Listening") return "Đề thi VSTEP B2 - Kỹ năng Nghe gồm 3 phần với 35 câu hỏi, thời gian 40 phút. Đề thi đánh giá khả năng nghe hiểu thông báo, hội thoại và bài giảng học thuật bằng tiếng Anh.";
+    if (skill === "Reading") return "Đề thi VSTEP B2 - Kỹ năng Đọc gồm 4 đoạn văn với 40 câu hỏi, thời gian 60 phút. Đề thi đánh giá khả năng đọc hiểu các văn bản từ cơ bản đến học thuật.";
+    if (skill === "Writing") return "Đề thi VSTEP B2 - Kỹ năng Viết gồm 2 phần: Task 1 (viết thư/email tối thiểu 120 từ) và Task 2 (viết luận tối thiểu 250 từ), thời gian 60 phút.";
+    if (skill === "Speaking") return "Đề thi VSTEP B2 - Kỹ năng Nói gồm 3 phần: Social Interaction, Solution Discussion và Topic Development, tổng thời gian 12 phút.";
+  }
+  if (type === "IELTS") {
+    if (skill === "Mixed") {
+      return "Đề thi IELTS Academic đầy đủ 4 sections (Listening, Reading, Writing, Speaking) theo chuẩn IDP/British Council. Tổng thời gian ~165 phút, thang điểm band 0–9.";
+    }
+    if (skill === "Listening") return "Đề thi IELTS Listening gồm 4 sections × 10 câu = 40 câu, thời gian 30 phút. Đề thi đánh giá khả năng nghe hiểu trong các tình huống giao tiếp và học thuật.";
+    if (skill === "Reading") return "Đề thi IELTS Reading gồm 3 passages với 40 câu hỏi, thời gian 60 phút. Academic: 3 đoạn văn học thuật. General Training: văn bản đời sống và công việc.";
+    if (skill === "Writing") return "Đề thi IELTS Writing gồm Task 1 (≥150 từ, ~20 phút) và Task 2 (≥250 từ, ~40 phút), tổng 60 phút. Đánh giá theo 4 tiêu chí: Task Achievement, Coherence & Cohesion, Lexical Resource, Grammatical Range & Accuracy.";
+    if (skill === "Speaking") return "Đề thi IELTS Speaking gồm 3 parts (Introduction, Long turn, Discussion), thời gian 11–14 phút. Đánh giá theo 4 tiêu chí: Fluency & Coherence, Lexical Resource, Grammatical Range & Accuracy, Pronunciation.";
+  }
+  if (type === "Cambridge") {
+    return skill === "Mixed"
+      ? "Đề thi Cambridge B2 First (FCE) đầy đủ kỹ năng theo chuẩn Cambridge English."
+      : `Đề thi Cambridge B2 First (FCE) - Kỹ năng ${skill}.`;
+  }
+  return skill === "Mixed"
+    ? "Đề thi tiếng Anh tổng quát với đầy đủ 4 kỹ năng."
+    : `Đề thi tiếng Anh - Kỹ năng ${skill}.`;
+}
+
 export function CreateExam() {
   const navigate = useNavigate();
   const { examId } = useParams();
@@ -216,6 +348,21 @@ export function CreateExam() {
         "Speaking": 12
       };
       const defaultDuration = skillDurations[examSkill] || 60;
+      setDuration(defaultDuration);
+      setDurationUnit("minutes");
+    } else if (examType === "IELTS" && examSkill === "Mixed") {
+      // IELTS Full = 30 + 60 + 60 + ~14 ≈ 165 minutes (Speaking usually scheduled separately)
+      setDuration(165);
+      setDurationUnit("minutes");
+    } else if (examType === "IELTS" && examSkill) {
+      // Individual IELTS skills (per IDP/British Council official)
+      const ieltsSkillDurations: Record<string, number> = {
+        "Listening": 30,
+        "Reading": 60,
+        "Writing": 60,
+        "Speaking": 14, // 11-14 minutes, take upper bound
+      };
+      const defaultDuration = ieltsSkillDurations[examSkill] || 60;
       setDuration(defaultDuration);
       setDurationUnit("minutes");
     }
@@ -546,8 +693,21 @@ export function CreateExam() {
   const handleNextStep = async () => {
     if (currentStep < 3) {
       // VSTEP Full (Mixed): navigate to specialized editor with title/description
-      if (currentStep === 1 && examSkill === "Mixed") {
+      // IMPORTANT: only redirect when examType is explicitly VSTEP. Other types
+      // (IELTS, Cambridge, General) with Mixed skill must continue with the
+      // generic flow until their dedicated editors are built.
+      if (currentStep === 1 && examType === "VSTEP" && examSkill === "Mixed") {
         navigate('/giao-vien/de-thi/vstep/full/tao-moi', {
+          replace: true,
+          state: { title: examTitle, description: examDescription, duration },
+        });
+        return;
+      }
+
+      // IELTS: route to dedicated editor (Full or single skill)
+      if (currentStep === 1 && examType === "IELTS" && examSkill) {
+        const skillSlug = examSkill === "Mixed" ? "full" : examSkill.toLowerCase();
+        navigate(`/giao-vien/de-thi/ielts/${skillSlug}/tao-moi`, {
           replace: true,
           state: { title: examTitle, description: examDescription, duration },
         });
@@ -578,8 +738,6 @@ export function CreateExam() {
       setCurrentStep(currentStep - 1);
     }
   };
-
-  const [showImportModal, setShowImportModal] = useState(false);
 
   const canProceedStep1 = examType && examSkill && examTitle && duration > 0;
   const canProceedStep2 = questions.length > 0;
@@ -1716,7 +1874,7 @@ Your response will be evaluated in terms of Task Fulfillment, Organization, Voca
                 ))}
               </div>
 
-              {examSkill === "Mixed" && (
+              {examSkill === "Mixed" && examType === "VSTEP" && (
                 <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-4">
                   <p className="text-sm font-bold text-violet-800">Format VSTEP Full 4 kỹ năng</p>
                   <p className="mt-1 text-xs text-violet-700">
@@ -1724,125 +1882,147 @@ Your response will be evaluated in terms of Task Fulfillment, Organization, Voca
                   </p>
                 </div>
               )}
+              {examSkill === "Mixed" && examType === "IELTS" && (
+                <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                  <p className="text-sm font-bold text-blue-800">Format IELTS Full Test</p>
+                  <p className="mt-1 text-xs text-blue-700">
+                    Listening 30' • Reading 60' • Writing 60' • Speaking 11–14' (~165 phút) · Band 0–9
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Exam Info - Only show when exam type and skill are selected */}
-            {examType && examSkill && (
-              <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
-                <h3 className="text-lg font-bold text-gray-900">Thông tin đề thi</h3>
+            {examType && examSkill && (() => {
+              const titleSuggestion = suggestExamTitle(examType, examSkill);
+              const descSuggestion = suggestExamDescription(examType, examSkill);
+              const durationLabel = examSkill === "Mixed"
+                ? `Tổng thời gian Full Test`
+                : `Thời gian khuyến nghị cho ${examSkill}`;
 
+              return (
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                {/* Header strip */}
+                <div className="px-6 py-4 bg-gradient-to-r from-orange-50 to-amber-50/40 border-b border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center">
+                      <Info className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-gray-900 leading-tight">Thông tin đề thi</h3>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        {examType} · {examSkill === "Mixed" ? "Full 4 kỹ năng" : examSkill} · {duration} phút
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!examTitle.trim()) setExamTitle(titleSuggestion);
+                      if (!examDescription.trim()) setExamDescription(descSuggestion);
+                    }}
+                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-orange-700 hover:text-white hover:bg-orange-500 rounded-lg border border-orange-200 hover:border-orange-500 transition-all"
+                    title="Tự động điền tên & mô tả"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Tự động điền
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-5">
               {/* Title */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Tên đề thi <span className="text-red-500">*</span>
+                <label className="flex items-center justify-between text-sm font-semibold text-gray-700 mb-1.5">
+                  <span>Tên đề thi <span className="text-red-500">*</span></span>
+                  {!examTitle.trim() && titleSuggestion && (
+                    <button
+                      type="button"
+                      onClick={() => setExamTitle(titleSuggestion)}
+                      className="text-[11px] font-semibold text-orange-600 hover:text-orange-700 hover:underline"
+                    >
+                      Dùng "{titleSuggestion}"
+                    </button>
+                  )}
                 </label>
                 <input
                   type="text"
                   value={examTitle}
                   onChange={(e) => setExamTitle(e.target.value)}
                   onKeyDown={(e) => {
-                    // When Enter is pressed and input is empty, fill with placeholder suggestion
-                    if (e.key === 'Enter' && !examTitle.trim()) {
+                    if (e.key === 'Enter' && !examTitle.trim() && titleSuggestion) {
                       e.preventDefault();
-                      if (examType === "VSTEP" && examSkill) {
-                        const suggestedTitle = examSkill === "Mixed"
-                          ? "VSTEP B2 - Full Test"
-                          : `VSTEP B2 - ${examSkill} Practice`;
-                        setExamTitle(suggestedTitle);
-                      }
+                      setExamTitle(titleSuggestion);
                     }
                   }}
-                  placeholder={
-                    examType === "VSTEP" && examSkill
-                      ? examSkill === "Mixed"
-                        ? "VD: VSTEP B2 - Full Test"
-                        : `VD: VSTEP B2 - ${examSkill} Practice`
-                      : "VD: Đề thi Tiếng Anh - Tháng 4/2026"
-                  }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  placeholder={titleSuggestion ? `VD: ${titleSuggestion}` : "VD: Đề thi Tiếng Anh - Tháng 4/2026"}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                   maxLength={255}
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  {examTitle.length}/255 ký tự
-                  {!examTitle.trim() && examType === "VSTEP" && examSkill && (
-                    <span className="ml-2 text-orange-600">• Ấn Enter để dùng gợi ý</span>
+                <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-2">
+                  <span>{examTitle.length}/255 ký tự</span>
+                  {!examTitle.trim() && titleSuggestion && (
+                    <span className="text-orange-600 font-medium">• Ấn Enter để dùng gợi ý</span>
                   )}
                 </p>
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Mô tả (tùy chọn)
+                <label className="flex items-center justify-between text-sm font-semibold text-gray-700 mb-1.5">
+                  <span>Mô tả <span className="text-gray-400 font-normal">(tùy chọn)</span></span>
+                  {!examDescription.trim() && descSuggestion && (
+                    <button
+                      type="button"
+                      onClick={() => setExamDescription(descSuggestion)}
+                      className="text-[11px] font-semibold text-orange-600 hover:text-orange-700 hover:underline"
+                    >
+                      Dùng gợi ý
+                    </button>
+                  )}
                 </label>
                 <textarea
                   value={examDescription}
                   onChange={(e) => setExamDescription(e.target.value)}
                   onKeyDown={(e) => {
-                    // When Enter is pressed and textarea is empty, fill with placeholder suggestion
-                    if (e.key === 'Enter' && !examDescription.trim()) {
+                    if (e.key === 'Enter' && !examDescription.trim() && descSuggestion && !e.shiftKey) {
                       e.preventDefault();
-                      if (examType === "VSTEP" && examSkill) {
-                        let suggestedDescription = "";
-                        if (examSkill === "Mixed") {
-                          suggestedDescription = "Đề thi VSTEP B2 đầy đủ 4 kỹ năng (Listening, Reading, Writing, Speaking) theo chuẩn Bộ Giáo dục. Đề thi bao gồm 80 câu hỏi với thời gian làm bài 172 phút, giúp đánh giá toàn diện năng lực tiếng Anh của thí sinh.";
-                        } else if (examSkill === "Listening") {
-                          suggestedDescription = "Đề thi VSTEP B2 - Kỹ năng Nghe gồm 3 phần với 35 câu hỏi, thời gian 40 phút. Đề thi đánh giá khả năng nghe hiểu thông báo, hội thoại và bài giảng học thuật bằng tiếng Anh.";
-                        } else if (examSkill === "Reading") {
-                          suggestedDescription = "Đề thi VSTEP B2 - Kỹ năng Đọc gồm 4 đoạn văn với 40 câu hỏi, thời gian 60 phút. Đề thi đánh giá khả năng đọc hiểu các văn bản từ cơ bản đến học thuật.";
-                        } else if (examSkill === "Writing") {
-                          suggestedDescription = "Đề thi VSTEP B2 - Kỹ năng Viết gồm 2 phần: Task 1 (viết thư/email tối thiểu 120 từ) và Task 2 (viết luận tối thiểu 250 từ), thời gian 60 phút.";
-                        } else if (examSkill === "Speaking") {
-                          suggestedDescription = "Đề thi VSTEP B2 - Kỹ năng Nói gồm 3 phần: Social Interaction, Solution Discussion và Topic Development, tổng thời gian 12 phút.";
-                        }
-                        setExamDescription(suggestedDescription);
-                      }
+                      setExamDescription(descSuggestion);
                     }
                   }}
                   rows={4}
-                  placeholder={
-                    examType === "VSTEP" && examSkill
-                      ? examSkill === "Mixed"
-                        ? "VD: Đề thi VSTEP B2 đầy đủ 4 kỹ năng theo chuẩn Bộ Giáo dục..."
-                        : examSkill === "Listening"
-                        ? "VD: Đề thi VSTEP B2 - Kỹ năng Nghe gồm 3 phần với 35 câu hỏi..."
-                        : examSkill === "Reading"
-                        ? "VD: Đề thi VSTEP B2 - Kỹ năng Đọc gồm 4 đoạn văn với 40 câu hỏi..."
-                        : examSkill === "Writing"
-                        ? "VD: Đề thi VSTEP B2 - Kỹ năng Viết gồm 2 phần: Task 1 và Task 2..."
-                        : examSkill === "Speaking"
-                        ? "VD: Đề thi VSTEP B2 - Kỹ năng Nói gồm 3 phần với thời gian 12 phút..."
-                        : "Mô tả chi tiết về đề thi..."
-                      : "Mô tả chi tiết về đề thi..."
-                  }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                  placeholder={descSuggestion ? `VD: ${descSuggestion.slice(0, 120)}...` : "Mô tả chi tiết về đề thi..."}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none transition-all"
                   maxLength={1000}
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  {examDescription.length}/1000 ký tự
-                  {!examDescription.trim() && examType === "VSTEP" && examSkill && (
-                    <span className="ml-2 text-orange-600">• Ấn Enter để dùng gợi ý</span>
+                <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-2">
+                  <span>{examDescription.length}/1000 ký tự</span>
+                  {!examDescription.trim() && descSuggestion && (
+                    <span className="text-orange-600 font-medium">• Ấn Enter để dùng gợi ý</span>
                   )}
                 </p>
               </div>
 
               {/* Duration */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Thời gian làm bài <span className="text-red-500">*</span>
+                <label className="flex items-center justify-between text-sm font-semibold text-gray-700 mb-1.5">
+                  <span>Thời gian làm bài <span className="text-red-500">*</span></span>
+                  <span className="text-[11px] font-normal text-gray-500">{durationLabel}</span>
                 </label>
                 <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    value={duration}
-                    onChange={(e) => setDuration(parseInt(e.target.value) || 0)}
-                    min={1}
-                    className="w-32 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
+                  <div className="relative flex-1 max-w-[200px]">
+                    <input
+                      type="number"
+                      value={duration}
+                      onChange={(e) => setDuration(parseInt(e.target.value) || 0)}
+                      min={1}
+                      className="w-full pl-4 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all tabular-nums font-semibold text-gray-900"
+                    />
+                    <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  </div>
                   <select
                     value={durationUnit}
                     onChange={(e) => setDurationUnit(e.target.value as "minutes" | "hours")}
-                    className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                    className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white font-medium text-gray-700"
                   >
                     <option value="minutes">Phút</option>
                     <option value="hours">Giờ</option>
@@ -1852,11 +2032,11 @@ Your response will be evaluated in terms of Task Fulfillment, Organization, Voca
 
               {/* Difficulty */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Độ khó</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Độ khó</label>
                 <select
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white font-medium text-gray-700 transition-all"
                 >
                   <option value="easy">Dễ</option>
                   <option value="medium">Trung bình</option>
@@ -1864,8 +2044,10 @@ Your response will be evaluated in terms of Task Fulfillment, Organization, Voca
                   <option value="expert">Rất khó</option>
                 </select>
               </div>
-            </div>
-            )}
+                </div>
+              </div>
+              );
+            })()}
 
             {/* Settings - Only show when exam type and skill are selected */}
             {examType && examSkill && (
@@ -1943,7 +2125,7 @@ Your response will be evaluated in terms of Task Fulfillment, Organization, Voca
                 Hủy
               </Link>
               <button
-                onClick={() => canProceedStep1 && setShowImportModal(true)}
+                onClick={() => canProceedStep1 && handleNextStep()}
                 disabled={!canProceedStep1}
                 className={`px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-all ${
                   canProceedStep1
@@ -3153,65 +3335,6 @@ Your response will be evaluated in terms of Task Fulfillment, Organization, Voca
             </div>
           </div>
         )}
-      {/* ── Import Mode Modal ── */}
-      {showImportModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          onClick={() => setShowImportModal(false)}
-        >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div
-            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 z-10"
-            style={{ animation: 'scale-in 0.18s cubic-bezier(0.34,1.56,0.64,1)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <style>{`@keyframes scale-in{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}`}</style>
-
-            <button
-              onClick={() => setShowImportModal(false)}
-              className="absolute top-4 right-4 p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="text-center mb-7">
-              <h2 className="text-xl font-bold text-gray-900">Thêm câu hỏi cho đề thi</h2>
-              <p className="text-sm text-gray-500 mt-1.5">Chọn cách bạn muốn tạo bộ câu hỏi</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {/* Manual */}
-              <button
-                onClick={() => { setShowImportModal(false); handleNextStep(); }}
-                className="group p-6 border-2 border-gray-200 rounded-2xl hover:border-orange-400 hover:bg-orange-50/60 text-left transition-all duration-200"
-              >
-                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-orange-200 transition-colors">
-                  <BookOpen className="w-6 h-6 text-orange-600" />
-                </div>
-                <p className="font-bold text-gray-900 mb-1.5">Thêm thủ công</p>
-                <p className="text-xs text-gray-500 leading-relaxed">Nhập từng câu hỏi và đáp án theo từng bước</p>
-              </button>
-
-              {/* AI Import */}
-              <button
-                onClick={() => { setShowImportModal(false); navigate('/giao-vien/de-thi/import'); }}
-                className="group p-6 border-2 border-indigo-200 rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 hover:border-indigo-400 hover:from-indigo-100 hover:to-violet-100 text-left transition-all duration-200 relative"
-              >
-                <span className="absolute top-3 right-3 text-xs font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full">AI</span>
-                <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-indigo-200 transition-colors">
-                  <Sparkles className="w-6 h-6 text-indigo-600" />
-                </div>
-                <p className="font-bold text-gray-900 mb-1.5">Import từ PDF</p>
-                <p className="text-xs text-gray-500 leading-relaxed">AI tự động trích xuất câu hỏi từ file PDF đề thi</p>
-              </button>
-            </div>
-
-            <p className="text-center text-xs text-gray-400 mt-6">
-              Bấm vào bên ngoài để đóng
-            </p>
-          </div>
-        </div>
-      )}
       </div>
     </div>
   );

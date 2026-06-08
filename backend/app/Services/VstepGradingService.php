@@ -60,7 +60,14 @@ class VstepGradingService
             $response   = trim($answer->saAnswer_text ?? '');
 
             if (mb_strlen($response) < 20) {
-                $answer->update(['saIs_correct' => false, 'saPoints_awarded' => 0]);
+                $answer->update([
+                    'saAi_score'      => 0,
+                    'saAi_feedback'   => 'Bài viết quá ngắn hoặc bỏ trống.',
+                    'saAi_criteria'   => [],
+                    'saAi_model'      => env('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+                    'saAi_graded_at'  => now(),
+                    'saReview_status' => 'pending',
+                ]);
                 $taskScores[] = 0;
                 $rawResults["task_{$taskNum}"] = ['score' => 0, 'criteria' => [], 'feedback' => 'Bài viết quá ngắn hoặc bỏ trống.'];
                 continue;
@@ -68,7 +75,29 @@ class VstepGradingService
 
             $result = $this->gradeWritingTask($taskNum, $taskPrompt, $response);
             $score  = $result['score'];
-            $answer->update(['saPoints_awarded' => $score]);
+            $answer->update([
+                'saAi_score'      => $score,
+                'saAi_feedback'   => $result['feedback'] ?? '',
+                'saAi_criteria'   => [
+                    'criteria'           => $result['criteria'] ?? [],
+                    'criterion_comments' => $result['criterion_comments'] ?? [],
+                    'suggestions'        => $result['suggestions'] ?? [],
+                ],
+                'saAi_model'      => env('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+                'saAi_graded_at'  => now(),
+                'saReview_status' => 'pending',
+            ]);
+
+            // Audit log
+            \App\Models\GradingHistory::create([
+                'submission_id' => $submission->sId,
+                'answer_id'     => $answer->saId,
+                'ghAction'      => \App\Models\GradingHistory::ACTION_AI_GRADE,
+                'ghActor_id'    => null,
+                'ghNew_score'   => $score,
+                'ghMetadata'    => ['model' => env('GROQ_MODEL', 'llama-3.3-70b-versatile'), 'task' => $taskNum],
+            ]);
+
             $taskScores[] = $score;
             $rawResults["task_{$taskNum}"] = $result;
             Log::info("VstepGrading writing task {$taskNum}: score={$score}", $result);
@@ -141,6 +170,36 @@ class VstepGradingService
                 'content_score'       => $contentScore,
                 'transcript'          => $whisper['text'],
             ]);
+
+            // Also update the SubmissionAnswer row with the AI-graded result
+            $speakingQuestion = \App\Models\Question::where('exam_id', $submission->exam_id)
+                ->where(function($query) {
+                    $query->whereRaw('LOWER(qSkill) = ?', ['speaking'])
+                          ->orWhereRaw('LOWER(qSection) = ?', ['speaking']);
+                })
+                ->where('qPart', (int) $partNum)
+                ->first();
+                
+            if ($speakingQuestion) {
+                $speakingAnswer = \App\Models\SubmissionAnswer::where('submission_id', $submission->sId)
+                    ->where('question_id', $speakingQuestion->qId)
+                    ->first();
+                
+                if ($speakingAnswer) {
+                    $speakingAnswer->update([
+                        'saAi_score'      => $combined,
+                        'saAi_feedback'   => $contentResult['feedback'] ?? '',
+                        'saAi_criteria'   => [
+                            'criteria'           => $contentResult['criteria'] ?? [],
+                            'criterion_comments' => $contentResult['criterion_comments'] ?? [],
+                            'suggestions'        => $contentResult['suggestions'] ?? [],
+                        ],
+                        'saAi_model'      => 'llama-3.3-70b-versatile + whisper-large-v3-turbo',
+                        'saAi_graded_at'  => now(),
+                        'saReview_status' => 'pending',
+                    ]);
+                }
+            }
         }
 
         // Persist detailed results back to sGemini_feedback
@@ -197,8 +256,18 @@ class VstepGradingService
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════
     //  PRIVATE: Groq LLM — Writing grading
     // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Public wrapper for grading a single writing task.
+     * Used by GradingReviewService when teacher requests regrade of one answer.
+     */
+    public function gradeSingleWritingTask(int $taskNum, string $taskPrompt, string $studentResponse): array
+    {
+        return $this->gradeWritingTask($taskNum, $taskPrompt, $studentResponse);
+    }
 
     private function gradeWritingTask(int $taskNum, string $taskPrompt, string $studentResponse): array
     {

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * @OA\Tag(
@@ -494,5 +495,124 @@ class StudentProfileController extends Controller
                 'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
+    }
+
+    /**
+     * GET /api/student/profile/sessions
+     * List active sessions/devices
+     */
+    public function getSessions(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'student') {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized.'], 401);
+        }
+
+        $currentToken = $request->user()->currentAccessToken();
+
+        $userId = $user->uId;
+        $userType = get_class($user);
+
+        $sessions = PersonalAccessToken::where('tokenable_id', $userId)
+            ->where('tokenable_type', $userType)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->orderByDesc('last_used_at')
+            ->get()
+            ->map(function ($token) use ($currentToken, $request) {
+                $deviceName = $token->name;
+                $isCurrent = $currentToken && $currentToken->id === $token->id;
+
+                if ($deviceName === 'auth_token' || empty($deviceName)) {
+                    if ($isCurrent) {
+                        $ua = $request->userAgent() ?? '';
+                        $browser = 'Unknown Browser';
+                        $os = 'Unknown OS';
+                        if (preg_match('/(Edg|OPR|Chrome|Firefox|Safari|MSIE|Trident)/i', $ua, $bm)) {
+                            $browserMap = ['Edg' => 'Edge', 'OPR' => 'Opera', 'Trident' => 'IE'];
+                            $browser = $browserMap[$bm[1]] ?? ucfirst($bm[1]);
+                        }
+                        if (preg_match('/(iPhone|iPad|Android|Windows|Macintosh|Linux|Ubuntu)/i', $ua, $om)) {
+                            $osMap = ['Macintosh' => 'macOS', 'iPhone' => 'iPhone', 'iPad' => 'iPad'];
+                            $os = $osMap[$om[1]] ?? ucfirst($om[1]);
+                        }
+                        $deviceName = "$browser trên $os";
+                    } else {
+                        $deviceName = 'Thiết bị khác (chưa rõ)';
+                    }
+                }
+
+                return [
+                    'id'           => $token->id,
+                    'name'         => $deviceName,
+                    'ip'           => $token->last_used_ip,
+                    'last_used_at' => $token->last_used_at ? $token->last_used_at->toISOString() : null,
+                    'created_at'   => $token->created_at->toISOString(),
+                    'is_current'   => $isCurrent,
+                ];
+            });
+
+        return response()->json(['status' => 'success', 'data' => $sessions]);
+    }
+
+    /**
+     * DELETE /api/student/profile/sessions/{id}
+     * Revoke a specific session
+     */
+    public function revokeSession(Request $request, int $id)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'student') {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized.'], 401);
+        }
+
+        $token = PersonalAccessToken::where('id', $id)
+            ->where('tokenable_id', $user->uId)
+            ->where('tokenable_type', get_class($user))
+            ->first();
+
+        if (!$token) {
+            return response()->json(['status' => 'error', 'message' => 'Phiên không tồn tại.'], 404);
+        }
+
+        $currentToken = $request->user()->currentAccessToken();
+        if ($currentToken && $currentToken->id === $token->id) {
+            return response()->json(['status' => 'error', 'message' => 'Không thể thu hồi phiên hiện tại.'], 400);
+        }
+
+        $token->delete();
+
+        return response()->json(['status' => 'success', 'message' => 'Đã đăng xuất thiết bị.']);
+    }
+
+    /**
+     * DELETE /api/student/profile/sessions
+     * Revoke all sessions except current
+     */
+    public function revokeAllSessions(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'student') {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized.'], 401);
+        }
+
+        $currentToken = $request->user()->currentAccessToken();
+
+        $query = PersonalAccessToken::where('tokenable_id', $user->uId)
+            ->where('tokenable_type', get_class($user));
+
+        if ($currentToken) {
+            $query->where('id', '!=', $currentToken->id);
+        }
+
+        $count = $query->count();
+        $query->delete();
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => "Đã đăng xuất {$count} thiết bị khác.",
+            'data'    => ['revoked_count' => $count],
+        ]);
     }
 }

@@ -51,8 +51,10 @@ function computeNextAction(
   inProgress: InProgressTest[],
   upcoming: UpcomingTest[],
 ): NextAction {
-  if (inProgress.length > 0) {
-    const t = inProgress[0];
+  /* Only resume if time is still valid (minutesLeft > 0) */
+  const validInProgress = inProgress.filter((t) => Math.round(Number(t.time_remaining) || 0) > 0);
+  if (validInProgress.length > 0) {
+    const t = validInProgress[0];
     const isVstep = String(t.type || '').toUpperCase() === 'VSTEP';
     return {
       kind: 'resume',
@@ -222,6 +224,7 @@ export function AdultsDashboard() {
   const [upcoming, setUpcoming] = useState<UpcomingTest[]>([]);
   const [reminders, setReminders] = useState<TeacherReminder[]>([]);
   const [pendingAssignments, setPendingAssignments] = useState<TestAssignment[]>([]);
+  const [skillStats, setSkillStats] = useState<Record<string, { attempts: number; average_score: number; best_score: number }> | null>(null);
   const [showAllAssignments, setShowAllAssignments] = useState(false);
   const [dismissingId, setDismissingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -231,12 +234,13 @@ export function AdultsDashboard() {
     let mounted = true;
     (async () => {
       try {
-        const [gamRes, inProgRes, upcomingRes, remindersRes, testsRes] = await Promise.allSettled([
+        const [gamRes, inProgRes, upcomingRes, remindersRes, testsRes, skillsRes] = await Promise.allSettled([
           api.get('/student/gamification/overview'),
           studentApi.getInProgressTests(),
           studentApi.getUpcomingTests({ days: 30 }),
           studentApi.getReminders(),
           studentApi.getTests({ status: 'pending' }),
+          api.get('/student/analytics/skills'),
         ]);
 
         if (!mounted) return;
@@ -269,6 +273,11 @@ export function AdultsDashboard() {
           const d = (testsRes.value as any)?.data?.data;
           const list = Array.isArray(d?.pending) ? d.pending : [];
           setPendingAssignments(list);
+        }
+
+        // Skill breakdown — optional
+        if (skillsRes.status === 'fulfilled' && (skillsRes.value as any)?.data?.status === 'success') {
+          setSkillStats((skillsRes.value as any).data.data || null);
         }
       } finally {
         if (mounted) setLoading(false);
@@ -436,6 +445,7 @@ export function AdultsDashboard() {
   const fullName = user?.uName || user?.name || '';
   const firstName = fullName.trim() ? fullName.trim().split(/\s+/).slice(-1)[0] : 'bạn';
   const streak = gam?.streak.current || 0;
+  const isNewUser = !gam || (gam.stats.lessons_completed === 0 && gam.stats.exams_taken === 0 && studyHours === 0);
 
   // Teacher reminders strip:
   // 1. Real reminders sent by teacher (highest priority, persisted in DB).
@@ -541,34 +551,110 @@ export function AdultsDashboard() {
                   : 'Hãy bắt đầu hôm nay và xây dựng thói quen học tập.'}
               </p>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl"
-                style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}>
-                <Award className="w-4 h-4 text-yellow-300" />
-                <span className="text-sm font-bold text-white tabular-nums">{gam?.coins.total || 0}</span>
-                <span className="text-xs text-purple-200">xu</span>
-              </div>
-              <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl"
-                style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}>
-                <Sparkles className="w-4 h-4 text-purple-300" />
-                <span className="text-sm font-bold text-white">{getLevel(gam?.stats.total_points || 0)}</span>
-              </div>
+            {/* Daily Goal — progress ring widget */}
+            {(() => {
+              const DAILY_GOAL_MIN = 30;
+              const todayMinutes = 0; // TODO: wire to /student/analytics/today when available
+              const pct = Math.min(100, (todayMinutes / DAILY_GOAL_MIN) * 100);
+              const RADIUS = 26;
+              const CIRC = 2 * Math.PI * RADIUS;
+              const dash = (pct / 100) * CIRC;
+              return (
+                <div className="flex items-center gap-4 pl-3 pr-5 py-3 rounded-2xl flex-shrink-0"
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    backdropFilter: 'blur(20px)',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    boxShadow: '0 8px 32px -8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)',
+                  }}>
+                  {/* Ring */}
+                  <div className="relative w-14 h-14 flex-shrink-0">
+                    <svg className="w-14 h-14 -rotate-90" viewBox="0 0 60 60">
+                      <circle cx="30" cy="30" r={RADIUS} fill="none"
+                        stroke="rgba(255,255,255,0.08)" strokeWidth="3.5" />
+                      <circle cx="30" cy="30" r={RADIUS} fill="none"
+                        stroke="url(#dgGrad)" strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeDasharray={`${dash} ${CIRC}`}
+                        style={{ transition: 'stroke-dasharray 0.9s cubic-bezier(0.4,0,0.2,1)' }} />
+                      <defs>
+                        <linearGradient id="dgGrad" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stopColor="#FCD34D" />
+                          <stop offset="100%" stopColor="#F97316" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
+                      <span className="text-[14px] font-extrabold text-white tabular-nums tracking-tight">
+                        {Math.round(pct)}
+                      </span>
+                      <span className="text-[8px] font-semibold text-white/50 mt-0.5">%</span>
+                    </div>
+                  </div>
+
+                  {/* Meta */}
+                  <div className="flex flex-col gap-1.5 leading-none">
+                    <span className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-white/55">
+                      Mục tiêu hôm nay
+                    </span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-xl font-extrabold text-white tabular-nums leading-none">
+                        {todayMinutes}
+                      </span>
+                      <span className="text-xs font-medium text-white/55 leading-none">/ {DAILY_GOAL_MIN} phút</span>
+                    </div>
+                    {streak > 0 ? (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <Flame className="w-3 h-3" style={{ color: '#FB923C' }} strokeWidth={2.6} fill="#FB923C" fillOpacity={0.25} />
+                        <span className="text-[10px] font-semibold text-orange-200/90 tabular-nums leading-none">
+                          {streak} ngày liên tiếp
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] font-medium text-white/40 leading-none mt-0.5">
+                        Bắt đầu chuỗi học tập
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+          {isNewUser ? (
+            <div className="flex items-center gap-3 flex-wrap">
+              <Link
+                to="/hoc-vien/de-thi"
+                className="inline-flex items-center gap-2.5 px-5 py-3 rounded-2xl text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+                style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.3)' }}
+              >
+                <Play className="w-4 h-4 fill-white" />
+                Bắt đầu bài thi đầu tiên
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+              <Link
+                to="/hoc-vien/luyen-tap"
+                className="inline-flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-semibold text-purple-200 hover:text-white transition-colors"
+                style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)' }}
+              >
+                Luyện tập thử
+              </Link>
             </div>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            {[
-              { label: 'Tiến độ', value: `${Math.round(overallProgress)}%`, color: '#A78BFA' },
-              { label: 'Bài hoàn thành', value: gam?.stats.lessons_completed || 0, color: '#34D399' },
-              { label: 'Điểm TB', value: `${Math.round(gam?.stats.average_score || 0)}%`, color: '#60A5FA' },
-              { label: 'Giờ học', value: `${studyHours}h`, color: '#FBBF24' },
-            ].map((s) => (
-              <div key={s.label} className="flex items-center gap-2 px-4 py-2.5 rounded-2xl"
-                style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                <span className="text-lg font-extrabold tabular-nums" style={{ color: s.color }}>{s.value}</span>
-                <span className="text-xs font-semibold text-purple-200">{s.label}</span>
-              </div>
-            ))}
-          </div>
+          ) : (
+            <div className="flex items-center gap-3 flex-wrap">
+              {[
+                { label: 'Tiến độ', value: `${Math.round(overallProgress)}%`, color: '#A78BFA' },
+                { label: 'Bài hoàn thành', value: gam?.stats.lessons_completed || 0, color: '#34D399' },
+                { label: 'Điểm TB', value: `${Math.round(gam?.stats.average_score || 0)}%`, color: '#60A5FA' },
+                { label: 'Giờ học', value: `${studyHours}h`, color: '#FBBF24' },
+              ].map((s) => (
+                <div key={s.label} className="flex items-center gap-2 px-4 py-2.5 rounded-2xl"
+                  style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                  <span className="text-lg font-extrabold tabular-nums" style={{ color: s.color }}>{s.value}</span>
+                  <span className="text-xs font-semibold text-purple-200">{s.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -592,12 +678,34 @@ export function AdultsDashboard() {
           </div>
         )}
 
-        {/* ─── Stat tiles ───────────────────────────────────── */}
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatTile icon={BarChart3} label="Tiến độ tổng quan" value={`${Math.round(overallProgress)}%`} hint="Hoàn thành khóa học" />
-          <StatTile icon={BookOpen} label="Bài đã hoàn thành" value={gam?.stats.lessons_completed || 0} hint={`${gam?.stats.exams_taken || 0} bài đánh giá`} />
-          <StatTile icon={Target} label="Điểm trung bình" value={`${Math.round(gam?.stats.average_score || 0)}%`} hint="Qua các bài gần đây" />
-          <StatTile icon={Clock} label="Thời gian học" value={`${studyHours}h`} hint={streak > 0 ? `Chuỗi ${streak} ngày` : 'Tháng này'} />
+        {/* ─── Quick Actions ───────────────────────────────────── */}
+        <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {([
+            { icon: BookOpenCheck, label: 'Đề thi',    sub: 'Thi thử & đánh giá',      href: '/hoc-vien/de-thi',    color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
+            { icon: Target,        label: 'Luyện tập', sub: 'Ôn luyện theo kỹ năng',   href: '/hoc-vien/luyen-tap', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
+            { icon: ClipboardList, label: 'Bài tập',   sub: pendingAssignments.length > 0 ? `${pendingAssignments.length} đang chờ` : 'Bài được giao', href: '/hoc-vien/bai-tap', color: '#EA580C', bg: '#FFF7ED', border: '#FED7AA' },
+            { icon: TrendingUp,    label: 'Tiến độ',   sub: 'Xem lịch sử học',         href: '/hoc-vien/tien-do',   color: PURPLE,    bg: PURPLE_LIGHT, border: '#C4B5FD' },
+          ] as const).map((a) => {
+            const Icon = a.icon;
+            return (
+              <Link
+                key={a.label}
+                to={a.href}
+                className="flex items-center gap-3 p-4 rounded-2xl bg-white hover:-translate-y-0.5 transition-all duration-200 active:scale-[0.97]"
+                style={{ border: `1.5px solid ${a.border}`, boxShadow: '0 1px 8px rgba(0,0,0,0.04)' }}
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: a.bg }}>
+                  <Icon className="w-5 h-5" style={{ color: a.color }} strokeWidth={2} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-slate-900 leading-tight">{a.label}</p>
+                  <p className="text-xs text-slate-500 leading-tight truncate">{a.sub}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 ml-auto flex-shrink-0 text-slate-300" />
+              </Link>
+            );
+          })}
         </section>
 
         {/* ─── Main grid: 3+2 ──────────────────────────────────── */}
@@ -609,27 +717,54 @@ export function AdultsDashboard() {
             {nextAction ? (
               <section
                 className="relative rounded-3xl overflow-hidden group hover:-translate-y-0.5 transition-all duration-300"
-                style={{ border: '1.5px solid #F0F0F8', boxShadow: `0 4px 24px rgba(124,58,237,0.10)` }}
+                style={{
+                  border: nextAction.kind === 'resume' ? '1.5px solid #FECACA' : '1.5px solid #F0F0F8',
+                  boxShadow: nextAction.kind === 'resume'
+                    ? '0 4px 24px rgba(239,68,68,0.15)'
+                    : `0 4px 24px rgba(124,58,237,0.10)`,
+                }}
               >
+                {/* Urgent banner for resume */}
+                {nextAction.kind === 'resume' && (
+                  <div className="flex items-center gap-2 px-4 py-2 animate-pulse" style={{ background: '#FEF2F2' }}>
+                    <span className="inline-block w-2 h-2 rounded-full bg-red-500 flex-shrink-0" style={{ boxShadow: '0 0 0 3px rgba(239,68,68,0.25)' }} />
+                    <span className="text-[12px] font-bold text-red-700">⏱ Bài thi đang chạy — đồng hồ vẫn đếm!</span>
+                    <span className="ml-auto text-[12px] font-extrabold tabular-nums" style={{ color: '#DC2626' }}>
+                      Còn {nextAction.minutesLeft} phút
+                    </span>
+                  </div>
+                )}
+
                 {/* Gradient header zone */}
                 <div
                   className="relative px-6 pt-6 pb-5 overflow-hidden"
-                  style={{ background: `linear-gradient(135deg, ${PURPLE}18 0%, #1D4ED810 100%)` }}
+                  style={{
+                    background: nextAction.kind === 'resume'
+                      ? 'linear-gradient(135deg, #FEF2F2 0%, #FFF1F2 100%)'
+                      : `linear-gradient(135deg, ${PURPLE}18 0%, #1D4ED810 100%)`,
+                  }}
                 >
                   {/* Decorative orb */}
                   <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full opacity-20 pointer-events-none"
-                    style={{ background: `radial-gradient(circle, ${PURPLE}, transparent)` }} />
+                    style={{ background: nextAction.kind === 'resume'
+                      ? 'radial-gradient(circle, #EF4444, transparent)'
+                      : `radial-gradient(circle, ${PURPLE}, transparent)` }} />
 
                   <div className="relative z-10 flex items-start gap-4">
                     <div
                       className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
-                      style={{ background: `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})` }}
+                      style={{
+                        background: nextAction.kind === 'resume'
+                          ? 'linear-gradient(135deg, #EF4444, #F97316)'
+                          : `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})`,
+                      }}
                     >
                       <Play className="w-5 h-5 text-white fill-white ml-0.5" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <p className="text-[11px] font-bold tracking-widest uppercase" style={{ color: PURPLE_MID }}>
+                        <p className="text-[11px] font-bold tracking-widest uppercase"
+                          style={{ color: nextAction.kind === 'resume' ? '#DC2626' : PURPLE_MID }}>
                           {eyebrow}
                         </p>
                         {nextAction.kind === 'start' && nextAction.isUrgent && (
@@ -651,16 +786,16 @@ export function AdultsDashboard() {
                     {nextAction.examType && (
                       <span
                         className="inline-flex items-center px-2.5 py-1 rounded-full font-semibold text-[11px]"
-                        style={{ background: PURPLE_LIGHT, color: PURPLE }}
+                        style={{
+                          background: nextAction.kind === 'resume' ? '#FEE2E2' : PURPLE_LIGHT,
+                          color: nextAction.kind === 'resume' ? '#DC2626' : PURPLE,
+                        }}
                       >
                         {nextAction.examType}
                       </span>
                     )}
                     {nextAction.skill && nextAction.skill !== 'mixed' && (
                       <span className="text-slate-500 capitalize">{nextAction.skill}</span>
-                    )}
-                    {nextAction.kind === 'resume' && nextAction.minutesLeft > 0 && (
-                      <span className="text-slate-500">Còn {nextAction.minutesLeft} phút</span>
                     )}
                     {nextAction.kind === 'start' && nextAction.durationMin > 0 && (
                       <span className="text-slate-500">{nextAction.durationMin} phút</span>
@@ -674,7 +809,14 @@ export function AdultsDashboard() {
                   <Link
                     to={nextAction.routeUrl}
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-bold text-white flex-shrink-0 transition-all duration-200 hover:gap-3 active:scale-[0.97]"
-                    style={{ background: `linear-gradient(135deg, ${PURPLE} 0%, ${PURPLE_MID} 100%)`, boxShadow: `0 4px 14px ${PURPLE}45` }}
+                    style={{
+                      background: nextAction.kind === 'resume'
+                        ? 'linear-gradient(135deg, #EF4444, #F97316)'
+                        : `linear-gradient(135deg, ${PURPLE} 0%, ${PURPLE_MID} 100%)`,
+                      boxShadow: nextAction.kind === 'resume'
+                        ? '0 4px 14px rgba(239,68,68,0.4)'
+                        : `0 4px 14px ${PURPLE}45`,
+                    }}
                   >
                     <Play className="w-3.5 h-3.5 fill-white" />
                     {ctaLabel}
@@ -685,30 +827,63 @@ export function AdultsDashboard() {
             ) : (
               <section
                 className="relative rounded-3xl overflow-hidden"
-                style={{ border: '1.5px solid #F0F0F8', boxShadow: '0 2px 12px rgba(124,58,237,0.07)' }}
+                style={{
+                  border: isNewUser ? '1.5px solid #DBEAFE' : '1.5px solid #F0F0F8',
+                  boxShadow: isNewUser ? '0 2px 12px rgba(59,130,246,0.08)' : '0 2px 12px rgba(124,58,237,0.07)',
+                }}
               >
-                <div
-                  className="px-6 py-8 text-center"
-                  style={{ background: `linear-gradient(135deg, ${PURPLE_LIGHT} 0%, #E0F2FE 100%)` }}
-                >
+                {isNewUser ? (
                   <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                    style={{ background: `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})` }}
+                    className="px-6 py-8 text-center"
+                    style={{ background: 'linear-gradient(135deg, #EFF6FF 0%, #F0F9FF 100%)' }}
                   >
-                    <CheckCircle2 className="w-7 h-7 text-white" />
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                      style={{ background: 'linear-gradient(135deg, #3B82F6, #2563EB)' }}>
+                      <Play className="w-7 h-7 text-white fill-white ml-0.5" />
+                    </div>
+                    <h3 className="text-base font-extrabold text-slate-900">Sẵn sàng cho bài thi đầu tiên?</h3>
+                    <p className="text-sm text-slate-500 mt-1">Khám phá đề thi VSTEP, IELTS, TOEIC và nhiều hơn nữa.</p>
+                    <div className="flex items-center justify-center gap-3 mt-5">
+                      <Link
+                        to="/hoc-vien/de-thi"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-bold text-white transition-all"
+                        style={{ background: 'linear-gradient(135deg, #3B82F6, #2563EB)', boxShadow: '0 4px 14px rgba(59,130,246,0.35)' }}
+                      >
+                        Khám phá đề thi <ChevronRight className="w-4 h-4" />
+                      </Link>
+                      <Link
+                        to="/hoc-vien/luyen-tap"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+                        style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0' }}
+                      >
+                        Luyện tập thử
+                      </Link>
+                    </div>
                   </div>
-                  <h3 className="text-base font-extrabold" style={{ color: '#1A1040' }}>Bạn đã hoàn thành tất cả bài thi</h3>
-                  <p className="text-sm text-slate-500 mt-1">
-                    {completedCount > 0 ? `Đã hoàn thành ${completedCount} bài. Tiếp tục luyện tập!` : 'Hãy luyện tập để giữ vững kiến thức.'}
-                  </p>
-                  <Link
-                    to="/hoc-vien/luyen-tap"
-                    className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 rounded-2xl text-sm font-bold text-white transition-all"
-                    style={{ background: `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})`, boxShadow: `0 4px 14px ${PURPLE}40` }}
+                ) : (
+                  <div
+                    className="px-6 py-8 text-center"
+                    style={{ background: `linear-gradient(135deg, ${PURPLE_LIGHT} 0%, #E0F2FE 100%)` }}
                   >
-                    Đi đến luyện tập <ChevronRight className="w-4 h-4" />
-                  </Link>
-                </div>
+                    <div
+                      className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                      style={{ background: `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})` }}
+                    >
+                      <CheckCircle2 className="w-7 h-7 text-white" />
+                    </div>
+                    <h3 className="text-base font-extrabold" style={{ color: '#1A1040' }}>Bạn đã hoàn thành tất cả bài thi</h3>
+                    <p className="text-sm text-slate-500 mt-1">
+                      {completedCount > 0 ? `Đã hoàn thành ${completedCount} bài. Tiếp tục luyện tập!` : 'Hãy luyện tập để giữ vững kiến thức.'}
+                    </p>
+                    <Link
+                      to="/hoc-vien/luyen-tap"
+                      className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 rounded-2xl text-sm font-bold text-white transition-all"
+                      style={{ background: `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})`, boxShadow: `0 4px 14px ${PURPLE}40` }}
+                    >
+                      Đi đến luyện tập <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+                )}
               </section>
             )}
 
@@ -746,12 +921,30 @@ export function AdultsDashboard() {
 
               {/* Progress rows */}
               <div className="bg-white px-6 py-5">
-                <div className="space-y-4">
-                  <ProgressRow label="Hoàn thành khóa học"   current={gam?.stats.lessons_completed || 0} total={50} />
-                  <ProgressRow label="Bài đánh giá đã làm"  current={gam?.stats.exams_taken || 0}       total={20} />
-                  <ProgressRow label="Phiên luyện tập"      current={gam?.stats.practice_sessions || 0} total={30} />
-                  <ProgressRow label="Thành tích đã mở khóa" current={gam?.achievements.completed || 0} total={gam?.achievements.total || 10} />
-                </div>
+                {isNewUser ? (
+                  <div className="flex flex-col items-center text-center py-4">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+                      style={{ background: PURPLE_LIGHT }}>
+                      <Target className="w-5 h-5" style={{ color: PURPLE }} strokeWidth={2} />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-700">Hoàn thành bài đầu tiên để mở khóa tiến độ</p>
+                    <p className="text-xs text-slate-400 mt-1">Tiến độ của bạn sẽ hiển thị tại đây sau khi bắt đầu</p>
+                    <Link
+                      to="/hoc-vien/de-thi"
+                      className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all"
+                      style={{ background: `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})` }}
+                    >
+                      Bắt đầu ngay <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <ProgressRow label="Hoàn thành khóa học"   current={gam?.stats.lessons_completed || 0} total={50} />
+                    <ProgressRow label="Bài đánh giá đã làm"  current={gam?.stats.exams_taken || 0}       total={20} />
+                    <ProgressRow label="Phiên luyện tập"      current={gam?.stats.practice_sessions || 0} total={30} />
+                    <ProgressRow label="Thành tích đã mở khóa" current={gam?.achievements.completed || 0} total={gam?.achievements.total || 10} />
+                  </div>
+                )}
               </div>
             </section>
           </div>
@@ -858,8 +1051,9 @@ export function AdultsDashboard() {
               </section>
             )}
 
-            {/* Performance + Streak side-by-side */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Performance + Streak stacked */}
+            <div className="space-y-4">
+              {/* Skill Breakdown — 4 VSTEP skills */}
               <section
                 className="rounded-3xl overflow-hidden hover:-translate-y-0.5 transition-all duration-300"
                 style={{ border: '1.5px solid #F0F0F8', boxShadow: '0 2px 12px rgba(124,58,237,0.07)' }}
@@ -873,18 +1067,51 @@ export function AdultsDashboard() {
                   <div className="relative z-10 flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center"
                       style={{ background: `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})` }}>
-                      <Award className="w-3.5 h-3.5 text-white" strokeWidth={2.2} />
+                      <BarChart3 className="w-3.5 h-3.5 text-white" strokeWidth={2.2} />
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold tracking-widest uppercase" style={{ color: PURPLE_MID }}>Kết quả</p>
-                      <h2 className="text-xs font-extrabold leading-tight" style={{ color: '#1A1040' }}>Hiệu suất</h2>
+                      <p className="text-[9px] font-bold tracking-widest uppercase" style={{ color: PURPLE_MID }}>Kỹ năng</p>
+                      <h2 className="text-xs font-extrabold leading-tight" style={{ color: '#1A1040' }}>Điểm theo kỹ năng</h2>
                     </div>
                   </div>
                 </div>
-                <div className="bg-white px-4 py-1.5 divide-y divide-slate-100">
-                  <KeyValue label="Điểm TB" value={`${Math.round(gam?.stats.average_score || 0)}%`} />
-                  <KeyValue label="Tổng điểm" value={gam?.stats.total_points || 0} />
-                  <KeyValue label="Huy hiệu" value={gam?.badges.earned || 0} />
+                <div className="bg-white px-4 py-3 space-y-2.5">
+                  {([
+                    { key: 'listening', label: 'Listening', icon: Headphones, color: '#3B82F6', bg: '#EFF6FF' },
+                    { key: 'reading',   label: 'Reading',   icon: BookOpenCheck, color: '#10B981', bg: '#ECFDF5' },
+                    { key: 'writing',   label: 'Writing',   icon: PenLine,    color: '#8B5CF6', bg: '#F3E8FF' },
+                    { key: 'speaking',  label: 'Speaking',  icon: Mic,        color: '#F97316', bg: '#FFF7ED' },
+                  ] as const).map((s) => {
+                    const Icon = s.icon;
+                    const stat = skillStats?.[s.key];
+                    const score = Math.round(stat?.average_score || 0);
+                    const attempts = stat?.attempts || 0;
+                    return (
+                      <div key={s.key} className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: s.bg }}>
+                          <Icon className="w-3.5 h-3.5" style={{ color: s.color }} strokeWidth={2.2} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline justify-between mb-1">
+                            <span className="text-[11px] font-semibold text-slate-700 leading-tight">{s.label}</span>
+                            <span className="text-[11px] font-bold tabular-nums" style={{ color: attempts > 0 ? s.color : '#CBD5E1' }}>
+                              {attempts > 0 ? `${score}%` : '—'}
+                            </span>
+                          </div>
+                          <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: '#F1F5F9' }}>
+                            <div className="h-full rounded-full transition-all duration-700"
+                              style={{ width: `${attempts > 0 ? score : 0}%`, background: s.color }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {(!skillStats || Object.values(skillStats).every(s => (s?.attempts || 0) === 0)) && (
+                    <p className="text-[10px] text-slate-400 text-center pt-1 leading-tight">
+                      Làm bài thi để xem điểm theo kỹ năng
+                    </p>
+                  )}
                 </div>
               </section>
 
@@ -928,23 +1155,21 @@ export function AdultsDashboard() {
             <section
               className="rounded-3xl overflow-hidden"
               style={{
-                background: `linear-gradient(135deg, #1E0B4B 0%, ${PURPLE} 100%)`,
-                border: '1.5px solid #6D28D9',
-                boxShadow: `0 4px 20px rgba(124,58,237,0.25)`,
+                background: '#FFFDF0',
+                border: '1.5px solid #FEF3C7',
+                boxShadow: '0 2px 12px rgba(251,191,36,0.10)',
               }}
             >
-              <div className="relative px-5 py-5 overflow-hidden">
-                <div className="absolute -bottom-4 -right-4 w-24 h-24 rounded-full opacity-20 pointer-events-none"
-                  style={{ background: 'radial-gradient(circle, #60A5FA, transparent)' }} />
-                <div className="relative z-10 flex items-start gap-3">
+              <div className="px-5 py-5">
+                <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)' }}>
-                    <Sparkles className="w-4 h-4 text-yellow-300" />
+                    style={{ background: '#FEF3C7' }}>
+                    <Sparkles className="w-4 h-4" style={{ color: '#D97706' }} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">Mẹo cho bạn</p>
-                    <p className="text-xs text-purple-200 mt-1 leading-relaxed">
-                      Học <span className="font-bold text-yellow-300">30 phút mỗi ngày</span> hiệu quả hơn 4 tiếng cuối tuần. Hãy đặt lời nhắc cố định mỗi ngày.
+                    <p className="text-sm font-bold" style={{ color: '#92400E' }}>Mẹo cho bạn</p>
+                    <p className="text-xs leading-relaxed mt-1" style={{ color: '#A16207' }}>
+                      Học <span className="font-bold" style={{ color: '#92400E' }}>30 phút mỗi ngày</span> hiệu quả hơn 4 tiếng cuối tuần. Hãy đặt lời nhắc cố định mỗi ngày.
                     </p>
                   </div>
                 </div>

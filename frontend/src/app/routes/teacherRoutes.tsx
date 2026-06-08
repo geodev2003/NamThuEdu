@@ -38,6 +38,8 @@ import { CreateVstepListening } from "../features/teacher/exams/vstep/CreateVste
 import { CreateVstepWriting } from "../features/teacher/exams/vstep/CreateVstepWriting";
 import { CreateVstepSpeaking } from "../features/teacher/exams/vstep/CreateVstepSpeaking";
 import { CreateVstepFull } from "../features/teacher/exams/vstep/CreateVstepFull";
+import CreateIeltsExam from "../features/teacher/exams/ielts/CreateIeltsExam";
+import { IeltsPreviewPage } from "../features/teacher/exams/ielts/IeltsPreviewPage";
 import { TestExamPlayer } from "../features/test";
 
 // Assignment
@@ -53,6 +55,7 @@ import { PracticeSessionEdit } from "../features/teacher/practice/PracticeSessio
 
 // Grading
 import { StudentVstepExamPage } from "../features/student/exams/StudentVstepExamPage";
+import { IeltsExamPreview } from "../features/teacher/exams/IeltsExamPreview";
 import { GradingQueue } from "../features/teacher/grading/GradingQueue";
 import { GradingDetail } from "../features/teacher/grading/GradingDetail";
 import { GradingStats } from "../features/teacher/grading/GradingStats";
@@ -71,7 +74,6 @@ import { Categories } from "../features/teacher/blog/Categories";
 
 // Reports
 import { ReportsOverview } from "../features/teacher/reports/ReportsOverview";
-import { ResultsAnalysis } from "../features/teacher/reports/ResultsAnalysis";
 
 // Protected Teacher Layout
 function ProtectedTeacherLayout() {
@@ -128,6 +130,19 @@ export const teacherRoutes = {
     { path: "de-thi/vstep/speaking/sua/:examId", Component: CreateVstepSpeaking },
     { path: "de-thi/vstep/full/tao-moi", Component: CreateVstepFull },
     { path: "de-thi/vstep/full/sua/:examId", Component: CreateVstepFull },
+
+    // ── IELTS routes (1 đề = 1 skill, không có "full" mode) ──────────────
+    { path: "de-thi/ielts/listening/tao-moi", Component: () => <CreateIeltsExam initialSkill="listening" /> },
+    { path: "de-thi/ielts/listening/sua/:examId", Component: () => <CreateIeltsExam initialSkill="listening" /> },
+    { path: "de-thi/ielts/reading/tao-moi", Component: () => <CreateIeltsExam initialSkill="reading" /> },
+    { path: "de-thi/ielts/reading/sua/:examId", Component: () => <CreateIeltsExam initialSkill="reading" /> },
+    { path: "de-thi/ielts/writing/tao-moi", Component: () => <CreateIeltsExam initialSkill="writing" /> },
+    { path: "de-thi/ielts/writing/sua/:examId", Component: () => <CreateIeltsExam initialSkill="writing" /> },
+    { path: "de-thi/ielts/speaking/tao-moi", Component: () => <CreateIeltsExam initialSkill="speaking" /> },
+    { path: "de-thi/ielts/speaking/sua/:examId", Component: () => <CreateIeltsExam initialSkill="speaking" /> },
+    // IELTS preview (read-only): /giao-vien/de-thi/ielts/:skill/xem/:examId
+    { path: "de-thi/ielts/:skill/xem/:examId", Component: IeltsPreviewPage },
+
     { path: "de-thi/mau-de", Component: ExamTemplates },
     { path: "de-thi/cua-toi", Component: MyExams },
     { path: "de-thi/:examId", Component: ExamDetail },
@@ -156,6 +171,7 @@ export const teacherRoutes = {
     { path: "cham-diem", Component: GradingQueue },
     { path: "cham-diem/:submissionId", Component: GradingDetail },
     { path: "xem-vstep/:examId", Component: StudentVstepExamPage },
+    { path: "xem-ielts/:examId", Component: IeltsExamPreview },
     { path: "cham-diem/thong-ke", Component: GradingStats },
 
     // Giám sát trực tiếp
@@ -173,7 +189,6 @@ export const teacherRoutes = {
 
     // Báo cáo
     { path: "bao-cao", Component: ReportsOverview },
-    { path: "bao-cao/phan-tich", Component: ResultsAnalysis },
 
     // Cài đặt
     { path: "cai-dat", Component: Settings },

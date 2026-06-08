@@ -6,18 +6,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router';
-import { useTranslation } from 'react-i18next';
 import { useThemeContext } from '../../../../contexts/ThemeContext';
 import { login, LoginFormData } from '../../../../services/authApi';
 import { usePageTitle, PAGE_TITLES } from '../../../../hooks/usePageTitle';
 import { Eye, EyeOff, Phone, Lock, GraduationCap } from 'lucide-react';
 import { Header } from '../../public/components/Header';
-import { setAuthData, getRememberedPhone } from '../../../../utils/authStorage';
+import { setAuthData, getRememberedPhone, clearAuthData } from '../../../../utils/authStorage';
+import '../../../../styles/loginAnimations.css';
 
 export function StudentLogin() {
   const navigate = useNavigate();
   const { syncWithAuth } = useThemeContext();
-  const { t } = useTranslation();
   usePageTitle(PAGE_TITLES.LOGIN);
   
   const [formData, setFormData] = useState<LoginFormData>({
@@ -26,6 +25,7 @@ export function StudentLogin() {
   });
   
   const [showPassword, setShowPassword] = useState(false);
+  const [pwAnimKey, setPwAnimKey] = useState(0);
   const [rememberMe, setRememberMe] = useState(false);
 
   useEffect(() => {
@@ -37,6 +37,8 @@ export function StudentLogin() {
   }, []);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loginSuccess, setLoginSuccess] = useState(false);
+  const [fadeOut, setFadeOut] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -48,14 +50,16 @@ export function StudentLogin() {
     setIsLoading(true);
     setError(null);
 
+    // CRITICAL FIX: Clear all old auth data BEFORE logging in to prevent user confusion
+    clearAuthData();
+
     try {
       const response = await login(formData);
       const { access_token, user } = response.data;
 
       if (user.role !== 'student') {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_role');
-        setError(t('auth.studentLogin.errorWrongRole'));
+        clearAuthData();
+        setError('Tài khoản này không thuộc cổng học viên.');
         return;
       }
 
@@ -64,28 +68,39 @@ export function StudentLogin() {
       // Sync theme with user data
       syncWithAuth(user);
 
-      // Check if student has class
-      if (!user.class_id) {
-        navigate('/hoc-vien/cho-xep-lop');
-        return;
-      }
+      // Success animation sequence
+      setLoginSuccess(true);
+      
+      // Wait for success animation to complete
+      setTimeout(() => {
+        setFadeOut(true);
+      }, 800);
+      
+      // Navigate after fade out
+      setTimeout(() => {
+        // Check if student has class
+        if (!user.class_id) {
+          navigate('/hoc-vien/cho-xep-lop');
+          return;
+        }
 
-      // Redirect based on age_group
-      switch (user.age_group) {
-        case 'kids':
-          navigate('/hoc-vien/kids');
-          break;
-        case 'teens':
-          navigate('/hoc-vien/teens');
-          break;
-        case 'adults':
-          navigate('/hoc-vien/adults');
-          break;
-        default:
-          navigate('/hoc-vien/teens');
-      }
+        // Redirect based on age_group
+        switch (user.age_group) {
+          case 'kids':
+            navigate('/hoc-vien/kids');
+            break;
+          case 'teens':
+            navigate('/hoc-vien/teens');
+            break;
+          case 'adults':
+            navigate('/hoc-vien/adults');
+            break;
+          default:
+            navigate('/hoc-vien/teens');
+        }
+      }, 1100);
     } catch (err: any) {
-      setError(err.response?.data?.message || t('auth.studentLogin.errorDefault'));
+      setError(err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
       setFormData(prev => ({ ...prev, password: '' }));
     } finally {
       setIsLoading(false);
@@ -94,9 +109,82 @@ export function StudentLogin() {
 
   return (
     <div
-      className="w-full min-h-screen flex flex-col"
-      style={{ background: 'linear-gradient(145deg, #FFF7ED 0%, #FFEDD5 100%)' }}
+      className="w-full min-h-screen flex flex-col relative"
+      style={{ 
+        background: 'linear-gradient(145deg, #FFF7ED 0%, #FFEDD5 100%)',
+        opacity: fadeOut ? 0 : 1,
+        transition: 'opacity 300ms ease-out'
+      }}
     >
+      {/* Success Overlay */}
+      {loginSuccess && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{
+            background: 'rgba(255, 255, 255, 0.95)',
+            animation: 'fadeIn 300ms ease-out'
+          }}
+        >
+          <div className="flex flex-col items-center gap-4">
+            {/* Animated Checkmark */}
+            <div 
+              className="relative"
+              style={{
+                width: '80px',
+                height: '80px',
+                animation: 'scaleIn 400ms ease-out'
+              }}
+            >
+              <svg viewBox="0 0 80 80" className="w-full h-full">
+                {/* Circle */}
+                <circle
+                  cx="40"
+                  cy="40"
+                  r="36"
+                  fill="none"
+                  stroke="#10B981"
+                  strokeWidth="4"
+                  style={{
+                    strokeDasharray: '226',
+                    strokeDashoffset: '226',
+                    animation: 'drawCircle 600ms ease-out forwards'
+                  }}
+                />
+                {/* Checkmark */}
+                <path
+                  d="M 25 40 L 35 50 L 55 30"
+                  fill="none"
+                  stroke="#10B981"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    strokeDasharray: '50',
+                    strokeDashoffset: '50',
+                    animation: 'drawCheck 400ms ease-out 300ms forwards'
+                  }}
+                />
+              </svg>
+            </div>
+            
+            {/* Success Text */}
+            <div 
+              className="text-center"
+              style={{
+                animation: 'fadeInUp 400ms ease-out 400ms both'
+              }}
+            >
+              <h3 className="text-xl font-bold text-gray-900 mb-1">
+                Đăng nhập thành công!
+              </h3>
+              <p className="text-sm text-gray-500">
+                Đang chuyển đến trang học tập...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* ── Full-width Header ─────────────────────────────────────────────── */}
       <Header />
 
@@ -120,8 +208,8 @@ export function StudentLogin() {
           <div className="w-full max-w-[460px]">
 
           {/* Heading */}
-          <h1 className="text-3xl font-extrabold text-gray-900 mb-1">{t('auth.studentLogin.title')}</h1>
-          <p className="text-gray-500 text-sm mb-8">{t('auth.studentLogin.subtitle')}</p>
+          <h1 className="text-3xl font-extrabold text-gray-900 mb-1">Đăng nhập Học viên</h1>
+          <p className="text-gray-500 text-sm mb-8">Truy cập hệ thống học tập trực tuyến</p>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -129,7 +217,7 @@ export function StudentLogin() {
             {/* Phone */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                {t('auth.studentLogin.phoneLabel')} <span className="text-red-500">*</span>
+                Số điện thoại <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400 pointer-events-none" />
@@ -140,7 +228,7 @@ export function StudentLogin() {
                   onChange={handleChange}
                   required
                   autoFocus
-                  placeholder={t('auth.studentLogin.phonePlaceholder')}
+                  placeholder="Nhập số điện thoại học viên"
                   className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all"
                 />
               </div>
@@ -149,7 +237,7 @@ export function StudentLogin() {
             {/* Password */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                {t('auth.studentLogin.passwordLabel')} <span className="text-red-500">*</span>
+                Mật khẩu <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400 pointer-events-none" />
@@ -159,15 +247,38 @@ export function StudentLogin() {
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  placeholder={t('auth.studentLogin.passwordPlaceholder')}
+                  placeholder="Nhập mật khẩu"
+                  key={pwAnimKey}
                   className="w-full pl-11 pr-12 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all"
+                  style={{ animation: pwAnimKey > 0 ? 'pwReveal 0.22s cubic-bezier(0.4,0,0.2,1) both' : undefined }}
                 />
+                <style>{`
+                  @keyframes pwReveal {
+                    0%   { opacity: 0.2; transform: translateY(4px) scaleY(0.85); }
+                    100% { opacity: 1;   transform: translateY(0)   scaleY(1); }
+                  }
+                `}</style>
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                  onClick={() => { setShowPassword(v => !v); setPwAnimKey(k => k + 1); }}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-orange-500 transition-colors cursor-pointer"
+                  style={{ transition: 'color 0.2s' }}
                 >
-                  {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+                  <span
+                    key={showPassword ? 'off' : 'on'}
+                    style={{
+                      display: 'inline-flex',
+                      animation: 'eyeToggle 0.25s cubic-bezier(0.34,1.56,0.64,1) both',
+                    }}
+                  >
+                    {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+                  </span>
+                  <style>{`
+                    @keyframes eyeToggle {
+                      0%   { opacity: 0; transform: scale(0.5) rotate(-15deg); }
+                      100% { opacity: 1; transform: scale(1) rotate(0deg); }
+                    }
+                  `}</style>
                 </button>
               </div>
             </div>
@@ -185,9 +296,9 @@ export function StudentLogin() {
                     rememberMe ? 'translate-x-4' : 'translate-x-0'
                   }`} />
                 </div>
-                <span className="text-sm text-gray-600 select-none">{t('auth.studentLogin.rememberMe')}</span>
+                <span className="text-sm text-gray-600 select-none">Ghi nhớ đăng nhập</span>
               </label>
-              <span className="text-xs text-gray-400">{t('auth.studentLogin.securityNote')}</span>
+              <span className="text-xs text-gray-400">Hãy liên hệ với giáo viên để cấp lại mật khẩu</span>
             </div>
 
             {/* Error */}
@@ -225,28 +336,22 @@ export function StudentLogin() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  {t('auth.studentLogin.loggingIn')}
+                  Đang đăng nhập...
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
                   <GraduationCap className="w-4.5 h-4.5" />
-                  {t('auth.studentLogin.loginButton')}
+                  Đăng nhập Học viên
                 </span>
               )}
             </button>
           </form>
 
-          {/* Footer note */}
-          <p className="mt-6 text-xs text-center text-gray-400">
-            {t('auth.studentLogin.securityTitle')}&nbsp;
-            <span className="text-orange-500 font-medium">0776 818 160</span>
-          </p>
-
           {/* Cross-link to teacher */}
           <p className="mt-4 text-sm text-center text-gray-500">
-            {t('auth.studentLogin.isTeacher')}&nbsp;
+            Bạn là giáo viên?&nbsp;
             <Link to="/giao-vien/dang-nhap" className="text-orange-500 font-semibold hover:underline">
-              {t('auth.studentLogin.teacherLoginLink')}
+              Đăng nhập tại đây
             </Link>
           </p>
 
