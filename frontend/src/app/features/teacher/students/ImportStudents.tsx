@@ -26,7 +26,6 @@ interface PreviewStudent {
   phone: string;
   email: string;
   ageGroup: string;
-  class: string;
   course: string;
   status: 'valid' | 'warning' | 'error';
   statusMessage?: string;
@@ -37,7 +36,6 @@ const columnMappings = [
   { source: "Số điện thoại", target: "phone" },
   { source: "Email", target: "email" },
   { source: "Nhóm tuổi", target: "ageGroup" },
-  { source: "Lớp", target: "class" },
   { source: "Khóa", target: "course" },
   { source: "Trạng thái", target: "statusText" },
 ];
@@ -62,14 +60,13 @@ export function ImportStudents() {
     
     setIsDownloading(true);
     
-    // Template data - only fields needed for import (7 columns)
+    // Template data - only fields needed for import (6 columns, không còn cột Lớp)
     const templateData = [
       {
         'Họ và tên': 'Nguyễn Văn A',
         'Số điện thoại': '0900000001',
         'Email': '',
         'Nhóm tuổi': 'Trẻ em',
-        'Lớp': 'Test Class',
         'Khóa': 'Khóa tháng 4',
         'Trạng thái': 'Đang học',
       },
@@ -78,7 +75,6 @@ export function ImportStudents() {
         'Số điện thoại': '0900000002',
         'Email': '',
         'Nhóm tuổi': 'Thiếu niên',
-        'Lớp': 'Lớp THCS-THPT - Nhựt Tuấn',
         'Khóa': 'Khóa tháng 4',
         'Trạng thái': 'Đang học',
       },
@@ -87,7 +83,6 @@ export function ImportStudents() {
         'Số điện thoại': '0900000003',
         'Email': '',
         'Nhóm tuổi': 'Người lớn',
-        'Lớp': 'Lớp Người lớn - Nhựt Tuấn',
         'Khóa': 'Khóa tháng 4',
         'Trạng thái': 'Đang học',
       },
@@ -97,13 +92,12 @@ export function ImportStudents() {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(templateData);
 
-    // Set column widths (7 columns for import)
+    // Set column widths (6 columns for import)
     ws['!cols'] = [
       { wch: 25 }, // Họ và tên
       { wch: 15 }, // Số điện thoại
       { wch: 30 }, // Email
       { wch: 15 }, // Nhóm tuổi
-      { wch: 30 }, // Lớp
       { wch: 15 }, // Khóa
       { wch: 12 }, // Trạng thái
     ];
@@ -161,7 +155,6 @@ export function ImportStudents() {
           phone: row['Số điện thoại'] || '',
           email: row['Email'] || '',
           ageGroup: row['Nhóm tuổi'] || '',
-          class: row['Lớp'] || '',
           course: row['Khóa'] || '',
           status: 'valid',
         };
@@ -174,7 +167,6 @@ export function ImportStudents() {
         if (!student.name) errors.push('Thiếu họ tên');
         if (!student.phone) errors.push('Thiếu số điện thoại');
         if (!student.ageGroup) errors.push('Thiếu nhóm tuổi');
-        if (!student.class) errors.push('Thiếu lớp');
 
         // Phone validation (Vietnamese format)
         if (student.phone && !/^(0|\+84)[0-9]{9,10}$/.test(student.phone.replace(/\s/g, ''))) {
@@ -386,7 +378,7 @@ export function ImportStudents() {
                   <ul className="space-y-1.5 text-sm text-[#C2410C]">
                     <li>• File phải có định dạng .xlsx hoặc .csv</li>
                     <li>• Dòng đầu tiên phải chứa tên các cột</li>
-                    <li>• Các cột bắt buộc: Họ và tên, Số điện thoại, Nhóm tuổi, Lớp</li>
+                    <li>• Các cột bắt buộc: Họ và tên, Số điện thoại, Nhóm tuổi</li>
                     <li>• Số điện thoại phải hợp lệ và không trùng lặp</li>
                   </ul>
                   <button 
@@ -647,9 +639,6 @@ export function ImportStudents() {
                         Nhóm tuổi
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                        Lớp
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
                         Trạng thái
                       </th>
                     </tr>
@@ -674,9 +663,6 @@ export function ImportStudents() {
                         </td>
                         <td className="px-6 py-4 text-sm text-[#6B7280]">
                           {row.ageGroup}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-[#6B7280]">
-                          {row.class}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-1">
@@ -844,7 +830,7 @@ export function ImportStudents() {
                   </div>
                   <div className="ml-10 space-y-2 text-[#6B7280]">
                     <p>• Click nút "Tải Excel" để tải file mẫu về máy</p>
-                    <p>• File mẫu có 7 cột: Họ và tên, Số điện thoại, Email, Nhóm tuổi, Lớp, Khóa, Trạng thái</p>
+                    <p>• File mẫu có 6 cột: Họ và tên, Số điện thoại, Email, Nhóm tuổi, Khóa, Trạng thái</p>
                     <p>• File đã có 3 dòng dữ liệu mẫu để tham khảo</p>
                   </div>
                 </div>
@@ -864,7 +850,6 @@ export function ImportStudents() {
                         <li>• <span className="font-medium">Họ và tên:</span> Tên đầy đủ của học viên</li>
                         <li>• <span className="font-medium">Số điện thoại:</span> 10 số, bắt đầu bằng 0 (VD: 0904521297)</li>
                         <li>• <span className="font-medium">Nhóm tuổi:</span> Chọn 1 trong 3: "Trẻ em", "Thiếu niên", "Người lớn"</li>
-                        <li>• <span className="font-medium">Lớp:</span> Tên lớp học</li>
                       </ul>
                     </div>
                     <div className="bg-[#FEF3C7] rounded-lg p-4 border border-[#FDE68A]">
@@ -902,7 +887,6 @@ export function ImportStudents() {
                     <div>Số điện thoại: 0900000001</div>
                     <div>Email: (có thể để trống)</div>
                     <div>Nhóm tuổi: Trẻ em</div>
-                    <div>Lớp: Test Class</div>
                     <div>Khóa: Khóa tháng 4</div>
                     <div>Trạng thái: Đang học</div>
                   </div>

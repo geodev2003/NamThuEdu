@@ -4,4 +4,17 @@ Disallow: /hoc-vien/
 Disallow: /giao-vien/
 Disallow: /admin/
 
-Sitemap: https://namthu.vn/sitemap.xml
+# AI crawlers — allow for GEO / AI Overview signals
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://namthuedu.com/sitemap.xml

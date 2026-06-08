@@ -17,6 +17,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { Header } from "../../../components/shared/Header";
+import { useHideTeacherHeader } from "../../../../contexts/TeacherHeaderContext";
 import { api } from "../../../../services/api";
 import { getAssetUrl } from "../../../../utils/apiConfig";
 import { TeacherReviewModal } from "./TeacherReviewModal";
@@ -80,6 +81,7 @@ function AnimatedDots() {
 // ─── Main Component ──────────────────────────────────────────────────────────
 export function GradingQueue() {
   usePageTitle(PAGE_TITLES.TEACHER_GRADING);
+  useHideTeacherHeader();
   const { t } = useTranslation();
 
   const STATUS_CONFIG = useMemo<Record<string, { label: string; color: string; dot: string }>>(() => ({

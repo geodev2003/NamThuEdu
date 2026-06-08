@@ -28,6 +28,7 @@ class Submission extends Model
         'sGemini_feedback',
         'teacher_reviewed_at',
         'sTime_taken',
+        'submission_payload',
     ];
 
     protected $attributes = [
@@ -40,6 +41,7 @@ class Submission extends Model
         'sGraded_time' => 'datetime',
         'teacher_reviewed_at' => 'datetime',
         'sScore' => 'decimal:2',
+        'submission_payload' => 'array',
     ];
 
     /**

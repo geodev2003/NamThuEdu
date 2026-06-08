@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, useSearchParams } from "react-router";
-import { Header } from "../../../components/shared/Header";
+import { usePageHeader } from "../../../../contexts/TeacherHeaderContext";
 import {
   BookOpen,
   Users,
@@ -236,6 +236,14 @@ export function CourseDetail() {
   
   const activeTab = searchParams.get("tab") || "overview";
 
+  usePageHeader({
+    breadcrumb: [t("breadcrumb.dashboard"), t("breadcrumb.courses"), mockCourseDetail.name],
+    action: {
+      label: t("teacher.courses.editCourse"),
+      onClick: () => navigate(`/khoa-hoc/${mockCourseDetail.id}/chinh-sua`),
+    },
+  });
+
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 50);
     return () => clearTimeout(timer);
@@ -258,18 +266,6 @@ export function CourseDetail() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <Header
-        breadcrumb={[
-          t("breadcrumb.dashboard"),
-          t("breadcrumb.courses"),
-          mockCourseDetail.name,
-        ]}
-        action={{
-          label: t('teacher.courses.editCourse'),
-          onClick: () => navigate(`/khoa-hoc/${mockCourseDetail.id}/chinh-sua`),
-        }}
-      />
-
       <div className="flex-1 overflow-y-auto" style={{ background: "#EEEEF3" }}>
         <div className="px-8 py-6">
           {/* Back Button */}

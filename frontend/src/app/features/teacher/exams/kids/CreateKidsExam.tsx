@@ -205,6 +205,16 @@ const CreateKidsExam: React.FC = () => {
       });
 
       if (status === 'published') {
+        // Log activity (best-effort)
+        import("../../../../../services/teacherActivityLog").then(({ logTeacherActivity }) => {
+          logTeacherActivity({
+            action: "exam.create",
+            entity_type: "exam",
+            entity_id: Number(currentExamId),
+            detail: `Xuất bản đề Kids: ${examData.title || "Đề Kids"}`,
+            meta: { type: "Kids", exam_type: examData.examType },
+          });
+        });
         alert('Đã xuất bản đề thi thành công! 🎉');
         navigate('/giao-vien/de-thi');
       } else {
@@ -263,14 +273,14 @@ const CreateKidsExam: React.FC = () => {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          <div className="px-4 py-6">
+          <div className="max-w-5xl mx-auto px-4 py-4">
             {/* Step Indicator */}
-            <div className="mb-8">
+            <div className="mb-4">
               <StepIndicator currentStep={currentStep} />
             </div>
 
             {/* Step Content - Clean Card */}
-            <div className="bg-white rounded-lg border-2 border-gray-200 p-8">
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
               {currentStep === 1 && (
                 <Step1ExamType
                   examData={examData}

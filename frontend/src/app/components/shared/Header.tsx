@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router";
-import { Bell, Plus, ChevronRight, User, Settings, LogOut, ChevronDown, BookOpen, ExternalLink } from "lucide-react";
+import { Bell, Plus, ChevronRight, User, Settings, LogOut, ChevronDown, BookOpen, ExternalLink, Send } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -27,6 +27,14 @@ interface ExamNotification {
   seenAt: number;
 }
 
+/** Đề đã hoàn thiện nhưng chưa giao cho lớp/học viên — gợi ý công bố. */
+interface ExamReadyNotification {
+  id: number;
+  exam_title: string;
+  exam_type: string;
+  created_at: string;
+}
+
 function getInitials(name: string): string {
   return name.split(" ").map((w) => w.charAt(0)).join("").toUpperCase().slice(0, 2);
 }
@@ -45,6 +53,7 @@ export function Header({ breadcrumb, action }: HeaderProps) {
   const [profileOpen, setProfileOpen]   = useState(false);
   const [bellOpen, setBellOpen]         = useState(false);
   const [notifications, setNotifications] = useState<ExamNotification[]>([]);
+  const [examsReady, setExamsReady]     = useState<ExamReadyNotification[]>([]);
   const [unread, setUnread]             = useState(0);
   const profileRef  = useRef<HTMLDivElement>(null);
   const bellRef     = useRef<HTMLDivElement>(null);
@@ -126,9 +135,33 @@ export function Header({ breadcrumb, action }: HeaderProps) {
       .catch(() => {});
   };
 
+  /** Đề đã hoàn thiện nhưng chưa giao — gợi ý công bố cho học viên. */
+  const fetchExamsReady = () => {
+    if (userRole !== "teacher") return;
+    api.get("/teacher/dashboard/exams-ready")
+      .then((res: any) => {
+        const items: ExamReadyNotification[] = res?.data?.data ?? res?.data ?? [];
+        if (!Array.isArray(items)) return;
+        setExamsReady((prev) => {
+          // Tăng badge nếu xuất hiện đề mới chưa giao so với lần trước
+          const prevIds = new Set(prev.map((e) => e.id));
+          const fresh = items.filter((e) => !prevIds.has(e.id));
+          if (fresh.length > 0 && prev.length > 0) {
+            setUnread((c) => c + fresh.length);
+          }
+          return items;
+        });
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     fetchRecentStarts();
-    pollRef.current = setInterval(fetchRecentStarts, 30000);
+    fetchExamsReady();
+    pollRef.current = setInterval(() => {
+      fetchRecentStarts();
+      fetchExamsReady();
+    }, 30000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
@@ -236,17 +269,17 @@ export function Header({ breadcrumb, action }: HeaderProps) {
   };
 
   return (
-    <div className="sticky top-0 z-40 h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/80 px-8 flex items-center justify-between flex-shrink-0 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] transition-all duration-300">
+    <div className="sticky top-0 z-40 h-14 bg-white border-b border-slate-200 px-6 flex items-center justify-between flex-shrink-0">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 min-w-0">
         {crumbs.map((crumb, index) => (
-          <span key={index} className="flex items-center gap-1.5 group">
-            {index > 0 && <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />}
+          <span key={index} className="flex items-center gap-1.5">
+            {index > 0 && <ChevronRight className="w-3 h-3 text-slate-300 flex-shrink-0" />}
             <span
-              className={`transition-colors duration-200 ${
+              className={`transition-colors ${
                 index === crumbs.length - 1
-                  ? "text-slate-800 font-bold tracking-tight text-[15px]"
-                  : "text-slate-400 hover:text-indigo-600 font-medium text-[14px] cursor-pointer"
+                  ? "text-slate-800 font-semibold text-[14px] truncate"
+                  : "text-slate-400 hover:text-indigo-600 font-medium text-[13px] cursor-pointer"
               }`}
             >
               {crumb}
@@ -256,41 +289,39 @@ export function Header({ breadcrumb, action }: HeaderProps) {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
         {action && (
           <Button
             onClick={action.onClick}
-            className="relative overflow-hidden group text-white h-10 px-5 rounded-xl flex items-center gap-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 shadow-md shadow-indigo-200/50 hover:shadow-lg hover:shadow-indigo-300/40 border border-indigo-500/20"
-            style={{ fontSize: "13px", fontWeight: 600 }}
+            className="group bg-slate-900 hover:bg-slate-800 text-white h-8 px-3 rounded-lg flex items-center gap-1.5 transition-all hover:-translate-y-0.5 hover:shadow-sm shadow-slate-900/10"
+            style={{ fontSize: "12px", fontWeight: 600 }}
           >
-            <Plus className="w-4.5 h-4.5 transition-transform duration-300 group-hover:rotate-90" />
+            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
             {action.label}
           </Button>
         )}
-
-        <div className="h-6 w-[1px] bg-slate-200/80" />
 
         <LanguageSwitcher />
 
         {/* Bell Notification */}
         <div
-          className="relative pb-2 -mb-2"
+          className="relative"
           ref={bellRef}
           onMouseEnter={openBell}
           onMouseLeave={scheduleBellClose}
         >
           <button
             onClick={handleBellClick}
-            className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all duration-300 relative shadow-sm hover:shadow-md ${
+            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all relative ${
               unread > 0
-                ? "bg-indigo-50/80 border-indigo-100 text-indigo-600 hover:bg-indigo-100/80"
-                : "bg-slate-50/50 border-slate-100 text-slate-500 hover:bg-indigo-50/50 hover:border-indigo-100 hover:text-indigo-600"
+                ? "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
             }`}
             aria-label={t("header.notifications")}
           >
-            <Bell className={`w-[18px] h-[18px] transition-transform duration-300 hover:scale-110 ${unread > 0 ? "animate-pulse" : ""}`} />
+            <Bell className={`w-[15px] h-[15px] ${unread > 0 ? "animate-pulse" : ""}`} />
             {unread > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 border-2 border-white shadow-sm ring-1 ring-rose-500/20">
+              <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 border border-white">
                 {unread > 9 ? "9+" : unread}
               </span>
             )}
@@ -299,37 +330,76 @@ export function Header({ breadcrumb, action }: HeaderProps) {
           <div
             onMouseEnter={cancelBellClose}
             onMouseLeave={scheduleBellClose}
-            className={`absolute right-0 top-full z-50 pt-2 transition-all duration-300 origin-top-right ${
-              bellOpen ? "opacity-100 translate-y-0 scale-100 visible" : "opacity-0 -translate-y-2 scale-95 invisible pointer-events-none"
+            className={`absolute right-0 top-full z-50 pt-2 transition-all duration-200 origin-top-right ${
+              bellOpen ? "opacity-100 translate-y-0 visible" : "opacity-0 -translate-y-1 invisible pointer-events-none"
             }`}
           >
-            <div className="w-80 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-100 shadow-xl shadow-slate-200/80 overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-100/80 flex items-center justify-between">
-                <p className="text-xs font-bold text-slate-800 uppercase tracking-wide">Học viên vừa bắt đầu thi</p>
+            <div className="w-80 bg-white rounded-xl border border-slate-200 shadow-lg shadow-slate-200/60 overflow-hidden">
+              {/* Section: Đề sẵn sàng công bố cho học viên */}
+              {examsReady.length > 0 && (
+                <div className="border-b border-slate-100">
+                  <div className="px-4 py-2.5 flex items-center justify-between bg-emerald-50/60">
+                    <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wide">Đề sẵn sàng công bố</p>
+                    <Link
+                      to="/giao-vien/de-thi"
+                      onClick={() => setBellOpen(false)}
+                      className="text-[10px] font-semibold text-emerald-600 hover:underline flex items-center gap-1"
+                    >
+                      Quản lý đề <ExternalLink className="w-2.5 h-2.5" />
+                    </Link>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto divide-y divide-slate-50">
+                    {examsReady.slice(0, 6).map((e) => (
+                      <Link
+                        key={`ready-${e.id}`}
+                        to="/giao-vien/bai-tap/giao-moi"
+                        onClick={() => setBellOpen(false)}
+                        className="flex items-start gap-2.5 px-4 py-2.5 hover:bg-emerald-50/40 transition-colors cursor-pointer"
+                      >
+                        <div className="w-7 h-7 bg-gradient-to-tr from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white flex-shrink-0 mt-0.5">
+                          <Send className="w-3 h-3" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-slate-700 leading-snug">
+                            <span className="font-medium text-slate-900 truncate block">{e.exam_title}</span>
+                            <span className="text-slate-500">đã hoàn thiện — giao cho học viên để bắt đầu thi</span>
+                          </p>
+                          <span className="inline-block mt-1 text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                            {e.exam_type}
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+                <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">Học viên vừa bắt đầu thi</p>
                 {notifications.length > 0 && (
                   <Link
                     to="/giao-vien/giam-sat-truc-tiep"
                     onClick={() => setBellOpen(false)}
-                    className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 transition-all"
+                    className="text-[10px] font-semibold text-indigo-600 hover:underline flex items-center gap-1"
                   >
-                    Xem tất cả <ExternalLink className="w-3 h-3" />
+                    Xem tất cả <ExternalLink className="w-2.5 h-2.5" />
                   </Link>
                 )}
               </div>
 
               <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
                 {notifications.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-slate-400">
-                    <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mb-2">
-                      <Bell className="w-5 h-5 text-slate-400 opacity-60" />
+                  <div className="flex flex-col items-center justify-center py-7 text-slate-400">
+                    <div className="w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center mb-2">
+                      <Bell className="w-4 h-4 text-slate-400 opacity-60" />
                     </div>
                     <p className="text-xs font-medium text-slate-500">Chưa có thông báo mới</p>
                     <p className="text-[10px] text-slate-400 mt-0.5">Tự động cập nhật mỗi 30 giây</p>
                   </div>
                 ) : (
                   notifications.map((n) => (
-                    <div key={`${n.id}-${n.seenAt}`} className="flex items-start gap-3 px-4 py-3 hover:bg-indigo-50/30 transition-all cursor-pointer">
-                      <div className="w-8 h-8 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5 shadow-sm ring-2 ring-indigo-50">
+                    <div key={`${n.id}-${n.seenAt}`} className="flex items-start gap-2.5 px-4 py-2.5 hover:bg-indigo-50/40 transition-colors cursor-pointer">
+                      <div className="w-7 h-7 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mt-0.5">
                         {n.avatar || getInitials(n.student_name)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -345,20 +415,20 @@ export function Header({ breadcrumb, action }: HeaderProps) {
                           <span className="text-[10px] text-slate-400">{fmtAgo(n.elapsed_min)}</span>
                         </div>
                       </div>
-                      <BookOpen className="w-3.5 h-3.5 text-slate-300 flex-shrink-0 mt-1" />
+                      <BookOpen className="w-3 h-3 text-slate-300 flex-shrink-0 mt-1" />
                     </div>
                   ))
                 )}
               </div>
 
               {notifications.length > 0 && (
-                <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/60">
+                <div className="px-4 py-2 border-t border-slate-100 bg-slate-50/60">
                   <Link
                     to="/giao-vien/giam-sat-truc-tiep"
                     onClick={() => setBellOpen(false)}
-                    className="text-xs text-indigo-600 font-bold hover:text-indigo-800 hover:underline flex items-center justify-center gap-1 transition-all"
+                    className="text-[11px] text-indigo-600 font-bold hover:underline flex items-center justify-center gap-1"
                   >
-                    Mở trang giám sát trực tiếp <ExternalLink className="w-3 h-3" />
+                    Mở trang giám sát trực tiếp <ExternalLink className="w-2.5 h-2.5" />
                   </Link>
                 </div>
               )}
@@ -368,38 +438,36 @@ export function Header({ breadcrumb, action }: HeaderProps) {
 
         {/* Profile Dropdown */}
         <div
-          className="relative pb-2 -mb-2"
+          className="relative"
           ref={profileRef}
           onMouseEnter={openProfile}
           onMouseLeave={scheduleProfileClose}
         >
           <button
             onClick={handleProfileClick}
-            className={`group flex items-center gap-2.5 rounded-full border px-3.5 py-1.5 transition-all duration-300 shadow-sm ${
-              profileOpen
-                ? "bg-indigo-50/80 border-indigo-200 shadow-md"
-                : "bg-slate-50/50 border-slate-100 hover:border-slate-200 hover:bg-slate-50 hover:shadow-md"
+            className={`group flex items-center gap-2 rounded-full pl-1 pr-2.5 py-1 transition-all ${
+              profileOpen ? "bg-indigo-50" : "hover:bg-slate-100"
             }`}
           >
             {currentAvatar ? (
               <img
                 src={currentAvatar}
                 alt={userName}
-                className="w-7 h-7 rounded-full object-cover flex-shrink-0 border border-slate-200 shadow-sm transition-transform duration-300 group-hover:scale-105"
+                className="w-6 h-6 rounded-full object-cover flex-shrink-0"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
                   e.currentTarget.nextElementSibling?.classList.remove('hidden');
                 }}
               />
             ) : null}
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-105 ${currentAvatar ? 'hidden' : ''}`} style={{ background: 'linear-gradient(135deg,#6366F1,#4338CA)' }}>
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 ${currentAvatar ? 'hidden' : ''}`} style={{ background: 'linear-gradient(135deg,#6366F1,#4338CA)' }}>
               {getInitials(userName)}
             </div>
-            <span className="text-slate-700 group-hover:text-slate-900 hidden md:block max-w-[120px] truncate" style={{ fontSize: "13.5px", fontWeight: 600 }}>
+            <span className="text-slate-700 hidden md:block max-w-[110px] truncate" style={{ fontSize: "12.5px", fontWeight: 600 }}>
               {userName}
             </span>
             <ChevronDown
-              className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-300 ${profileOpen ? "rotate-180 text-indigo-600" : "group-hover:text-slate-600"}`}
+              className={`w-3 h-3 text-slate-400 transition-transform ${profileOpen ? "rotate-180 text-indigo-600" : ""}`}
             />
           </button>
 
@@ -407,34 +475,34 @@ export function Header({ breadcrumb, action }: HeaderProps) {
             <div
               onMouseEnter={cancelProfileClose}
               onMouseLeave={scheduleProfileClose}
-              className="absolute right-0 top-full mt-2 w-52 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-100 shadow-xl shadow-slate-200/80 z-50 overflow-hidden origin-top-right transition-all duration-300"
+              className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl border border-slate-200 shadow-lg shadow-slate-200/60 z-50 overflow-hidden origin-top-right"
             >
-              <div className="px-4 py-3 border-b border-slate-100/80">
+              <div className="px-4 py-2.5 border-b border-slate-100">
                 <p className="text-xs font-bold text-slate-800 truncate">{userName}</p>
                 <p className="text-[10px] text-slate-400 mt-0.5 font-semibold uppercase tracking-wider">Giáo viên</p>
               </div>
-              <div className="py-1.5">
+              <div className="py-1">
                 <button
                   onClick={() => { setProfileOpen(false); navigate("/giao-vien/cai-dat?tab=profile"); }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-indigo-50/60 hover:text-indigo-700 transition-all text-left group"
+                  className="w-full flex items-center gap-3 px-4 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-50 hover:text-indigo-700 transition-colors text-left group"
                 >
-                  <User className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 flex-shrink-0 transition-colors" />
+                  <User className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 flex-shrink-0" />
                   Hồ sơ cá nhân
                 </button>
                 <button
                   onClick={() => { setProfileOpen(false); navigate("/giao-vien/cai-dat"); }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-indigo-50/60 hover:text-indigo-700 transition-all text-left group"
+                  className="w-full flex items-center gap-3 px-4 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-50 hover:text-indigo-700 transition-colors text-left group"
                 >
-                  <Settings className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 flex-shrink-0 transition-colors" />
+                  <Settings className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 flex-shrink-0" />
                   Cài đặt
                 </button>
               </div>
-              <div className="border-t border-slate-100/80 py-1.5">
+              <div className="border-t border-slate-100 py-1">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50/50 hover:text-rose-700 transition-all text-left group"
+                  className="w-full flex items-center gap-3 px-4 py-2 text-[13px] font-semibold text-rose-600 hover:bg-rose-50/60 transition-colors text-left"
                 >
-                  <LogOut className="w-4 h-4 group-hover:translate-x-0.5 flex-shrink-0 transition-transform" />
+                  <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
                   Đăng xuất
                 </button>
               </div>

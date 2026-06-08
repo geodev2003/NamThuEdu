@@ -182,20 +182,8 @@ class User extends Authenticatable
     protected static function boot()
     {
         parent::boot();
-        
-        // Validate student must have class_id
-        static::saving(function ($user) {
-            if ($user->uRole === 'student' && empty($user->class_id)) {
-                throw new \Exception('Students must be assigned to a class');
-            }
-            
-            // Validate age_group matches class age_group
-            if ($user->class_id && $user->isDirty('class_id')) {
-                $class = ClassModel::find($user->class_id);
-                if ($class && $user->age_group !== $class->age_group) {
-                    throw new \Exception("Student age_group ({$user->age_group}) must match class age_group ({$class->age_group})");
-                }
-            }
-        });
+        // Class system đã deprecated — chỉ còn yêu cầu age_group cho student.
+        // Validator class_id cũ đã được gỡ. Nếu sau này cần audit class history
+        // thì query trực tiếp bảng class_enrollments / class_transfers.
     }
 }

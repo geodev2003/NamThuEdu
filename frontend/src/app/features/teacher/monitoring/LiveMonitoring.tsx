@@ -15,6 +15,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Header } from "../../../components/shared/Header";
+import { useHideTeacherHeader } from "../../../../contexts/TeacherHeaderContext";
 
 interface Session {
   id: number;
@@ -38,6 +39,7 @@ interface MonitoringStats {
 
 export function LiveMonitoring() {
   const { t } = useTranslation();
+  useHideTeacherHeader();
   const [viewMode, setViewMode]     = useState<"grid" | "list">("list");
   const [filterExam, setFilterExam] = useState("");
   const [searchQuery, setSearchQuery] = useState("");

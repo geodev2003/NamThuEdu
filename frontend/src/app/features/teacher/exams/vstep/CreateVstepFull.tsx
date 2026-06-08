@@ -217,6 +217,15 @@ export const CreateVstepFull = () => {
       if (res.status === "success" && res.data) {
         const id = String(res.data.eId);
         setRealExamId(id);
+        // Log activity (best-effort)
+        const { logTeacherActivity } = await import("../../../../../services/teacherActivityLog");
+        logTeacherActivity({
+          action: "exam.create",
+          entity_type: "exam",
+          entity_id: Number(id),
+          detail: `Tạo đề thi VSTEP: ${examTitle.trim()}`,
+          meta: { type: "VSTEP", skill: "mixed", duration },
+        });
         navigate(`/giao-vien/de-thi/vstep/full/sua/${id}`, { replace: true });
         setStep(1);
         success("Đề thi đã được tạo! Bắt đầu nhập nội dung.");
@@ -263,18 +272,19 @@ export const CreateVstepFull = () => {
   if (step === 0 && !isResuming) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
-          <div className="px-8 py-4 flex items-center gap-3">
+        {/* Header - compact */}
+        <div className="bg-white border-b border-slate-200 sticky top-0 z-40">
+          <div className="px-6 h-14 flex items-center gap-2.5">
             <button
               onClick={() => navigate("/giao-vien/de-thi/tao-moi")}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-all cursor-pointer group"
+              className="p-1.5 hover:bg-slate-100 rounded-lg transition-all cursor-pointer group"
+              aria-label="Quay lại"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600 group-hover:text-gray-900" />
+              <ArrowLeft className="w-4 h-4 text-slate-600 group-hover:text-slate-900" />
             </button>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Tạo đề thi VSTEP Full Test</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Bước 1/2 — Thông tin cơ bản</p>
+            <div className="min-w-0">
+              <h1 className="text-[14px] font-bold text-slate-800 leading-tight truncate">Tạo đề thi VSTEP Full Test</h1>
+              <p className="text-[11px] text-slate-500 leading-tight">Bước 1/2 — Thông tin cơ bản</p>
             </div>
           </div>
         </div>
@@ -419,58 +429,56 @@ export const CreateVstepFull = () => {
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      {/* Header - Minimalist & Clean */}
-      <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
-        <div className="px-8 py-4">
-          <div className="flex items-center justify-between">
-            {/* Left: Back + Title */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigate("/giao-vien/de-thi")}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 cursor-pointer group"
-                aria-label={t('vstep.full.actions.back')}
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-600 group-hover:text-gray-900 transition-colors" />
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {t('vstep.full.title')}
-                </h1>
-                <p className="text-sm text-gray-600 mt-0.5">
-                  {t('vstep.full.subtitle')}
-                </p>
-              </div>
+      {/* Header - compact */}
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-40">
+        <div className="px-6 h-14 flex items-center justify-between">
+          {/* Left: Back + Title */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <button
+              onClick={() => navigate("/giao-vien/de-thi")}
+              className="p-1.5 hover:bg-slate-100 rounded-lg transition-all cursor-pointer group"
+              aria-label={t('vstep.full.actions.back')}
+            >
+              <ArrowLeft className="w-4 h-4 text-slate-600 group-hover:text-slate-900" />
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-[14px] font-bold text-slate-800 leading-tight truncate">
+                {t('vstep.full.title')}
+              </h1>
+              <p className="text-[11px] text-slate-500 leading-tight truncate">
+                {t('vstep.full.subtitle')}
+              </p>
             </div>
+          </div>
 
-            {/* Right: Import + Progress Indicator */}
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setShowImportModal(true)}
-                disabled={!realExamId || realExamId.startsWith('vstep-full-')}
-                className="flex items-center gap-2 h-10 px-4 bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-lg text-sm font-semibold hover:from-orange-600 hover:to-rose-600 transition-all shadow-md hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
-                title="Import nguyên đề (Listening, Reading, Writing)"
-              >
-                <Upload className="w-4 h-4" />
-                Import đề
-              </button>
-              <div className="text-right">
-                <p className="text-sm font-semibold text-gray-900">
-                  {completedSkills.size}/4 {t('vstep.full.progress.skills')}
-                </p>
-                <div className="w-48 h-2 bg-gray-200 rounded-full mt-1.5 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 transition-all duration-500 ease-out"
-                    style={{ width: `${progressPercentage}%` }}
-                  />
-                </div>
+          {/* Right: Import + Progress Indicator */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <button
+              onClick={() => setShowImportModal(true)}
+              disabled={!realExamId || realExamId.startsWith('vstep-full-')}
+              className="flex items-center gap-1.5 h-8 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[12px] font-semibold transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+              title="Import nguyên đề (Listening, Reading, Writing)"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Import đề
+            </button>
+            <div className="text-right">
+              <p className="text-[11px] font-semibold text-slate-700 leading-tight">
+                {completedSkills.size}/4 {t('vstep.full.progress.skills')}
+              </p>
+              <div className="w-36 h-1.5 bg-slate-200 rounded-full mt-1 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 transition-all duration-500 ease-out"
+                  style={{ width: `${progressPercentage}%` }}
+                />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Skill Tabs - Clean & Minimal */}
-        <div className="px-8">
-          <div className="flex gap-1 border-b border-gray-200">
+        {/* Skill Tabs */}
+        <div className="px-6">
+          <div className="flex gap-0.5">
             {SKILL_TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = currentSkill === tab.id;
@@ -481,17 +489,17 @@ export const CreateVstepFull = () => {
                   key={tab.id}
                   onClick={() => setCurrentSkill(tab.id)}
                   className={`
-                    relative flex items-center gap-2.5 px-6 py-3 font-medium transition-all duration-200 cursor-pointer
+                    relative flex items-center gap-1.5 px-4 py-2 font-medium transition-all duration-200 cursor-pointer text-[12px]
                     ${isActive
                       ? `${tab.color} ${tab.bgColor} border-b-2 ${tab.borderColor}`
                       : `text-gray-600 hover:text-gray-900 ${tab.hoverBg}`
                     }
                   `}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span className="text-sm">{tab.name}</span>
+                  <Icon className="w-4 h-4" />
+                  <span>{tab.name}</span>
                   {isCompleted && (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 ml-1" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 ml-0.5" />
                   )}
                 </button>
               );

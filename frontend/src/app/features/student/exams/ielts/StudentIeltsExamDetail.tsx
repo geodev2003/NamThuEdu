@@ -13,7 +13,7 @@
  * Khi click "BẮT ĐẦU THI" → /hoc-vien/lam-bai-ielts/:examId/<skill>
  */
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import {
   Clock,
   Users,
@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { api } from "../../../../../services/api";
 import { usePageTitle } from "../../../../../hooks/usePageTitle";
+import { ExamComments } from "./components/ExamComments";
 
 // ─── Types ───────────────────────────────────────────────────────────────
 type IeltsSkill = "listening" | "reading" | "writing" | "speaking";
@@ -75,14 +76,29 @@ const SKILL_META: Record<IeltsSkill, { label: string; icon: any; color: string; 
 export function StudentIeltsExamDetail() {
   const { examId } = useParams<{ examId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   usePageTitle("Đề thi IELTS");
 
   const [data, setData] = useState<IeltsExamDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [activeMode, setActiveMode] = useState<ModeTab>("practice");
+  const [activeMode, setActiveMode] = useState<ModeTab>(() => {
+    // Init from query param (?tab=discussion) — dùng cho deeplink từ notification
+    const tab = searchParams.get("tab");
+    return tab === "discussion" ? "discussion" : "practice";
+  });
   const [slowConnection, setSlowConnection] = useState(false);
   const [retryCounter, setRetryCounter] = useState(0);
+
+  // Sync activeMode khi URL search params đổi — quan trọng khi user đang ở
+  // trang detail rồi click 1 noti khác cùng exam (component không remount,
+  // useState init chỉ chạy 1 lần). Phải watch searchParams trực tiếp.
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "discussion" && activeMode !== "discussion") {
+      setActiveMode("discussion");
+    }
+  }, [searchParams]);
 
   const handleRetry = () => {
     setRetryCounter((n) => n + 1);
@@ -118,7 +134,12 @@ export function StudentIeltsExamDetail() {
         const raw = res.data?.data || res.data;
         const parsed = parseExamData(raw);
         setData(parsed);
-        setActiveMode(parsed.playMode.practice_enabled ? "practice" : "full_test");
+        // Chỉ override mode nếu user KHÔNG có deeplink ?tab=discussion
+        // (tránh ghi đè khi user click noti vào tab Thảo luận)
+        const requestedTab = searchParams.get("tab");
+        if (requestedTab !== "discussion") {
+          setActiveMode(parsed.playMode.practice_enabled ? "practice" : "full_test");
+        }
       } catch (err: any) {
         if (cancelled) return;
         // Phân biệt rõ các loại lỗi để user dễ hiểu
@@ -331,7 +352,17 @@ function DetailContent({
             <FullTestMode data={data} />
           )}
 
-          {activeMode === "discussion" && <DiscussionMode />}
+          {activeMode === "discussion" && (
+            <ExamComments
+              examId={data.examId}
+              currentUserId={(() => {
+                try {
+                  const u = localStorage.getItem("user");
+                  return u ? JSON.parse(u)?.uId : undefined;
+                } catch { return undefined; }
+              })()}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -343,6 +374,7 @@ function PracticeMode({ data }: { data: IeltsExamDetailData }) {
   const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [timeLimit, setTimeLimit] = useState<string>("");
+  const [userPickedTime, setUserPickedTime] = useState(false);
 
   if (!data.playMode.practice_enabled) {
     return <DisabledState label="Luyện tập" />;
@@ -353,6 +385,30 @@ function PracticeMode({ data }: { data: IeltsExamDetailData }) {
     next.has(idx) ? next.delete(idx) : next.add(idx);
     setSelected(next);
   };
+
+  // Gợi ý thời gian theo CHUẨN IELTS (chỉ khi user chưa tự chọn).
+  // Listening 40' (full 4 part) · Reading 60' (full 3 passage) · Writing 60' (2 task) · Speaking ~14'.
+  // Khi chọn lẻ part: chia tỷ lệ theo full duration.
+  const suggestedTime = (() => {
+    if (selected.size === 0 || data.totalParts === 0) return "";
+    const fullByskill: Record<string, number> = {
+      listening: 40,
+      reading: 60,
+      writing: 60,
+      speaking: 14,
+    };
+    const full = fullByskill[data.skill] ?? 30;
+    if (selected.size >= data.totalParts) return String(full);
+    // Chia đều theo số part chọn, làm tròn lên nearest 5'
+    const per = full / data.totalParts;
+    const total = Math.ceil((per * selected.size) / 5) * 5;
+    return String(Math.max(5, total));
+  })();
+
+  // Tự cập nhật suggestedTime khi user chưa override
+  useEffect(() => {
+    if (!userPickedTime) setTimeLimit(suggestedTime);
+  }, [suggestedTime, userPickedTime]);
 
   const handleStart = () => {
     if (selected.size === 0) return;
@@ -424,7 +480,7 @@ function PracticeMode({ data }: { data: IeltsExamDetailData }) {
           </label>
           <select
             value={timeLimit}
-            onChange={(e) => setTimeLimit(e.target.value)}
+            onChange={(e) => { setTimeLimit(e.target.value); setUserPickedTime(true); }}
             className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
           >
             <option value="">-- Chọn thời gian --</option>
@@ -501,7 +557,8 @@ function parseExamData(raw: any): IeltsExamDetailData {
   const playMode = config.play_modes || {
     practice_enabled: true,
     full_test_enabled: true,
-    time_limit_options: [null, 5, 10, 15, 20, 30, 45, 60],
+    // Theo chuẩn IELTS: Listening 40' · Reading 60' · Writing 60' · Speaking 11–14'
+    time_limit_options: [null, 5, 10, 15, 20, 30, 40, 45, 60],
   };
   const skill: IeltsSkill = (raw.eSkill || raw.skill || "listening").toLowerCase();
   const testType: IeltsTestType =

@@ -13,7 +13,7 @@ const steps = [
 
 const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep }) => {
   return (
-    <div className="flex items-center justify-center pt-3">
+    <div className="flex items-center justify-center">
       {steps.map((step, index) => (
         <React.Fragment key={step.number}>
           {/* Step Circle */}
@@ -21,10 +21,10 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep }) => {
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition-all ${
                 currentStep > step.number
-                  ? 'bg-green-500 text-white'
+                  ? 'bg-emerald-500 text-white'
                   : currentStep === step.number
-                  ? 'bg-indigo-600 text-white shadow-lg'
-                  : 'border-2 border-gray-300 bg-white text-gray-400'
+                  ? 'bg-orange-500 text-white shadow-sm'
+                  : 'border-2 border-slate-200 bg-white text-slate-400'
               }`}
             >
               {currentStep > step.number ? (
@@ -35,9 +35,11 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep }) => {
             </div>
             <span
               className={`ml-2 text-sm font-medium ${
-                currentStep >= step.number
-                  ? 'text-indigo-600'
-                  : 'text-gray-400'
+                currentStep === step.number
+                  ? 'text-orange-600'
+                  : currentStep > step.number
+                  ? 'text-emerald-600'
+                  : 'text-slate-400'
               }`}
             >
               {step.label}
@@ -48,7 +50,7 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep }) => {
           {index < steps.length - 1 && (
             <div
               className={`mx-3 h-0.5 w-12 transition-colors ${
-                currentStep > step.number ? 'bg-green-500' : 'bg-gray-300'
+                currentStep > step.number ? 'bg-emerald-500' : 'bg-slate-200'
               }`}
             ></div>
           )}

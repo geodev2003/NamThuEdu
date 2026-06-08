@@ -881,3 +881,21 @@
   font-style: normal;
   color: #9ca3af;
 }
+
+/* IELTS — rung nhẹ label câu hỏi khi học viên focus vào ô đáp án tương ứng */
+@keyframes ielts-row-shake {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-4px); }
+  30%  { transform: translateX(4px); }
+  45%  { transform: translateX(-3px); }
+  60%  { transform: translateX(3px); }
+  75%  { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+.ielts-row-shake {
+  animation: ielts-row-shake 0.45s ease-in-out;
+  /* Highlight nhẹ kèm theo để dễ nhận biết hơn */
+  background-color: #fff7ed;
+  border-radius: 6px;
+}

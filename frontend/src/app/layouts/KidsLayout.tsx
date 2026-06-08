@@ -39,17 +39,15 @@ const NavLink = ({
   <button
     onClick={onClick}
     className={`
-      relative w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] font-semibold
-      transition-all duration-150 active:scale-[0.98]
+      relative w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] font-bold
+      transition-all duration-150 active:scale-[0.97]
       ${isActive
-        ? 'bg-rose-50 text-rose-700'
-        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}
+        ? 'bg-rose-500 text-white shadow-md'
+        : 'text-slate-600 hover:bg-rose-50 hover:text-rose-700'}
     `}
+    style={isActive ? { boxShadow: '0 4px 12px rgba(244,63,94,0.30)' } : undefined}
   >
-    {isActive && (
-      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-rose-500 rounded-r-full" />
-    )}
-    <Icon className={`w-[18px] h-[18px] ${isActive ? 'text-rose-500' : 'text-slate-400'}`} />
+    <Icon className={`w-[18px] h-[18px] flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
     <span>{label}</span>
   </button>
 );
@@ -81,23 +79,23 @@ export function KidsLayout() {
   const initial = (user?.uName || 'B')[0]?.toUpperCase() || 'B';
 
   return (
-    <div className="kids-scope min-h-screen bg-slate-50">
+    <div className="kids-scope min-h-screen" style={{ background: 'linear-gradient(160deg, #FFF1F2 0%, #FFF7ED 50%, #F0FDF4 100%)' }}>
       <NotificationPermissionBanner push={push} />
       {/* Mobile Header */}
-      <div className="lg:hidden bg-white border-b border-slate-200">
+      <div className="lg:hidden sticky top-0 z-30" style={{ background: 'linear-gradient(135deg, #FB7185, #F97316)', boxShadow: '0 2px 12px rgba(251,113,133,0.30)' }}>
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-400 to-pink-500 text-white flex items-center justify-center text-base font-bold shadow-sm">
+            <div className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-sm text-white flex items-center justify-center text-base font-bold border-2 border-white/30">
               {initial}
             </div>
             <div>
-              <p className="text-[15px] font-bold text-slate-900 leading-tight">{user?.uName || 'Bạn'}</p>
-              <p className="text-xs text-slate-500">Cambridge YL</p>
+              <p className="text-[15px] font-bold text-white leading-tight">{user?.uName || 'Bạn'}</p>
+              <p className="text-xs text-rose-100">Cambridge YL ⭐</p>
             </div>
           </div>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+            className="p-2 rounded-lg bg-white/15 text-white hover:bg-white/25 transition-colors"
             aria-label="Toggle menu"
           >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -110,28 +108,29 @@ export function KidsLayout() {
         <aside
           className={`
             fixed lg:sticky lg:top-0 inset-y-0 left-0 z-50 w-64 h-screen
-            bg-white border-r border-slate-200 flex flex-col
+            bg-white flex flex-col
             transform transition-transform duration-200 ease-out
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           `}
+          style={{ boxShadow: '4px 0 24px rgba(251,113,133,0.12)', borderRight: '1.5px solid #FFE4E6' }}
         >
-          {/* Brand / User */}
-          <div className="px-5 py-5 border-b border-slate-100">
+          {/* Brand / User — colorful gradient header */}
+          <div className="px-5 py-5" style={{ background: 'linear-gradient(135deg, #FB7185 0%, #F97316 100%)' }}>
             <div className="flex items-center gap-3">
-              <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-rose-400 via-pink-500 to-orange-400 text-white flex items-center justify-center text-lg font-bold shadow-md shadow-rose-200/60">
+              <div className="relative w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm text-white flex items-center justify-center text-xl font-extrabold border-2 border-white/30">
                 {initial}
                 <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-white" />
               </div>
               <div className="min-w-0">
-                <p className="text-[15px] font-bold text-slate-900 truncate">{user?.uName || 'Bạn'}</p>
-                <p className="text-xs text-slate-500">Cambridge YL · Kids</p>
+                <p className="text-[15px] font-extrabold text-white truncate">{user?.uName || 'Bạn'}</p>
+                <p className="text-xs text-rose-100">Cambridge YL ⭐ Kids</p>
               </div>
             </div>
           </div>
 
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-            <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold px-3 mb-1">
+            <p className="text-[11px] uppercase tracking-wider text-rose-400 font-bold px-3 mb-1">
               Khám phá
             </p>
             {navItems.map(item => (
@@ -149,10 +148,10 @@ export function KidsLayout() {
           </nav>
 
           {/* Footer / Logout */}
-          <div className="px-3 py-4 border-t border-slate-100">
+          <div className="px-3 py-4" style={{ borderTop: '1.5px solid #FFE4E6' }}>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] font-semibold text-slate-600 hover:bg-rose-50 hover:text-rose-700 transition-colors"
+              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] font-bold text-slate-600 hover:bg-red-50 hover:text-red-700 transition-colors"
             >
               <LogOut className="w-[18px] h-[18px] text-slate-400" />
               <span>Đăng xuất</span>

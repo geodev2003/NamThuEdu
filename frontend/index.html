@@ -4,33 +4,47 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#F97316" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="NamThuEdu" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
     <meta name="description" content="NamThuEdu - Nền tảng học tiếng Anh chuẩn VSTEP, IELTS và Cambridge tại Cần Thơ. Học thông minh hơn cùng đội ngũ giáo viên tận tâm." />
     <meta name="robots" content="index, follow" />
+    <meta name="author" content="NamThuEdu" />
+    <meta name="keywords" content="học tiếng Anh, VSTEP, IELTS, Cambridge, Cần Thơ, luyện thi tiếng Anh" />
     <title>NamThuEdu — Học tiếng Anh thông minh hơn</title>
 
-    <!-- Open Graph fallback -->
+    <!-- Canonical (fallback — overridden per-page by react-helmet-async) -->
+    <link rel="canonical" href="https://namthuedu.com" />
+
+    <!-- Open Graph -->
     <meta property="og:site_name" content="NamThuEdu" />
     <meta property="og:locale" content="vi_VN" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="NamThuEdu — Học tiếng Anh thông minh hơn" />
     <meta property="og:description" content="Nền tảng học tiếng Anh chuẩn VSTEP, IELTS và Cambridge tại Cần Thơ." />
-    <meta property="og:image" content="https://namthu.vn/images/banner.png" />
-    <meta property="og:url" content="https://namthu.vn" />
+    <meta property="og:image" content="https://namthuedu.com/images/banner.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content="https://namthuedu.com" />
 
-    <!-- Twitter Card fallback -->
+    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@namthuedu" />
     <meta name="twitter:title" content="NamThuEdu — Học tiếng Anh thông minh hơn" />
     <meta name="twitter:description" content="Nền tảng học tiếng Anh chuẩn VSTEP, IELTS và Cambridge tại Cần Thơ." />
-    <meta name="twitter:image" content="https://namthu.vn/images/banner.png" />
+    <meta name="twitter:image" content="https://namthuedu.com/images/banner.png" />
 
-    <!-- Google Fonts for Kids UI -->
+    <!-- Preload LCP hero image -->
+    <link rel="preload" as="image" href="/images/banner.png" fetchpriority="high" />
+
+    <!-- Google Fonts — single combined request (5 → 1, saves ~400ms) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Comic+Neue:wght@300;400;700&family=Quicksand:wght@400;500;600;700&family=Baloo+2:wght@400;500;600;700;800&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Playpen+Sans:wght@400;700;800&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400;1,700&subset=vietnamese&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Comic+Neue:wght@300;400;700&family=Quicksand:wght@400;500;600;700&family=Baloo+2:wght@400;500;600;700;800&family=Roboto:wght@300;400;500;700&family=Playpen+Sans:wght@400;700;800&family=Montserrat:wght@500;600;700&family=Poppins:wght@600;700;800&family=Playfair+Display:ital,wght@0,700;1,400;1,700&subset=vietnamese&display=swap" rel="stylesheet" />
   </head>
 
   <body>

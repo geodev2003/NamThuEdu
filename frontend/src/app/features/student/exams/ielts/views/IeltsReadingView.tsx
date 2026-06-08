@@ -22,6 +22,8 @@ interface IeltsReadingViewProps {
   onSubmit: () => void;
   timeLeft?: number;
   showTimer?: boolean;
+  /** Preview mode: navigator có thể kéo được */
+  draggableNavigator?: boolean;
 }
 
 export function IeltsReadingView({
@@ -33,6 +35,7 @@ export function IeltsReadingView({
   onSubmit,
   timeLeft,
   showTimer,
+  draggableNavigator = false,
 }: IeltsReadingViewProps) {
   const passages = payload.passages ?? [];
   const [activeIdx, setActiveIdx] = useState(0);
@@ -180,6 +183,7 @@ export function IeltsReadingView({
         timeLeft={timeLeft}
         showTimer={showTimer}
         onSubmit={onSubmit}
+        hideSubmit={draggableNavigator}
       />
     </div>
   );

@@ -338,10 +338,12 @@ class AgeGroupContentController extends Controller
             $breakdown = [];
 
             foreach ($request->target_groups as $group) {
+                // Class system deprecated — gán theo age_group thuần thay vì
+                // còn lọc class_ids.
                 $students = DB::table('users')
                     ->where('role', 'student')
                     ->where('age_group', $group['age_group'])
-                    ->whereIn('class_id', $group['class_ids'])
+                    ->whereNull('uDeleted_at')
                     ->pluck('uId');
 
                 foreach ($students as $studentId) {

@@ -204,6 +204,15 @@ export function CreatePost() {
           : t("blog.create.successSubmit")
       );
 
+      // Log activity (best-effort)
+      import("../../../../services/teacherActivityLog").then(({ logTeacherActivity }) => {
+        logTeacherActivity({
+          action: status === "draft" ? "blog.create" : "blog.publish",
+          entity_type: "blog",
+          detail: status === "draft" ? `Lưu nháp: ${title}` : `Đăng bài: ${title}`,
+        });
+      });
+
       setTimeout(() => {
         navigate("/giao-vien/bai-viet");
       }, 1000);

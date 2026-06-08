@@ -15,6 +15,7 @@ import type { IeltsSkill, IeltsTestType } from "./structure";
 const DEFAULT_PLAY_MODE = {
   practice_enabled: true,
   full_test_enabled: true,
+  // Theo chuẩn IELTS: Listening 40' · Reading 60' · Writing 60' · Speaking 11–14'
   time_limit_options: [null, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60],
 };
 
@@ -77,7 +78,7 @@ export function IeltsPreviewPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-6">
+      <div className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-6">
         {loading && (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
@@ -103,6 +104,7 @@ export function IeltsPreviewPage() {
             examDescription={examDescription}
             skillData={skillData}
             playMode={playMode}
+            examId={examId}
           />
         )}
       </div>

@@ -270,7 +270,18 @@ export function AddStudent() {
         password: data.data?.password || passwordToSend, // Get password from response or use the one we sent
       });
       setShowCredentialsModal(true);
-      
+
+      // Log activity (best-effort)
+      const newStudentId = data?.data?.created_students?.[0]?.id ?? null;
+      const { logTeacherActivity } = await import("../../../../services/teacherActivityLog");
+      logTeacherActivity({
+        action: "student.add",
+        entity_type: "student",
+        entity_id: newStudentId,
+        detail: `Thêm học viên: ${formData.studentName}`,
+        meta: { phone: formData.studentPhone, age_group: formData.age_group },
+      });
+
       success(t('teacher.students.addStudent.toast.success', { name: formData.studentName }));
     } catch (err: any) {
       console.error('Error:', err);

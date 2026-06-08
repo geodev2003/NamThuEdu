@@ -238,8 +238,7 @@ class UserController extends Controller
             ], 401);
         }
 
-        $query = User::with('class')
-                    ->where('uRole', 'student')
+        $query = User::where('uRole', 'student')
                     ->whereNull('uDeleted_at');
 
         // Search by name or phone
@@ -256,9 +255,9 @@ class UserController extends Controller
             $query->where('uStatus', $request->status);
         }
 
-        // Filter by class
-        if ($request->has('class') && !empty($request->class)) {
-            $query->where('class_id', $request->class);
+        // Filter by age_group (kids/teens/adults) — thay cho filter class cũ
+        if ($request->has('age_group') && !empty($request->age_group)) {
+            $query->where('age_group', $request->age_group);
         }
 
         // Filter by gender
@@ -279,41 +278,30 @@ class UserController extends Controller
         $perPage = $request->get('per_page', 10);
         $perPage = min($perPage, 100); // Max 100 per page
 
+        $mapStudent = function ($student) {
+            return [
+                'uId' => $student->uId,
+                'uName' => $student->uName,
+                'uPhone' => $student->uPhone,
+                'uEmail' => $student->uEmail,
+                'uAddress' => $student->uAddress,
+                'uDoB' => $student->uDoB,
+                'uStatus' => $student->uStatus,
+                'uCreated_at' => $student->uCreated_at,
+                'avatar_url' => $student->avatar_url,
+                'age_group' => $student->age_group,
+            ];
+        };
+
         if ($request->has('paginate') && $request->paginate === 'false') {
-            $students = $query->get()->map(function($student) {
-                return [
-                    'uId' => $student->uId,
-                    'uName' => $student->uName,
-                    'uPhone' => $student->uPhone,
-                    'uEmail' => $student->uEmail,
-                    'uStatus' => $student->uStatus,
-                    'uCreated_at' => $student->uCreated_at,
-                    'avatar_url' => $student->avatar_url,
-                    'age_group' => $student->age_group,
-                    'class_name' => $student->class ? $student->class->cName : null,
-                    'class_id' => $student->class_id,
-                ];
-            });
+            $students = $query->get()->map($mapStudent);
             $result = [
                 'data' => $students,
                 'total' => $students->count()
             ];
         } else {
             $paginated = $query->paginate($perPage);
-            $paginated->getCollection()->transform(function($student) {
-                return [
-                    'uId' => $student->uId,
-                    'uName' => $student->uName,
-                    'uPhone' => $student->uPhone,
-                    'uEmail' => $student->uEmail,
-                    'uStatus' => $student->uStatus,
-                    'uCreated_at' => $student->uCreated_at,
-                    'avatar_url' => $student->avatar_url,
-                    'age_group' => $student->age_group,
-                    'class_name' => $student->class ? $student->class->cName : null,
-                    'class_id' => $student->class_id,
-                ];
-            });
+            $paginated->getCollection()->transform($mapStudent);
             $result = $paginated;
         }
 
@@ -495,27 +483,8 @@ class UserController extends Controller
                 }
             }
 
-            // Find or create class for this teacher with matching age_group
-            $class = \App\Models\Classes::where('cTeacher_id', $user->uId)
-                ->where('age_group', $ageGroup)
-                ->first();
-
-            if (!$class) {
-                // Create default class for this age group
-                $ageGroupLabels = [
-                    'kids' => 'Lớp Tiểu học',
-                    'teens' => 'Lớp THCS-THPT',
-                    'adults' => 'Lớp Người lớn'
-                ];
-                
-                $class = \App\Models\Classes::create([
-                    'cName' => $ageGroupLabels[$ageGroup] . ' - ' . $user->uName,
-                    'cTeacher_id' => $user->uId,
-                    'age_group' => $ageGroup,
-                    'cStatus' => 'active',
-                    'cDescription' => 'Lớp tự động tạo cho ' . $ageGroupLabels[$ageGroup],
-                ]);
-            }
+            // Class system đã deprecated — không tạo class nữa, học viên chỉ
+            // còn thuộc age_group. Không gán class_id để tránh ràng buộc cũ.
 
             // Handle avatar upload
             $avatarPath = null;
@@ -534,7 +503,6 @@ class UserController extends Controller
                 'uEmail' => $request->studentEmail ?? null,
                 'uDoB' => $request->studentDoB ?? null,
                 'avatar_url' => $avatarPath,
-                'class_id' => $class->cId,
                 'age_group' => $ageGroup,
                 'theme_preference' => 'auto',
                 'language_preference' => 'vi',
@@ -551,8 +519,6 @@ class UserController extends Controller
                         'name' => $student->uName,
                         'phone' => $student->uPhone,
                         'age_group' => $student->age_group,
-                        'class_name' => $class->cName,
-                        'class_id' => $class->cId,
                         'avatar_url' => $student->avatar_url,
                     ]],
                     'password' => $request->studentPassword, // Return plain password for teacher to copy
@@ -643,27 +609,8 @@ class UserController extends Controller
                     }
                 }
 
-                // Find or create class for this teacher with matching age_group
-                $class = \App\Models\Classes::where('cTeacher_id', $user->uId)
-                    ->where('age_group', $ageGroup)
-                    ->first();
-
-                if (!$class) {
-                    // Create default class for this age group
-                    $ageGroupLabels = [
-                        'kids' => 'Lớp Tiểu học',
-                        'teens' => 'Lớp THCS-THPT',
-                        'adults' => 'Lớp Người lớn'
-                    ];
-                    
-                    $class = \App\Models\Classes::create([
-                        'cName' => $ageGroupLabels[$ageGroup] . ' - ' . $user->uName,
-                        'cTeacher_id' => $user->uId,
-                        'age_group' => $ageGroup,
-                        'cStatus' => 'active',
-                        'cDescription' => 'Lớp tự động tạo cho ' . $ageGroupLabels[$ageGroup],
-                    ]);
-                }
+                // Class system đã deprecated — bỏ logic find/create class.
+                // Học viên chỉ thuộc age_group, không thuộc class cố định.
 
                 $student = User::create([
                     'uPhone' => trim($data['studentPhone']),
@@ -671,7 +618,6 @@ class UserController extends Controller
                     'plain_password' => encrypt($data['studentPassword']), // Store encrypted plain password
                     'uName' => $data['studentName'],
                     'uDoB' => $data['studentDoB'] ?? null,
-                    'class_id' => $class->cId,
                     'age_group' => $ageGroup,
                     'theme_preference' => 'auto',
                     'language_preference' => 'vi',
@@ -686,8 +632,6 @@ class UserController extends Controller
                         'name' => $student->uName,
                         'phone' => $student->uPhone,
                         'age_group' => $student->age_group,
-                        'class_name' => $class->cName,
-                        'class_id' => $class->cId,
                     ];
                 }
             } catch (\Exception $e) {
@@ -788,7 +732,6 @@ class UserController extends Controller
             'uAddress' => 'sometimes|nullable|string',
             'uGender' => 'sometimes|nullable|boolean',
             'age_group' => 'sometimes|nullable|in:kids,teens,adults',
-            'class_id' => 'sometimes|nullable|integer',
             'uStatus' => 'sometimes|required|in:active,inactive',
             'avatar' => 'sometimes|nullable|image|mimes:jpeg,jpg,png,gif,webp,bmp,svg|max:20480',
         ]);
@@ -809,7 +752,6 @@ class UserController extends Controller
         if ($request->has('uAddress')) $updateData['uAddress'] = $request->uAddress;
         if ($request->has('uGender')) $updateData['uGender'] = $request->uGender;
         if ($request->has('age_group')) $updateData['age_group'] = $request->age_group;
-        if ($request->has('class_id')) $updateData['class_id'] = $request->class_id;
         if ($request->has('uStatus')) $updateData['uStatus'] = $request->uStatus;
 
         // Handle avatar upload
@@ -1022,7 +964,7 @@ class UserController extends Controller
                                'uName' => $student->uName,
                                'uPhone' => $student->uPhone,
                                'uEmail' => $student->uEmail,
-                               'class_id' => $student->class_id,
+                               'age_group' => $student->age_group,
                                'uDeleted_at' => $student->uDeleted_at,
                                'deleted_hours_ago' => $deletedAt->diffInHours(now()),
                                'hours_remaining' => max(0, $hoursRemaining),
@@ -1148,12 +1090,9 @@ class UserController extends Controller
                              ->whereNull('uDeleted_at')
                              ->count();
 
-        // Students by class
-        $studentsByClass = User::where('uRole', 'student')
-                              ->whereNull('uDeleted_at')
-                              ->selectRaw('class_id, COUNT(*) as count')
-                              ->groupBy('class_id')
-                              ->pluck('count', 'class_id');
+        // Students by class — class system đã deprecated, không truy vấn
+        // class_id nữa. Giữ key cho backward compat ở response nhưng trả mảng rỗng.
+        $studentsByClass = collect();
 
         // Recent registrations (last 30 days)
         $recentRegistrations = User::where('uRole', 'student')
@@ -1308,7 +1247,7 @@ class UserController extends Controller
                 'Ngày sinh',
                 'Giới tính',
                 'Địa chỉ',
-                'Lớp',
+                'Nhóm tuổi',
                 'Trạng thái',
                 'Ngày tạo'
             ]);
@@ -1322,7 +1261,7 @@ class UserController extends Controller
                     $student->uDoB ? $student->uDoB->format('Y-m-d') : '',
                     $student->uGender ? 'Nam' : 'Nữ',
                     $student->uAddress,
-                    $student->class_id,
+                    $student->age_group,
                     $student->uStatus === 'active' ? 'Hoạt động' : 'Không hoạt động',
                     $student->uCreated_at ? $student->uCreated_at->format('Y-m-d H:i:s') : ''
                 ]);

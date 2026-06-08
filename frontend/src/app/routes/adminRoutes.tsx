@@ -25,10 +25,19 @@ import { Navigate } from "react-router";
 import { AdminTeacherAssignmentsPage } from "../features/admin/teachers/AdminTeacherAssignmentsPage";
 import { AdminStudentRegistrationsPage } from "../features/admin/students/AdminStudentRegistrationsPage";
 import { AdminStudentComplaintsPage } from "../features/admin/students/AdminStudentComplaintsPage";
+import { ProtectedRoute } from "../../components/auth";
+
+function ProtectedAdminLayout() {
+  return (
+    <ProtectedRoute requiredRole="admin">
+      <AdminLayout />
+    </ProtectedRoute>
+  );
+}
 
 export const adminRoutes = {
   path: "/admin",
-  Component: AdminLayout,
+  Component: ProtectedAdminLayout,
   children: [
     // Tổng quan
     { index: true, Component: AdminDashboard },

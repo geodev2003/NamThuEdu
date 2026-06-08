@@ -3,10 +3,10 @@ import { Navigate, RouteObject, useLocation } from 'react-router';
 import { ProtectedRoute } from '../../components/auth';
 import { StudentLayout } from '../layouts/StudentLayout';
 import { KidsLayout } from '../layouts/KidsLayout';
+import { TeensLayout } from '../layouts/TeensLayout';
 import { UnderConstruction } from '../components/shared';
 import { StudentProtectedRoute } from './StudentProtectedRoute';
 import { WaitingForClass } from '../features/student/WaitingForClass';
-import { TakeExam } from '../features/student/exam';
 
 // ─── Age Group Dashboards ─────────────────────────────────────────────────────
 const KidsDashboard = lazy(() =>
@@ -19,8 +19,6 @@ const AdultsDashboard = lazy(() =>
   import('../features/student/adults/AdultsDashboard').then(m => ({ default: m.AdultsDashboard })));
 
 // ─── Existing pages ───────────────────────────────────────────────────────────
-const StudentDashboard = lazy(() =>
-  import('../features/student/dashboard/StudentDashboard').then(m => ({ default: m.StudentDashboard })));
 const TestList = lazy(() =>
   import('../features/student/tests/TestList').then(m => ({ default: m.TestList })));
 const PracticeList = lazy(() =>
@@ -46,6 +44,12 @@ const StudentIeltsExamPage = lazy(() =>
   import('../features/student/exams/ielts/StudentIeltsExamPage').then(m => ({ default: m.StudentIeltsExamPage })));
 const StudentIeltsExamDetail = lazy(() =>
   import('../features/student/exams/ielts/StudentIeltsExamDetail').then(m => ({ default: m.StudentIeltsExamDetail })));
+
+// THPT pages
+const StudentThptExamPage = lazy(() =>
+  import('../features/student/exams/thpt/StudentThptExamPage').then(m => ({ default: m.StudentThptExamPage })));
+const ThptResultPage = lazy(() =>
+  import('../features/student/exams/thpt/ThptResultPage').then(m => ({ default: m.ThptResultPage })));
 
 // ─── New pages (gap-filled) ───────────────────────────────────────────────────
 const TestTaking = lazy(() =>
@@ -101,14 +105,29 @@ function AdaptiveDashboard() {
   if (ageGroup === 'teens') {
     return <Suspense fallback={<LoadingFallback />}><TeensDashboard /></Suspense>;
   }
-  return <Suspense fallback={<LoadingFallback />}><StudentDashboard /></Suspense>;
+  return <Suspense fallback={<LoadingFallback />}><AdultsDashboard /></Suspense>;
+}
+
+// Redirect /hoc-vien/teens/* → /hoc-vien/*
+function TeensRedirect() {
+  const location = useLocation();
+  const newPath = location.pathname.replace(/^\/hoc-vien\/teens/, '/hoc-vien');
+  return <Navigate to={newPath + location.search} replace />;
+}
+
+// Auto-detect layout from age_group in auth session (localStorage or sessionStorage)
+function AdaptiveStudentLayout() {
+  const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
+  const ageGroup = raw ? (JSON.parse(raw) as { age_group?: string }).age_group : undefined;
+  if (ageGroup === 'teens') return <TeensLayout />;
+  return <StudentLayout />;
 }
 
 // Protected Student Layout
 function ProtectedStudentLayout() {
   return (
     <ProtectedRoute requiredRole="student">
-      <StudentLayout />
+      <AdaptiveStudentLayout />
     </ProtectedRoute>
   );
 }
@@ -119,17 +138,6 @@ function ProtectedKidsLayout() {
     <ProtectedRoute requiredRole="student">
       <StudentProtectedRoute ageGroup="kids">
         <KidsLayout />
-      </StudentProtectedRoute>
-    </ProtectedRoute>
-  );
-}
-
-// Protected Teens Layout (uses shared StudentLayout)
-function ProtectedTeensLayout() {
-  return (
-    <ProtectedRoute requiredRole="student">
-      <StudentProtectedRoute ageGroup="teens">
-        <StudentLayout />
       </StudentProtectedRoute>
     </ProtectedRoute>
   );
@@ -177,10 +185,6 @@ export const studentRoutes: RouteObject = {
       element: <WaitingForClass />,
     },
     // Exam routes
-    {
-      path: 'lam-bai/:examId',
-      element: <Suspense fallback={<LoadingFallback />}><TakeExam /></Suspense>,
-    },
     {
       path: 'de-thi',
       element: <Suspense fallback={<LoadingFallback />}><StudentExamBrowser /></Suspense>,
@@ -251,6 +255,15 @@ export const studentRoutes: RouteObject = {
       path: 'lam-bai-ielts/:examId/speaking',
       element: <Suspense fallback={<LoadingFallback />}><StudentIeltsExamPage skill="speaking" /></Suspense>,
     },
+    // ─── THPT exam routes ──────────────────────────────────────────────
+    {
+      path: 'lam-bai-thpt/:examId',
+      element: <Suspense fallback={<LoadingFallback />}><StudentThptExamPage /></Suspense>,
+    },
+    {
+      path: 'ket-qua-thpt/:submissionId',
+      element: <Suspense fallback={<LoadingFallback />}><ThptResultPage /></Suspense>,
+    },
     {
       path: 'ket-qua/:id',
       element: <Suspense fallback={<LoadingFallback />}><ResultDetail /></Suspense>,
@@ -290,6 +303,14 @@ export const studentRoutes: RouteObject = {
     {
       path: 'lich-hoc',
       element: <Suspense fallback={<LoadingFallback />}><StudentSchedule /></Suspense>,
+    },
+    {
+      path: 'thong-bao',
+      element: <Suspense fallback={<LoadingFallback />}><NotificationList /></Suspense>,
+    },
+    {
+      path: 'thanh-tich',
+      element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
     },
     {
       path: '*',
@@ -385,43 +406,12 @@ export const kidsRoutes: RouteObject = {
   ],
 };
 
-// ─── TEENS ROUTES (13-17 tuổi) ───────────────────────────────────────────────
+// ─── TEENS ROUTES — redirect /hoc-vien/teens/* → /hoc-vien/* ──────────────────────
 export const teensRoutes: RouteObject = {
   path: '/hoc-vien/teens',
-  element: <ProtectedTeensLayout />,
   children: [
-    {
-      index: true,
-      element: <Suspense fallback={<LoadingFallback />}><TeensDashboard /></Suspense>,
-    },
-    {
-      path: 'lessons',
-      element: <Suspense fallback={<LoadingFallback />}><TestList /></Suspense>,
-    },
-    {
-      path: 'progress',
-      element: <Suspense fallback={<LoadingFallback />}><Progress /></Suspense>,
-    },
-    {
-      path: 'achievements',
-      element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
-    },
-    {
-      path: 'leaderboard',
-      element: <Suspense fallback={<LoadingFallback />}><StudentLeaderboard /></Suspense>,
-    },
-    {
-      path: 'notifications',
-      element: <Suspense fallback={<LoadingFallback />}><NotificationList /></Suspense>,
-    },
-    {
-      path: 'settings',
-      element: <Suspense fallback={<LoadingFallback />}><Settings /></Suspense>,
-    },
-    {
-      path: '*',
-      element: <Navigate to="/hoc-vien/teens" replace />,
-    },
+    { index: true, element: <Navigate to="/hoc-vien" replace /> },
+    { path: '*',   element: <TeensRedirect /> },
   ],
 };
 

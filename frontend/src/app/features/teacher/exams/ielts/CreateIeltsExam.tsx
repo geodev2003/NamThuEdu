@@ -30,7 +30,6 @@ import {
   Clock,
   Edit3,
   Eye,
-  Settings as SettingsIcon,
   Save as SaveIcon,
   Upload,
   AlertTriangle,
@@ -49,7 +48,7 @@ import { IeltsReadingEditor } from "./editors/IeltsReadingEditor";
 import { IeltsWritingEditor } from "./editors/IeltsWritingEditor";
 import { IeltsSpeakingEditor } from "./editors/IeltsSpeakingEditor";
 import { IeltsExamStudentPreview } from "./IeltsExamStudentPreview";
-import { IeltsPlayModeConfig, type PlayModeConfig } from "./components/IeltsPlayModeConfig";
+import { type PlayModeConfig } from "./components/IeltsPlayModeConfig";
 import { IeltsImportModal } from "./components/IeltsImportModal";
 import type { IeltsSkillImport } from "../../../../../services/groqApi";
 
@@ -102,6 +101,7 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
     (location.state as any)?.description || ""
   );
   const [testType, setTestType] = useState<IeltsTestType>("Academic");
+  const [ageGroup, setAgeGroup] = useState<'kids' | 'teens' | 'adults' | 'all'>('all');
   const [skillData, setSkillData] = useState<any>(null);
   const [playMode, setPlayMode] = useState<PlayModeConfig>(DEFAULT_PLAY_MODE);
   const [activeTab, setActiveTab] = useState<ViewTab>("edit");
@@ -157,6 +157,7 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
           if (!mounted || !data) return;
           if (data.eTitle) setExamTitle(data.eTitle);
           if (data.ielts_test_type) setTestType(data.ielts_test_type);
+          if (data.age_group) setAgeGroup(data.age_group);
           // Restore skill data từ draft → editor sẽ render với initialData
           if (data.ielts_data) {
             setSkillData(data.ielts_data);
@@ -183,6 +184,7 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
           ielts_test_type: testType,
           ielts_skill: skill,
           eDifficulty: "medium",
+          age_group: ageGroup,
         });
         const newId = res.data?.data?.eId || res.data?.eId;
         if (mounted && newId) setExamId(String(newId));
@@ -225,6 +227,7 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
         eTitle: examTitle,
         eDescription: examDescription,
         ielts_test_type: testType,
+        age_group: ageGroup,
         ielts_config: {
           test_type: testType,
           skill,
@@ -276,8 +279,17 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
         ielts_data: { [getDataKey(skill)]: extractSkillItems(skill, skillData) },
         play_modes: playMode,
       });
-      success("Đã xuất bản đề thi IELTS");
-      setTimeout(() => navigate("/giao-vien/de-thi"), 600);
+      // Log activity (best-effort)
+      const { logTeacherActivity } = await import("../../../../../services/teacherActivityLog");
+      logTeacherActivity({
+        action: "exam.create",
+        entity_type: "exam",
+        entity_id: Number(examId),
+        detail: `Xuất bản đề IELTS: ${examTitle}`,
+        meta: { type: "IELTS", skill, test_type: testType },
+      });
+      success(`Đã xuất bản đề thi "${examTitle}" — học viên có thể làm bài ngay.`);
+      setTimeout(() => navigate("/giao-vien/de-thi"), 1200);
     } catch (err: any) {
       error(err?.response?.data?.message || "Không thể xuất bản đề thi");
     } finally {
@@ -373,6 +385,31 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
             ))}
           </div>
 
+          {/* Age group selector */}
+          <div className="hidden md:flex items-center gap-0.5 p-0.5 rounded-lg bg-gray-100" title="Nhóm học viên được phép truy cập đề thi">
+            {([
+              { value: 'all', label: 'Mọi nhóm' },
+              { value: 'teens', label: 'Teens' },
+              { value: 'adults', label: 'Adults' },
+            ] as { value: typeof ageGroup; label: string }[]).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  setAgeGroup(opt.value);
+                  setHasUnsavedChanges(true);
+                }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                  ageGroup === opt.value
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
           <button
             type="button"
             onClick={() => setImportOpen(true)}
@@ -449,7 +486,8 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
           {[
             { key: "edit" as ViewTab, label: "Soạn thảo", icon: Edit3 },
             { key: "preview" as ViewTab, label: "Xem trước (Học viên)", icon: Eye },
-            { key: "config" as ViewTab, label: "Chế độ chơi", icon: SettingsIcon },
+            // Tab "Chế độ chơi" đã ẩn — đề 1 skill dùng luôn DEFAULT_PLAY_MODE
+            // (Practice + Full test đều bật). Mở lại khi cần tuỳ chỉnh play mode.
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.key;
@@ -576,18 +614,6 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
               playMode={playMode}
             />
           )}
-
-          {/* ── CONFIG TAB ── */}
-          {activeTab === "config" && (
-            <IeltsPlayModeConfig
-              skill={skill}
-              value={playMode}
-              onChange={(c) => {
-                setPlayMode(c);
-                setHasUnsavedChanges(true);
-              }}
-            />
-          )}
         </div>
       </div>
 
@@ -666,6 +692,8 @@ function normalizeImportedForEditor(imported: any, skill: IeltsSkill): any {
       ...imported,
       sections: imported.sections.map((sec: any, sIdx: number) => ({
         sectionNumber: sec.sectionNumber || sIdx + 1,
+        sectionTitle: sec.sectionTitle || sec.sectionName || "",
+        sectionInstruction: sec.sectionInstruction || sec.instructions || "",
         audioUrl: sec.audioUrl || "",
         audioFileName: sec.audioFileName || "",
         transcript: sec.transcript || "",
@@ -757,6 +785,8 @@ function normalizeQuestion(q: any, fallbackId: string): any {
     questionNumber: q.questionNumber || 0,
     questionType: q.questionType || "multiple-choice",
     questionText: q.questionText || "",
+    ...(q.taskTitle ? { taskTitle: q.taskTitle } : {}),
+    ...(q.taskInstruction ? { taskInstruction: q.taskInstruction } : {}),
     ...(normalizedOpts ? { options: normalizedOpts } : {}),
     correctAnswer: q.correctAnswer || "",
   };
@@ -846,7 +876,7 @@ export function validateIeltsSkillData(skill: IeltsSkill, data: any): Validation
       }
       if (missingAnswer.length) {
         issues.push({
-          severity: "warning",
+          severity: "error",
           location: loc,
           message: `${missingAnswer.length} câu chưa có đáp án đúng (Câu ${formatRanges(missingAnswer)})`,
         });
@@ -889,7 +919,7 @@ export function validateIeltsSkillData(skill: IeltsSkill, data: any): Validation
       }
       if (missingAnswer.length) {
         issues.push({
-          severity: "warning",
+          severity: "error",
           location: loc,
           message: `${missingAnswer.length} câu chưa có đáp án đúng (Câu ${formatRanges(missingAnswer)})`,
         });

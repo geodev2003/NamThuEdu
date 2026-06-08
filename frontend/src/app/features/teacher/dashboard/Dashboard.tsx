@@ -4,10 +4,20 @@ import { useNavigate } from "react-router";
 import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
 import { api } from "../../../../services/api";
 import { getAuthUser } from "../../../../utils/authStorage";
-import { Header } from "../../../components/shared/Header";
+import { usePageHeader } from "../../../../contexts/TeacherHeaderContext";
 import {
-  BookOpen,
-  School,
+  ComposedChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ReferenceLine,
+  Cell,
+  ResponsiveContainer,
+} from "recharts";
+import {
   Users,
   FileText,
   TrendingUp,
@@ -16,135 +26,116 @@ import {
   Send,
   BarChart2,
   ChevronRight,
-  Zap,
   Clock,
   AlertCircle,
   CheckCircle2,
   ArrowUpRight,
   Sparkles,
+  ClipboardList,
+  ListChecks,
+  Activity,
+  CalendarDays,
+  Plus,
+  ArrowRight,
 } from "lucide-react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
 
-// Fallback data for when API is loading or fails
-const fallbackPerformanceData = [
-  { week: "T1", average: 65, listening: 60, reading: 68, writing: 62 },
-  { week: "T2", average: 70, listening: 68, reading: 72, writing: 66 },
-  { week: "T3", average: 74, listening: 73, reading: 76, writing: 70 },
-  { week: "T4", average: 78, listening: 77, reading: 80, writing: 74 },
-  { week: "T5", average: 75, listening: 72, reading: 78, writing: 71 },
-  { week: "T6", average: 82, listening: 80, reading: 84, writing: 78 },
-];
+// Fallback data removed — now using real activity logs from API
 
-const fallbackActivities = [
-  {
-    id: 1,
-    type: "created",
-    detail: "IELTS Reading Test",
-    time: "2",
-    timeUnit: "hoursAgo",
-    color: "#EA580C",
-    bg: "#FFF7ED",
-  },
-  {
-    id: 2,
-    type: "assigned",
-    detail: "Morning Class",
-    time: "5",
-    timeUnit: "hoursAgo",
-    color: "#F97316",
-    bg: "#FFEDD5",
-  },
-  {
-    id: 3,
-    type: "graded",
-    detail: "12",
-    detailType: "submissions",
-    time: "",
-    timeUnit: "yesterday",
-    color: "#FB923C",
-    bg: "#FED7AA",
-  },
-  {
-    id: 4,
-    type: "created",
-    detail: "Cambridge B2 Mock",
-    time: "2",
-    timeUnit: "daysAgo",
-    color: "#C2410C",
-    bg: "#FFEDD5",
-  },
-];
-
-interface CustomTooltipProps {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number; color: string }>;
-  label?: string;
-}
-
-function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-[#0F172A] text-white rounded-xl px-4 py-3 shadow-2xl text-xs border border-white/10">
-        <p className="mb-2 opacity-50 text-[11px] uppercase tracking-wide">{label}</p>
-        {payload.map((entry) => (
-          <div key={entry.name} className="flex items-center justify-between gap-6 mb-1 last:mb-0">
-            <div className="flex items-center gap-2">
-              <span
-                className="w-2 h-2 rounded-full inline-block"
-                style={{ backgroundColor: entry.color }}
-              />
-              <span className="opacity-80">{entry.name}</span>
-            </div>
-            <span className="font-semibold">{entry.value}%</span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  return null;
-}
-
-const activityLabel = (type: string, detail: string, t: any, detailType?: string) => {
-  if (type === "created") return `${t('teacher.dashboard.recentActivity.created')} "${detail}"`;
-  if (type === "assigned") return `${t('teacher.dashboard.recentActivity.assigned')} "${detail}"`;
-  if (type === "graded") return `${t('teacher.dashboard.recentActivity.graded')} ${detail} ${detailType ? t(`teacher.dashboard.recentActivity.${detailType}`) : ''}`;
-  return detail;
+const ACTION_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; bg: string; label: string }> = {
+  'exam.create':       { icon: FileEdit, color: '#2563EB', bg: '#EFF6FF', label: 'Tạo đề thi' },
+  'exam.update':       { icon: FileEdit, color: '#6366F1', bg: '#EEF2FF', label: 'Sửa đề thi' },
+  'exam.delete':       { icon: FileText, color: '#EF4444', bg: '#FEF2F2', label: 'Xoá đề thi' },
+  'exam.duplicate':    { icon: FileText, color: '#8B5CF6', bg: '#F5F3FF', label: 'Nhân bản đề' },
+  'exam.import':       { icon: FileText, color: '#0891B2', bg: '#ECFEFF', label: 'Import đề' },
+  'assignment.create': { icon: Send, color: '#10B981', bg: '#F0FDF4', label: 'Giao bài' },
+  'grading.complete':  { icon: CheckCircle2, color: '#F59E0B', bg: '#FFFBEB', label: 'Chấm điểm' },
+  'grading.review':    { icon: CheckCircle2, color: '#F59E0B', bg: '#FFFBEB', label: 'Xem lại điểm' },
+  'student.add':       { icon: Users, color: '#10B981', bg: '#F0FDF4', label: 'Thêm học viên' },
+  'student.update':    { icon: Users, color: '#6366F1', bg: '#EEF2FF', label: 'Sửa học viên' },
+  'student.delete':    { icon: Users, color: '#EF4444', bg: '#FEF2F2', label: 'Xoá học viên' },
+  'student.import':    { icon: Users, color: '#0891B2', bg: '#ECFEFF', label: 'Import học viên' },
+  'blog.create':       { icon: FileEdit, color: '#8B5CF6', bg: '#F5F3FF', label: 'Nháp bài viết' },
+  'blog.publish':      { icon: FileEdit, color: '#10B981', bg: '#F0FDF4', label: 'Đăng bài' },
+  'profile.update':    { icon: GraduationCap, color: '#6366F1', bg: '#EEF2FF', label: 'Cập nhật hồ sơ' },
 };
 
-const activityIcon = (type: string) => {
-  if (type === "created") return FileEdit;
-  if (type === "assigned") return Send;
-  if (type === "graded") return CheckCircle2;
-  return Sparkles;
-};
+interface ChartPoint {
+  date: string;
+  label: string;
+  weekday: string;
+  submissions: number;
+  avg_score: number | null;
+  students: number;
+}
 
-const mapActivityColor = (_color: string) => ({ color: '#6B7280', bg: '#F9FAFB' });
+interface ChartMeta {
+  total_submissions: number;
+  overall_avg_score: number | null;
+  peak_day: ChartPoint | null;
+  days: number;
+}
 
 export function Dashboard() {
   usePageTitle(PAGE_TITLES.TEACHER_DASHBOARD);
   const { t } = useTranslation();
   const navigate = useNavigate();
+
+  usePageHeader({
+    breadcrumb: [t("breadcrumb.dashboard"), t("breadcrumb.home")],
+    action: { label: t("header.new"), onClick: () => navigate("/giao-vien/de-thi/tao-moi") },
+  });
   const [mounted, setMounted] = useState(false);
 
   const user = getAuthUser();
   const userName = (user?.name as string) || (user?.uName as string) || 'Teacher';
+  const userAvatar = (user?.avatar_url as string) || (user?.avatar as string) || '';
+
+  // Build full avatar URL with fallback
+  const heroAvatarUrl = (() => {
+    if (!userAvatar) return '';
+    if (userAvatar.startsWith('http://') || userAvatar.startsWith('https://')) return userAvatar;
+    const baseUrl = (import.meta.env.VITE_API_URL as string ?? '')
+      .replace(/\/api\/?$/, '')
+      .replace(/\/$/, '');
+    if (!baseUrl) return '';
+    return userAvatar.startsWith('/') ? `${baseUrl}${userAvatar}` : `${baseUrl}/${userAvatar}`;
+  })();
+  const userInitials = userName
+    .trim()
+    .split(/\s+/)
+    .map(w => w.charAt(0))
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 
   // Fetch dashboard statistics with 30-second polling
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(true);
-  const [performanceData, setPerformanceData] = useState(fallbackPerformanceData);
-  const [recentActivities, setRecentActivities] = useState(fallbackActivities);
+  const [chartData, setChartData] = useState<ChartPoint[]>([]);
+  const [chartMeta, setChartMeta] = useState<ChartMeta | null>(null);
+  const [chartLoading, setChartLoading] = useState(true);
+  const [chartMode, setChartMode] = useState<"today" | "7d" | "30d">("7d");
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [activityLogsLoading, setActivityLogsLoading] = useState(true);
 
-  // Fetch dashboard overview
+  // Fetch teacher activity logs (từ activity-log API)
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const { fetchTeacherActivityLogs } = await import("../../../../services/teacherActivityLog");
+        const logs = await fetchTeacherActivityLogs(10);
+        setActivityLogs(logs);
+      } catch (err) {
+        console.error('Error fetching activity logs:', err);
+      } finally {
+        setActivityLogsLoading(false);
+      }
+    };
+
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 30000);
+    return () => clearInterval(interval);
+  }, []);
   useEffect(() => {
     const fetchDashboardStats = async () => {
       try {
@@ -164,41 +155,33 @@ export function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch performance data
+  // Fetch activity chart data (refresh 60s)
   useEffect(() => {
-    const fetchPerformanceData = async () => {
+    let cancelled = false;
+    const fetchChart = async () => {
       try {
-        const { data: result } = await api.get('/teacher/dashboard/performance-data');
-        if (result.status === 'success' && result.data && result.data.length > 0) {
-          setPerformanceData(result.data);
+        const { data: result } = await api.get('/teacher/dashboard/activity-chart', {
+          params: { mode: chartMode },
+        });
+        if (!cancelled && result.status === 'success') {
+          setChartData(result.data || []);
+          setChartMeta(result.meta || null);
         }
       } catch (error) {
-        console.error('Error fetching performance data:', error);
+        console.error('Error fetching activity chart:', error);
+      } finally {
+        if (!cancelled) setChartLoading(false);
       }
     };
 
-    fetchPerformanceData();
-    const interval = setInterval(fetchPerformanceData, 60000); // Refresh every 60s
-    return () => clearInterval(interval);
-  }, []);
-
-  // Fetch recent activities
-  useEffect(() => {
-    const fetchRecentActivities = async () => {
-      try {
-        const { data: result } = await api.get('/teacher/dashboard/recent-activities');
-        if (result.status === 'success' && result.data && result.data.length > 0) {
-          setRecentActivities(result.data);
-        }
-      } catch (error) {
-        console.error('Error fetching recent activities:', error);
-      }
+    setChartLoading(true);
+    fetchChart();
+    const interval = setInterval(fetchChart, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
     };
-
-    fetchRecentActivities();
-    const interval = setInterval(fetchRecentActivities, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
-  }, []);
+  }, [chartMode]);
 
   const hour = new Date().getHours();
   const greeting =
@@ -212,34 +195,50 @@ export function Dashboard() {
 
   const stats = [
     {
-      icon: BookOpen,
-      key: "courses",
-      value: statsLoading ? "..." : (dashboardStats?.total_courses?.toString() || "0"),
-      change: statsLoading ? "" : `+${dashboardStats?.new_courses_this_month || 0}`,
+      icon: Users,
+      label: "Học viên đang theo học",
+      value: statsLoading ? "..." : (dashboardStats?.total_students?.toString() || "0"),
+      subtitle: statsLoading
+        ? ""
+        : `+${dashboardStats?.new_students_this_month || 0} trong tháng`,
+      iconBg: "bg-indigo-50",
+      iconColor: "text-indigo-500",
+      href: "/giao-vien/hoc-vien",
       delay: "0ms",
     },
     {
-      icon: School,
-      key: "classes",
-      value: statsLoading ? "..." : (dashboardStats?.total_classes?.toString() || "0"),
-      change: statsLoading ? "" : `+${dashboardStats?.new_classes_this_month || 0}`,
+      icon: FileText,
+      label: "Đề thi đã tạo",
+      value: statsLoading ? "..." : (dashboardStats?.total_exams?.toString() || "0"),
+      subtitle: statsLoading
+        ? ""
+        : `+${dashboardStats?.new_exams_this_month || 0} trong tháng`,
+      iconBg: "bg-blue-50",
+      iconColor: "text-blue-500",
+      href: "/giao-vien/de-thi",
       delay: "80ms",
     },
     {
-      icon: Users,
-      key: "students",
-      value: statsLoading ? "..." : (dashboardStats?.total_students?.toString() || "0"),
-      change: statsLoading ? "" : `+${dashboardStats?.new_students_this_month || 0}`,
+      icon: ClipboardList,
+      label: "Bài đã giao",
+      value: statsLoading ? "..." : (dashboardStats?.total_assignments?.toString() || "0"),
+      subtitle: statsLoading
+        ? ""
+        : `+${dashboardStats?.new_assignments_this_month || 0} trong tháng`,
+      iconBg: "bg-amber-50",
+      iconColor: "text-amber-500",
+      href: "/giao-vien/de-thi",
       delay: "160ms",
     },
-    {
-      icon: FileText,
-      key: "exams",
-      value: statsLoading ? "..." : (dashboardStats?.total_exams?.toString() || "0"),
-      change: statsLoading ? "" : `+${dashboardStats?.new_exams_this_month || 0}`,
-      delay: "240ms",
-    },
   ];
+
+  // Card thứ 4 (Lượt làm bài) có layout đặc biệt — tách riêng để render UI khác
+  const submissionsStat = {
+    completed: Number(dashboardStats?.completed_submissions ?? 0),
+    expected: Number(dashboardStats?.expected_submissions ?? 0),
+    pending: Number(dashboardStats?.pending_submissions ?? 0),
+    rate: Number(dashboardStats?.completion_rate ?? 0),
+  };
 
   const quickActions = [
     {
@@ -260,7 +259,7 @@ export function Dashboard() {
       icon: Send,
       titleKey: "dashboard.quickActions.assignTest",
       descKey: "dashboard.quickActions.assignTestDesc",
-      href: "/bai-tap",
+      href: "/giao-vien/de-thi",
       primary: false,
     },
     {
@@ -274,88 +273,191 @@ export function Dashboard() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <Header
-        breadcrumb={[t("breadcrumb.dashboard"), t("breadcrumb.home")]}
-        action={{ label: t("header.new"), onClick: () => navigate("/giao-vien/de-thi/tao-moi") }}
-      />
-
       <div className="flex-1 overflow-y-auto bg-[#F9FAFB]">
         {/* ── Hero Banner ── */}
-        <div className="border-b border-gray-200 bg-white px-8 py-7">
+        <div
+          className="relative border-b border-gray-200 bg-white px-8 py-6 overflow-hidden"
+          style={{
+            opacity: mounted ? 1 : 0,
+            transform: mounted ? "translateY(0)" : "translateY(10px)",
+            transition: "opacity 400ms ease, transform 400ms ease",
+          }}
+        >
+          {/* Subtle gradient blob background */}
           <div
-            className="flex items-center justify-between"
+            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full opacity-40"
             style={{
-              opacity: mounted ? 1 : 0,
-              transform: mounted ? "translateY(0)" : "translateY(10px)",
-              transition: "opacity 400ms ease, transform 400ms ease",
+              background: "radial-gradient(circle, rgba(99,102,241,0.18) 0%, rgba(99,102,241,0) 70%)",
             }}
-          >
-            <div>
-              <p className="text-xs text-slate-400 mb-1">
-                {greetingEmoji} {greeting} · {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
-              </p>
-              <h1 className="text-slate-900 text-2xl font-bold tracking-tight">
-                {userName}
-              </h1>
-              <div className="flex items-center gap-2 mt-3 flex-wrap">
-                <span className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 text-xs px-3 py-1.5 rounded-full">
-                  <Clock className="w-3 h-3" />
-                  {statsLoading ? "..." : (dashboardStats?.classes_today || 0)} {t('teacher.dashboard.todayClasses')}
-                </span>
-                <span className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 text-xs px-3 py-1.5 rounded-full">
-                  <AlertCircle className="w-3 h-3" />
-                  {statsLoading ? "..." : (dashboardStats?.pending_grading || 0)} {t('teacher.dashboard.pendingGrading')}
-                </span>
-                <span className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 text-xs px-3 py-1.5 rounded-full">
-                  <CheckCircle2 className="w-3 h-3" />
-                  {statsLoading ? "..." : (dashboardStats?.deadlines_this_week || 0)} {t('teacher.dashboard.deadlinesThisWeek')}
+          />
+
+          <div className="relative flex items-center justify-between gap-6 flex-wrap">
+            {/* LEFT: Avatar + Greeting + Name */}
+            <div className="flex items-center gap-4 min-w-0">
+              {/* Avatar */}
+              <div className="relative flex-shrink-0">
+                {heroAvatarUrl ? (
+                  <img
+                    src={heroAvatarUrl}
+                    alt={userName}
+                    className="w-14 h-14 rounded-2xl object-cover border-2 border-white shadow-md"
+                  />
+                ) : (
+                  <div
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-base font-bold border-2 border-white shadow-md"
+                    style={{ background: "linear-gradient(135deg,#6366F1,#4338CA)" }}
+                  >
+                    {userInitials}
+                  </div>
+                )}
+                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white" />
+              </div>
+
+              {/* Text */}
+              <div className="min-w-0">
+                <p className="text-[11px] text-slate-400 font-medium flex items-center gap-1.5 mb-0.5">
+                  <CalendarDays className="w-3 h-3" />
+                  <span>{greetingEmoji}</span>
+                  <span>{greeting}</span>
+                  <span className="text-slate-300">·</span>
+                  <span className="capitalize">
+                    {new Date().toLocaleDateString("vi-VN", {
+                      weekday: "long",
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })}
+                  </span>
+                </p>
+                <h1 className="text-slate-900 text-[22px] font-bold tracking-tight leading-tight truncate">
+                  {userName}
+                </h1>
+                <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-[10px] font-bold tracking-wide uppercase">
+                  <GraduationCap className="w-3 h-3" />
+                  Giáo viên
                 </span>
               </div>
             </div>
-            <button
-              onClick={() => navigate("/giao-vien/de-thi/tao-moi")}
-              className="flex items-center gap-2 bg-orange-500 text-white rounded-xl px-5 py-2.5 hover:bg-orange-600 transition-colors"
-              style={{ fontSize: "14px", fontWeight: 600 }}
-            >
-              <Zap className="w-4 h-4" />
-              {t('teacher.dashboard.quickActions.createExam')}
-            </button>
+
+            {/* RIGHT: Mini stat tiles + Primary CTA */}
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <HeroStatTile
+                icon={Clock}
+                value={statsLoading ? "..." : (dashboardStats?.classes_today ?? 0).toString()}
+                label="Buổi hôm nay"
+                tone="indigo"
+              />
+              <HeroStatTile
+                icon={AlertCircle}
+                value={statsLoading ? "..." : (dashboardStats?.pending_grading ?? 0).toString()}
+                label="Cần chấm"
+                tone="amber"
+                pulse={(dashboardStats?.pending_grading ?? 0) > 0}
+                onClick={() => navigate("/giao-vien/cham-diem")}
+              />
+              <HeroStatTile
+                icon={CheckCircle2}
+                value={statsLoading ? "..." : (dashboardStats?.deadlines_this_week ?? 0).toString()}
+                label="Deadline tuần"
+                tone="emerald"
+              />
+
+              {/* Divider */}
+              <div className="w-px h-10 bg-gray-200 mx-1 hidden md:block" />
+
+              {/* Primary CTA */}
+              <button
+                onClick={() => navigate("/giao-vien/de-thi/tao-moi")}
+                className="group flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl pl-4 pr-3.5 h-11 transition-all hover:-translate-y-0.5 hover:shadow-lg shadow-slate-900/10"
+                style={{ fontSize: "13px", fontWeight: 600 }}
+              >
+                <Plus className="w-4 h-4" strokeWidth={2.5} />
+                Tạo đề mới
+                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* ── Stats Cards ── */}
+        {/* ── Stats Cards (compact) ── */}
         <div className="px-8 pt-6 mb-6">
-          <div className="grid grid-cols-4 gap-4 max-lg:grid-cols-2">
+          <div className="grid grid-cols-4 gap-3 max-lg:grid-cols-2">
+            {/* 3 metric cards: Học viên / Đề thi / Bài đã giao */}
             {stats.map((stat) => {
               const Icon = stat.icon;
               return (
-                <div
-                  key={stat.key}
-                  className="bg-white rounded-xl p-5 border border-gray-200 cursor-pointer hover:border-indigo-200 hover:shadow-sm transition-all"
+                <button
+                  key={stat.label}
+                  type="button"
+                  onClick={() => navigate(stat.href)}
+                  className="group flex items-center gap-3 text-left bg-white rounded-xl px-4 py-3 border border-gray-200 hover:border-indigo-200 hover:shadow-sm transition-all cursor-pointer"
                   style={{
                     opacity: mounted ? 1 : 0,
-                    transform: mounted ? "translateY(0)" : "translateY(12px)",
-                    transition: `opacity 400ms ease ${stat.delay}, transform 400ms ease ${stat.delay}`,
+                    transform: mounted ? "translateY(0)" : "translateY(8px)",
+                    transition: `opacity 350ms ease ${stat.delay}, transform 350ms ease ${stat.delay}`,
                   }}
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center">
-                      <Icon className="w-4 h-4 text-indigo-500" />
-                    </div>
-                    <span className="flex items-center gap-0.5 text-xs text-indigo-400" style={{ fontWeight: 500 }}>
-                      <TrendingUp className="w-3 h-3" />
-                      {stat.change}
-                    </span>
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${stat.iconBg}`}>
+                    <Icon className={`w-4 h-4 ${stat.iconColor}`} />
                   </div>
-                  <p className="text-slate-900" style={{ fontSize: "30px", fontWeight: 800, lineHeight: "1", letterSpacing: "-1px" }}>
-                    {stat.value}
-                  </p>
-                  <p className="text-slate-400 mt-1" style={{ fontSize: "13px" }}>
-                    {t(`dashboard.stats.${stat.key}`)}
-                  </p>
-                </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-slate-900 tabular-nums" style={{ fontSize: "20px", fontWeight: 700, lineHeight: "1" }}>
+                        {stat.value}
+                      </span>
+                      {stat.subtitle && (
+                        <span className="text-emerald-600 text-[10px] font-semibold whitespace-nowrap">
+                          {stat.subtitle.replace(" trong tháng", "")}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-slate-500 mt-0.5 truncate text-[12px] font-medium">
+                      {stat.label}
+                    </p>
+                  </div>
+                </button>
               );
             })}
+
+            {/* Card 4: Lượt làm bài — compact với progress bar */}
+            <button
+              type="button"
+              onClick={() => navigate("/giao-vien/cham-diem")}
+              className="group flex items-center gap-3 text-left bg-white rounded-xl px-4 py-3 border border-gray-200 hover:border-emerald-200 hover:shadow-sm transition-all cursor-pointer"
+              style={{
+                opacity: mounted ? 1 : 0,
+                transform: mounted ? "translateY(0)" : "translateY(8px)",
+                transition: "opacity 350ms ease 240ms, transform 350ms ease 240ms",
+              }}
+            >
+              <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                <ListChecks className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-1 tabular-nums">
+                  <span className="text-slate-900" style={{ fontSize: "20px", fontWeight: 700, lineHeight: "1" }}>
+                    {statsLoading ? "..." : submissionsStat.completed}
+                  </span>
+                  <span className="text-slate-400 text-[13px] font-semibold">
+                    /{statsLoading ? "..." : submissionsStat.expected}
+                  </span>
+                  <span className="ml-auto text-emerald-600 text-[10px] font-bold">
+                    {statsLoading ? "" : `${submissionsStat.rate}%`}
+                  </span>
+                </div>
+                <p className="text-slate-500 mt-0.5 truncate text-[12px] font-medium">
+                  Lượt làm bài
+                </p>
+                {!statsLoading && submissionsStat.expected > 0 && (
+                  <div className="mt-1 h-1 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500 transition-all duration-500"
+                      style={{ width: `${Math.min(100, submissionsStat.rate)}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            </button>
           </div>
         </div>
 
@@ -365,7 +467,7 @@ export function Dashboard() {
             className="grid gap-5 mb-5"
             style={{ gridTemplateColumns: "1fr 380px" }}
           >
-            {/* ── Chart Card ── */}
+            {/* ── Activity Chart (Bar + Line combo) ── */}
             <div
               className="bg-white rounded-2xl p-6 shadow-sm"
               style={{
@@ -374,136 +476,236 @@ export function Dashboard() {
                 transition: "opacity 500ms ease 300ms, transform 500ms ease 300ms",
               }}
             >
-              <div className="flex items-start justify-between mb-1">
-                <div>
-                  <h3
-                    className="text-[#111827]"
-                    style={{ fontSize: "17px", fontWeight: 700 }}
-                  >
-                    {t("dashboard.charts.studentPerformance")}
-                  </h3>
-                  <p className="text-[#9CA3AF] mt-0.5" style={{ fontSize: "13px" }}>
-                    {t('teacher.dashboard.lastSixWeeks')}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-baseline gap-1.5">
-                    <span
-                      className="text-orange-600"
-                      style={{ fontSize: "28px", fontWeight: 800, lineHeight: "1" }}
-                    >
-                      {statsLoading ? "..." : `${dashboardStats?.average_score || 0}%`}
-                    </span>
-                    <span className="text-emerald-500" style={{ fontSize: "13px", fontWeight: 500 }}>
-                      ↑ {statsLoading ? "..." : `${dashboardStats?.score_improvement || 0}%`}
+              <div className="flex items-start justify-between mb-5 gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                      <Activity className="w-3.5 h-3.5 text-indigo-500" />
+                    </div>
+                    <h3 className="text-[#111827]" style={{ fontSize: "16px", fontWeight: 700 }}>
+                      Hoạt động làm bài VSTEP
+                    </h3>
+                    <span className="px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-[10px] font-bold tracking-wide">
+                      FULL SKILL
                     </span>
                   </div>
+                  <p className="text-[#9CA3AF]" style={{ fontSize: "12px" }}>
+                    Đề thi VSTEP đủ 4 kỹ năng · Số lượt nộp & điểm trung bình theo ngày
+                  </p>
+                </div>
+
+                {/* Range switcher */}
+                <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-0.5 flex-shrink-0">
+                  {([
+                    { key: "today", label: "Hôm nay" },
+                    { key: "7d", label: "7 ngày" },
+                    { key: "30d", label: "30 ngày" },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => setChartMode(opt.key)}
+                      className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer ${
+                        chartMode === opt.key
+                          ? "bg-white text-slate-800 shadow-sm"
+                          : "text-slate-500 hover:text-slate-700"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div className="mt-5">
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart
-                    data={performanceData}
-                    margin={{ top: 4, right: 8, left: -16, bottom: 0 }}
-                  >
-                    <defs>
-                      <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#EA580C" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="#EA580C" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="colorListening" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#64748B" stopOpacity={0.12} />
-                        <stop offset="95%" stopColor="#64748B" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="colorReading" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#94A3B8" stopOpacity={0.12} />
-                        <stop offset="95%" stopColor="#94A3B8" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="colorWriting" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#CBD5E1" stopOpacity={0.12} />
-                        <stop offset="95%" stopColor="#CBD5E1" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      key="grid"
-                      strokeDasharray="3 3"
-                      stroke="#F3F4F6"
-                      vertical={false}
-                    />
-                    <XAxis
-                      key="x-axis"
-                      dataKey="week"
-                      stroke="transparent"
-                      tick={{ fontSize: 12, fill: "#9CA3AF" }}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      key="y-axis"
-                      stroke="transparent"
-                      tick={{ fontSize: 11, fill: "#9CA3AF" }}
-                      domain={[40, 100]}
-                      ticks={[40, 60, 80, 100]}
-                      tickLine={false}
-                      tickFormatter={(v) => `${v}%`}
-                    />
-                    <Tooltip key="tooltip" content={<CustomTooltip />} />
-                    <Legend
-                      key="legend"
-                      wrapperStyle={{ paddingTop: "14px", fontSize: "12px" }}
-                      iconType="circle"
-                      iconSize={7}
-                    />
-                    <Area
-                      key="area-average"
-                      type="monotone"
-                      dataKey="average"
-                      name={t("dashboard.charts.average")}
-                      stroke="#EA580C"
-                      strokeWidth={2.5}
-                      fill="url(#colorAvg)"
-                      dot={{ fill: "#EA580C", r: 4, strokeWidth: 0 }}
-                      activeDot={{ r: 6, strokeWidth: 0 }}
-                    />
-                    <Area
-                      key="area-listening"
-                      type="monotone"
-                      dataKey="listening"
-                      name={t("dashboard.charts.listening")}
-                      stroke="#64748B"
-                      strokeWidth={1.5}
-                      fill="url(#colorListening)"
-                      dot={{ fill: "#64748B", r: 3, strokeWidth: 0 }}
-                      activeDot={{ r: 5, strokeWidth: 0 }}
-                    />
-                    <Area
-                      key="area-reading"
-                      type="monotone"
-                      dataKey="reading"
-                      name={t("dashboard.charts.reading")}
-                      stroke="#94A3B8"
-                      strokeWidth={1.5}
-                      fill="url(#colorReading)"
-                      dot={{ fill: "#94A3B8", r: 3, strokeWidth: 0 }}
-                      activeDot={{ r: 5, strokeWidth: 0 }}
-                    />
-                    <Area
-                      key="area-writing"
-                      type="monotone"
-                      dataKey="writing"
-                      name={t("dashboard.charts.writing")}
-                      stroke="#CBD5E1"
-                      strokeWidth={1.5}
-                      fill="url(#colorWriting)"
-                      dot={{ fill: "#CBD5E1", r: 3, strokeWidth: 0 }}
-                      activeDot={{ r: 5, strokeWidth: 0 }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+              {/* Summary chips */}
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <ChartSummaryChip
+                  label={chartMode === "today" ? "Tổng hôm nay" : "Tổng bài nộp"}
+                  value={chartLoading ? "..." : (chartMeta?.total_submissions ?? 0).toString()}
+                  accentClass="bg-indigo-500"
+                />
+                <ChartSummaryChip
+                  label="Điểm TB"
+                  value={chartLoading ? "..." : (chartMeta?.overall_avg_score != null ? chartMeta.overall_avg_score.toString() : "—")}
+                  accentClass="bg-amber-500"
+                />
+                <ChartSummaryChip
+                  label={chartMode === "today" ? "Giờ cao nhất" : "Ngày cao nhất"}
+                  value={
+                    chartLoading
+                      ? "..."
+                      : chartMeta?.peak_day && chartMeta.peak_day.submissions > 0
+                      ? `${chartMeta.peak_day.label} · ${chartMeta.peak_day.submissions}`
+                      : "—"
+                  }
+                  accentClass="bg-emerald-500"
+                />
+              </div>
+
+              {/* Chart */}
+              <div className="h-[280px] -ml-2">
+                {chartLoading ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-500 rounded-full animate-spin" />
+                  </div>
+                ) : chartData.length === 0 || chartData.every((d) => d.submissions === 0) ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center px-4">
+                    <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3">
+                      <BarChart2 className="w-6 h-6 text-gray-300" />
+                    </div>
+                    <p className="text-sm font-semibold text-gray-700">
+                      {chartMode === "today" ? "Hôm nay chưa có bài nộp" : "Chưa có dữ liệu VSTEP full"}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1 max-w-xs">
+                      {chartMode === "today"
+                        ? "Khi học viên làm bài VSTEP đủ 4 kỹ năng (>1 phút), biểu đồ sẽ hiện theo từng giờ."
+                        : "Khi học viên làm bài VSTEP đủ 4 kỹ năng (>1 phút), biểu đồ sẽ hiện ở đây."}
+                    </p>
+                  </div>
+                ) : (
+                  (() => {
+                    // Derived: peak submission count, scored-days count, max bar value
+                    const maxSub = Math.max(...chartData.map((d) => d.submissions), 1);
+                    const scoredDays = chartData.filter((d) => d.avg_score != null).length;
+                    const showLine = scoredDays >= 2;
+                    const overallAvg = chartMeta?.overall_avg_score ?? null;
+
+                    return (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={chartData} margin={{ top: 16, right: 24, left: 0, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="barFill" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#6366F1" stopOpacity={0.95} />
+                              <stop offset="100%" stopColor="#6366F1" stopOpacity={0.55} />
+                            </linearGradient>
+                            <linearGradient id="barFillPeak" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#4F46E5" stopOpacity={1} />
+                              <stop offset="100%" stopColor="#4338CA" stopOpacity={0.85} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid stroke="#F3F4F6" vertical={false} />
+                          <XAxis
+                            dataKey="label"
+                            tick={{ fill: "#9CA3AF", fontSize: 11 }}
+                            axisLine={{ stroke: "#E5E7EB" }}
+                            tickLine={false}
+                            interval={chartMode === "today" ? 2 : "preserveStartEnd"}
+                            minTickGap={chartMode === "today" ? 0 : 10}
+                          />
+                          <YAxis
+                            yAxisId="left"
+                            tick={{ fill: "#9CA3AF", fontSize: 11 }}
+                            axisLine={false}
+                            tickLine={false}
+                            allowDecimals={false}
+                            width={32}
+                            domain={[0, (dataMax: number) => Math.max(2, Math.ceil(dataMax * 1.15))]}
+                          />
+                          {showLine && (
+                            <YAxis
+                              yAxisId="right"
+                              orientation="right"
+                              domain={[0, 10]}
+                              ticks={[0, 5, 10]}
+                              tick={{ fill: "#9CA3AF", fontSize: 11 }}
+                              axisLine={false}
+                              tickLine={false}
+                              width={28}
+                            />
+                          )}
+                          <Tooltip
+                            content={<ChartTooltip />}
+                            cursor={{ fill: "rgba(99, 102, 241, 0.06)" }}
+                          />
+
+                          {/* Reference line: điểm TB tổng */}
+                          {showLine && overallAvg != null && (
+                            <ReferenceLine
+                              yAxisId="right"
+                              y={overallAvg}
+                              stroke="#F59E0B"
+                              strokeDasharray="3 4"
+                              strokeOpacity={0.4}
+                              label={{
+                                value: `TB ${overallAvg}`,
+                                position: "right",
+                                fill: "#D97706",
+                                fontSize: 10,
+                                fontWeight: 600,
+                              }}
+                            />
+                          )}
+
+                          <Bar
+                            yAxisId="left"
+                            dataKey="submissions"
+                            name="Số bài"
+                            radius={[6, 6, 0, 0]}
+                            maxBarSize={28}
+                            minPointSize={2}
+                          >
+                            {chartData.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={
+                                  entry.submissions === maxSub && entry.submissions > 0
+                                    ? "url(#barFillPeak)"
+                                    : entry.submissions === 0
+                                    ? "#F3F4F6"
+                                    : "url(#barFill)"
+                                }
+                              />
+                            ))}
+                          </Bar>
+
+                          {showLine && (
+                            <Line
+                              yAxisId="right"
+                              type="monotone"
+                              dataKey="avg_score"
+                              name="Điểm TB"
+                              stroke="#F59E0B"
+                              strokeWidth={2.2}
+                              dot={{ r: 3, fill: "#F59E0B", stroke: "white", strokeWidth: 1.5 }}
+                              activeDot={{ r: 5, fill: "#F59E0B", stroke: "white", strokeWidth: 2 }}
+                              connectNulls
+                            />
+                          )}
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    );
+                  })()
+                )}
+              </div>
+
+              {/* Legend */}
+              <div className="flex items-center justify-between gap-4 mt-3 pt-3 border-t border-gray-100">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500" />
+                    Số bài nộp
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-indigo-700" />
+                    Cao nhất
+                  </span>
+                  {chartData.some((d) => d.avg_score != null) && (
+                    <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                      <span className="w-3 h-0.5 bg-amber-500" />
+                      Điểm TB (0–10)
+                    </span>
+                  )}
+                </div>
+                {chartData.filter((d) => d.avg_score != null).length < 2 &&
+                  chartData.some((d) => d.avg_score != null) && (
+                    <span className="text-[10px] text-slate-400 italic">
+                      Cần ≥ 2 ngày có điểm để hiện đường TB
+                    </span>
+                  )}
               </div>
             </div>
 
-            {/* ── Activity Feed ── */}
+            {/* ── Activity Feed (từ teacher_activity_logs) ── */}
             <div
               className="bg-white rounded-2xl p-6 shadow-sm flex flex-col"
               style={{
@@ -517,66 +719,51 @@ export function Dashboard() {
                   className="text-[#111827]"
                   style={{ fontSize: "17px", fontWeight: 700 }}
                 >
-                  {t("dashboard.recentActivity.title")}
+                  Hoạt động gần đây
                 </h3>
-                <button
-                  className="text-xs flex items-center gap-0.5 text-slate-400 hover:text-slate-600 transition-colors"
-                  style={{ fontWeight: 500 }}
-                >
-                  {t("dashboard.recentActivity.viewAll")}
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
               </div>
 
-              <div className="flex-1 space-y-3">
-                {recentActivities.map((activity) => {
-                  const Icon = activityIcon(activity.type);
-                  const mappedColors = mapActivityColor(activity.color);
-                  return (
-                    <div
-                      key={activity.id}
-                      className="flex items-start gap-3 p-3 rounded-xl transition-colors hover:bg-indigo-50/50 cursor-default group"
-                    >
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                        style={{ backgroundColor: mappedColors.bg }}
-                      >
-                        <Icon className="w-4 h-4" style={{ color: mappedColors.color }} />
+              <div className="flex-1 space-y-2 overflow-y-auto" style={{ maxHeight: 360 }}>
+                {activityLogsLoading ? (
+                  <div className="space-y-3">
+                    {[0, 1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-start gap-3 p-3 animate-pulse">
+                        <div className="w-8 h-8 rounded-lg bg-gray-100 flex-shrink-0" />
+                        <div className="flex-1 space-y-1.5">
+                          <div className="h-3 w-40 bg-gray-100 rounded" />
+                          <div className="h-2 w-20 bg-gray-50 rounded" />
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className="text-[#374151] leading-snug"
-                          style={{ fontSize: "13px", fontWeight: 500 }}
-                        >
-                          {activityLabel(activity.type, activity.detail, t, (activity as any).detailType)}
-                        </p>
-                        <p className="text-[#9CA3AF] mt-0.5" style={{ fontSize: "11px" }}>
-                          {activity.timeUnit === 'yesterday' 
-                            ? t('teacher.dashboard.recentActivity.yesterday')
-                            : activity.time && activity.timeUnit
-                            ? `${activity.time} ${t(`teacher.dashboard.recentActivity.${activity.timeUnit}`)}`
-                            : activity.time
-                          }
-                        </p>
-                      </div>
+                    ))}
+                  </div>
+                ) : activityLogs.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center mb-2">
+                      <Sparkles className="w-5 h-5 text-gray-300" />
                     </div>
-                  );
-                })}
+                    <p className="text-xs font-semibold text-gray-600">Chưa có hoạt động</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Bắt đầu tạo đề thi, thêm học viên...</p>
+                  </div>
+                ) : (
+                  activityLogs.map((log) => (
+                    <ActivityLogItem key={log.id} log={log} />
+                  ))
+                )}
               </div>
 
               {/* Bottom summary */}
-              <div
-                className="mt-4 pt-4 border-t border-[#F3F4F6] flex items-center justify-between"
-              >
-                <span className="text-[#9CA3AF]" style={{ fontSize: "12px" }}>
-                  {t('teacher.dashboard.thisWeek')}
+              <div className="mt-4 pt-3 border-t border-[#F3F4F6] flex items-center justify-between">
+                <span className="text-[#9CA3AF]" style={{ fontSize: "11px" }}>
+                  {activityLogs.length > 0
+                    ? `${activityLogs.length} hành động gần nhất`
+                    : "Tự động ghi lại khi bạn thao tác"}
                 </span>
                 <span
                   className="flex items-center gap-1 text-slate-400"
-                  style={{ fontSize: "12px", fontWeight: 500 }}
+                  style={{ fontSize: "11px", fontWeight: 500 }}
                 >
                   <TrendingUp className="w-3 h-3" />
-                  {t('teacher.dashboard.goodActivity')}
+                  Log tự động
                 </span>
               </div>
             </div>
@@ -613,6 +800,189 @@ export function Dashboard() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+// ─── Helper: Hero stat tile (mini metric card với icon trái, value/label phải) ─
+function HeroStatTile({
+  icon: Icon,
+  value,
+  label,
+  tone,
+  pulse = false,
+  onClick,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  value: string;
+  label: string;
+  tone: "indigo" | "amber" | "emerald";
+  pulse?: boolean;
+  onClick?: () => void;
+}) {
+  const toneStyles = {
+    indigo: {
+      iconBg: "bg-indigo-50",
+      iconColor: "text-indigo-500",
+      hoverBorder: "hover:border-indigo-200",
+    },
+    amber: {
+      iconBg: "bg-amber-50",
+      iconColor: "text-amber-500",
+      hoverBorder: "hover:border-amber-200",
+    },
+    emerald: {
+      iconBg: "bg-emerald-50",
+      iconColor: "text-emerald-500",
+      hoverBorder: "hover:border-emerald-200",
+    },
+  }[tone];
+
+  const isClickable = !!onClick;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!isClickable}
+      className={`relative flex items-center gap-2.5 bg-white border border-gray-200 rounded-xl pl-2.5 pr-3.5 py-2 transition-all ${
+        isClickable
+          ? `cursor-pointer hover:-translate-y-0.5 hover:shadow-sm ${toneStyles.hoverBorder}`
+          : "cursor-default"
+      }`}
+    >
+      <div className={`relative w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${toneStyles.iconBg}`}>
+        <Icon className={`w-3.5 h-3.5 ${toneStyles.iconColor}`} />
+        {pulse && (
+          <span className="absolute -top-0.5 -right-0.5 flex w-2 h-2">
+            <span className="absolute inset-0 rounded-full bg-amber-400 animate-ping opacity-75" />
+            <span className="relative w-2 h-2 rounded-full bg-amber-500" />
+          </span>
+        )}
+      </div>
+      <div className="text-left leading-none">
+        <p className="text-slate-900 text-[15px] font-bold tabular-nums">{value}</p>
+        <p className="text-slate-500 text-[10px] font-medium mt-0.5">{label}</p>
+      </div>
+    </button>
+  );
+}
+
+// ─── Helper: ActivityLogItem (từng hàng trong feed) ──────────────────────
+function relativeTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = Date.now();
+  const diff = Math.max(0, now - d.getTime());
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Vừa xong";
+  if (mins < 60) return `${mins} phút trước`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} giờ trước`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return "Hôm qua";
+  if (days < 7) return `${days} ngày trước`;
+  return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+}
+
+function ActivityLogItem({ log }: { log: any }) {
+  const config = ACTION_CONFIG[log.action] || {
+    icon: Sparkles,
+    color: "#6B7280",
+    bg: "#F9FAFB",
+    label: log.action,
+  };
+  const Icon = config.icon;
+
+  return (
+    <div className="flex items-start gap-3 p-2.5 rounded-xl transition-colors hover:bg-indigo-50/40 cursor-default">
+      <div
+        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+        style={{ backgroundColor: config.bg }}
+      >
+        <Icon className="w-3.5 h-3.5" style={{ color: config.color }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[#374151] leading-snug truncate" style={{ fontSize: "12px", fontWeight: 500 }}>
+          {log.detail || config.label}
+        </p>
+        <p className="text-[#9CA3AF] mt-0.5" style={{ fontSize: "10px" }}>
+          {relativeTime(log.created_at)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Helper: Chart summary chip ──────────────────────────────────────────
+function ChartSummaryChip({
+  label,
+  value,
+  accentClass,
+}: {
+  label: string;
+  value: string;
+  accentClass: string;
+}) {
+  return (
+    <div className="bg-gray-50 rounded-xl px-3 py-2.5 flex items-center gap-2.5">
+      <span className={`w-1 h-8 rounded-full ${accentClass} flex-shrink-0`} />
+      <div className="min-w-0">
+        <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide truncate">
+          {label}
+        </p>
+        <p className="text-[14px] font-bold text-slate-900 tabular-nums truncate">
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Helper: Recharts custom tooltip ─────────────────────────────────────
+function ChartTooltip({ active, payload, label }: any) {
+  if (!active || !payload || payload.length === 0) return null;
+
+  const point: ChartPoint | undefined = payload[0]?.payload;
+  if (!point) return null;
+
+  const isEmptyDay = point.submissions === 0;
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100 px-3 py-2.5 min-w-[170px]">
+      <p className="text-[11px] font-semibold text-slate-500 mb-1.5">
+        {point.weekday ? `${point.weekday} · ` : ""}
+        {label}
+      </p>
+
+      {isEmptyDay ? (
+        <p className="text-[12px] text-slate-400 italic">Không có bài nộp</p>
+      ) : (
+        <>
+          <div className="flex items-center justify-between gap-4 text-[12px]">
+            <span className="flex items-center gap-1.5 text-slate-600">
+              <span className="w-2 h-2 rounded-sm bg-indigo-500" />
+              Số bài nộp
+            </span>
+            <span className="font-bold text-slate-900 tabular-nums">{point.submissions}</span>
+          </div>
+          <div className="flex items-center justify-between gap-4 text-[12px] mt-1">
+            <span className="flex items-center gap-1.5 text-slate-600">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              Điểm TB
+            </span>
+            <span className="font-bold text-slate-900 tabular-nums">
+              {point.avg_score != null ? point.avg_score : "—"}
+            </span>
+          </div>
+          {point.students > 0 && (
+            <div className="flex items-center justify-between gap-4 text-[11px] mt-1 pt-1 border-t border-gray-100 text-slate-400">
+              <span>Học viên tham gia</span>
+              <span className="font-semibold tabular-nums">{point.students}</span>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

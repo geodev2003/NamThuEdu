@@ -344,7 +344,7 @@ export function CreateVSTEPExam() {
         alert("Đã lưu nháp đề thi VSTEP thành công!");
       }
 
-      navigate("/giao-vien/de-thi/cua-toi");
+      navigate("/giao-vien/de-thi");
     } catch (error: any) {
       alert(error?.message || "Không thể lưu đề thi. Vui lòng thử lại.");
     } finally {

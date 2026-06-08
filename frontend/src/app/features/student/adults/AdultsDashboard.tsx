@@ -13,6 +13,7 @@ import {
   type UpcomingTest,
   type TeacherReminder,
   type TestAssignment,
+  type TodayActivity,
 } from '../../../../services/studentApi';
 
 // ─── Design tokens (mirrors StudentExamBrowser) ─────────────────────────────
@@ -225,6 +226,7 @@ export function AdultsDashboard() {
   const [reminders, setReminders] = useState<TeacherReminder[]>([]);
   const [pendingAssignments, setPendingAssignments] = useState<TestAssignment[]>([]);
   const [skillStats, setSkillStats] = useState<Record<string, { attempts: number; average_score: number; best_score: number }> | null>(null);
+  const [today, setToday] = useState<TodayActivity | null>(null);
   const [showAllAssignments, setShowAllAssignments] = useState(false);
   const [dismissingId, setDismissingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -234,13 +236,14 @@ export function AdultsDashboard() {
     let mounted = true;
     (async () => {
       try {
-        const [gamRes, inProgRes, upcomingRes, remindersRes, testsRes, skillsRes] = await Promise.allSettled([
+        const [gamRes, inProgRes, upcomingRes, remindersRes, testsRes, skillsRes, todayRes] = await Promise.allSettled([
           api.get('/student/gamification/overview'),
           studentApi.getInProgressTests(),
           studentApi.getUpcomingTests({ days: 30 }),
           studentApi.getReminders(),
           studentApi.getTests({ status: 'pending' }),
           api.get('/student/analytics/skills'),
+          studentApi.getTodayActivity(),
         ]);
 
         if (!mounted) return;
@@ -278,6 +281,11 @@ export function AdultsDashboard() {
         // Skill breakdown — optional
         if (skillsRes.status === 'fulfilled' && (skillsRes.value as any)?.data?.status === 'success') {
           setSkillStats((skillsRes.value as any).data.data || null);
+        }
+
+        // Today activity — optional (for daily goal ring)
+        if (todayRes.status === 'fulfilled' && (todayRes.value as any)?.data?.status === 'success') {
+          setToday((todayRes.value as any).data.data || null);
         }
       } finally {
         if (mounted) setLoading(false);
@@ -553,9 +561,9 @@ export function AdultsDashboard() {
             </div>
             {/* Daily Goal — progress ring widget */}
             {(() => {
-              const DAILY_GOAL_MIN = 30;
-              const todayMinutes = 0; // TODO: wire to /student/analytics/today when available
-              const pct = Math.min(100, (todayMinutes / DAILY_GOAL_MIN) * 100);
+              const DAILY_GOAL_MIN = today?.daily_goal || 30;
+              const todayMinutes = today?.today_minutes || 0;
+              const pct = today?.goal_percentage ?? Math.min(100, (todayMinutes / DAILY_GOAL_MIN) * 100);
               const RADIUS = 26;
               const CIRC = 2 * Math.PI * RADIUS;
               const dash = (pct / 100) * CIRC;

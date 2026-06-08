@@ -1,0 +1,952 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Exam;
+use App\Models\Submission;
+use App\Models\TestAssignment;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
+
+/**
+ * ThptExamController — quản lý đề thi format THPT Quốc Gia / Đầu vào ĐH.
+ *
+ * Format chuẩn:
+ *   • 4 parts × 25 questions × 60 phút
+ *   • Part 1 (1-7):   TF group — context + 4 statements
+ *   • Part 2 (8-15):  Reading mixed — passage [A-D] + TF + MC + Sentence Insertion
+ *   • Part 3 (16-20): Matching tables — list_1 (1-4) → list_2 (A-F)
+ *   • Part 4 (21-25): Open cloze — passage + 5 blanks (1 word each)
+ *
+ * Endpoints:
+ *   Teacher:
+ *     POST   /api/teacher/exams/thpt
+ *     PUT    /api/teacher/exams/{id}/thpt
+ *     GET    /api/teacher/exams/{id}/thpt/draft
+ *     POST   /api/teacher/exams/{id}/thpt/publish
+ *
+ *   Student:
+ *     GET    /api/student/thpt-exams/{id}
+ *     POST   /api/student/thpt-exams/{id}/start
+ *     POST   /api/student/thpt-exams/{id}/submit
+ *     GET    /api/student/thpt-submissions/{submissionId}/result
+ */
+class ThptExamController extends Controller
+{
+    private const DEFAULT_DURATION_MINUTES = 60;
+    private const DEFAULT_TOTAL_QUESTIONS = 25;
+    private const DEFAULT_RAW_SCORE_MAX = 67;
+    private const DEFAULT_SCALE_MAX = 10;
+
+    /* ============================================================
+     |  TEACHER endpoints
+     * ===========================================================*/
+
+    /**
+     * POST /api/teacher/exams/thpt
+     * Tạo draft đề THPT mới.
+     */
+    public function createDraft(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'teacher') {
+            return $this->error('Bạn không có quyền truy cập.', 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'eTitle' => 'required|string|max:255',
+            'eDescription' => 'nullable|string',
+            'age_group' => 'nullable|in:kids,teens,adults,all',
+            'thpt_config' => 'nullable|array',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->error('Dữ liệu không hợp lệ.', 400, $validator->errors());
+        }
+
+        $config = $request->input('thpt_config') ?? $this->blankConfig();
+
+        $exam = Exam::create([
+            'eTitle' => $request->input('eTitle'),
+            'eDescription' => $request->input('eDescription', ''),
+            'eType' => 'THPT',
+            'eSkill' => 'reading',                  // chủ yếu reading-based
+            'eDuration_minutes' => $config['total_duration_minutes'] ?? self::DEFAULT_DURATION_MINUTES,
+            'eStatus' => 'draft',
+            'ePurpose' => 'exam',
+            'eDifficulty' => 'medium',
+            'eTeacher_id' => $user->uId,
+            'age_group' => $request->input('age_group', 'teens'),
+            'thpt_config' => $config,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'eId' => $exam->eId,
+                'message' => 'Đã tạo draft đề THPT.',
+            ],
+        ]);
+    }
+
+    /**
+     * PUT /api/teacher/exams/{id}/thpt
+     * Update draft (title/description/age_group/thpt_config).
+     *
+     * Versioning behavior:
+     *  - Đề chưa publish (eStatus=draft) → ghi vào thpt_config trực tiếp như cũ.
+     *  - Đề đã publish → ghi vào thpt_draft_config, KHÔNG đụng thpt_config.
+     *    Học viên đang/đã làm bài vẫn thấy version cũ. Khi teacher click "Xuất bản
+     *    bản mới" mới thực sự rotate sang config mới.
+     */
+    public function updateDraft(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'teacher') {
+            return $this->error('Bạn không có quyền truy cập.', 401);
+        }
+        // Đề thi là tài sản chung: mọi giáo viên đều sửa được, không giới hạn người tạo.
+        $exam = Exam::where('eId', $examId)->first();
+
+        if (!$exam) {
+            return $this->error('Không tìm thấy đề thi.', 404);
+        }
+        if ($exam->eType !== 'THPT') {
+            return $this->error('Đề này không phải định dạng THPT.', 400);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'eTitle' => 'sometimes|string|max:255',
+            'eDescription' => 'sometimes|nullable|string',
+            'age_group' => 'sometimes|in:kids,teens,adults,all',
+            'thpt_config' => 'sometimes|array',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->error('Dữ liệu không hợp lệ.', 400, $validator->errors());
+        }
+
+        $isPublished = $exam->eStatus === 'published';
+        $updates = $request->only(['eTitle', 'eDescription', 'age_group']);
+
+        if ($request->has('thpt_config')) {
+            $newConfig = $request->input('thpt_config');
+            if ($isPublished) {
+                // Đề đã live: ghi vào draft, GIỮ NGUYÊN thpt_config
+                $updates['thpt_draft_config'] = $newConfig;
+            } else {
+                // Đề chưa publish: ghi trực tiếp như cũ
+                $updates['thpt_config'] = $newConfig;
+                $updates['eDuration_minutes'] = $newConfig['total_duration_minutes']
+                    ?? $exam->eDuration_minutes;
+            }
+        }
+
+        $exam->update($updates);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'message' => $isPublished
+                    ? 'Đã lưu bản nháp. Đề đang publish chưa bị thay đổi cho học viên.'
+                    : 'Đã lưu draft.',
+                'has_draft' => $isPublished,
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/teacher/exams/{id}/thpt/draft
+     * Lấy đề để teacher edit/xem.
+     *
+     * Logic versioning:
+     *  - Owner + đang có thpt_draft_config → trả draft (đang sửa)
+     *  - Owner + không có draft → trả thpt_config (đang live hoặc đề draft thuần)
+     *  - Non-owner → chỉ trả thpt_config nếu đề public + published (read-only)
+     *
+     * Frontend dùng `_is_owner` + `_has_draft` + `_live_version` để render UI.
+     */
+    public function getDraft(Request $request, $examId)
+    {
+        $user = $request->user();
+        $exam = Exam::where('eId', $examId)->first();
+
+        if (!$exam) {
+            return $this->error('Không tìm thấy đề thi.', 404);
+        }
+        if ($exam->eType !== 'THPT') {
+            return $this->error('Đề này không phải định dạng THPT.', 400);
+        }
+
+        // Đề thi là tài sản chung: mọi giáo viên đều xem + sửa được.
+        $isTeacher = $user && $user->uRole === 'teacher';
+        $isPublic = !($exam->eIs_private ?? false) && $exam->eStatus === 'published';
+
+        if (!$isTeacher && !$isPublic) {
+            return $this->error('Bạn không có quyền xem đề này.', 403);
+        }
+
+        // Giáo viên được coi như "chủ" để bật chế độ sửa.
+        $isOwner = $isTeacher;
+
+        // Đề đã publish + có nháp → ưu tiên hiển thị draft đang sửa cho giáo viên
+        $hasDraft = $isTeacher && $exam->thpt_draft_config !== null;
+        $configToShow = $hasDraft
+            ? $exam->thpt_draft_config
+            : ($exam->thpt_config ?? $this->blankConfig());
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'eId' => $exam->eId,
+                'eTitle' => $exam->eTitle,
+                'eDescription' => $exam->eDescription,
+                'eStatus' => $exam->eStatus,
+                'eDuration_minutes' => $exam->eDuration_minutes,
+                'age_group' => $exam->age_group ?? 'teens',
+                'thpt_config' => $configToShow,
+                '_is_owner' => $isOwner,
+                '_has_draft' => $hasDraft,
+                '_live_version' => (int) ($exam->thpt_version ?? 0),
+                '_versions_count' => is_array($exam->thpt_versions)
+                    ? count($exam->thpt_versions)
+                    : 0,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/teacher/exams/{id}/thpt/publish
+     *
+     * Hai trường hợp:
+     *  - Đề đang là draft: validate xong set eStatus = 'published', thpt_version = 1.
+     *  - Đề đã published + có thpt_draft_config: rotate version
+     *      1) Snapshot thpt_config hiện tại vào thpt_versions[]
+     *      2) Move thpt_draft_config -> thpt_config
+     *      3) Clear thpt_draft_config
+     *      4) thpt_version += 1
+     *    Học viên đang/đã làm bài KHÔNG ảnh hưởng vì submission đã snapshot config
+     *    tại thời điểm bắt đầu thi (xem startSubmission).
+     */
+    public function publish(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'teacher') {
+            return $this->error('Bạn không có quyền truy cập.', 401);
+        }
+        // Đề thi là tài sản chung: mọi giáo viên đều xuất bản được.
+        $exam = Exam::where('eId', $examId)->first();
+
+        if (!$exam) {
+            return $this->error('Không tìm thấy đề thi.', 404);
+        }
+        if ($exam->eType !== 'THPT') {
+            return $this->error('Đề này không phải định dạng THPT.', 400);
+        }
+
+        $isPublished = $exam->eStatus === 'published';
+        $hasDraft = $exam->thpt_draft_config !== null;
+
+        // Config sẽ go-live: nếu có draft đang sửa thì lấy draft, không thì dùng config hiện tại
+        $configToPublish = $hasDraft ? $exam->thpt_draft_config : $exam->thpt_config;
+
+        $errors = $this->validateThptConfig($configToPublish);
+        if (!empty($errors)) {
+            return $this->error('Đề chưa đủ nội dung để publish.', 422, $errors);
+        }
+
+        $updates = ['eStatus' => 'published'];
+
+        if ($isPublished && $hasDraft) {
+            // ── Rotate version ──────────────────────────────────────────
+            $currentVersion = (int) ($exam->thpt_version ?? 1);
+            $versions = is_array($exam->thpt_versions) ? $exam->thpt_versions : [];
+
+            // Archive current live config
+            $versions[] = [
+                'version' => $currentVersion,
+                'published_at' => optional($exam->updated_at)->toIso8601String() ?? now()->toIso8601String(),
+                'archived_at' => now()->toIso8601String(),
+                'config' => $exam->thpt_config,
+            ];
+
+            $updates['thpt_versions'] = $versions;
+            $updates['thpt_config'] = $configToPublish;
+            $updates['thpt_draft_config'] = null;
+            $updates['thpt_version'] = $currentVersion + 1;
+            $updates['eDuration_minutes'] = $configToPublish['total_duration_minutes']
+                ?? $exam->eDuration_minutes;
+        } elseif (!$isPublished) {
+            // Lần đầu publish
+            $updates['thpt_version'] = max(1, (int) ($exam->thpt_version ?? 0));
+            // Đã ghi qua updateDraft rồi nên thpt_config đã đúng
+        }
+
+        $exam->update($updates);
+        $exam->refresh();
+
+        $message = $isPublished && $hasDraft
+            ? "Đã xuất bản phiên bản {$exam->thpt_version}. Học viên đang làm bài cũ vẫn dùng phiên bản trước."
+            : 'Đã xuất bản đề thi THPT.';
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'message' => $message,
+                'live_version' => (int) $exam->thpt_version,
+                'versions_count' => is_array($exam->thpt_versions)
+                    ? count($exam->thpt_versions)
+                    : 0,
+            ],
+        ]);
+    }
+
+    /**
+     * DELETE /api/teacher/exams/{id}/thpt/draft
+     * Bỏ bản nháp đang sửa, quay về phiên bản đang live.
+     */
+    public function discardDraft(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'teacher') {
+            return $this->error('Bạn không có quyền truy cập.', 401);
+        }
+        $exam = Exam::where('eId', $examId)->first();
+
+        if (!$exam) {
+            return $this->error('Không tìm thấy đề thi.', 404);
+        }
+        if ($exam->eType !== 'THPT') {
+            return $this->error('Đề này không phải định dạng THPT.', 400);
+        }
+        if ($exam->thpt_draft_config === null) {
+            return $this->error('Không có bản nháp nào để bỏ.', 400);
+        }
+
+        $exam->update(['thpt_draft_config' => null]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => ['message' => 'Đã bỏ bản nháp. Quay về phiên bản đang live.'],
+        ]);
+    }
+
+    /**
+     * GET /api/teacher/exams/{id}/thpt/versions
+     * Liệt kê các version cũ để teacher tham khảo (read-only).
+     */
+    public function listVersions(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'teacher') {
+            return $this->error('Bạn không có quyền truy cập.', 401);
+        }
+        $exam = Exam::where('eId', $examId)->first();
+
+        if (!$exam) {
+            return $this->error('Không tìm thấy đề thi.', 404);
+        }
+
+        $versions = is_array($exam->thpt_versions) ? $exam->thpt_versions : [];
+        // Build summary (không trả full config để tránh payload lớn)
+        $summary = array_map(function ($v) {
+            return [
+                'version' => $v['version'] ?? null,
+                'published_at' => $v['published_at'] ?? null,
+                'archived_at' => $v['archived_at'] ?? null,
+                'sections_count' => isset($v['config']['sections']) && is_array($v['config']['sections'])
+                    ? count($v['config']['sections'])
+                    : 0,
+            ];
+        }, $versions);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'live_version' => (int) ($exam->thpt_version ?? 0),
+                'has_draft' => $exam->thpt_draft_config !== null,
+                'versions' => $summary,
+            ],
+        ]);
+    }
+
+    /* ============================================================
+     |  STUDENT endpoints
+     * ===========================================================*/
+
+    /**
+     * GET /api/student/thpt-exams/{id}
+     * Lấy đề cho học viên (đã xoá đáp án).
+     */
+    public function getForStudent(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'student') {
+            return $this->error('Bạn không có quyền truy cập.', 401);
+        }
+
+        $exam = Exam::where('eId', $examId)
+            ->where('eType', 'THPT')
+            ->where('eStatus', 'published')
+            ->first();
+
+        if (!$exam) {
+            return $this->error('Không tìm thấy đề thi.', 404);
+        }
+
+        $config = $this->stripAnswers($exam->thpt_config ?? $this->blankConfig());
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'eId' => $exam->eId,
+                'eTitle' => $exam->eTitle,
+                'eDescription' => $exam->eDescription,
+                'eDuration_minutes' => $exam->eDuration_minutes,
+                'thpt_config' => $config,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/student/thpt-exams/{id}/start
+     * Tạo (hoặc lấy lại) submission đang in_progress.
+     */
+    public function startSubmission(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'student') {
+            return $this->error('Bạn không có quyền truy cập.', 401);
+        }
+
+        $exam = Exam::where('eId', $examId)
+            ->where('eType', 'THPT')
+            ->where('eStatus', 'published')
+            ->first();
+
+        if (!$exam) {
+            return $this->error('Không tìm thấy đề thi.', 404);
+        }
+
+        // Resume nếu đã có submission đang dở
+        $existing = Submission::where('exam_id', $examId)
+            ->where('user_id', $user->uId)
+            ->where('sStatus', 'in_progress')
+            ->first();
+
+        if ($existing) {
+            $existingPayload = $existing->submission_payload ?? [];
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'submission_id' => $existing->sId,
+                    'sStart_time' => $existing->sStart_time,
+                    'submission_payload' => $existingPayload ?: new \stdClass(),
+                    'resumed' => true,
+                    // Trả snapshot config để student tiếp tục với đúng version đã start
+                    'exam_snapshot' => $existingPayload['exam_snapshot'] ?? null,
+                ],
+            ]);
+        }
+
+        $assignmentId = $request->input('assignment_id');
+        if ($assignmentId) {
+            $assignment = TestAssignment::where('taId', $assignmentId)
+                ->where('exam_id', $examId)
+                ->first();
+            if (!$assignment) {
+                $assignmentId = null; // ignore invalid
+            }
+        }
+
+        $submission = Submission::create([
+            'user_id' => $user->uId,
+            'exam_id' => $examId,
+            'assignment_id' => $assignmentId,
+            'sAttempt' => 1,
+            'sStart_time' => now(),
+            'sStatus' => 'in_progress',
+            'submission_payload' => [
+                'answers' => new \stdClass(),
+                // ── VERSION SNAPSHOT ───────────────────────────────────────
+                // Snapshot toàn bộ config tại thời điểm student bắt đầu thi.
+                // Khi grade / review sau này luôn dùng snapshot này, KHÔNG đọc
+                // exam.thpt_config hiện tại → teacher có thể publish version
+                // mới mà không ảnh hưởng bài đã/đang chấm.
+                'exam_snapshot' => [
+                    'version' => (int) ($exam->thpt_version ?? 1),
+                    'snapshot_at' => now()->toIso8601String(),
+                    'config' => $exam->thpt_config,
+                    'eDuration_minutes' => $exam->eDuration_minutes,
+                ],
+            ],
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'submission_id' => $submission->sId,
+                'sStart_time' => $submission->sStart_time,
+                'submission_payload' => $submission->submission_payload,
+                'resumed' => false,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/student/thpt-exams/{id}/submit
+     * Lưu (auto-save hoặc final submit) đáp án.
+     *
+     * Body: { submission_id, answers: {...}, final?: true }
+     */
+    public function submitAnswers(Request $request, $examId)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'student') {
+            return $this->error('Bạn không có quyền truy cập.', 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'submission_id' => 'required|integer',
+            'answers' => 'required|array',
+            'final' => 'nullable|boolean',
+        ]);
+        if ($validator->fails()) {
+            return $this->error('Dữ liệu không hợp lệ.', 400, $validator->errors());
+        }
+
+        $submission = Submission::where('sId', $request->submission_id)
+            ->where('user_id', $user->uId)
+            ->where('exam_id', $examId)
+            ->first();
+
+        if (!$submission) {
+            return $this->error('Không tìm thấy bài làm.', 404);
+        }
+
+        $exam = Exam::where('eId', $examId)
+            ->where('eType', 'THPT')
+            ->first();
+        if (!$exam) {
+            return $this->error('Không tìm thấy đề thi.', 404);
+        }
+
+        $answers = $request->input('answers', []);
+        $payload = $submission->submission_payload ?? [];
+        $payload['answers'] = $answers;
+        $submission->submission_payload = $payload;
+
+        if ($request->boolean('final')) {
+            // Grade dùng snapshot trong submission (NOT exam.thpt_config) để
+            // không bị ảnh hưởng nếu teacher publish version mới giữa chừng.
+            $configForGrading = $payload['exam_snapshot']['config']
+                ?? $exam->thpt_config
+                ?? $this->blankConfig();
+
+            $result = $this->gradeSubmission($configForGrading, $answers);
+            $submission->sScore = $result['scaled_score'];
+            $submission->sStatus = 'graded';
+            $submission->sSubmit_time = now();
+            $submission->sGraded_time = now();
+            $submission->sTime_taken = $submission->sStart_time
+                ? now()->diffInSeconds($submission->sStart_time)
+                : null;
+
+            $payload['result'] = $result;
+            $submission->submission_payload = $payload;
+        }
+        $submission->save();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'submission_id' => $submission->sId,
+                'sStatus' => $submission->sStatus,
+                'sScore' => $submission->sScore,
+                'final' => $request->boolean('final'),
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/student/thpt-submissions/{submissionId}/result
+     * Lấy kết quả + đáp án đúng để review.
+     */
+    public function getResult(Request $request, $submissionId)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'student') {
+            return $this->error('Bạn không có quyền truy cập.', 401);
+        }
+
+        $submission = Submission::where('sId', $submissionId)
+            ->where('user_id', $user->uId)
+            ->first();
+        if (!$submission) {
+            return $this->error('Không tìm thấy bài làm.', 404);
+        }
+        if ($submission->sStatus !== 'graded') {
+            return $this->error('Bài làm chưa được chấm.', 400);
+        }
+
+        $exam = Exam::where('eId', $submission->exam_id)->first();
+        if (!$exam || $exam->eType !== 'THPT') {
+            return $this->error('Không tìm thấy đề thi.', 404);
+        }
+
+        $payload = $submission->submission_payload ?? [];
+        $answers = $payload['answers'] ?? [];
+
+        // Dùng config snapshot tại thời điểm student bắt đầu thi (versioning-safe).
+        // Fallback về exam.thpt_config nếu submission cũ chưa có snapshot.
+        $reviewConfig = $payload['exam_snapshot']['config']
+            ?? $exam->thpt_config
+            ?? $this->blankConfig();
+        $snapshotVersion = $payload['exam_snapshot']['version'] ?? null;
+
+        $result = $payload['result'] ?? $this->gradeSubmission($reviewConfig, $answers);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'submission_id' => $submission->sId,
+                'exam_id' => $exam->eId,
+                'exam_title' => $exam->eTitle,
+                'submitted_at' => $submission->sSubmit_time,
+                'duration_seconds' => $submission->sTime_taken,
+                'answers' => $answers,
+                'result' => $result,
+                'thpt_config' => $reviewConfig,            // Snapshot — không phải bản live
+                'thpt_version' => $snapshotVersion,        // Version mà student đã làm
+                'thpt_live_version' => (int) ($exam->thpt_version ?? 0),
+            ],
+        ]);
+    }
+
+    /* ============================================================
+     |  Helpers
+     * ===========================================================*/
+
+    private function blankConfig(): array
+    {
+        return [
+            'version' => '2.0',
+            'level' => 'THPT',
+            'total_duration_minutes' => self::DEFAULT_DURATION_MINUTES,
+            'scale_max' => self::DEFAULT_SCALE_MAX,
+            'sections' => [],
+        ];
+    }
+
+    /**
+     * Validate config trước khi publish (section-based v2).
+     */
+    private function validateThptConfig(?array $config): array
+    {
+        $errors = [];
+        if (!$config) {
+            $errors[] = 'Cấu hình đề trống.';
+            return $errors;
+        }
+        $sections = $config['sections'] ?? [];
+        if (count($sections) < 1) {
+            $errors[] = 'Đề cần ít nhất 1 phần.';
+            return $errors;
+        }
+
+        foreach ($sections as $idx => $s) {
+            $label = ($s['title'] ?? ('Phần ' . ($idx + 1)));
+            $type = $s['type'] ?? null;
+            switch ($type) {
+                case 'phonetics':
+                case 'mc_questions':
+                case 'word_form':
+                case 'error_identification':
+                case 'sentence_transformation':
+                case 'matching':
+                    if (empty($s['items'])) {
+                        $errors[] = "{$label}: chưa có câu hỏi nào.";
+                    }
+                    break;
+                case 'tf_group':
+                    if (empty($s['items'])) {
+                        $errors[] = "{$label}: chưa có câu hỏi nào.";
+                    }
+                    break;
+                case 'reading_mixed':
+                    if (empty($s['passage'])) $errors[] = "{$label}: thiếu đoạn văn.";
+                    if (empty($s['items'])) $errors[] = "{$label}: chưa có câu hỏi nào.";
+                    break;
+                case 'mc_cloze':
+                case 'word_bank_cloze':
+                case 'open_cloze':
+                    if (empty($s['passage'])) $errors[] = "{$label}: thiếu đoạn văn.";
+                    if (empty($s['blanks'])) $errors[] = "{$label}: chưa có chỗ trống nào.";
+                    break;
+                default:
+                    $errors[] = "{$label}: loại phần không hợp lệ ({$type}).";
+            }
+        }
+        return $errors;
+    }
+
+    /**
+     * Strip đáp án + giải thích khỏi config trước khi gửi cho học viên.
+     */
+    private function stripAnswers(array $config): array
+    {
+        $sections = $config['sections'] ?? [];
+        foreach ($sections as $si => $s) {
+            $type = $s['type'] ?? null;
+            switch ($type) {
+                case 'phonetics':
+                case 'mc_questions':
+                case 'error_identification':
+                    foreach (($s['items'] ?? []) as $i => $it) {
+                        unset($it['correct_id'], $it['explanation']);
+                        $sections[$si]['items'][$i] = $it;
+                    }
+                    break;
+                case 'word_form':
+                case 'sentence_transformation':
+                    foreach (($s['items'] ?? []) as $i => $it) {
+                        unset($it['accepted_answers'], $it['explanation']);
+                        $sections[$si]['items'][$i] = $it;
+                    }
+                    break;
+                case 'tf_group':
+                    foreach (($s['items'] ?? []) as $i => $it) {
+                        foreach (($it['statements'] ?? []) as $j => $st) {
+                            unset($st['correct'], $st['explanation']);
+                            $it['statements'][$j] = $st;
+                        }
+                        $sections[$si]['items'][$i] = $it;
+                    }
+                    break;
+                case 'matching':
+                    foreach (($s['items'] ?? []) as $i => $it) {
+                        unset($it['answers'], $it['explanation']);
+                        $sections[$si]['items'][$i] = $it;
+                    }
+                    break;
+                case 'reading_mixed':
+                    foreach (($s['items'] ?? []) as $i => $it) {
+                        $k = $it['kind'] ?? '';
+                        if ($k === 'tf_group') {
+                            foreach (($it['statements'] ?? []) as $j => $st) {
+                                unset($st['correct'], $st['explanation']);
+                                $it['statements'][$j] = $st;
+                            }
+                        } elseif ($k === 'mc') {
+                            unset($it['correct_id'], $it['explanation']);
+                        } elseif ($k === 'sentence_insertion') {
+                            unset($it['correct_marker'], $it['explanation']);
+                        }
+                        $sections[$si]['items'][$i] = $it;
+                    }
+                    break;
+                case 'mc_cloze':
+                    foreach (($s['blanks'] ?? []) as $i => $b) {
+                        unset($b['correct_id'], $b['explanation']);
+                        $sections[$si]['blanks'][$i] = $b;
+                    }
+                    break;
+                case 'word_bank_cloze':
+                case 'open_cloze':
+                    foreach (($s['blanks'] ?? []) as $i => $b) {
+                        unset($b['accepted_answers'], $b['explanation']);
+                        $sections[$si]['blanks'][$i] = $b;
+                    }
+                    break;
+            }
+        }
+        $config['sections'] = $sections;
+        return $config;
+    }
+
+    /**
+     * Auto-grade section-based. Trả raw_score, scaled_score, per-section stats, correct_answers.
+     *
+     * Answer key conventions:
+     *  - single: "q{n}" → string
+     *  - tf:     "q{n}.s{i}" → bool
+     *  - match:  "q{n}.{i}" → letter
+     */
+    private function gradeSubmission(array $config, array $userAnswers): array
+    {
+        $rawScore = 0;
+        $rawMax = 0;
+        $correct = [];
+        $sectionStats = [];
+
+        foreach ($config['sections'] ?? [] as $s) {
+            $type = $s['type'] ?? null;
+            $pts = (float) ($s['points_per_question'] ?? 1);
+            $secRaw = 0;
+            $secMax = 0;
+            $secCorrect = 0;
+            $secTotal = 0;
+
+            $checkSingle = function (string $key, $expected, $isText = false, array $accepted = [], bool $cs = false)
+                use (&$userAnswers, &$correct, &$secRaw, &$secMax, &$secCorrect, &$secTotal, $pts) {
+                $correct[$key] = $expected;
+                $secMax += $pts;
+                $secTotal++;
+                if ($isText) {
+                    $userVal = trim((string) ($userAnswers[$key] ?? ''));
+                    if ($userVal !== '' && $this->matchOpenCloze($userVal, $accepted, $cs)) {
+                        $secRaw += $pts;
+                        $secCorrect++;
+                    }
+                } else {
+                    if ($expected !== null && $expected !== '' && ($userAnswers[$key] ?? null) === $expected) {
+                        $secRaw += $pts;
+                        $secCorrect++;
+                    }
+                }
+            };
+
+            switch ($type) {
+                case 'phonetics':
+                case 'mc_questions':
+                case 'error_identification':
+                    foreach ($s['items'] ?? [] as $it) {
+                        $qn = $it['question_number'] ?? '?';
+                        $checkSingle("q{$qn}", $it['correct_id'] ?? null);
+                    }
+                    break;
+
+                case 'word_form':
+                    foreach ($s['items'] ?? [] as $it) {
+                        $qn = $it['question_number'] ?? '?';
+                        $accepted = $it['accepted_answers'] ?? [];
+                        $checkSingle("q{$qn}", $accepted[0] ?? '', true, $accepted, (bool)($it['case_sensitive'] ?? false));
+                    }
+                    break;
+
+                case 'sentence_transformation':
+                    foreach ($s['items'] ?? [] as $it) {
+                        $qn = $it['question_number'] ?? '?';
+                        $accepted = $it['accepted_answers'] ?? [];
+                        $checkSingle("q{$qn}", $accepted[0] ?? '', true, $accepted, false);
+                    }
+                    break;
+
+                case 'tf_group':
+                    foreach ($s['items'] ?? [] as $it) {
+                        $qn = $it['question_number'] ?? '?';
+                        foreach ($it['statements'] ?? [] as $idx => $st) {
+                            $key = "q{$qn}.s" . ($idx + 1);
+                            $expected = (bool) ($st['correct'] ?? false);
+                            $correct[$key] = $expected;
+                            $secMax += $pts; $secTotal++;
+                            if (array_key_exists($key, $userAnswers) && (bool) $userAnswers[$key] === $expected) {
+                                $secRaw += $pts; $secCorrect++;
+                            }
+                        }
+                    }
+                    break;
+
+                case 'reading_mixed':
+                    foreach ($s['items'] ?? [] as $it) {
+                        $kind = $it['kind'] ?? null;
+                        $qn = $it['question_number'] ?? '?';
+                        if ($kind === 'tf_group') {
+                            foreach ($it['statements'] ?? [] as $idx => $st) {
+                                $key = "q{$qn}.s" . ($idx + 1);
+                                $expected = (bool) ($st['correct'] ?? false);
+                                $correct[$key] = $expected;
+                                $secMax += $pts; $secTotal++;
+                                if (array_key_exists($key, $userAnswers) && (bool) $userAnswers[$key] === $expected) {
+                                    $secRaw += $pts; $secCorrect++;
+                                }
+                            }
+                        } elseif ($kind === 'mc') {
+                            $checkSingle("q{$qn}", $it['correct_id'] ?? null);
+                        } elseif ($kind === 'sentence_insertion') {
+                            $checkSingle("q{$qn}", $it['correct_marker'] ?? null);
+                        }
+                    }
+                    break;
+
+                case 'matching':
+                    foreach ($s['items'] ?? [] as $it) {
+                        $qn = $it['question_number'] ?? '?';
+                        foreach (($it['answers'] ?? []) as $idx => $expectedLetter) {
+                            $key = "q{$qn}.{$idx}";
+                            $correct[$key] = $expectedLetter;
+                            $secMax += $pts; $secTotal++;
+                            if (($userAnswers[$key] ?? null) === $expectedLetter) {
+                                $secRaw += $pts; $secCorrect++;
+                            }
+                        }
+                    }
+                    break;
+
+                case 'mc_cloze':
+                    foreach ($s['blanks'] ?? [] as $b) {
+                        $qn = $b['question_number'] ?? '?';
+                        $checkSingle("q{$qn}", $b['correct_id'] ?? null);
+                    }
+                    break;
+
+                case 'word_bank_cloze':
+                case 'open_cloze':
+                    foreach ($s['blanks'] ?? [] as $b) {
+                        $qn = $b['question_number'] ?? '?';
+                        $accepted = $b['accepted_answers'] ?? [];
+                        $checkSingle("q{$qn}", $accepted[0] ?? '', true, $accepted, (bool)($b['case_sensitive'] ?? false));
+                    }
+                    break;
+            }
+
+            $rawScore += $secRaw;
+            $rawMax += $secMax;
+            $sectionStats[] = [
+                'section_id' => $s['id'] ?? null,
+                'type' => $type,
+                'title' => $s['title'] ?? '',
+                'correct_count' => $secCorrect,
+                'total_count' => $secTotal,
+                'raw_score' => $secRaw,
+                'raw_max' => $secMax,
+            ];
+        }
+
+        $rawMaxFinal = max($rawMax, 1);
+        $scaleMax = $config['scale_max'] ?? self::DEFAULT_SCALE_MAX;
+        $scaledScore = round(($rawScore / $rawMaxFinal) * $scaleMax, 2);
+
+        return [
+            'raw_score' => $rawScore,
+            'raw_score_max' => $rawMaxFinal,
+            'scaled_score' => $scaledScore,
+            'scale_max' => $scaleMax,
+            'sections' => $sectionStats,
+            'correct_answers' => $correct,
+        ];
+    }
+
+    private function matchOpenCloze(string $userVal, array $accepted, bool $caseSensitive): bool
+    {
+        $u = $caseSensitive ? $userVal : mb_strtolower($userVal);
+        foreach ($accepted as $a) {
+            $aNorm = $caseSensitive ? trim($a) : mb_strtolower(trim($a));
+            if ($u === $aNorm) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function error(string $message, int $code = 400, $errors = null)
+    {
+        $resp = ['status' => 'error', 'message' => $message];
+        if ($errors !== null) {
+            $resp['errors'] = $errors;
+        }
+        return response()->json($resp, $code);
+    }
+}
+

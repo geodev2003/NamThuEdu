@@ -32,9 +32,11 @@ export const StudentProtectedRoute: React.FC<StudentProtectedRouteProps> = ({
     }
     
     // Wrong age group - redirect to correct dashboard
+    // teens no longer has /hoc-vien/teens prefix; redirect to /hoc-vien directly
     const userAgeGroup = (user.age_group as string) || 'teens';
     if (userAgeGroup !== ageGroup) {
-      return <Navigate to={`/hoc-vien/${userAgeGroup}`} replace />;
+      const target = userAgeGroup === 'teens' ? '/hoc-vien' : `/hoc-vien/${userAgeGroup}`;
+      return <Navigate to={target} replace />;
     }
     
     // All checks passed

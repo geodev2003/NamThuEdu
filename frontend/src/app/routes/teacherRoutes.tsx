@@ -5,11 +5,13 @@
  * ✅ Protected by authentication - requires teacher role
  */
 import { lazy } from "react";
+import { Navigate, useParams } from "react-router";
 import { ProtectedRoute } from "../../components/auth";
 import { TeacherLayout } from "../layouts/TeacherLayout";
 import { Dashboard } from "../features/teacher/dashboard";
 import { CourseDetail } from "../features/teacher/courses/CourseDetail";
-import { ClassList, CreateClass, TransferClass, ClassStats } from "../features/teacher/classes";
+// Class system deprecated — giữ import comment để dễ revert nếu cần.
+// import { ClassList, CreateClass, TransferClass, ClassStats } from "../features/teacher/classes";
 import { StudentManagement, AddStudent, ImportStudents } from "../features/teacher/students";
 import { Settings } from "../features/teacher/settings";
 import { UnderConstruction } from "../components/shared";
@@ -24,6 +26,7 @@ import { CourseStats } from "../features/teacher/courses/CourseStats";
 // Exam
 import { AllExams } from "../features/teacher/exams/AllExams";
 import CreateExam from "../features/teacher/exams/CreateExam";
+import { CreateExamSetup } from "../features/teacher/exams/setup/CreateExamSetup";
 import { CreateVSTEPExam } from "../features/teacher/exams/CreateVSTEPExam";
 import { ExamDetail } from "../features/teacher/exams/ExamDetail";
 import { ExamPreview } from "../features/teacher/exams/ExamPreview";
@@ -31,7 +34,8 @@ import { ExamPreviewNew } from "../features/teacher/exams/ExamPreviewNew";
 import { VstepExamPreview } from "../features/teacher/exams/VstepExamPreview";
 import { EditExam } from "../features/teacher/exams/EditExam";
 import { ExamTemplates } from "../features/teacher/exams/ExamTemplates";
-import { MyExams } from "../features/teacher/exams/MyExams";
+// MyExams đã gộp vào AllExams (có sẵn filter Của tôi). Giữ file để khôi phục nếu cần.
+// import { MyExams } from "../features/teacher/exams/MyExams";
 import CreateKidsExam from "../features/teacher/exams/kids/CreateKidsExam";
 import { CreateVstepReading } from "../features/teacher/exams/vstep/CreateVstepReading";
 import { CreateVstepListening } from "../features/teacher/exams/vstep/CreateVstepListening";
@@ -39,13 +43,13 @@ import { CreateVstepWriting } from "../features/teacher/exams/vstep/CreateVstepW
 import { CreateVstepSpeaking } from "../features/teacher/exams/vstep/CreateVstepSpeaking";
 import { CreateVstepFull } from "../features/teacher/exams/vstep/CreateVstepFull";
 import CreateIeltsExam from "../features/teacher/exams/ielts/CreateIeltsExam";
+import { CreateThptExam } from "../features/teacher/exams/thpt/CreateThptExam";
 import { IeltsPreviewPage } from "../features/teacher/exams/ielts/IeltsPreviewPage";
+import { IeltsTestPreviewPage } from "../features/teacher/exams/ielts/IeltsTestPreviewPage";
 import { TestExamPlayer } from "../features/test";
 
-// Assignment
-import { AssignmentList } from "../features/teacher/assignments/AssignmentList";
+// Assignment — danh sách & thống kê đã gỡ; giao đề thực hiện trên card Ngân hàng đề.
 import { AssignmentProgress } from "../features/teacher/assignments/AssignmentProgress";
-import { AssignmentStats } from "../features/teacher/assignments/AssignmentStats";
 import { CreateAssignment } from "../features/teacher/assignments/CreateAssignment";
 
 // Practice
@@ -96,12 +100,15 @@ export const teacherRoutes = {
     { path: "students/them-moi", Component: AddStudent },
     { path: "students/import", Component: ImportStudents },
 
-    // Lớp học
-    { path: "lop-hoc", Component: ClassList },
-    { path: "lop-hoc/danh-sach", Component: ClassList },
-    { path: "lop-hoc/tao-moi", Component: CreateClass },
-    { path: "lop-hoc/chuyen-lop", Component: TransferClass },
-    { path: "lop-hoc/thong-ke", Component: ClassStats },
+    // ─── Lớp học (DEPRECATED) ────────────────────────────────────────
+    // Class system đã gỡ khỏi UI flow. Routes bị disable. Files
+    // ClassList/CreateClass/TransferClass/ClassStats vẫn còn trong
+    // codebase phòng cần lookup data class cũ.
+    // { path: "lop-hoc", Component: ClassList },
+    // { path: "lop-hoc/danh-sach", Component: ClassList },
+    // { path: "lop-hoc/tao-moi", Component: CreateClass },
+    // { path: "lop-hoc/chuyen-lop", Component: TransferClass },
+    // { path: "lop-hoc/thong-ke", Component: ClassStats },
 
     // Khóa học
     { path: "khoa-hoc", Component: CourseList },
@@ -114,7 +121,8 @@ export const teacherRoutes = {
     // Ngân hàng đề
     { path: "de-thi", Component: AllExams },
     { path: "de-thi/tat-ca", Component: AllExams },
-    { path: "de-thi/tao-moi", Component: CreateExam },
+    { path: "de-thi/tao-moi", Component: CreateExamSetup },
+    { path: "de-thi/tao-moi/legacy", Component: CreateExam },
     { path: "de-thi/tao-moi/:examId", Component: CreateExam }, // With exam ID
     { path: "de-thi/tao-thu-cong", Component: lazy(() => import("@/app/features/teacher/exams/CreateExamManual").then(m => ({ default: m.CreateExamManual }))) },
     { path: "de-thi/import", Component: lazy(() => import("@/app/features/teacher/exams/ImportExam").then(m => ({ default: m.ImportExam }))) },
@@ -133,18 +141,30 @@ export const teacherRoutes = {
 
     // ── IELTS routes (1 đề = 1 skill, không có "full" mode) ──────────────
     { path: "de-thi/ielts/listening/tao-moi", Component: () => <CreateIeltsExam initialSkill="listening" /> },
-    { path: "de-thi/ielts/listening/sua/:examId", Component: () => <CreateIeltsExam initialSkill="listening" /> },
+    { path: "de-thi/ielts/listening/edit/:examId", Component: () => <CreateIeltsExam initialSkill="listening" /> },
     { path: "de-thi/ielts/reading/tao-moi", Component: () => <CreateIeltsExam initialSkill="reading" /> },
-    { path: "de-thi/ielts/reading/sua/:examId", Component: () => <CreateIeltsExam initialSkill="reading" /> },
+    { path: "de-thi/ielts/reading/edit/:examId", Component: () => <CreateIeltsExam initialSkill="reading" /> },
     { path: "de-thi/ielts/writing/tao-moi", Component: () => <CreateIeltsExam initialSkill="writing" /> },
-    { path: "de-thi/ielts/writing/sua/:examId", Component: () => <CreateIeltsExam initialSkill="writing" /> },
+    { path: "de-thi/ielts/writing/edit/:examId", Component: () => <CreateIeltsExam initialSkill="writing" /> },
     { path: "de-thi/ielts/speaking/tao-moi", Component: () => <CreateIeltsExam initialSkill="speaking" /> },
-    { path: "de-thi/ielts/speaking/sua/:examId", Component: () => <CreateIeltsExam initialSkill="speaking" /> },
+    { path: "de-thi/ielts/speaking/edit/:examId", Component: () => <CreateIeltsExam initialSkill="speaking" /> },
+    // Legacy /sua/ → /edit/ redirect (backward compat for bookmarks / old links)
+    { path: "de-thi/ielts/listening/sua/:examId", Component: () => { const { examId } = useParams(); return <Navigate to={`/giao-vien/de-thi/ielts/listening/edit/${examId}`} replace />; } },
+    { path: "de-thi/ielts/reading/sua/:examId", Component: () => { const { examId } = useParams(); return <Navigate to={`/giao-vien/de-thi/ielts/reading/edit/${examId}`} replace />; } },
+    { path: "de-thi/ielts/writing/sua/:examId", Component: () => { const { examId } = useParams(); return <Navigate to={`/giao-vien/de-thi/ielts/writing/edit/${examId}`} replace />; } },
+    { path: "de-thi/ielts/speaking/sua/:examId", Component: () => { const { examId } = useParams(); return <Navigate to={`/giao-vien/de-thi/ielts/speaking/edit/${examId}`} replace />; } },
     // IELTS preview (read-only): /giao-vien/de-thi/ielts/:skill/xem/:examId
     { path: "de-thi/ielts/:skill/xem/:examId", Component: IeltsPreviewPage },
+    // IELTS test preview (demo UI làm bài, không lưu): /giao-vien/de-thi/ielts/:skill/thu/:examId
+    { path: "de-thi/ielts/:skill/thu/:examId", Component: IeltsTestPreviewPage },
+
+    // ── THPT routes (Vietnamese university entrance) ────────────────────
+    { path: "de-thi/thpt/tao-moi", Component: CreateThptExam },
+    { path: "de-thi/thpt/:examId/sua", Component: CreateThptExam },
 
     { path: "de-thi/mau-de", Component: ExamTemplates },
-    { path: "de-thi/cua-toi", Component: MyExams },
+    // /de-thi/cua-toi đã gộp vào /de-thi (AllExams có sẵn filter "Của tôi")
+    { path: "de-thi/cua-toi", Component: () => <Navigate to="/giao-vien/de-thi" replace /> },
     { path: "de-thi/:examId", Component: ExamDetail },
     { path: "de-thi/:examId/vstep", Component: VstepExamPreview }, // VSTEP exam preview
     { path: "de-thi/:examId/xem", Component: ExamPreview },
@@ -152,11 +172,11 @@ export const teacherRoutes = {
     { path: "de-thi/:examId/chinh-sua", Component: EditExam },
     { path: "test-exam/:examId", Component: TestExamPlayer }, // TEST: Drag & drop testing
 
-    // Giao bài thi
-    { path: "bai-tap", Component: AssignmentList },
-    { path: "bai-tap/danh-sach", Component: AssignmentList },
+    // Giao bài thi — đã gỡ trang danh sách & thống kê riêng.
+    // Giao đề giờ thực hiện ngay trên card ở Ngân hàng đề (AssignModal).
+    // Giữ lại 2 route deep-link: tiến độ + tạo (vào từ Luyện tập / thông báo).
+    { path: "bai-tap", Component: () => <Navigate to="/giao-vien/de-thi" replace /> },
     { path: "bai-tap/:assignmentId/tien-do", Component: AssignmentProgress },
-    { path: "bai-tap/thong-ke", Component: AssignmentStats },
     { path: "bai-tap/giao-moi", Component: CreateAssignment },
 
     // Luyện tập

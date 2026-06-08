@@ -314,6 +314,15 @@ function VstepGradingDetailInternal() {
       sTeacher_feedback: overallFeedback,
     })
       .then(() => {
+        // Log activity (best-effort)
+        import("../../../../services/teacherActivityLog").then(({ logTeacherActivity }) => {
+          logTeacherActivity({
+            action: "grading.complete",
+            entity_type: "submission",
+            entity_id: Number(submissionId),
+            detail: "Chấm điểm bài thi xong",
+          });
+        });
         toast.success("Đã lưu điểm bài thi thành công!");
         navigate("/giao-vien/cham-diem");
       })

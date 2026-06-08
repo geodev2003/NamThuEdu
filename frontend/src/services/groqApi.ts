@@ -699,12 +699,21 @@ export type IeltsImportTestType = 'Academic' | 'General Training';
 export interface IeltsListeningImport {
   sections: Array<{
     sectionNumber: 1 | 2 | 3 | 4;
+    /** Optional topic/context title for the section (e.g. "Restaurant recommendations") */
+    sectionTitle?: string;
+    sectionName?: string;
+    /** Main instruction of the section copied verbatim (e.g. "Complete the notes below...") */
+    sectionInstruction?: string;
     transcript?: string;
     audioUrl?: string;
     questions: Array<{
       questionNumber: number;
       questionType: string;       // multiple-choice | form-completion | note-completion | ...
       questionText: string;
+      /** Optional shared task title (e.g. "Loneliness and mental health") */
+      taskTitle?: string;
+      /** Optional shared task instruction (e.g. "Choose the correct letter, A, B or C.") */
+      taskInstruction?: string;
       options?: { A?: string; B?: string; C?: string; D?: string };
       correctAnswer: string;
     }>;
@@ -770,11 +779,15 @@ Return ONLY valid JSON in this exact format (no markdown, no explanation):
   "sections": [
     {
       "sectionNumber": 1,
+      "sectionTitle": "Hotel booking",
+      "sectionInstruction": "Complete the form below. Write NO MORE THAN TWO WORDS AND/OR A NUMBER for each answer.",
       "transcript": "...optional transcript...",
       "questions": [
         {
           "questionNumber": 1,
           "questionType": "form-completion",
+          "taskTitle": "Hotel Booking Form",
+          "taskInstruction": "Complete the form below. Write NO MORE THAN TWO WORDS AND/OR A NUMBER for each answer.",
           "questionText": "Full name: Sarah ___1___",
           "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
           "correctAnswer": "Thompson"
@@ -801,7 +814,14 @@ RULES:
 - For multiple-choice, fill options A/B/C/D and correctAnswer = letter
 - For other types, options can be omitted; correctAnswer = expected word/phrase or letter
 - Default correctAnswer = "" if not in source
-- Only return sections present in the text`;
+- Only return sections present in the text
+
+TASK GROUPING (IMPORTANT for student UX):
+- "sectionTitle": REQUIRED per section. Short topic/context phrase of the whole part, inferred from content (e.g. "Restaurant recommendations", "Pottery class", "Reclaiming urban rivers"). Never use generic "Section 1". Empty "" only if undeterminable.
+- "sectionInstruction": REQUIRED per section. The MAIN instruction line(s) of that part, copied VERBATIM from the source (e.g. "Complete the notes below. Write ONE WORD ONLY for each answer."). Do NOT invent or paraphrase — copy exactly as written. Combine the "Complete..." line and the "Write..." line into one string. Empty "" only if no instruction present.
+- "taskTitle": If multiple questions share a topic title in the source PDF (e.g. "Loneliness and mental health" above Q27–30), repeat the SAME taskTitle for every question in that group. Leave empty string "" when no title.
+- "taskInstruction": The shared instruction for a SUB-GROUP of questions when it differs from the section instruction (e.g. a section where Q21–22 are "Choose TWO letters, A–E." but Q23–30 are "Choose the correct letter, A, B or C."). Copy verbatim. Repeat the SAME instruction for every question in the same sub-group. Leave "" if it equals the section instruction.
+- For grouped MCQ where multiple questions share the same stem (e.g. "Which TWO things..." answered by Q21 AND Q22), put the SAME questionText for each question in the group — frontend will merge them.`;
 
 const IELTS_READING_PROMPT = (testType: IeltsImportTestType) => `You are an IELTS ${testType} exam parser. Extract the READING section.
 
@@ -959,4 +979,65 @@ export const parseIeltsSkillFromText = async (
   if (skill === 'writing' && Array.isArray(result.tasks)) return result as IeltsWritingImport;
   if (skill === 'speaking' && Array.isArray(result.parts)) return result as IeltsSpeakingImport;
   return null;
+};
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Kids Cambridge YLE — Exam metadata suggestion (title + description)
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+export interface KidsExamMetaSuggestion {
+  title: string;
+  description: string;
+}
+
+/**
+ * Sinh gợi ý tên đề + mô tả ngắn cho Cambridge YLE Kids exam.
+ *
+ * @param level   'starters' | 'movers' | 'flyers'
+ * @param topic   Mô tả ngắn chủ đề/ý tưởng giáo viên muốn (vd: "động vật trong rừng",
+ *                "đồ ăn yêu thích"). Có thể để trống — AI tự gợi ý ngẫu nhiên.
+ */
+export const generateKidsExamMeta = async (
+  level: 'starters' | 'movers' | 'flyers',
+  topic = ''
+): Promise<KidsExamMetaSuggestion> => {
+  const levelLabel = {
+    starters: 'Cambridge YLE Starters (Pre-A1, 6-8 tuổi)',
+    movers: 'Cambridge YLE Movers (A1, 8-11 tuổi)',
+    flyers: 'Cambridge YLE Flyers (A2, 9-12 tuổi)',
+  }[level];
+
+  const messages: GroqMessage[] = [
+    {
+      role: 'system',
+      content:
+        'Bạn là chuyên gia thiết kế đề thi tiếng Anh cho trẻ em theo chuẩn Cambridge YLE. ' +
+        'Trả lời ngắn gọn, tự nhiên bằng tiếng Việt, không thêm câu mở đầu hay giải thích.',
+    },
+    {
+      role: 'user',
+      content: `Hãy gợi ý tên đề thi và mô tả ngắn cho một đề ${levelLabel}.
+${topic ? `Chủ đề/ý tưởng giáo viên muốn: "${topic}".` : 'Hãy chọn một chủ đề phù hợp lứa tuổi (ví dụ: động vật, gia đình, đồ ăn, lớp học, sở thích…).'}
+
+Yêu cầu output ĐÚNG JSON, không markdown:
+{
+  "title": "Tên đề ngắn gọn 6-12 từ tiếng Việt, có thể chèn 1 từ tiếng Anh chủ đề",
+  "description": "Mô tả 1-2 câu ngắn về nội dung đề và đối tượng phù hợp"
+}`,
+    },
+  ];
+
+  const raw = await callGroqAPI(messages);
+  try {
+    const match = raw.match(/\{[\s\S]*\}/);
+    const parsed = match ? JSON.parse(match[0]) : JSON.parse(raw);
+    return {
+      title: typeof parsed.title === 'string' ? parsed.title.trim() : '',
+      description: typeof parsed.description === 'string' ? parsed.description.trim() : '',
+    };
+  } catch (err) {
+    console.error('generateKidsExamMeta parse failed:', err);
+    return { title: '', description: '' };
+  }
 };

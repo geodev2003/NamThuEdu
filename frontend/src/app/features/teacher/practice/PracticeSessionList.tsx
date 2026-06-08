@@ -30,6 +30,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { usePracticeSessions } from "@/hooks/usePracticeSessions";
+import { usePageHeader } from "@/contexts/TeacherHeaderContext";
 
 type PracticeType = "topic_based" | "template_based" | "random" | "skill_based" | "custom";
 type Skill = "listening" | "reading" | "writing" | "speaking";
@@ -38,6 +39,7 @@ type Purpose = "review" | "practice" | "drill" | "mock_test" | "homework";
 
 export function PracticeSessionList() {
   usePageTitle(PAGE_TITLES.TEACHER_PRACTICE);
+  usePageHeader({ breadcrumb: ["Dashboard", "Luyện tập"] });
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchTerm, setSearchTerm] = useState("");

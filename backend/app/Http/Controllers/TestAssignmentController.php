@@ -54,9 +54,8 @@ class TestAssignmentController extends Controller
             ], 401);
         }
 
-        $exam = Exam::where('eId', $examId)
-                   ->where('eTeacher_id', $user->uId)
-                   ->first();
+        // Đề thi là tài sản chung — mọi giáo viên đều giao được, không phân biệt người tạo.
+        $exam = Exam::where('eId', $examId)->first();
 
         if (!$exam) {
             return response()->json([
@@ -68,7 +67,11 @@ class TestAssignmentController extends Controller
         $validator = Validator::make($request->all(), [
             'taTarget_type' => 'required|in:class,student',
             'taTarget_id' => 'required|integer',
+            'age_group' => 'nullable|in:kids,teens,adults',
             'taDeadline' => 'nullable|date',
+            'taStart_time' => 'nullable|date',
+            'taNotify_before_minutes' => 'nullable|integer|min:0|max:10080',
+            'taInstructions' => 'nullable|string|max:2000',
             'taMax_attempt' => 'nullable|integer|min:1',
             'taIs_public' => 'nullable|boolean',
         ]);
@@ -81,7 +84,10 @@ class TestAssignmentController extends Controller
             ], 400);
         }
 
-        // Validate target exists
+        // Lấy age_group từ exam (nguồn chính), fallback request, fallback null (legacy)
+        $requiredAgeGroup = $exam->age_group ?? $request->age_group ?? null;
+
+        // Validate target exists + age_group khớp (nếu có)
         if ($request->taTarget_type === 'class') {
             $target = Classes::find($request->taTarget_id);
             if (!$target) {
@@ -89,6 +95,14 @@ class TestAssignmentController extends Controller
                     'status' => 'error',
                     'message' => 'Không tìm thấy lớp học.'
                 ], 404);
+            }
+
+            $classAgeGroup = $target->age_group ?? null;
+            if ($requiredAgeGroup && $classAgeGroup && $classAgeGroup !== $requiredAgeGroup) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Lớp '{$target->cName}' thuộc nhóm '{$classAgeGroup}', không khớp với bài thi (nhóm '{$requiredAgeGroup}')."
+                ], 422);
             }
         } else {
             $target = User::where('uId', $request->taTarget_id)
@@ -101,6 +115,14 @@ class TestAssignmentController extends Controller
                     'message' => 'Không tìm thấy học viên.'
                 ], 404);
             }
+
+            $studentAgeGroup = $target->age_group ?? null;
+            if ($requiredAgeGroup && $studentAgeGroup && $studentAgeGroup !== $requiredAgeGroup) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Học viên '{$target->uName}' thuộc nhóm '{$studentAgeGroup}', không khớp với bài thi (nhóm '{$requiredAgeGroup}')."
+                ], 422);
+            }
         }
 
         $assignment = TestAssignment::create([
@@ -108,6 +130,9 @@ class TestAssignmentController extends Controller
             'taTarget_type' => $request->taTarget_type,
             'taTarget_id' => $request->taTarget_id,
             'taDeadline' => $request->taDeadline,
+            'taStart_time' => $request->taStart_time,
+            'taNotify_before_minutes' => $request->taNotify_before_minutes,
+            'taInstructions' => $request->taInstructions,
             'taMax_attempt' => $request->taMax_attempt ?? 1,
             'taIs_public' => $request->taIs_public ?? false,
         ]);
@@ -183,10 +208,7 @@ class TestAssignmentController extends Controller
             ], 401);
         }
 
-        $query = TestAssignment::with(['exam'])
-                               ->whereHas('exam', function($q) use ($user) {
-                                   $q->where('eTeacher_id', $user->uId);
-                               });
+        $query = TestAssignment::with(['exam']);
 
         // Filter by exam_id
         if ($request->has('exam_id')) {
@@ -204,6 +226,35 @@ class TestAssignmentController extends Controller
         }
 
         $assignments = $query->orderBy('taCreated_at', 'desc')->get();
+
+        // Bổ sung target_name + thống kê hoàn thành cho mỗi assignment.
+        $assignments->transform(function ($assignment) {
+            $targetStudents = $this->getTargetStudents($assignment);
+            $totalStudents = $targetStudents->count();
+
+            $completedCount = \App\Models\Submission::where('assignment_id', $assignment->taId)
+                ->whereIn('user_id', $targetStudents->pluck('uId'))
+                ->whereIn('sStatus', ['submitted', 'graded'])
+                ->distinct('user_id')
+                ->count('user_id');
+
+            if ($assignment->taTarget_type === 'class') {
+                $cls = Classes::find($assignment->taTarget_id);
+                $targetName = $cls->cName ?? ('Lớp #' . $assignment->taTarget_id);
+            } else {
+                $stu = User::where('uId', $assignment->taTarget_id)->first();
+                $targetName = $stu->uName ?? ('Học viên #' . $assignment->taTarget_id);
+            }
+
+            $assignment->setAttribute('target_name', $targetName);
+            $assignment->setAttribute('total_students', $totalStudents);
+            $assignment->setAttribute('completed_students', $completedCount);
+            $assignment->setAttribute('completion_rate', $totalStudents > 0
+                ? round(($completedCount / $totalStudents) * 100)
+                : 0);
+
+            return $assignment;
+        });
 
         return response()->json([
             'status' => 'success',
@@ -248,7 +299,7 @@ class TestAssignmentController extends Controller
 
         $assignment = TestAssignment::where('taId', $id)
                                     ->whereHas('exam', function($q) use ($user) {
-                                        $q->where('eTeacher_id', $user->uId);
+                                        $q->whereNotNull('eId'); // Đề dùng chung: mọi GV truy cập được
                                     })
                                     ->first();
 
@@ -379,7 +430,7 @@ class TestAssignmentController extends Controller
 
         $assignment = TestAssignment::where('taId', $id)
                                     ->whereHas('exam', function($q) use ($user) {
-                                        $q->where('eTeacher_id', $user->uId);
+                                        $q->whereNotNull('eId'); // Đề dùng chung: mọi GV truy cập được
                                     })
                                     ->first();
 
@@ -435,7 +486,7 @@ class TestAssignmentController extends Controller
         $assignment = TestAssignment::where('taId', $id)
                                     ->with(['exam'])
                                     ->whereHas('exam', function($q) use ($user) {
-                                        $q->where('eTeacher_id', $user->uId);
+                                        $q->whereNotNull('eId'); // Đề dùng chung: mọi GV truy cập được
                                     })
                                     ->first();
 
@@ -565,11 +616,14 @@ class TestAssignmentController extends Controller
 
             $validator = Validator::make($request->all(), [
                 'exam_id'          => 'required|integer',
-                'age_group'        => 'required|in:kids,teens,adults',
+                'age_group'        => 'nullable|in:kids,teens,adults',
                 'targets'          => 'required|array|min:1',
                 'targets.*.type'   => 'required|in:class,student',
                 'targets.*.id'     => 'required|integer',
                 'taDeadline'       => 'nullable|date',
+                'taStart_time'     => 'nullable|date',
+                'taNotify_before_minutes' => 'nullable|integer|min:0|max:10080',
+                'taInstructions'   => 'nullable|string|max:2000',
                 'taMax_attempt'    => 'nullable|integer|min:1',
                 'taIs_public'      => 'nullable|boolean',
             ]);
@@ -582,12 +636,8 @@ class TestAssignmentController extends Controller
                 ], 400);
             }
 
-            $requiredAgeGroup = $request->age_group;
-
-            // Verify exam belongs to teacher
-            $exam = Exam::where('eId', $request->exam_id)
-                       ->where('eTeacher_id', $user->uId)
-                       ->first();
+            // Đề thi là tài sản chung — mọi giáo viên đều giao được.
+            $exam = Exam::where('eId', $request->exam_id)->first();
 
             if (!$exam) {
                 return response()->json([
@@ -595,6 +645,10 @@ class TestAssignmentController extends Controller
                     'message' => 'Không tìm thấy bài thi.'
                 ], 404);
             }
+
+            // Ưu tiên age_group từ exam, fallback request body (legacy).
+            // Nếu null → đề dùng chung mọi nhóm tuổi (không ép age_group).
+            $requiredAgeGroup = $exam->age_group ?? $request->age_group ?? null;
 
             $results = [
                 'success_count' => 0,
@@ -611,10 +665,10 @@ class TestAssignmentController extends Controller
                             continue;
                         }
 
-                        // Validate age_group của lớp
+                        // Validate age_group của lớp (chỉ check nếu lớp có set age_group)
                         $classAgeGroup = $targetEntity->age_group ?? null;
                         if ($classAgeGroup && $classAgeGroup !== $requiredAgeGroup) {
-                            $results['errors'][] = "Lớp '{$targetEntity->cName}' thuộc nhóm '{$classAgeGroup}', không phải '{$requiredAgeGroup}'. Không thể giao bài chung nhóm tuổi khác nhau.";
+                            $results['errors'][] = "Lớp '{$targetEntity->cName}' thuộc nhóm '{$classAgeGroup}', không khớp với bài thi (nhóm '{$requiredAgeGroup}').";
                             continue;
                         }
 
@@ -628,10 +682,10 @@ class TestAssignmentController extends Controller
                             continue;
                         }
 
-                        // Validate age_group của học viên
+                        // Validate age_group của học viên (chỉ check nếu học viên có set age_group)
                         $studentAgeGroup = $targetEntity->age_group ?? null;
                         if ($studentAgeGroup && $studentAgeGroup !== $requiredAgeGroup) {
-                            $results['errors'][] = "Học viên '{$targetEntity->uName}' thuộc nhóm '{$studentAgeGroup}', không phải '{$requiredAgeGroup}'. Không thể giao bài chung nhóm tuổi khác nhau.";
+                            $results['errors'][] = "Học viên '{$targetEntity->uName}' thuộc nhóm '{$studentAgeGroup}', không khớp với bài thi (nhóm '{$requiredAgeGroup}').";
                             continue;
                         }
                     }
@@ -652,6 +706,9 @@ class TestAssignmentController extends Controller
                         'taTarget_type'  => $target['type'],
                         'taTarget_id'    => $target['id'],
                         'taDeadline'     => $request->taDeadline,
+                        'taStart_time'   => $request->taStart_time,
+                        'taNotify_before_minutes' => $request->taNotify_before_minutes,
+                        'taInstructions' => $request->taInstructions,
                         'taMax_attempt'  => $request->taMax_attempt ?? 1,
                         'taIs_public'    => $request->taIs_public ?? false,
                     ]);
@@ -671,10 +728,41 @@ class TestAssignmentController extends Controller
                 }
             }
 
+            // Gửi push thông báo "bài tập mới" cho học viên thuộc các đối tượng vừa giao.
+            try {
+                $studentIds = [];
+                foreach ($results['assignments'] as $a) {
+                    if ($a['target_type'] === 'class') {
+                        $ids = User::where('class_id', $a['target_id'])
+                            ->where('uRole', 'student')
+                            ->whereNull('uDeleted_at')
+                            ->pluck('uId')->toArray();
+                        $studentIds = array_merge($studentIds, $ids);
+                    } else {
+                        $studentIds[] = $a['target_id'];
+                    }
+                }
+                $studentIds = array_values(array_unique($studentIds));
+
+                if (!empty($studentIds)) {
+                    $deadlineText = $request->taDeadline
+                        ? ' · Hạn: ' . \Carbon\Carbon::parse($request->taDeadline)->format('d/m/Y H:i')
+                        : '';
+                    (new PushNotificationService())->sendToUsers(
+                        $studentIds,
+                        '📚 Bài tập mới',
+                        $exam->eTitle . $deadlineText,
+                        ['url' => '/hoc-vien/bai-tap']
+                    );
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Push notification failed on bulkAssign: ' . $e->getMessage());
+            }
+
             return response()->json([
                 'status'  => 'success',
                 'data'    => $results,
-                'message' => "Đã giao bài thành công cho {$results['success_count']} đối tượng (nhóm: {$requiredAgeGroup})."
+                'message' => "Đã giao bài thành công cho {$results['success_count']} đối tượng."
             ], 201);
         }
 
@@ -714,7 +802,7 @@ class TestAssignmentController extends Controller
         $assignment = TestAssignment::where('taId', $id)
                                     ->with(['exam'])
                                     ->whereHas('exam', function($q) use ($user) {
-                                        $q->where('eTeacher_id', $user->uId);
+                                        $q->whereNotNull('eId'); // Đề dùng chung: mọi GV truy cập được
                                     })
                                     ->first();
 
@@ -813,7 +901,7 @@ class TestAssignmentController extends Controller
 
         $assignments = TestAssignment::with(['exam'])
                                      ->whereHas('exam', function($q) use ($user) {
-                                         $q->where('eTeacher_id', $user->uId);
+                                         $q->whereNotNull('eId'); // Đề dùng chung: mọi GV truy cập được
                                      })
                                      ->orderBy('taCreated_at', 'desc')
                                      ->get();

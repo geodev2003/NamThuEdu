@@ -76,6 +76,67 @@ class StudentAnalyticsController extends Controller
         ]);
     }
 
+    /**
+     * GET /student/analytics/today
+     * Tổng thời gian học trong ngày hôm nay (phút) để hiển thị "Mục tiêu hôm nay".
+     * Tính từ các submission có hoạt động trong ngày: ưu tiên (sSubmit_time - sStart_time),
+     * fallback cho bài đang làm dở là (now - sStart_time).
+     */
+    public function today(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'student') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Bạn không có quyền truy cập.'
+            ], 401);
+        }
+
+        $startOfDay = now()->startOfDay();
+        $endOfDay   = now()->endOfDay();
+
+        $submissions = Submission::where(function ($q) use ($user) {
+                $q->where('user_id', $user->uId)
+                  ->orWhere('sStudent_id', $user->uId);
+            })
+            ->whereNotNull('sStart_time')
+            ->where(function ($q) use ($startOfDay, $endOfDay) {
+                $q->whereBetween('sSubmit_time', [$startOfDay, $endOfDay])
+                  ->orWhereBetween('sStart_time', [$startOfDay, $endOfDay]);
+            })
+            ->get();
+
+        $minutes = 0;
+        $sessions = 0;
+        foreach ($submissions as $s) {
+            $start = $s->sStart_time ? \Carbon\Carbon::parse($s->sStart_time) : null;
+            if (!$start) {
+                continue;
+            }
+            $end = $s->sSubmit_time ? \Carbon\Carbon::parse($s->sSubmit_time) : now();
+            // Chỉ cộng phần thời gian rơi vào hôm nay
+            $effectiveStart = $start->greaterThan($startOfDay) ? $start : $startOfDay;
+            if ($end->lessThanOrEqualTo($effectiveStart)) {
+                continue;
+            }
+            $minutes += $effectiveStart->diffInMinutes($end, true);
+            $sessions++;
+        }
+
+        $dailyGoal = 30; // phút/ngày — đồng bộ với DAILY_GOAL_MIN ở frontend
+        $minutes = (int) round($minutes);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'today_minutes'   => $minutes,
+                'daily_goal'      => $dailyGoal,
+                'goal_percentage' => $dailyGoal > 0 ? min(100, (int) round(($minutes / $dailyGoal) * 100)) : 0,
+                'sessions'        => $sessions,
+            ],
+        ]);
+    }
+
     public function weaknesses(Request $request)
     {
         $user = $request->user();
