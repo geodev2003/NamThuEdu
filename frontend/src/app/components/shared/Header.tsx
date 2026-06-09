@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router";
-import { Bell, Plus, ChevronRight, User, Settings, LogOut, ChevronDown, BookOpen, ExternalLink, Send } from "lucide-react";
+import { Bell, Plus, ChevronRight, User, Settings, LogOut, ChevronDown, BookOpen, ExternalLink, Send, Volume2, VolumeX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { logout } from "../../../services/authApi";
 import { api } from "../../../services/api";
 import { getAuthUser } from "../../../utils/authStorage";
+import { useNotificationSound } from "../../../hooks/useNotificationSound";
 
 interface HeaderProps {
   breadcrumb: string | string[];
@@ -61,6 +62,17 @@ export function Header({ breadcrumb, action }: HeaderProps) {
   const profileCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seenIdsRef  = useRef<Set<number> | null>(null);
   const pollRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Sound and Student Notification Hooks
+  const { playSound, isSoundEnabled, toggleSound } = useNotificationSound();
+  const [soundOn, setSoundOn] = useState(() => isSoundEnabled());
+  const [newStudents, setNewStudents] = useState<any[]>([]);
+  const seenStudentIdsRef = useRef<Set<number> | null>(null);
+
+  const handleToggleSound = () => {
+    const next = toggleSound();
+    setSoundOn(next);
+  };
 
   const user     = getAuthUser();
   const userName = (user?.name as string) || (user?.uName as string) || "Giáo viên";
@@ -131,6 +143,7 @@ export function Header({ breadcrumb, action }: HeaderProps) {
           ...prev,
         ].slice(0, 20));
         setUnread((c) => c + newOnes.length);
+        playSound();
       })
       .catch(() => {});
   };
@@ -148,6 +161,7 @@ export function Header({ breadcrumb, action }: HeaderProps) {
           const fresh = items.filter((e) => !prevIds.has(e.id));
           if (fresh.length > 0 && prev.length > 0) {
             setUnread((c) => c + fresh.length);
+            playSound();
           }
           return items;
         });
@@ -155,12 +169,42 @@ export function Header({ breadcrumb, action }: HeaderProps) {
       .catch(() => {});
   };
 
+  /** Fetch new students created recently */
+  const fetchNewStudents = () => {
+    if (userRole !== "teacher") return;
+    api.get("/teacher/students", { params: { per_page: 5, sort_by: "uCreated_at", sort_order: "desc" } })
+      .then((res: any) => {
+        const items = res?.data?.data?.data ?? [];
+        if (!Array.isArray(items)) return;
+
+        if (seenStudentIdsRef.current === null) {
+          seenStudentIdsRef.current = new Set(items.map((s: any) => s.uId));
+          return;
+        }
+
+        const newOnes = items.filter((s: any) => !seenStudentIdsRef.current!.has(s.uId));
+        if (newOnes.length === 0) return;
+
+        newOnes.forEach((s: any) => seenStudentIdsRef.current!.add(s.uId));
+
+        setNewStudents((prev) => [
+          ...newOnes,
+          ...prev,
+        ].slice(0, 10));
+        setUnread((c) => c + newOnes.length);
+        playSound();
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     fetchRecentStarts();
     fetchExamsReady();
+    fetchNewStudents();
     pollRef.current = setInterval(() => {
       fetchRecentStarts();
       fetchExamsReady();
+      fetchNewStudents();
     }, 30000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
@@ -303,6 +347,23 @@ export function Header({ breadcrumb, action }: HeaderProps) {
 
         <LanguageSwitcher />
 
+        {/* Notification Sound Toggle */}
+        <button
+          onClick={handleToggleSound}
+          className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
+            soundOn
+              ? "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              : "text-slate-300 hover:bg-slate-100 hover:text-slate-400"
+          }`}
+          title={soundOn ? "Tắt âm thanh" : "Bật âm thanh"}
+        >
+          {soundOn ? (
+            <Volume2 className="w-[15px] h-[15px]" />
+          ) : (
+            <VolumeX className="w-[15px] h-[15px]" />
+          )}
+        </button>
+
         {/* Bell Notification */}
         <div
           className="relative"
@@ -335,6 +396,56 @@ export function Header({ breadcrumb, action }: HeaderProps) {
             }`}
           >
             <div className="w-80 bg-white rounded-xl border border-slate-200 shadow-lg shadow-slate-200/60 overflow-hidden">
+              {/* Section: Học viên mới */}
+              {newStudents.length > 0 && (
+                <div className="border-b border-slate-100">
+                  <div className="px-4 py-2.5 flex items-center justify-between bg-blue-50/60">
+                    <p className="text-[11px] font-bold text-blue-700 uppercase tracking-wide">Học viên mới tạo</p>
+                    <Link
+                      to="/giao-vien/hoc-vien"
+                      onClick={() => setBellOpen(false)}
+                      className="text-[10px] font-semibold text-blue-600 hover:underline flex items-center gap-1"
+                    >
+                      Quản lý <ExternalLink className="w-2.5 h-2.5" />
+                    </Link>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto divide-y divide-slate-50">
+                    {newStudents.map((s) => (
+                      <Link
+                        key={`student-${s.uId}`}
+                        to="/giao-vien/hoc-vien"
+                        onClick={() => setBellOpen(false)}
+                        className="flex items-start gap-2.5 px-4 py-2.5 hover:bg-blue-50/40 transition-colors cursor-pointer"
+                      >
+                        <div className="w-7 h-7 bg-gradient-to-tr from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white flex-shrink-0 mt-0.5 text-[10px] font-bold overflow-hidden">
+                          {s.avatar_url ? (
+                            <img
+                              src={getAvatarUrl(s.avatar_url)}
+                              alt={s.uName}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            getInitials(s.uName)
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-slate-700 leading-snug">
+                            <span className="font-semibold text-slate-900 truncate block">{s.uName}</span>
+                            <span className="text-slate-500">vừa được đăng ký học viên mới</span>
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[9px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                              {s.age_group || "general"}
+                            </span>
+                            <span className="text-[10px] text-slate-400">{s.uPhone}</span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Section: Đề sẵn sàng công bố cho học viên */}
               {examsReady.length > 0 && (
                 <div className="border-b border-slate-100">

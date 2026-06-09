@@ -6,6 +6,7 @@ import {
   AlertCircle, Check, X,
 } from "lucide-react";
 import { adminApi, AdminUser } from "@/services/adminApi";
+import { AdminTableSkeleton } from "../components/AdminPageSkeleton";
 
 /* ── helpers ── */
 function initials(name: string) {
@@ -437,10 +438,7 @@ export function AdminTeachersPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16 gap-3">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#2563EB] border-t-transparent" />
-            <span style={{ fontSize: 13, color: "#94A3B8" }}>Đang tải...</span>
-          </div>
+          <AdminTableSkeleton rows={7} cols={5} />
         ) : displayed.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl" style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}>

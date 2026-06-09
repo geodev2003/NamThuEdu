@@ -6,7 +6,7 @@ import {
   MessageSquare, Trophy, Clock, ChevronRight, X,
 } from "lucide-react";
 import { studentApi } from "../../../services/studentApi";
-import { formatTimeAgo } from "../../../utils/formatters";
+import { formatTimeAgo, formatDateTime } from "../../../utils/formatters";
 
 const PURPLE = "#7C3AED";
 const STUDENT_BASE_PATH = "/hoc-vien";
@@ -475,7 +475,9 @@ export function NotificationDropdown() {
                           <Clock
                             className="w-3.5 h-3.5 text-slate-350"
                           />
-                          <span>{formatTimeAgo(notif.created_at)}</span>
+                          <span title={formatDateTime(notif.created_at)}>{formatTimeAgo(notif.created_at)}</span>
+                          <span className="text-slate-300 font-normal">·</span>
+                          <span className="font-normal text-slate-400">{formatDateTime(notif.created_at)}</span>
                           {notif.action_label && url && (
                             <>
                               <span className="text-slate-200 font-normal">•</span>

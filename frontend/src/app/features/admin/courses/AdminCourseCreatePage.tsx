@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { ArrowLeft, BookPlus, RefreshCw } from "lucide-react";
 import { adminApi, type AdminCategory, type AdminUser } from "@/services/adminApi";
+import { AdminFormSkeleton } from "../components/AdminPageSkeleton";
 
 type CourseStatus = "draft" | "active" | "ongoing" | "complete";
 
@@ -122,6 +123,9 @@ export function AdminCourseCreatePage() {
       </div>
 
       <div className="max-w-5xl rounded-2xl border border-slate-200 bg-white p-6">
+        {loadingOptions ? (
+          <AdminFormSkeleton fields={8} cols={2} />
+        ) : (
         <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
             <label className="mb-1 block text-sm font-semibold text-slate-700">Tên khóa học *</label>
@@ -257,6 +261,7 @@ export function AdminCourseCreatePage() {
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

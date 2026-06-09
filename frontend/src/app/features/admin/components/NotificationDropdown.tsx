@@ -1,36 +1,49 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import {
   Bell,
   UserPlus,
   FileText,
   ClipboardList,
+  FileCheck2,
   CheckCheck,
   ChevronRight,
   Inbox,
+  Volume2,
+  VolumeX,
   X,
 } from "lucide-react";
 import { adminApi } from "@/services/adminApi";
 
+type NotifType = "submission" | "student" | "exam" | "post";
+
 interface NotifItem {
   id: string;
-  type: "student" | "post" | "exam";
+  type: NotifType;
   text: string;
   sub: string;
   link: string;
   time: string;
+  ts: number; // epoch ms for ordering / new-detection
   read: boolean;
 }
 
-const TYPE_META = {
-  student: { icon: UserPlus,      color: "#10B981", bg: "#ECFDF5", label: "Học viên mới" },
-  post:    { icon: FileText,       color: "#F59E0B", bg: "#FFFBEB", label: "Bài viết"     },
-  exam:    { icon: ClipboardList,  color: "#8B5CF6", bg: "#F5F3FF", label: "Đề thi"       },
+const TYPE_META: Record<NotifType, { icon: typeof Bell; color: string; bg: string; label: string }> = {
+  submission: { icon: FileCheck2,     color: "#2563EB", bg: "#EFF6FF", label: "Học viên nộp bài" },
+  student:    { icon: UserPlus,       color: "#059669", bg: "#ECFDF5", label: "Học viên mới"     },
+  exam:       { icon: ClipboardList,  color: "#D97706", bg: "#FFFBEB", label: "Đề thi mới"       },
+  post:       { icon: FileText,       color: "#7C3AED", bg: "#F5F3FF", label: "Bài viết"         },
 };
 
-function timeAgo(dateStr?: string): string {
-  if (!dateStr) return "Vừa xong";
-  const diff = Date.now() - new Date(dateStr).getTime();
+const SECTION_ORDER: NotifType[] = ["submission", "exam", "student", "post"];
+
+const LS_READ_KEY  = "admin_notif_read_ids";
+const LS_SOUND_KEY = "admin_notif_sound";
+const POLL_MS = 45000;
+
+function timeAgo(ms: number): string {
+  if (!ms) return "Vừa xong";
+  const diff = Date.now() - ms;
   const m = Math.floor(diff / 60000);
   if (m < 1)  return "Vừa xong";
   if (m < 60) return `${m} phút trước`;
@@ -39,128 +52,152 @@ function timeAgo(dateStr?: string): string {
   return `${Math.floor(h / 24)} ngày trước`;
 }
 
+/* Two-tone "ping" qua Web Audio API — không cần file âm thanh */
+function playPing() {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const now = ctx.currentTime;
+    const tones = [880, 1175]; // A5 → D6
+    tones.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const start = now + i * 0.12;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.18, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.2);
+    });
+    setTimeout(() => ctx.close().catch(() => {}), 600);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function NotificationDropdown() {
-  const [open, setOpen]   = useState(false);
-  const [items, setItems] = useState<NotifItem[]>([]);
+  const [open, setOpen]       = useState(false);
+  const [items, setItems]     = useState<NotifItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const LS_KEY = "admin_notif_read_ids";
+  const [soundOn, setSoundOn] = useState<boolean>(() => {
+    try { return localStorage.getItem(LS_SOUND_KEY) !== "0"; } catch { return true; }
+  });
+
   const [readIds, setReadIds] = useState<Set<string>>(() => {
     try {
-      const stored = localStorage.getItem(LS_KEY);
+      const stored = localStorage.getItem(LS_READ_KEY);
       return stored ? new Set<string>(JSON.parse(stored)) : new Set<string>();
     } catch { return new Set<string>(); }
   });
 
-  /* sync readIds → localStorage whenever it changes */
-  const updateReadIds = (next: Set<string>) => {
-    setReadIds(next);
-    try { localStorage.setItem(LS_KEY, JSON.stringify([...next])); } catch { }
-  };
   const ref = useRef<HTMLDivElement>(null);
+  const knownIds = useRef<Set<string> | null>(null); // ids đã thấy ở lần fetch trước (để phát âm khi có mới)
 
-  /* ── fetch ── */
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const [sysNotifsRes, studentsRes, contentRes, examRes] = await Promise.allSettled([
-          adminApi.getNotifications(),
-          adminApi.getStudentNewRegistrations({ period_days: 7 }),
-          adminApi.getContentStatistics(),
-          adminApi.getExamStatistics(),
-        ]);
+  const persistReadIds = (next: Set<string>) => {
+    setReadIds(next);
+    try { localStorage.setItem(LS_READ_KEY, JSON.stringify([...next])); } catch { }
+  };
 
-        const list: NotifItem[] = [];
+  const toggleSound = () => {
+    setSoundOn((v) => {
+      const next = !v;
+      try { localStorage.setItem(LS_SOUND_KEY, next ? "1" : "0"); } catch { }
+      if (next) playPing(); // preview + unlock audio context qua user gesture
+      return next;
+    });
+  };
 
-        /* system notifications (primary) */
-        if (sysNotifsRes.status === "fulfilled") {
-          sysNotifsRes.value.slice(0, 3).forEach((n) => {
-            const type: NotifItem["type"] =
-              n.title?.toLowerCase().includes("học viên") || n.title?.toLowerCase().includes("student") ? "student" :
-              n.title?.toLowerCase().includes("đề thi") || n.title?.toLowerCase().includes("exam") ? "exam" : "post";
-            list.push({
-              id:   `sys-${n.id}`,
-              type,
-              text: n.title,
-              sub:  n.body,
-              link: type === "student" ? "/admin/students" : type === "exam" ? "/admin/content/exams" : "/admin/content/posts",
-              time: n.time ?? "Vừa xong",
-              read: n.is_read,
-            });
+  /* ── fetch + merge ── */
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const [activityRes, sysRes] = await Promise.allSettled([
+        adminApi.getRecentActivity({ limit: 12 }),
+        adminApi.getNotifications(),
+      ]);
+
+      const list: NotifItem[] = [];
+
+      if (activityRes.status === "fulfilled") {
+        activityRes.value.forEach((a) => {
+          const ts = a.ts ? new Date(a.ts).getTime() : 0;
+          list.push({
+            id: a.id,
+            type: (a.type as NotifType) ?? "post",
+            text: a.title,
+            sub: a.body,
+            link: a.link,
+            ts,
+            time: timeAgo(ts),
+            read: false,
           });
-        }
-
-        /* students created recently by teachers */
-        if (studentsRes.status === "fulfilled") {
-          studentsRes.value.items.slice(0, 4).forEach((s) => {
-            list.push({
-              id:   `student-${s.id}`,
-              type: "student",
-              text: `Học viên mới: ${s.name ?? s.phone}`,
-              sub:  `SĐT ${s.phone} · ${s.status === "active" ? "Hoạt động" : "Chưa kích hoạt"}`,
-              link: "/admin/students",
-              time: timeAgo(s.created_at),
-              read: false,
-            });
-          });
-        }
-
-        /* pending posts */
-        if (contentRes.status === "fulfilled") {
-          const pending = Number((contentRes.value as Record<string, unknown>)?.pending_posts ?? 0);
-          if (pending > 0) {
-            list.push({
-              id:   "post-pending",
-              type: "post",
-              text: `${pending} bài viết chờ duyệt`,
-              sub:  "Cần xem xét và phê duyệt",
-              link: "/admin/content/posts",
-              time: "Ngay bây giờ",
-              read: false,
-            });
-          }
-        }
-
-        /* pending exams */
-        if (examRes.status === "fulfilled") {
-          const pending = Number((examRes.value as Record<string, unknown>)?.pending_exams ?? 0);
-          if (pending > 0) {
-            list.push({
-              id:   "exam-pending",
-              type: "exam",
-              text: `${pending} đề thi chờ duyệt`,
-              sub:  "Cần xem xét và phê duyệt",
-              link: "/admin/content/exams",
-              time: "Ngay bây giờ",
-              read: false,
-            });
-          }
-        }
-
-        /* deduplicate by id */
-        const seen = new Set<string>();
-        setItems(list.filter((i) => { if (seen.has(i.id)) return false; seen.add(i.id); return true; }));
-        /* pre-mark system notifs that are already read (merge with localStorage) */
-        if (sysNotifsRes.status === "fulfilled") {
-          const dbRead = sysNotifsRes.value.filter((n) => n.is_read).map((n) => `sys-${n.id}`);
-          if (dbRead.length) {
-            setReadIds((prev) => {
-              const merged = new Set([...prev, ...dbRead]);
-              try { localStorage.setItem(LS_KEY, JSON.stringify([...merged])); } catch { }
-              return merged;
-            });
-          }
-        }
-      } catch {
-        /* silent */
-      } finally {
-        setLoading(false);
+        });
       }
-    };
-    load();
-  }, []);
 
-  /* ── click outside ── */
+      if (sysRes.status === "fulfilled") {
+        sysRes.value.forEach((n) => {
+          const t = (n.title || "").toLowerCase();
+          const type: NotifType =
+            t.includes("học viên") || t.includes("student") ? "student" :
+            t.includes("đề thi")   || t.includes("exam")    ? "exam"    :
+            t.includes("nộp")                                ? "submission" : "post";
+          list.push({
+            id: `sys-${n.id}`,
+            type,
+            text: n.title,
+            sub: n.body,
+            link: type === "student" ? "/admin/students" : type === "exam" ? "/admin/content/exams" : "/admin/content/posts",
+            ts: 0,
+            time: n.time ?? "Vừa xong",
+            read: n.is_read,
+          });
+        });
+      }
+
+      /* dedupe theo id, sort theo ts giảm dần */
+      const seen = new Set<string>();
+      const deduped = list
+        .filter((i) => { if (seen.has(i.id)) return false; seen.add(i.id); return true; })
+        .sort((a, b) => b.ts - a.ts);
+
+      /* merge sys-* đã đọc từ DB vào readIds */
+      const dbRead = deduped.filter((i) => i.read).map((i) => i.id);
+      if (dbRead.length) {
+        setReadIds((prev) => {
+          const merged = new Set([...prev, ...dbRead]);
+          try { localStorage.setItem(LS_READ_KEY, JSON.stringify([...merged])); } catch { }
+          return merged;
+        });
+      }
+
+      /* phát âm thanh nếu có id mới chưa-đọc xuất hiện (bỏ qua lần fetch đầu) */
+      const currentIds = new Set(deduped.map((i) => i.id));
+      if (knownIds.current) {
+        const hasNew = deduped.some((i) => !knownIds.current!.has(i.id) && !readIds.has(i.id));
+        if (hasNew && soundOn) playPing();
+      }
+      knownIds.current = currentIds;
+
+      setItems(deduped);
+    } catch {
+      /* silent */
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [readIds, soundOn]);
+
+  /* initial + polling */
+  useEffect(() => {
+    load();
+    const t = setInterval(() => load(true), POLL_MS);
+    return () => clearInterval(t);
+  }, [load]);
+
+  /* click outside */
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -172,9 +209,7 @@ export function NotificationDropdown() {
   const unread = items.filter((i) => !readIds.has(i.id)).length;
 
   const markAll = () => {
-    const next = new Set(items.map((i) => i.id));
-    updateReadIds(next);
-    /* persist sys-* to DB */
+    persistReadIds(new Set(items.map((i) => i.id)));
     items
       .filter((i) => i.id.startsWith("sys-") && !readIds.has(i.id))
       .forEach((i) => {
@@ -183,8 +218,7 @@ export function NotificationDropdown() {
       });
   };
 
-  /* ── group by type ── */
-  const groups = (["student", "post", "exam"] as const)
+  const groups = SECTION_ORDER
     .map((type) => ({ type, items: items.filter((i) => i.type === type) }))
     .filter((g) => g.items.length > 0);
 
@@ -193,29 +227,19 @@ export function NotificationDropdown() {
       {/* Bell button */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-xl transition-all"
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-200 cursor-pointer"
         style={{
-          background: open ? "#FFFBEB" : "#F8FAFC",
-          border: `1px solid ${open ? "#F59E0B" : "#E2E8F0"}`,
+          background: open ? "#0F172A" : "#FFFFFF",
+          border: `1px solid ${open ? "#0F172A" : "#E2E8F0"}`,
         }}
-        onMouseEnter={(e) => {
-          if (!open) {
-            e.currentTarget.style.background = "#F1F5F9";
-            e.currentTarget.style.borderColor = "#CBD5E1";
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!open) {
-            e.currentTarget.style.background = "#F8FAFC";
-            e.currentTarget.style.borderColor = "#E2E8F0";
-          }
-        }}
+        onMouseEnter={(e) => { if (!open) { e.currentTarget.style.background = "#F8FAFC"; e.currentTarget.style.borderColor = "#CBD5E1"; } }}
+        onMouseLeave={(e) => { if (!open) { e.currentTarget.style.background = "#FFFFFF"; e.currentTarget.style.borderColor = "#E2E8F0"; } }}
       >
-        <Bell className="h-4 w-4" style={{ color: open ? "#F59E0B" : "#475569" }} />
+        <Bell className="h-4 w-4" style={{ color: open ? "#FFFFFF" : "#64748B" }} />
         {unread > 0 && (
           <span
-            className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full text-white"
-            style={{ background: "#EF4444", fontSize: 9, fontWeight: 700 }}
+            className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full text-white ring-2 ring-white"
+            style={{ background: "#F59E0B", fontSize: 9, fontWeight: 700 }}
           >
             {unread > 9 ? "9+" : unread}
           </span>
@@ -225,39 +249,47 @@ export function NotificationDropdown() {
       {/* Dropdown panel */}
       {open && (
         <div
-          className="absolute right-0 top-full mt-2 z-50 rounded-2xl overflow-hidden"
+          className="absolute right-0 top-full mt-2 z-50 rounded-xl overflow-hidden"
           style={{
             width: 360,
             background: "#FFFFFF",
             border: "1px solid #E2E8F0",
-            boxShadow: "0 10px 40px rgba(15,23,42,0.12), 0 2px 8px rgba(0,0,0,0.06)",
+            boxShadow: "0 20px 40px -12px rgba(15,23,42,0.18), 0 2px 6px rgba(15,23,42,0.04)",
           }}
         >
-          {/* Header */}
-          <div
-            className="flex items-center justify-between px-4 py-3"
-            style={{ borderBottom: "1px solid #F1F5F9" }}
-          >
+          {/* Header — terminal-style slate */}
+          <div className="flex items-center justify-between px-4 py-3" style={{ background: "#0F172A" }}>
             <div className="flex items-center gap-2">
-              <Bell className="h-4 w-4" style={{ color: "#0F172A" }} />
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>Thông báo</span>
+              <Bell className="h-4 w-4" style={{ color: "#F59E0B" }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#F8FAFC", letterSpacing: "0.01em" }}>Thông báo</span>
               {unread > 0 && (
                 <span
-                  className="flex items-center justify-center rounded-full px-2 py-0.5 text-white"
-                  style={{ background: "#EF4444", fontSize: 10, fontWeight: 700 }}
+                  className="flex items-center justify-center rounded-full px-1.5 py-0.5 text-white"
+                  style={{ background: "#F59E0B", fontSize: 9, fontWeight: 700, color: "#0F172A" }}
                 >
-                  {unread} mới
+                  {unread}
                 </span>
               )}
             </div>
             <div className="flex items-center gap-1">
+              <button
+                onClick={toggleSound}
+                title={soundOn ? "Tắt âm thanh" : "Bật âm thanh"}
+                className="flex h-6 w-6 items-center justify-center rounded-md transition-all cursor-pointer"
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#1E293B"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                {soundOn
+                  ? <Volume2 className="h-3.5 w-3.5" style={{ color: "#94A3B8" }} />
+                  : <VolumeX className="h-3.5 w-3.5" style={{ color: "#64748B" }} />}
+              </button>
               {unread > 0 && (
                 <button
                   onClick={markAll}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 transition-all"
-                  style={{ fontSize: 11, color: "#64748B" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "#F8FAFC"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                  className="flex items-center gap-1 rounded-md px-1.5 py-1 transition-all cursor-pointer"
+                  style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500 }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "#1E293B"; e.currentTarget.style.color = "#F8FAFC"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94A3B8"; }}
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
                   Đọc tất cả
@@ -265,8 +297,8 @@ export function NotificationDropdown() {
               )}
               <button
                 onClick={() => setOpen(false)}
-                className="flex h-6 w-6 items-center justify-center rounded-lg transition-all"
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#F1F5F9"; }}
+                className="flex h-6 w-6 items-center justify-center rounded-md transition-all cursor-pointer"
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#1E293B"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
                 <X className="h-3.5 w-3.5" style={{ color: "#94A3B8" }} />
@@ -278,17 +310,14 @@ export function NotificationDropdown() {
           <div className="overflow-y-auto" style={{ maxHeight: 380 }}>
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#F59E0B] border-t-transparent" />
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
               </div>
             ) : groups.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-3">
-                <div
-                  className="flex h-12 w-12 items-center justify-center rounded-full"
-                  style={{ background: "#F8FAFC" }}
-                >
-                  <Inbox className="h-6 w-6" style={{ color: "#CBD5E1" }} />
+              <div className="flex flex-col items-center justify-center py-12 gap-2">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: "#F1F5F9" }}>
+                  <Inbox className="h-5 w-5" style={{ color: "#CBD5E1" }} />
                 </div>
-                <p style={{ fontSize: 13, color: "#94A3B8" }}>Không có thông báo mới</p>
+                <p style={{ fontSize: 12, color: "#94A3B8" }}>Không có thông báo mới</p>
               </div>
             ) : (
               groups.map((group) => {
@@ -296,23 +325,14 @@ export function NotificationDropdown() {
                 return (
                   <div key={group.type}>
                     {/* Section label */}
-                    <div
-                      className="flex items-center gap-2 px-4 py-2"
-                      style={{ background: "#F8FAFC", borderBottom: "1px solid #F1F5F9" }}
-                    >
-                      <div
-                        className="flex h-5 w-5 items-center justify-center rounded"
-                        style={{ background: meta.bg }}
-                      >
-                        <meta.icon className="h-3 w-3" style={{ color: meta.color }} />
+                    <div className="flex items-center gap-2 px-4 py-1.5" style={{ background: "#F8FAFC", borderBottom: "1px solid #F1F5F9" }}>
+                      <div className="flex h-4 w-4 items-center justify-center rounded" style={{ background: meta.bg }}>
+                        <meta.icon className="h-2.5 w-2.5" style={{ color: meta.color }} />
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                         {meta.label}
                       </span>
-                      <span
-                        className="ml-auto rounded-full px-1.5 py-0.5"
-                        style={{ background: meta.bg, fontSize: 10, fontWeight: 700, color: meta.color }}
-                      >
+                      <span className="ml-auto rounded-full px-1.5 py-0.5" style={{ background: meta.bg, fontSize: 9, fontWeight: 700, color: meta.color }}>
                         {group.items.length}
                       </span>
                     </div>
@@ -325,45 +345,27 @@ export function NotificationDropdown() {
                           key={item.id}
                           to={item.link}
                           onClick={() => {
-                            updateReadIds(new Set([...readIds, item.id]));
-                            /* persist sys-* to DB */
+                            persistReadIds(new Set([...readIds, item.id]));
                             if (item.id.startsWith("sys-")) {
                               const numId = Number(item.id.replace("sys-", ""));
                               if (numId) adminApi.markNotificationRead(numId).catch(() => {});
                             }
                             setOpen(false);
                           }}
-                          className="flex items-start gap-3 px-4 py-3 transition-all"
-                          style={{
-                            background: isRead ? "transparent" : `${meta.color}06`,
-                            borderBottom: "1px solid #F8FAFC",
-                          }}
-                          onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#F8FAFC"; }}
-                          onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = isRead ? "transparent" : `${meta.color}06`; }}
+                          className="flex items-start gap-3 px-4 py-2.5 transition-all"
+                          style={{ background: isRead ? "transparent" : `${meta.color}0A`, borderBottom: "1px solid #F8FAFC" }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#F1F5F9"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = isRead ? "transparent" : `${meta.color}0A`; }}
                         >
-                          <div
-                            className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl"
-                            style={{ background: meta.bg }}
-                          >
+                          <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: meta.bg }}>
                             <meta.icon className="h-4 w-4" style={{ color: meta.color }} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p style={{ fontSize: 13, fontWeight: isRead ? 400 : 600, color: "#0F172A" }}>
-                              {item.text}
-                            </p>
-                            <p className="truncate mt-0.5" style={{ fontSize: 11, color: "#94A3B8" }}>
-                              {item.sub}
-                            </p>
-                            <p className="mt-1" style={{ fontSize: 10, color: "#CBD5E1" }}>
-                              {item.time}
-                            </p>
+                            <p style={{ fontSize: 12.5, fontWeight: isRead ? 400 : 600, color: "#0F172A" }}>{item.text}</p>
+                            <p className="truncate mt-0.5" style={{ fontSize: 11.5, color: "#64748B" }}>{item.sub}</p>
+                            <p className="mt-1 tabular-nums" style={{ fontSize: 9.5, color: "#94A3B8" }}>{item.time}</p>
                           </div>
-                          {!isRead && (
-                            <div
-                              className="mt-2 h-2 w-2 flex-shrink-0 rounded-full"
-                              style={{ background: meta.color }}
-                            />
-                          )}
+                          {!isRead && <div className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: meta.color }} />}
                         </Link>
                       );
                     })}
@@ -378,9 +380,9 @@ export function NotificationDropdown() {
             <Link
               to="/admin/notifications"
               onClick={() => setOpen(false)}
-              className="flex items-center justify-center gap-1.5 py-3 transition-all"
-              style={{ fontSize: 13, color: "#64748B", fontWeight: 500 }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#F59E0B"; (e.currentTarget as HTMLAnchorElement).style.background = "#FFFBEB"; }}
+              className="flex items-center justify-center gap-1 py-2.5 transition-all duration-200 cursor-pointer"
+              style={{ fontSize: 12, color: "#64748B", fontWeight: 500 }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#0F172A"; (e.currentTarget as HTMLAnchorElement).style.background = "#F8FAFC"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#64748B"; (e.currentTarget as HTMLAnchorElement).style.background = "transparent"; }}
             >
               Xem tất cả thông báo

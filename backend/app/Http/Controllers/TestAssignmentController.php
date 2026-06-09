@@ -84,8 +84,9 @@ class TestAssignmentController extends Controller
             ], 400);
         }
 
-        // Lấy age_group từ exam (nguồn chính), fallback request, fallback null (legacy)
-        $requiredAgeGroup = $exam->age_group ?? $request->age_group ?? null;
+        // Lấy age_group từ exam (nguồn chính), fallback request. null/'all' = phổ quát.
+        $rawAgeGroup = $exam->age_group ?? $request->age_group ?? null;
+        $requiredAgeGroup = ($rawAgeGroup && $rawAgeGroup !== 'all') ? $rawAgeGroup : null;
 
         // Validate target exists + age_group khớp (nếu có)
         if ($request->taTarget_type === 'class') {
@@ -98,7 +99,7 @@ class TestAssignmentController extends Controller
             }
 
             $classAgeGroup = $target->age_group ?? null;
-            if ($requiredAgeGroup && $classAgeGroup && $classAgeGroup !== $requiredAgeGroup) {
+            if ($requiredAgeGroup && $classAgeGroup && $classAgeGroup !== 'all' && $classAgeGroup !== $requiredAgeGroup) {
                 return response()->json([
                     'status' => 'error',
                     'message' => "Lớp '{$target->cName}' thuộc nhóm '{$classAgeGroup}', không khớp với bài thi (nhóm '{$requiredAgeGroup}')."
@@ -117,7 +118,7 @@ class TestAssignmentController extends Controller
             }
 
             $studentAgeGroup = $target->age_group ?? null;
-            if ($requiredAgeGroup && $studentAgeGroup && $studentAgeGroup !== $requiredAgeGroup) {
+            if ($requiredAgeGroup && $studentAgeGroup && $studentAgeGroup !== 'all' && $studentAgeGroup !== $requiredAgeGroup) {
                 return response()->json([
                     'status' => 'error',
                     'message' => "Học viên '{$target->uName}' thuộc nhóm '{$studentAgeGroup}', không khớp với bài thi (nhóm '{$requiredAgeGroup}')."
@@ -135,6 +136,7 @@ class TestAssignmentController extends Controller
             'taInstructions' => $request->taInstructions,
             'taMax_attempt' => $request->taMax_attempt ?? 1,
             'taIs_public' => $request->taIs_public ?? false,
+            'taCreated_at' => now(),
         ]);
 
         // Send push notifications to assigned students
@@ -647,8 +649,9 @@ class TestAssignmentController extends Controller
             }
 
             // Ưu tiên age_group từ exam, fallback request body (legacy).
-            // Nếu null → đề dùng chung mọi nhóm tuổi (không ép age_group).
-            $requiredAgeGroup = $exam->age_group ?? $request->age_group ?? null;
+            // null hoặc 'all' → đề dùng chung mọi nhóm tuổi (không ép age_group).
+            $rawAgeGroup = $exam->age_group ?? $request->age_group ?? null;
+            $requiredAgeGroup = ($rawAgeGroup && $rawAgeGroup !== 'all') ? $rawAgeGroup : null;
 
             $results = [
                 'success_count' => 0,
@@ -665,9 +668,9 @@ class TestAssignmentController extends Controller
                             continue;
                         }
 
-                        // Validate age_group của lớp (chỉ check nếu lớp có set age_group)
+                        // Validate age_group của lớp — chỉ check khi đề có nhóm cụ thể.
                         $classAgeGroup = $targetEntity->age_group ?? null;
-                        if ($classAgeGroup && $classAgeGroup !== $requiredAgeGroup) {
+                        if ($requiredAgeGroup && $classAgeGroup && $classAgeGroup !== 'all' && $classAgeGroup !== $requiredAgeGroup) {
                             $results['errors'][] = "Lớp '{$targetEntity->cName}' thuộc nhóm '{$classAgeGroup}', không khớp với bài thi (nhóm '{$requiredAgeGroup}').";
                             continue;
                         }
@@ -682,9 +685,9 @@ class TestAssignmentController extends Controller
                             continue;
                         }
 
-                        // Validate age_group của học viên (chỉ check nếu học viên có set age_group)
+                        // Validate age_group của học viên — chỉ check khi đề có nhóm cụ thể.
                         $studentAgeGroup = $targetEntity->age_group ?? null;
-                        if ($studentAgeGroup && $studentAgeGroup !== $requiredAgeGroup) {
+                        if ($requiredAgeGroup && $studentAgeGroup && $studentAgeGroup !== 'all' && $studentAgeGroup !== $requiredAgeGroup) {
                             $results['errors'][] = "Học viên '{$targetEntity->uName}' thuộc nhóm '{$studentAgeGroup}', không khớp với bài thi (nhóm '{$requiredAgeGroup}').";
                             continue;
                         }
@@ -711,6 +714,7 @@ class TestAssignmentController extends Controller
                         'taInstructions' => $request->taInstructions,
                         'taMax_attempt'  => $request->taMax_attempt ?? 1,
                         'taIs_public'    => $request->taIs_public ?? false,
+                        'taCreated_at'   => now(),
                     ]);
 
                     $results['assignments'][] = [

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, RefreshCw, Search, ShieldAlert } from "lucide-react";
 import { adminApi, type AdminStudentComplaintItem } from "@/services/adminApi";
+import { AdminTableSkeleton } from "../components/AdminPageSkeleton";
 
 export function AdminStudentComplaintsPage() {
   const [items, setItems] = useState<AdminStudentComplaintItem[]>([]);
@@ -99,7 +100,7 @@ export function AdminStudentComplaintsPage() {
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         {loading ? (
-          <div className="p-8 text-center text-slate-500">Đang tải dữ liệu...</div>
+          <AdminTableSkeleton rows={7} cols={5} />
         ) : filtered.length === 0 ? (
           <div className="p-8 text-center text-slate-500">Không có khiếu nại nào cần xử lý.</div>
         ) : (

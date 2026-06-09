@@ -1,31 +1,37 @@
 /**
  * adminRoutes — Tất cả route dành cho admin.
  * Base path: "/admin" — Layout: AdminLayout (sidebar dark slate).
+ * Tất cả page đều lazy-loaded để Suspense fallback (AdminPageSkeleton)
+ * trong AdminLayout hiển thị khung skeleton khi chuyển trang.
  */
-import AdminLayout from "../layouts/AdminLayout";
-import { AdminDashboard } from "../features/admin/dashboard/AdminDashboard";
-import { UnderConstruction } from "../components/shared/UnderConstruction";
-import { AdminUsersPage } from "../features/admin/users/AdminUsersPage";
-import { AdminPostsPage } from "../features/admin/content/AdminPostsPage";
-import { AdminExamsPage } from "../features/admin/content/AdminExamsPage";
-import { AdminStudentsReportPage } from "../features/admin/reports/AdminStudentsReportPage";
-import { AdminTeachersPage } from "../features/admin/teachers/AdminTeachersPage";
-import { AdminCoursesPage } from "../features/admin/courses/AdminCoursesPage";
-import { AdminCategoriesPage } from "../features/admin/courses/AdminCategoriesPage";
-import { AdminCourseCreatePage } from "../features/admin/courses/AdminCourseCreatePage";
-import { AdminRevenueReportPage } from "../features/admin/reports/AdminRevenueReportPage";
-import { AdminTeachersReportPage } from "../features/admin/reports/AdminTeachersReportPage";
-import { AdminSystemLogsPage } from "../features/admin/system/AdminSystemLogsPage";
-import { AdminServerHealthPage } from "../features/admin/system/AdminServerHealthPage";
-import { AdminBackupPage } from "../features/admin/system/AdminBackupPage";
-import { AdminNotificationsPage } from "../features/admin/notifications/AdminNotificationsPage";
-import { AdminSettingsPage } from "../features/admin/settings/AdminSettingsPage";
-import { AdminProfilePage } from "../features/admin/profile/AdminProfilePage";
+import { lazy } from "react";
 import { Navigate } from "react-router";
-import { AdminTeacherAssignmentsPage } from "../features/admin/teachers/AdminTeacherAssignmentsPage";
-import { AdminStudentRegistrationsPage } from "../features/admin/students/AdminStudentRegistrationsPage";
-import { AdminStudentComplaintsPage } from "../features/admin/students/AdminStudentComplaintsPage";
+import AdminLayout from "../layouts/AdminLayout";
 import { ProtectedRoute } from "../../components/auth";
+import { UnderConstruction } from "../components/shared/UnderConstruction";
+
+// ─── Lazy admin pages ────────────────────────────────────────────────────────
+const AdminDashboard               = lazy(() => import("../features/admin/dashboard/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
+const AdminUsersPage               = lazy(() => import("../features/admin/users/AdminUsersPage").then(m => ({ default: m.AdminUsersPage })));
+const AdminPostsPage               = lazy(() => import("../features/admin/content/AdminPostsPage").then(m => ({ default: m.AdminPostsPage })));
+const AdminExamsPage               = lazy(() => import("../features/admin/content/AdminExamsPage").then(m => ({ default: m.AdminExamsPage })));
+const AdminStudentsReportPage      = lazy(() => import("../features/admin/reports/AdminStudentsReportPage").then(m => ({ default: m.AdminStudentsReportPage })));
+const AdminTeachersPage            = lazy(() => import("../features/admin/teachers/AdminTeachersPage").then(m => ({ default: m.AdminTeachersPage })));
+const AdminCoursesPage             = lazy(() => import("../features/admin/courses/AdminCoursesPage").then(m => ({ default: m.AdminCoursesPage })));
+const AdminCategoriesPage          = lazy(() => import("../features/admin/courses/AdminCategoriesPage").then(m => ({ default: m.AdminCategoriesPage })));
+const AdminCourseCreatePage        = lazy(() => import("../features/admin/courses/AdminCourseCreatePage").then(m => ({ default: m.AdminCourseCreatePage })));
+const AdminRevenueReportPage       = lazy(() => import("../features/admin/reports/AdminRevenueReportPage").then(m => ({ default: m.AdminRevenueReportPage })));
+const AdminTeachersReportPage      = lazy(() => import("../features/admin/reports/AdminTeachersReportPage").then(m => ({ default: m.AdminTeachersReportPage })));
+const AdminSystemLogsPage          = lazy(() => import("../features/admin/system/AdminSystemLogsPage").then(m => ({ default: m.AdminSystemLogsPage })));
+const AdminAuditLogPage            = lazy(() => import("../features/admin/system/AdminAuditLogPage").then(m => ({ default: m.AdminAuditLogPage })));
+const AdminServerHealthPage        = lazy(() => import("../features/admin/system/AdminServerHealthPage").then(m => ({ default: m.AdminServerHealthPage })));
+const AdminBackupPage              = lazy(() => import("../features/admin/system/AdminBackupPage").then(m => ({ default: m.AdminBackupPage })));
+const AdminNotificationsPage       = lazy(() => import("../features/admin/notifications/AdminNotificationsPage").then(m => ({ default: m.AdminNotificationsPage })));
+const AdminSettingsPage            = lazy(() => import("../features/admin/settings/AdminSettingsPage").then(m => ({ default: m.AdminSettingsPage })));
+const AdminProfilePage             = lazy(() => import("../features/admin/profile/AdminProfilePage").then(m => ({ default: m.AdminProfilePage })));
+const AdminTeacherAssignmentsPage  = lazy(() => import("../features/admin/teachers/AdminTeacherAssignmentsPage").then(m => ({ default: m.AdminTeacherAssignmentsPage })));
+const AdminStudentRegistrationsPage = lazy(() => import("../features/admin/students/AdminStudentRegistrationsPage").then(m => ({ default: m.AdminStudentRegistrationsPage })));
+const AdminStudentComplaintsPage   = lazy(() => import("../features/admin/students/AdminStudentComplaintsPage").then(m => ({ default: m.AdminStudentComplaintsPage })));
 
 function ProtectedAdminLayout() {
   return (
@@ -68,6 +74,7 @@ export const adminRoutes = {
 
     // Hệ thống
     { path: "system/activity-logs", Component: AdminSystemLogsPage },
+    { path: "system/audit-logs", Component: AdminAuditLogPage },
     { path: "system/server-health", Component: AdminServerHealthPage },
     { path: "system/backups", Component: AdminBackupPage },
 

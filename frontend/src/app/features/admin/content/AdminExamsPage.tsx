@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Search, Trash2, XCircle } from "lucide-react";
 import { adminApi, AdminExam } from "@/services/adminApi";
+import { RejectReasonModal } from "../components/RejectReasonModal";
+import { AdminTableSkeleton } from "../components/AdminPageSkeleton";
 
 function examId(exam: AdminExam) {
   return exam.eId || exam.id || 0;
@@ -28,6 +30,7 @@ export function AdminExamsPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<AdminExam | null>(null);
 
   const loadExams = async () => {
     try {
@@ -80,9 +83,17 @@ export function AdminExamsPage() {
   };
 
   const handleReject = async (id: number) => {
+    const target = exams.find((e) => examId(e) === id);
+    if (target) setRejectTarget(target);
+  };
+
+  const submitReject = async (reason: string) => {
+    if (!rejectTarget) return;
+    const id = examId(rejectTarget);
     try {
       setBusyId(id);
-      await adminApi.rejectExam(id, "Cần chỉnh sửa nội dung trước khi phát hành.");
+      await adminApi.rejectExam(id, reason);
+      setRejectTarget(null);
       await loadExams();
     } finally {
       setBusyId(null);
@@ -147,7 +158,7 @@ export function AdminExamsPage() {
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         {loading ? (
-          <div className="p-8 text-center text-slate-500">Đang tải dữ liệu...</div>
+          <AdminTableSkeleton rows={7} cols={5} />
         ) : error ? (
           <div className="p-8 text-center text-red-600">{error}</div>
         ) : (
@@ -219,6 +230,15 @@ export function AdminExamsPage() {
           </table>
         )}
       </div>
+
+      <RejectReasonModal
+        open={!!rejectTarget}
+        title="Từ chối đề thi"
+        subject={rejectTarget ? examTitle(rejectTarget) : ""}
+        busy={busyId === (rejectTarget ? examId(rejectTarget) : 0)}
+        onCancel={() => setRejectTarget(null)}
+        onConfirm={submitReject}
+      />
     </div>
   );
 }

@@ -571,8 +571,12 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     
     /* ======== ADMIN ROUTES ========= */
-    Route::middleware('role:admin')->prefix('admin')->group(function () {
-        
+    Route::middleware(['role:admin', 'admin.audit'])->prefix('admin')->group(function () {
+
+        // ── Audit log (real audit trail của hành động admin) ──
+        Route::get('/activity-logs',       [\App\Http\Controllers\AdminActivityLogController::class, 'index']);
+        Route::get('/activity-logs/stats', [\App\Http\Controllers\AdminActivityLogController::class, 'stats']);
+
         // User Management - View All Users
         Route::get('/users', [UserController::class, 'adminUsers']);
         Route::post('/users', [UserController::class, 'adminCreateUser']);
@@ -649,9 +653,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // System Settings & Notifications
         Route::prefix('system')->group(function () {
+            Route::get('/health', [AdminSystemController::class, 'systemHealth']);
             Route::get('/settings', [AdminSystemController::class, 'getSettings']);
             Route::post('/settings', [AdminSystemController::class, 'updateSettings']);
             Route::get('/notifications', [AdminSystemController::class, 'getNotifications']);
+            Route::get('/recent-activity', [AdminSystemController::class, 'recentActivity']);
             Route::post('/notifications/{id}/read', [AdminSystemController::class, 'markNotificationRead']);
         });
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { adminApi } from "@/services/adminApi";
+import { AdminSettingsSkeleton } from "../components/AdminPageSkeleton";
 
 export function AdminSettingsPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -40,7 +41,7 @@ export function AdminSettingsPage() {
       </div>
 
       {loading ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">Đang tải cấu hình...</div>
+        <AdminSettingsSkeleton />
       ) : (
         <div className="space-y-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-4">

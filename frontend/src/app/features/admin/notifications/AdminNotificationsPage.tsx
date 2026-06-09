@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Bell, CheckCircle } from "lucide-react";
 import { adminApi } from "@/services/adminApi";
+import { AdminTableSkeleton } from "../components/AdminPageSkeleton";
 
 type Notification = { id: number; title: string; body: string; is_read: boolean; time: string };
 
@@ -46,7 +47,7 @@ export function AdminNotificationsPage() {
       </div>
 
       {loading ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">Đang tải thông báo...</div>
+        <AdminTableSkeleton rows={7} cols={4} />
       ) : notifications.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">Không có thông báo nào.</div>
       ) : (

@@ -25,6 +25,7 @@ class TestAssignment extends Model
         'taInstructions',
         'taMax_attempt',
         'taIs_public',
+        'taCreated_at',
     ];
 
     protected $casts = [

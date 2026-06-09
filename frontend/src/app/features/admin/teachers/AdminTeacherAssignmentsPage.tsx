@@ -5,6 +5,7 @@ import {
   type AdminAssignmentTeacher,
   type AdminClassAssignment,
 } from "@/services/adminApi";
+import { AdminTableSkeleton } from "../components/AdminPageSkeleton";
 
 export function AdminTeacherAssignmentsPage() {
   const [assignments, setAssignments] = useState<AdminClassAssignment[]>([]);
@@ -179,7 +180,7 @@ export function AdminTeacherAssignmentsPage() {
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         {loading ? (
-          <div className="p-8 text-center text-slate-500">Đang tải dữ liệu phân công...</div>
+          <AdminTableSkeleton rows={7} cols={5} />
         ) : filteredAssignments.length === 0 ? (
           <div className="p-8 text-center text-slate-500">
             <Users className="mx-auto mb-2 h-5 w-5" />

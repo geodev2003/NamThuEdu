@@ -7,6 +7,7 @@ import {
   Palette,
 } from "lucide-react";
 import { adminApi } from "@/services/adminApi";
+import { AdminProfileSessionSkeleton, AdminSettingsRowsSkeleton } from "../components/AdminPageSkeleton";
 
 /* ── avatar gradient presets ── */
 const AVATAR_PRESETS = [
@@ -446,9 +447,7 @@ export function AdminProfilePage() {
                 )}
               </div>
               {sessionsLoading ? (
-                <div className="flex items-center justify-center py-10">
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#8B5CF6] border-t-transparent" />
-                </div>
+                <AdminProfileSessionSkeleton rows={3} />
               ) : sessions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 gap-2">
                   <MonitorSmartphone className="h-10 w-10" style={{ color: "#E2E8F0" }} />
@@ -576,9 +575,7 @@ export function AdminProfilePage() {
                 </div>
               </div>
               {settingsLoading ? (
-                <div className="flex items-center justify-center py-10">
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#F59E0B] border-t-transparent" />
-                </div>
+                <AdminSettingsRowsSkeleton rows={3} />
               ) : (
                 <div className="divide-y" style={{ borderColor: "#F8FAFC" }}>
                   {[

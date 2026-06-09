@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { RefreshCw, Search, UserPlus, Users } from "lucide-react";
 import { adminApi, type AdminStudentRegistrationItem } from "@/services/adminApi";
+import { AdminTableSkeleton } from "../components/AdminPageSkeleton";
 
 type PeriodFilter = 7 | 30 | 90;
 type StatusFilter = "all" | "active" | "inactive";
@@ -103,7 +104,7 @@ export function AdminStudentRegistrationsPage() {
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         {loading ? (
-          <div className="p-8 text-center text-slate-500">Đang tải dữ liệu...</div>
+          <AdminTableSkeleton rows={7} cols={5} />
         ) : error ? (
           <div className="p-8 text-center text-red-600">{error}</div>
         ) : filtered.length === 0 ? (

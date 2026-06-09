@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Lock, Search, Shield, Unlock, Users } from "lucide-react";
+import { Lock, Search, Shield, Unlock, Users, Trash2, UserCog, X, CheckSquare, Square } from "lucide-react";
 import { adminApi, AdminUser } from "@/services/adminApi";
+import { AdminTableSkeleton } from "../components/AdminPageSkeleton";
 
 type RoleFilter = "all" | "student" | "teacher" | "admin";
 type StatusFilter = "all" | "active" | "inactive";
+type BulkAction = "lock" | "unlock" | "delete" | "change_role";
 
 function displayName(user: AdminUser) {
   return user.uName || user.name || "N/A";
@@ -34,6 +36,13 @@ export function AdminUsersPage() {
   const [status, setStatus] = useState<StatusFilter>("all");
   const [busyId, setBusyId] = useState<number | null>(null);
 
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [pendingAction, setPendingAction] = useState<BulkAction | null>(null);
+  const [pendingRole, setPendingRole] = useState<"student" | "teacher" | "admin">("student");
+
   const loadUsers = async () => {
     try {
       setLoading(true);
@@ -44,6 +53,7 @@ export function AdminUsersPage() {
         status: status === "all" ? undefined : status,
       });
       setUsers(data);
+      setSelectedIds(new Set()); // reset selection on reload
     } catch {
       setError("Không tải được danh sách học viên.");
     } finally {
@@ -76,6 +86,27 @@ export function AdminUsersPage() {
     return { total, active, locked };
   }, [users]);
 
+  const allFilteredIds = useMemo(() => filtered.map(displayId).filter(Boolean) as number[], [filtered]);
+  const allSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.has(id));
+  const someSelected = selectedIds.size > 0 && !allSelected;
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allFilteredIds));
+    }
+  };
+
+  const toggleSelectOne = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const onToggleLock = async (user: AdminUser) => {
     const id = displayId(user);
     if (!id) return;
@@ -92,6 +123,40 @@ export function AdminUsersPage() {
     }
   };
 
+  const runBulkAction = async () => {
+    if (!pendingAction || selectedIds.size === 0) return;
+    const userIds = Array.from(selectedIds);
+    const confirmMsg =
+      pendingAction === "delete"
+        ? `Xoá ${userIds.length} người dùng đã chọn? Hành động không thể hoàn tác.`
+        : pendingAction === "change_role"
+        ? `Đổi ${userIds.length} người dùng sang vai trò "${pendingRole}"?`
+        : `Xác nhận thao tác ${pendingAction} cho ${userIds.length} người dùng?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setBulkBusy(true);
+      setBulkResult(null);
+      const res = await adminApi.bulkUserAction({
+        action: pendingAction,
+        user_ids: userIds,
+        role: pendingAction === "change_role" ? pendingRole : undefined,
+      });
+      const changed = res?.changed ?? 0;
+      const skipped = res?.skipped?.length ?? 0;
+      setBulkResult({
+        ok: true,
+        msg: `Đã xử lý ${changed} user${skipped > 0 ? `, bỏ qua ${skipped}` : ""}.`,
+      });
+      setPendingAction(null);
+      await loadUsers();
+    } catch (e) {
+      setBulkResult({ ok: false, msg: "Thao tác hàng loạt thất bại." });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   return (
     <div className="min-h-screen p-6" style={{ background: "#F8FAFC" }}>
       <div className="mb-6 flex items-center justify-between">
@@ -101,7 +166,7 @@ export function AdminUsersPage() {
         </div>
         <button
           onClick={loadUsers}
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="cursor-pointer rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
         >
           Tải lại
         </button>
@@ -136,13 +201,13 @@ export function AdminUsersPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm theo tên, số điện thoại..."
-              className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 outline-none focus:border-blue-500"
+              className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </div>
           <select
             value={role}
             onChange={(e) => setRole(e.target.value as RoleFilter)}
-            className="rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-blue-500"
+            className="cursor-pointer rounded-lg border border-slate-200 px-3 py-2 outline-none transition-colors focus:border-blue-500"
           >
             <option value="all">Tất cả vai trò</option>
             <option value="student">Student</option>
@@ -152,7 +217,7 @@ export function AdminUsersPage() {
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as StatusFilter)}
-            className="rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-blue-500"
+            className="cursor-pointer rounded-lg border border-slate-200 px-3 py-2 outline-none transition-colors focus:border-blue-500"
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="active">Active</option>
@@ -161,15 +226,122 @@ export function AdminUsersPage() {
         </div>
       </div>
 
+      {/* ── Bulk action toolbar (chỉ hiện khi có selection) ── */}
+      {selectedIds.size > 0 && (
+        <div
+          className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border-2 px-4 py-3"
+          style={{ background: "#EFF6FF", borderColor: "#BFDBFE" }}
+        >
+          <span className="text-sm font-semibold" style={{ color: "#1E40AF" }}>
+            Đã chọn {selectedIds.size} người dùng
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setPendingAction("lock")}
+              disabled={bulkBusy}
+              className="flex cursor-pointer items-center gap-1 rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-200 disabled:opacity-60"
+            >
+              <Lock className="h-3.5 w-3.5" /> Khoá
+            </button>
+            <button
+              onClick={() => setPendingAction("unlock")}
+              disabled={bulkBusy}
+              className="flex cursor-pointer items-center gap-1 rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-200 disabled:opacity-60"
+            >
+              <Unlock className="h-3.5 w-3.5" /> Mở khoá
+            </button>
+            <button
+              onClick={() => setPendingAction("change_role")}
+              disabled={bulkBusy}
+              className="flex cursor-pointer items-center gap-1 rounded-lg bg-blue-100 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-200 disabled:opacity-60"
+            >
+              <UserCog className="h-3.5 w-3.5" /> Đổi vai trò
+            </button>
+            <button
+              onClick={() => setPendingAction("delete")}
+              disabled={bulkBusy}
+              className="flex cursor-pointer items-center gap-1 rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-200 disabled:opacity-60"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Xoá
+            </button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="ml-2 flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-slate-500 hover:bg-white"
+            >
+              <X className="h-3.5 w-3.5" /> Bỏ chọn
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Confirm panel cho bulk action đang chờ ── */}
+      {pendingAction && (
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <span className="text-sm font-semibold text-amber-800">
+            Xác nhận: {pendingAction.replace("_", " ")} cho {selectedIds.size} user
+          </span>
+          {pendingAction === "change_role" && (
+            <select
+              value={pendingRole}
+              onChange={(e) => setPendingRole(e.target.value as "student" | "teacher" | "admin")}
+              className="cursor-pointer rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-sm"
+            >
+              <option value="student">student</option>
+              <option value="teacher">teacher</option>
+              <option value="admin">admin</option>
+            </select>
+          )}
+          <button
+            onClick={runBulkAction}
+            disabled={bulkBusy}
+            className="cursor-pointer rounded-lg bg-amber-600 px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-amber-700 disabled:opacity-60"
+          >
+            {bulkBusy ? "Đang xử lý..." : "Xác nhận"}
+          </button>
+          <button
+            onClick={() => setPendingAction(null)}
+            disabled={bulkBusy}
+            className="cursor-pointer rounded-lg px-3 py-1.5 text-sm text-amber-700 hover:bg-amber-100"
+          >
+            Huỷ
+          </button>
+        </div>
+      )}
+
+      {bulkResult && (
+        <div
+          className={`mb-3 rounded-lg px-4 py-2 text-sm ${
+            bulkResult.ok ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+          }`}
+        >
+          {bulkResult.msg}
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         {loading ? (
-          <div className="p-8 text-center text-slate-500">Đang tải dữ liệu...</div>
+          <AdminTableSkeleton rows={8} cols={6} />
         ) : error ? (
           <div className="p-8 text-center text-red-600">{error}</div>
         ) : (
           <table className="w-full min-w-[860px]">
             <thead className="bg-slate-50">
               <tr className="text-left text-xs uppercase tracking-wider text-slate-500">
+                <th className="w-10 px-4 py-3">
+                  <button
+                    onClick={toggleSelectAll}
+                    aria-label="Chọn tất cả"
+                    className="cursor-pointer text-slate-500 hover:text-blue-600"
+                  >
+                    {allSelected ? (
+                      <CheckSquare className="h-4 w-4" />
+                    ) : someSelected ? (
+                      <CheckSquare className="h-4 w-4 opacity-60" />
+                    ) : (
+                      <Square className="h-4 w-4" />
+                    )}
+                  </button>
+                </th>
                 <th className="px-4 py-3">ID</th>
                 <th className="px-4 py-3">Tên</th>
                 <th className="px-4 py-3">Điện thoại</th>
@@ -182,8 +354,23 @@ export function AdminUsersPage() {
               {filtered.map((u) => {
                 const id = displayId(u);
                 const isActive = displayStatus(u) === "active";
+                const checked = selectedIds.has(id);
                 return (
-                  <tr key={id} className="border-t border-slate-100">
+                  <tr
+                    key={id}
+                    className={`border-t border-slate-100 transition-colors ${
+                      checked ? "bg-blue-50/40" : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => toggleSelectOne(id)}
+                        aria-label={`Chọn user ${id}`}
+                        className="cursor-pointer text-slate-500 hover:text-blue-600"
+                      >
+                        {checked ? <CheckSquare className="h-4 w-4 text-blue-600" /> : <Square className="h-4 w-4" />}
+                      </button>
+                    </td>
                     <td className="px-4 py-3 text-sm text-slate-700">{id}</td>
                     <td className="px-4 py-3 font-medium text-slate-900">{displayName(u)}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{displayPhone(u)}</td>
@@ -201,7 +388,7 @@ export function AdminUsersPage() {
                       <button
                         onClick={() => onToggleLock(u)}
                         disabled={busyId === id}
-                        className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium ${
+                        className={`inline-flex cursor-pointer items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                           isActive
                             ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
                             : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
@@ -221,4 +408,3 @@ export function AdminUsersPage() {
     </div>
   );
 }
-

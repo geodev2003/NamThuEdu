@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
 import { adminApi } from "@/services/adminApi";
+import { AdminPageSkeleton } from "../components/AdminPageSkeleton";
 
 type RoleStats = Record<string, { active: number; inactive: number; total: number }>;
 
@@ -32,6 +33,7 @@ export function AdminDashboard() {
   const [examStats, setExamStats] = useState<Record<string, unknown> | null>(null);
   const [lockedUsers, setLockedUsers] = useState(0);
   const [trendsReport, setTrendsReport] = useState<Record<string, unknown> | null>(null);
+  const [systemHealth, setSystemHealth] = useState<Record<string, unknown> | null>(null);
   const [trafficPeriod, setTrafficPeriod] = useState<"7d" | "30d" | "90d">("7d");
   const [trafficData, setTrafficData] = useState<{ label: string; visits: number; users: number }[]>([]);
   const [trafficLoading, setTrafficLoading] = useState(false);
@@ -48,13 +50,14 @@ export function AdminDashboard() {
       try {
         setLoading(true);
         setError(null);
-        const [dashboardData, roleStatsData, contentStatsData, examStatsData, lockedUsersData, trendsData] = await Promise.all([
+        const [dashboardData, roleStatsData, contentStatsData, examStatsData, lockedUsersData, trendsData, healthData] = await Promise.all([
           adminApi.getDashboardReport(),
           adminApi.getRoleStatistics(),
           adminApi.getContentStatistics(),
           adminApi.getExamStatistics(),
           adminApi.getLockedUsers(),
           adminApi.getTrendsReport("30d"),
+          adminApi.getSystemHealth().catch(() => null),
         ]);
         setDashboard(dashboardData as unknown as Record<string, unknown>);
         setRoleStats(roleStatsData);
@@ -62,6 +65,7 @@ export function AdminDashboard() {
         setExamStats(examStatsData);
         setLockedUsers(lockedUsersData.length);
         setTrendsReport(trendsData);
+        setSystemHealth(healthData as unknown as Record<string, unknown> | null);
       } catch {
         setError(t(`${d}.loadError`));
       } finally {
@@ -197,24 +201,31 @@ export function AdminDashboard() {
 
   const serverMetrics = useMemo(
     () => {
-      const metrics = (trendsReport?.server_metrics as Record<string, unknown> | undefined) || {};
+      // Ưu tiên số đo thật từ /admin/system/health; fallback trends khi không có
+      const disk = (systemHealth?.disk as Record<string, unknown> | undefined);
+      const memory = (systemHealth?.memory as Record<string, unknown> | undefined);
+      const db = (systemHealth?.database as Record<string, unknown> | undefined);
+
+      const diskPct = Number(disk?.used_percent ?? 0);
+      const memPct  = Number(memory?.used_percent ?? 0);
+      const dbLatency = Number(db?.latency_ms ?? 0);
+      // DB latency 0–200ms map sang 0–100% để hiển thị thanh
+      const dbPct = Math.min(100, Math.round((dbLatency / 200) * 100));
+      const queuePending = Number((systemHealth?.queue as Record<string, unknown> | undefined)?.pending_jobs ?? 0);
+      // Queue 0–50 jobs map sang 0–100% (capped)
+      const queuePct = Math.min(100, Math.round((queuePending / 50) * 100));
+
       return [
-        { label: "CPU", val: Number(metrics.cpu ?? 0), icon: Cpu, color: "#10B981" },
-        { label: "RAM", val: Number(metrics.ram ?? 0), icon: Database, color: "#F59E0B" },
-        { label: "Disk", val: Number(metrics.disk ?? 0), icon: HardDrive, color: "#EF4444" },
-        { label: "Network", val: Number(metrics.network ?? 0), icon: Wifi, color: "#8B5CF6" },
+        { label: "Memory (PHP)", val: memPct,   icon: Cpu,      color: "#10B981", suffix: "%" },
+        { label: "DB latency",   val: dbPct,    icon: Database, color: "#F59E0B", suffix: `${dbLatency}ms` },
+        { label: "Disk",         val: diskPct,  icon: HardDrive, color: "#EF4444", suffix: "%" },
+        { label: "Queue",        val: queuePct, icon: Wifi,     color: "#8B5CF6", suffix: `${queuePending} jobs` },
       ];
     },
-    [trendsReport]
+    [systemHealth]
   );
 
-  if (loading) {
-    return (
-      <div className="min-h-screen p-6" style={{ background: "#F8FAFC" }}>
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">{t(`${d}.loading`)}</div>
-      </div>
-    );
-  }
+  if (loading) return <AdminPageSkeleton />;
 
   if (error) {
     return (
@@ -237,20 +248,21 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      {/* ── Stat cards ── */}
-      <div className="mb-5 grid grid-cols-4 gap-4">
+      {/* ── Stat cards (compact) ── */}
+      <div className="mb-5 grid grid-cols-4 gap-3">
         {cards.map((card) => (
-          <div key={card.label} className="rounded-2xl p-5 bg-white"
-            style={{ border: `1px solid ${card.border}`, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ background: `${card.color}15` }}>
-                <card.icon className="h-4.5 w-4.5" style={{ color: card.color }} />
-              </div>
-              <div className="w-2 h-2 rounded-full mt-1" style={{ background: card.color, opacity: 0.5 }} />
+          <div key={card.label} className="rounded-xl bg-white px-4 py-3 flex items-center gap-3"
+            style={{ border: `1px solid ${card.border}`, boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg flex-shrink-0" style={{ background: `${card.color}15` }}>
+              <card.icon className="h-5 w-5" style={{ color: card.color }} />
             </div>
-            <p style={{ fontSize: 28, fontWeight: 800, color: "#0F172A", lineHeight: 1 }}>{String(card.value)}</p>
-            <p style={{ fontSize: 12, color: "#64748B", marginTop: 4 }}>{card.label}</p>
-            <p style={{ fontSize: 11, color: "#10B981", marginTop: 5, fontWeight: 600 }}>{card.sub}</p>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-1.5">
+                <p style={{ fontSize: 22, fontWeight: 800, color: "#0F172A", lineHeight: 1 }}>{String(card.value)}</p>
+                <p className="truncate" style={{ fontSize: 11, color: "#10B981", fontWeight: 600 }}>{card.sub}</p>
+              </div>
+              <p className="truncate" style={{ fontSize: 12, color: "#64748B", marginTop: 3 }}>{card.label}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -486,13 +498,13 @@ export function AdminDashboard() {
 
       {/* ── Server metrics row ── */}
       <div className="mt-4 grid grid-cols-4 gap-4">
-        {serverMetrics.map(({ label, val, icon: Icon, color }) => (
+        {serverMetrics.map(({ label, val, icon: Icon, color, suffix }) => (
           <div key={label} className="rounded-2xl p-4 bg-white" style={{ border: "1px solid #E2E8F0", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `${color}15` }}>
                 <Icon className="h-4 w-4" style={{ color }} />
               </div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{val}%</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{suffix}</span>
             </div>
             <div className="h-1.5 rounded-full" style={{ background: "#F1F5F9" }}>
               <div className="h-1.5 rounded-full transition-all duration-700" style={{ width: `${val}%`, background: color }} />

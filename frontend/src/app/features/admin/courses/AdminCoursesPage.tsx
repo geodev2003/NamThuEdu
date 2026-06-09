@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { adminApi } from "@/services/adminApi";
+import { AdminStatsSkeleton } from "../components/AdminPageSkeleton";
 
 type CourseReport = {
   overview?: {
@@ -55,7 +56,7 @@ export function AdminCoursesPage() {
       </div>
 
       {loading ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">Đang tải dữ liệu...</div>
+        <AdminStatsSkeleton cards={4} />
       ) : error ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-red-600">{error}</div>
       ) : (

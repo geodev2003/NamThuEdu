@@ -21,6 +21,11 @@ export function formatDateTime(date: string | Date, locale: string = 'vi'): stri
 export function formatTimeAgo(date: string | Date, locale: string = 'vi'): string {
   const dateObj = typeof date === 'string' ? parseISO(date) : date;
   const localeObj = locale === 'vi' ? vi : enUS;
+  // Timestamp ở tương lai (do lệch timezone dữ liệu cũ) → coi như vừa xong,
+  // tránh hiển thị vô lý kiểu "khoảng 7 giờ nữa".
+  if (dateObj.getTime() > Date.now()) {
+    return locale === 'vi' ? 'vừa xong' : 'just now';
+  }
   return formatDistanceToNow(dateObj, { addSuffix: true, locale: localeObj });
 }
 
