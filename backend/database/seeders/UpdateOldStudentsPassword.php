@@ -3,39 +3,28 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
 
+/**
+ * @deprecated 2026-06 — This seeder previously populated the `plain_password`
+ * column on legacy student rows so teachers could view raw passwords. The
+ * column has been dropped (OWASP A02 — Cryptographic Failures: storing
+ * recoverable passwords on disk is unsafe even when encrypted with the
+ * application key, since a single-key compromise yields every password in
+ * cleartext). Kept as a stub so any historical references resolve, but it
+ * is intentionally a no-op. Safe to delete in a follow-up cleanup once we
+ * confirm nothing in CI/local workflows still calls it.
+ */
 class UpdateOldStudentsPassword extends Seeder
 {
-    /**
-     * Run the database seeds.
-     * 
-     * This seeder updates old students (created before plain_password feature)
-     * with a default password so teachers can view their passwords.
-     */
     public function run(): void
     {
-        $defaultPassword = '123456'; // Default password for old students
-        
-        // Find all students without plain_password
-        $oldStudents = User::where('uRole', 'student')
-                          ->whereNull('plain_password')
-                          ->whereNull('uDeleted_at')
-                          ->get();
-
-        $count = 0;
-        foreach ($oldStudents as $student) {
-            // Update both hashed password and encrypted plain password
-            $student->update([
-                'uPassword' => Hash::make($defaultPassword),
-                'plain_password' => encrypt($defaultPassword)
-            ]);
-            $count++;
+        if (isset($this->command)) {
+            $this->command->warn(
+                'UpdateOldStudentsPassword is deprecated and now a no-op. '
+                . 'The plain_password column has been removed for security. '
+                . 'Use the admin "reset password" flow to issue new credentials '
+                . 'and surface them once to the teacher.'
+            );
         }
-
-        $this->command->info("Updated {$count} old students with default password: {$defaultPassword}");
-        $this->command->info("Teachers can now view these passwords in the system.");
-        $this->command->warn("IMPORTANT: Inform students to change their passwords after first login!");
     }
 }

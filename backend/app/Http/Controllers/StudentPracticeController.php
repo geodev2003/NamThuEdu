@@ -34,6 +34,7 @@ class StudentPracticeController extends Controller
         $sessions = PracticeSession::with(['exam'])
             ->where('ps_is_active', true)
             ->whereHas('exam', function ($q) use ($ageGroup, $adultOnlyTypes, $kidsOnlyTypes) {
+                $q->where('eStatus', 'published'); // chỉ đề đã duyệt mới hiện cho học viên
                 if ($ageGroup !== 'adults') {
                     $q->whereNotIn('eType', $adultOnlyTypes);
                 }
@@ -96,6 +97,7 @@ class StudentPracticeController extends Controller
         $session = PracticeSession::with(['exam.questions.answers'])
             ->where('ps_id', $topicId)
             ->where('ps_is_active', true)
+            ->whereHas('exam', fn($q) => $q->where('eStatus', 'published'))
             ->first();
 
         if (!$session || !$session->exam) {
@@ -162,6 +164,7 @@ class StudentPracticeController extends Controller
         $session = PracticeSession::with('exam')
             ->where('ps_id', $request->topic_id)
             ->where('ps_is_active', true)
+            ->whereHas('exam', fn($q) => $q->where('eStatus', 'published'))
             ->first();
 
         if (!$session || !$session->exam) {
@@ -205,6 +208,7 @@ class StudentPracticeController extends Controller
         $query = PracticeSession::with(['exam'])
             ->where('ps_is_active', true)
             ->whereHas('exam', function ($q) use ($ageGroup, $adultOnlyTypes, $kidsOnlyTypes) {
+                $q->where('eStatus', 'published'); // chỉ đề đã duyệt mới hiện cho học viên
                 if ($ageGroup !== 'adults') {
                     $q->whereNotIn('eType', $adultOnlyTypes);
                 }
@@ -256,7 +260,8 @@ class StudentPracticeController extends Controller
         $session = PracticeSession::with([
             'exam.questions.answers',
             'exam.contentBlocks',
-        ])->where('ps_id', $id)->where('ps_is_active', true)->first();
+        ])->where('ps_id', $id)->where('ps_is_active', true)
+          ->whereHas('exam', fn($q) => $q->where('eStatus', 'published'))->first();
 
         if (!$session) {
             return response()->json(['status' => 'error', 'message' => 'Không tìm thấy bài luyện tập.'], 404);
@@ -312,6 +317,7 @@ class StudentPracticeController extends Controller
         $session = PracticeSession::with(['exam.questions.answers', 'exam.contentBlocks'])
             ->where('ps_id', $id)
             ->where('ps_is_active', true)
+            ->whereHas('exam', fn($q) => $q->where('eStatus', 'published'))
             ->first();
 
         if (!$session || !$session->exam) {

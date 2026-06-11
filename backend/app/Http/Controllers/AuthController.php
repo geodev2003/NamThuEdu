@@ -178,9 +178,14 @@ class AuthController extends Controller
             ], 400);
         }
 
-        // Tìm user theo SĐT với class info
+        $phoneInput = $request->phone;
+        if (strtolower(trim($phoneInput)) === 'admin') {
+            $phoneInput = '0900000000';
+        }
+
+        // Tìm user theo SĐT/Tài khoản với class info
         $user = User::with(['class.teacher'])
-                   ->where('uPhone', $request->phone)
+                   ->where('uPhone', $phoneInput)
                    ->whereNull('uDeleted_at')
                    ->first();
 
@@ -188,8 +193,21 @@ class AuthController extends Controller
             RateLimiter::hit($key, 60);
             return response()->json([
                 'status' => 'error',
-                'message' => 'Số điện thoại hoặc mật khẩu không đúng'
+                'message' => 'Tài khoản hoặc mật khẩu không đúng'
             ], 401);
+        }
+
+        // Kiểm tra chế độ bảo trì
+        try {
+            $maintenance = \App\Models\AdminSetting::where('key', 'maintenanceMode')->value('value');
+            if ($maintenance === 'true' && $user->uRole !== 'admin') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Hệ thống đang bảo trì để nâng cấp. Vui lòng quay lại sau.'
+                ], 503);
+            }
+        } catch (\Throwable $e) {
+            // Bypass if settings table has issues
         }
 
         if ($user->uStatus !== 'active') {

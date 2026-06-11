@@ -592,11 +592,12 @@ class IELTSService
      */
     private static function updateExamMetadata(Exam $exam, string $testType, array $data): void
     {
+        $moderationStatus = Exam::resolveModerationStatus();
         $exam->update([
             'ielts_test_type' => $testType,
             'ielts_config'    => $data,
-            'eStatus'         => 'published',
-            'eIs_private'     => false,
+            'eStatus'         => $moderationStatus,
+            'eIs_private'     => $moderationStatus !== 'published',
         ]);
     }
 
@@ -830,6 +831,10 @@ class IELTSService
             // Optional shared task metadata (for grouped questions in IELTS Listening/Reading)
             $taskTitle = (string) ($qVal['taskTitle'] ?? '');
             $taskInstruction = (string) ($qVal['taskInstruction'] ?? '');
+            // IELTS-specific: giới hạn từ (completion) + số đáp án cần chọn (Choose TWO…)
+            $wordLimit = (string) ($qVal['wordLimit'] ?? '');
+            $selectCount = (int) ($qVal['selectCount'] ?? 1);
+            $useWordBank = (bool) ($qVal['useWordBank'] ?? false);
 
             $question = Question::create([
                 'exam_id'          => $exam->eId,
@@ -848,6 +853,9 @@ class IELTSService
                     'section_title'    => $sectionTitle !== '' ? $sectionTitle : null,
                     'task_title'       => $taskTitle !== '' ? $taskTitle : null,
                     'task_instruction' => $taskInstruction !== '' ? $taskInstruction : null,
+                    'word_limit'       => $wordLimit !== '' ? $wordLimit : null,
+                    'select_count'     => $selectCount > 1 ? $selectCount : null,
+                    'use_word_bank'    => $useWordBank ? true : null,
                 ], fn ($v) => $v !== null),
             ]);
 
@@ -866,6 +874,16 @@ class IELTSService
         $options,
         string $correctAnswer
     ): void {
+        // Multi-select MCQ ("A,C") → 1 row gộp, chấm theo tập hợp ở gradeAnswers.
+        if ($qType === 'multiple_choice' && strpos($correctAnswer, ',') !== false) {
+            Answer::create([
+                'question_id' => $question->qId,
+                'aContent'    => strtoupper(str_replace(' ', '', $correctAnswer)),
+                'aIs_correct' => true,
+            ]);
+            return;
+        }
+
         if ($qType === 'multiple_choice' && is_array($options)) {
             foreach (self::MCQ_LETTERS as $idx => $letter) {
                 Answer::create([

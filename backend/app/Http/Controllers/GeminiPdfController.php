@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Log;
 class GeminiPdfController extends Controller
 {
     private $apiKey;
+    private $apiKeys = [];
     private $uploadBaseUrl = 'https://generativelanguage.googleapis.com/upload/v1beta/files';
     private $generateUrl   = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
@@ -40,10 +41,24 @@ class GeminiPdfController extends Controller
     public function __construct()
     {
         $this->apiKey = config('services.gemini.api_key');
+
+        // Danh sách key để xoay vòng. Fallback về key đơn nếu chưa cấu hình mảng.
+        $keys = config('services.gemini.api_keys', []);
+        if (empty($keys) && !empty($this->apiKey)) {
+            $keys = [$this->apiKey];
+        }
+        $this->apiKeys = array_values(array_unique(array_filter($keys)));
     }
 
     public function parsePdf(Request $request)
     {
+        // PDF parsing qua Gemini (upload + generateContent + retry/fallback nhiều model)
+        // có thể vượt 60s. PHP mặc định kill script ở max_execution_time=60s → fatal error
+        // trả 500 KHÔNG kèm header CORS, khiến browser báo nhầm thành "CORS policy".
+        // Nâng giới hạn lên 180s để request chạy trọn vẹn. HTTP client timeout vẫn là chốt chặn.
+        @set_time_limit(180);
+        @ini_set('max_execution_time', '180');
+
         // Validate
         $request->validate([
             'file'      => 'required|file|mimes:pdf|max:20480', // 20MB max
@@ -51,7 +66,7 @@ class GeminiPdfController extends Controller
             'test_type' => 'required|in:Academic,General Training',
         ]);
 
-        if (empty($this->apiKey) || $this->apiKey === 'PASTE_YOUR_NEW_KEY_HERE') {
+        if (empty($this->apiKeys)) {
             return response()->json([
                 'success' => false,
                 'message' => 'GEMINI_API_KEY chưa được cấu hình trong .env backend.',
@@ -61,30 +76,70 @@ class GeminiPdfController extends Controller
         $file     = $request->file('file');
         $skill    = $request->input('skill');
         $testType = $request->input('test_type');
+        $prompt   = $this->buildPrompt($skill, $testType);
 
-        try {
-            // Step 1: Upload file lên Gemini Files API
-            $fileUri = $this->uploadToGemini($file);
+        $lastError = '';
+        $totalKeys = count($this->apiKeys);
 
-            // Step 2: Gọi generateContent với file URI + prompt
-            $prompt  = $this->buildPrompt($skill, $testType);
-            $result  = $this->generateContent($fileUri, $prompt);
+        // Xoay vòng từng key: key nào hết quota / rate-limit / sai → thử key kế tiếp.
+        foreach ($this->apiKeys as $idx => $apiKey) {
+            try {
+                // Step 1: Upload file lên Gemini Files API
+                $fileUri = $this->uploadToGemini($file, $apiKey);
 
-            // Step 3: Post-process — merge sections trùng sectionNumber
-            $result = $this->postProcess($result, $skill);
+                // Step 2: Gọi generateContent với file URI + prompt
+                $result  = $this->generateContent($fileUri, $prompt, $apiKey);
 
-            return response()->json([
-                'success' => true,
-                'data'    => $result,
-            ]);
+                // Step 3: Post-process — merge sections trùng sectionNumber
+                $result = $this->postProcess($result, $skill);
 
-        } catch (\Exception $e) {
-            Log::error('Gemini PDF parse error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
+                return response()->json([
+                    'success' => true,
+                    'data'    => $result,
+                ]);
+
+            } catch (\Exception $e) {
+                $lastError = $e->getMessage();
+                $keyNo = $idx + 1;
+
+                // Lỗi có thể khắc phục bằng key khác → xoay vòng.
+                if ($this->shouldRotateKey($lastError) && $keyNo < $totalKeys) {
+                    Log::warning("Gemini key #{$keyNo} lỗi ({$lastError}) — xoay sang key #" . ($keyNo + 1));
+                    continue;
+                }
+
+                // Lỗi không liên quan tới key (hoặc đã hết key) → dừng.
+                Log::error('Gemini PDF parse error: ' . $lastError);
+                break;
+            }
         }
+
+        return response()->json([
+            'success' => false,
+            'message' => $lastError ?: 'Gemini parse thất bại.',
+        ], 500);
+    }
+
+    /**
+     * Phát hiện lỗi có nên xoay sang key Gemini khác không.
+     * Áp dụng cho: hết quota (429), key sai/không hợp lệ (401/403/400 API key),
+     * quá tải (503), billing/permission.
+     */
+    private function shouldRotateKey(string $error): bool
+    {
+        $needle = strtolower($error);
+        $patterns = [
+            'quota', 'rate limit', 'rate-limit', 'resource_exhausted', '429',
+            'api key not valid', 'api_key_invalid', 'invalid api key', 'permission',
+            'permission_denied', '403', '401', 'unauthenticated', 'billing',
+            'overloaded', 'unavailable', '503',
+        ];
+        foreach ($patterns as $p) {
+            if (strpos($needle, $p) !== false) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -132,6 +187,15 @@ class GeminiPdfController extends Controller
             if (!is_array($answers)) {
                 throw new \Exception('Groq trả về cấu trúc answers không hợp lệ.');
             }
+
+            // Lưới an toàn: chuẩn hoá cách đọc số kiểu IELTS (double/triple/oh)
+            // phòng khi LLM chép nguyên "triple 5" thay vì "555".
+            foreach ($answers as &$ans) {
+                if (isset($ans['answer']) && is_string($ans['answer'])) {
+                    $ans['answer'] = $this->normalizeSpokenNumber($ans['answer']);
+                }
+            }
+            unset($ans);
 
             return response()->json([
                 'success' => true,
@@ -181,6 +245,15 @@ Rules:
 5. If you cannot find the answer in the {$skillLabel}, return empty string '' for that question (do NOT guess wildly).
 6. Provide a 'confidence' value: 'high' | 'medium' | 'low' for each answer.
 7. Keep numbers as digits (e.g., '5', '1990', not 'five').
+7b. CRITICAL — IELTS spoken number conventions. When the speaker spells out numbers (phone numbers, postcodes, reference codes, room numbers), CONVERT spoken patterns into the actual digit string:
+   - 'double X' = XX (e.g. 'double five' → '55', 'double oh' → '00')
+   - 'triple X' = XXX (e.g. 'triple five' → '555', 'triple seven' → '777')
+   - 'oh' or 'o' spoken as a digit = '0'
+   - Concatenate a sequence of spoken single digits into ONE continuous number with NO spaces and NO words.
+     EXAMPLE: transcript 'nine four six three triple five oh' → answer '9463555 0' is WRONG → correct answer = '94635550'
+     EXAMPLE: 'double two seven' → '227'
+     EXAMPLE: 'one nine nine oh' → '1990'
+   - NEVER leave the words 'double', 'triple', 'oh' in the answer. They are pronunciation aids, not part of the answer.
 8. Keep words lowercase unless they're proper nouns.
 
 Return ONLY valid JSON in this exact format:
@@ -198,6 +271,80 @@ Return ONLY valid JSON in this exact format:
 
 Questions:
 {$questionsBlock}";
+    }
+
+    /**
+     * Chuẩn hoá cách đọc số kiểu IELTS thành chuỗi chữ số thực tế.
+     * Xử lý: 'double X' → XX, 'triple X' → XXX, 'oh'/'o' → 0, và nối các
+     * token số đứng liền (số điện thoại / postcode) thành 1 chuỗi liền mạch.
+     *
+     * Ví dụ:
+     *   'triple 5 0'            → '5550'
+     *   '9 4 6 3 triple 5 0'    → '94635550'
+     *   'double two seven'      → '227'
+     *   'Clark House'           → 'Clark House' (giữ nguyên — không phải số)
+     *   '10 15'                 → '10 15' (giữ nguyên — không có dấu hiệu spelled-out)
+     */
+    private function normalizeSpokenNumber(string $answer): string
+    {
+        $trimmed = trim($answer);
+        if ($trimmed === '') {
+            return $answer;
+        }
+
+        $numberWords = [
+            'zero' => '0', 'one' => '1', 'two' => '2', 'three' => '3', 'four' => '4',
+            'five' => '5', 'six' => '6', 'seven' => '7', 'eight' => '8', 'nine' => '9',
+            'oh' => '0', 'o' => '0',
+        ];
+
+        $tokens = preg_split('/\s+/', $trimmed);
+        $out = [];
+        $converted = false;
+        $count = count($tokens);
+
+        for ($i = 0; $i < $count; $i++) {
+            $tok = $tokens[$i];
+            $low = strtolower($tok);
+
+            // 'double'/'triple' + token số kế tiếp → lặp chữ số
+            if (($low === 'double' || $low === 'triple') && $i + 1 < $count) {
+                $nextLow = strtolower($tokens[$i + 1]);
+                $digit = null;
+                if (preg_match('/^\d$/', $nextLow)) {
+                    $digit = $nextLow;
+                } elseif (isset($numberWords[$nextLow])) {
+                    $digit = $numberWords[$nextLow];
+                }
+                if ($digit !== null) {
+                    $out[] = str_repeat($digit, $low === 'double' ? 2 : 3);
+                    $converted = true;
+                    $i++; // bỏ qua token số đã gộp
+                    continue;
+                }
+            }
+
+            // Số viết bằng chữ → chữ số
+            if (isset($numberWords[$low])) {
+                $out[] = $numberWords[$low];
+                $converted = true;
+                continue;
+            }
+
+            $out[] = $tok;
+        }
+
+        // Nối liền khi mọi token đều là chữ số VÀ có dấu hiệu spelled-out
+        // (đã quy đổi double/triple/chữ, hoặc có >=2 token chữ số đơn lẻ).
+        $allDigits = count($out) > 0
+            && count(array_filter($out, fn($t) => !preg_match('/^\d+$/', $t))) === 0;
+        $singleDigitCount = count(array_filter($out, fn($t) => preg_match('/^\d$/', $t)));
+
+        if ($allDigits && ($converted || $singleDigitCount >= 2)) {
+            return implode('', $out);
+        }
+
+        return implode(' ', $out);
     }
 
     /**
@@ -500,23 +647,83 @@ Transcript to analyze:
                         $existing[] = $q['questionNumber'] ?? -1;
                     }
                 }
+
+                // READING fix: Gemini hay tách 1 passage thành nhiều object cùng
+                // passageNumber — 1 cục chứa dòng "You should spend about 20 minutes…"
+                // (instruction, body ngắn), 1 cục chứa bài đọc thật (body dài). Trước
+                // đây ta giữ object ĐẦU TIÊN → mất bài đọc. Giờ luôn ưu tiên body DÀI
+                // NHẤT và không phải instruction.
+                if (isset($item['body'])) {
+                    $curBody  = (string) ($grouped[$num]['body'] ?? '');
+                    $newBody  = (string) $item['body'];
+                    if ($this->isBetterPassageBody($newBody, $curBody)) {
+                        $grouped[$num]['body'] = $newBody;
+                        if (isset($item['wordCount'])) {
+                            $grouped[$num]['wordCount'] = $item['wordCount'];
+                        }
+                    }
+                }
+                // Title: ưu tiên title thật (không rỗng, không phải dòng instruction).
+                if (isset($item['title'])) {
+                    $curTitle = (string) ($grouped[$num]['title'] ?? '');
+                    $newTitle = (string) $item['title'];
+                    if ($this->isBetterPassageTitle($newTitle, $curTitle)) {
+                        $grouped[$num]['title'] = $newTitle;
+                    }
+                }
             }
         }
-        // Sort by number, sort questions inside by questionNumber
+        // Sort by number, sort questions inside by questionNumber; dọn body cuối cùng.
         ksort($grouped);
         $result = [];
         foreach ($grouped as $g) {
             usort($g[$childKey], fn($a, $b) => ($a['questionNumber'] ?? 0) <=> ($b['questionNumber'] ?? 0));
+            if (isset($g['body'])) {
+                $g['body'] = $this->stripPassageInstructions((string) $g['body']);
+            }
             $result[] = $g;
         }
         return $result;
+    }
+
+    /** Dòng "You should spend about X minutes on Questions…" là instruction, không phải bài đọc. */
+    private function isInstructionLine(string $text): bool
+    {
+        return (bool) preg_match('/you should spend about\s+\d+\s+minutes/i', $text);
+    }
+
+    /** body mới có "tốt hơn" body hiện tại không (dài hơn & không phải pure instruction). */
+    private function isBetterPassageBody(string $new, string $cur): bool
+    {
+        $newClean = $this->stripPassageInstructions($new);
+        $curClean = $this->stripPassageInstructions($cur);
+        // Nếu cur rỗng sau khi bỏ instruction → new luôn tốt hơn (miễn có nội dung).
+        if (trim($curClean) === '') return trim($newClean) !== '';
+        return mb_strlen($newClean) > mb_strlen($curClean);
+    }
+
+    /** title mới tốt hơn? Ưu tiên non-empty & không phải dòng instruction. */
+    private function isBetterPassageTitle(string $new, string $cur): bool
+    {
+        $new = trim($new);
+        if ($new === '' || $this->isInstructionLine($new)) return false;
+        if (trim($cur) === '' || $this->isInstructionLine($cur)) return true;
+        return false; // cur đã hợp lệ → giữ
+    }
+
+    /** Bỏ các dòng "You should spend about…" lẫn trong body bài đọc. */
+    private function stripPassageInstructions(string $body): string
+    {
+        $lines = preg_split('/\r\n|\r|\n/', $body);
+        $kept = array_filter($lines, fn($l) => !$this->isInstructionLine($l));
+        return trim(implode("\n", $kept));
     }
 
     /**
      * Upload file PDF lên Gemini Files API
      * Trả về URI của file để dùng trong generateContent
      */
-    private function uploadToGemini($file): string
+    private function uploadToGemini($file, string $apiKey): string
     {
         $fileSize    = $file->getSize();
         $mimeType    = 'application/pdf';
@@ -531,7 +738,7 @@ Transcript to analyze:
                 'X-Goog-Upload-Header-Content-Length' => $fileSize,
                 'X-Goog-Upload-Header-Content-Type'   => $mimeType,
                 'Content-Type'           => 'application/json',
-            ])->post($this->uploadBaseUrl . '?key=' . $this->apiKey, [
+            ])->post($this->uploadBaseUrl . '?key=' . $apiKey, [
                 'file' => ['display_name' => $displayName],
             ]);
 
@@ -570,7 +777,7 @@ Transcript to analyze:
     /**
      * Gọi Gemini generateContent với file đã upload + prompt
      */
-    private function generateContent(string $fileUri, string $prompt): array
+    private function generateContent(string $fileUri, string $prompt, string $apiKey): array
     {
         $verifySsl = app()->environment('production');
 
@@ -599,7 +806,7 @@ Transcript to analyze:
 
         // Thử lần lượt từng model; mỗi model retry tối đa 3 lần với backoff khi gặp 503/429
         foreach ($this->modelFallbacks as $model) {
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . $this->apiKey;
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . $apiKey;
 
             for ($attempt = 1; $attempt <= 3; $attempt++) {
                 try {
@@ -744,37 +951,30 @@ CRITICAL RULES — READ CAREFULLY:
 
 REMEMBER: questionText must be UNIQUE per question and contain the actual context around the blank. NEVER use the same generic instruction text for multiple questions.",
 
-            'reading' => "Extract all IELTS {$testType} Reading questions from this PDF.
+            'reading' => "Extract ONLY the reading passages from this IELTS {$testType} Reading PDF. DO NOT extract questions.
 Return ONLY valid JSON:
 {
   \"passages\": [
     {
       \"passageNumber\": 1,
-      \"title\": \"passage title\",
-      \"body\": \"full passage text\",
+      \"title\": \"the real passage title\",
+      \"body\": \"the full clean passage text\",
       \"wordCount\": 800,
-      \"questions\": [
-        {
-          \"questionNumber\": 1,
-          \"questionType\": \"true-false-not-given\",
-          \"questionText\": \"question text\",
-          \"correctAnswer\": \"\"
-        }
-      ]
+      \"questions\": []
     }
   ]
 }
 
-CRITICAL RULES:
-- Return EXACTLY 3 passages (passageNumber 1, 2, 3) — DO NOT split a passage into multiple objects.
-  All questions of Passage 1 (Q1-13 typically) must be in passageNumber=1.
-  All questions of Passage 2 (Q14-26) must be in passageNumber=2.
-  All questions of Passage 3 (Q27-40) must be in passageNumber=3.
-- Include the COMPLETE passage body text (do not truncate).
-- questionType values: multiple-choice | true-false-not-given | yes-no-not-given | matching-headings | matching-information | matching-features | sentence-completion | summary-completion | short-answer | flow-chart-completion
-- For multiple-choice, fill options A/B/C/D as object: {\"A\":\"...\",\"B\":\"...\",\"C\":\"...\",\"D\":\"...\"}
-- For non-MCQ types, OMIT the options field entirely.
-- Leave correctAnswer as empty string '' if not in PDF.",
+CRITICAL RULES — PASSAGES ONLY:
+- Return EXACTLY 3 passages (passageNumber 1, 2, 3) — DO NOT split a passage into multiple objects, and DO NOT create extra objects for instructions or question lists.
+- title = the REAL heading/title of the passage (e.g. 'Making time for science').
+  ★ NEVER use 'You should spend about 20 minutes on Questions 1-13...' as the title. That line is an instruction, NOT a title — strip it entirely.
+  ★ If no explicit title exists, infer a short topic title from the content.
+- body = the COMPLETE passage reading text ONLY.
+  ★ Strip out everything that is NOT the passage prose: the 'You should spend about...' instruction, 'Questions N-M' headings, the entire question list, answer options, TRUE/FALSE/NOT GIVEN lists, matching lists, page footers/headers and copyright lines.
+  ★ Keep all paragraphs of the passage intact and in order. Do NOT truncate or summarise.
+- wordCount = approximate number of words in body.
+- questions = ALWAYS an empty array []. The teacher will add questions manually in the editor. DO NOT attempt to extract any questions.",
 
             'writing' => "Extract all IELTS {$testType} Writing tasks from this PDF.
 Return ONLY valid JSON:

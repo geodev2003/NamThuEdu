@@ -691,9 +691,11 @@ class StudentTestController extends Controller
         }
 
         // For VSTEP/IELTS exams: only gate on MCQ questions (writing/speaking are manually graded)
+        // Kids (STARTERS/MOVERS/FLYERS): cũng dùng cổng mềm vì có phần nói/viết chấm tay
         $isVstep = in_array(strtoupper($submission->exam->eType ?? ''), ['VSTEP', 'IELTS']);
+        $isKidsExam = in_array(strtoupper($submission->exam->eType ?? ''), ['STARTERS', 'MOVERS', 'FLYERS']);
         $subjectiveTypes = ['essay', 'writing', 'speaking'];
-        if ($isVstep) {
+        if ($isVstep || $isKidsExam) {
             $mcqQuestions = $submission->exam->questions->filter(function ($q) use ($subjectiveTypes) {
                 return !in_array(strtolower($q->qType ?? ''), $subjectiveTypes)
                     && !in_array(strtolower($q->qSection ?? ''), ['writing', 'speaking']);
@@ -1314,6 +1316,7 @@ class StudentTestController extends Controller
                     'qPoints' => $question->qPoints,
                     'qExplanation' => $question->qExplanation,
                     'qSection' => $question->qSection,
+                    'kids_task_config' => $question->kids_task_config,
                 ],
                 'student_answer' => $studentAnswer ? [
                     'saAnswer_text' => $studentAnswer->saAnswer_text,
@@ -2258,9 +2261,201 @@ class StudentTestController extends Controller
         return function_exists('mb_strtolower') ? mb_strtolower($normalized, 'UTF-8') : strtolower($normalized);
     }
 
+    /**
+     * Tách 1 đáp án thành tập hợp token (cho dạng "Choose TWO letters").
+     * "A,C" / "A, C" / "AC" → ['a','c'] (đã sort, unique).
+     */
+    private function answerSet($value): array
+    {
+        $norm = $this->normalizeAnswer($value);
+        if ($norm === '') return [];
+        // Hỗ trợ "a,c" | "a c" | "a;c" | "ac" (chuỗi chữ cái liền)
+        if (preg_match('/^[a-h]{2,}$/', $norm)) {
+            $parts = str_split($norm);
+        } else {
+            $parts = preg_split('/[\s,;]+/', $norm);
+        }
+        $parts = array_values(array_unique(array_filter(array_map('trim', $parts), fn($p) => $p !== '')));
+        sort($parts);
+        return $parts;
+    }
+
+    /**
+     * So đáp án học viên với đáp án đúng.
+     *  • Biến thể: "twentieth/20th" hoặc "color|colour" → chấp nhận bất kỳ biến thể.
+     *  • Multi-select: "A,C" → so sánh như tập hợp không thứ tự.
+     */
     private function isCorrectAnswer($studentAnswer, $correctAnswer)
     {
-        return $this->normalizeAnswer($studentAnswer) === $this->normalizeAnswer($correctAnswer);
+        $student = $this->normalizeAnswer($studentAnswer);
+        $correct = (string) $correctAnswer;
+
+        // Multi-select: chỉ kích hoạt khi đáp án đúng có >1 token.
+        $correctSet = $this->answerSet($correct);
+        if (count($correctSet) > 1) {
+            return $this->answerSet($studentAnswer) === $correctSet;
+        }
+
+        // Biến thể đáp án (chuẩn IELTS dùng "/" để ngăn cách lựa chọn thay thế).
+        $variants = preg_split('/\s*[\/|]\s*/', $correct);
+        foreach ($variants as $variant) {
+            if ($this->normalizeAnswer($variant) === $student && $student !== '') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Chấm 1 kids task. Đáp án đúng nằm trong kids_task_config.task_data.
+     * $rawAnswer là chuỗi JSON map (vd {"1":"go","2":"is"}) do player gói lại.
+     *
+     * Trả về: ['manual' => bool, 'ratio' => float 0..1]
+     *  - manual=true: dạng nói / viết tự do → để giáo viên chấm tay.
+     *  - ratio: tỉ lệ ô con đúng (chấm từng phần).
+     */
+    private function gradeKidsTask($question, $rawAnswer): array
+    {
+        $config   = $question->kids_task_config ?? [];
+        $taskType = $config['task_type'] ?? '';
+        $data     = $config['task_data'] ?? [];
+
+        // Parse JSON map đáp án học viên
+        $map = [];
+        $trimmed = trim((string) $rawAnswer);
+        if ($trimmed !== '' && strncmp($trimmed, '{', 1) === 0) {
+            $decoded = json_decode($trimmed, true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $k => $v) {
+                    $map[(string) $k] = (string) $v;
+                }
+            }
+        } elseif ($trimmed !== '') {
+            $map['0'] = $trimmed;
+        }
+
+        $eq = function ($a, $b) {
+            $na = $this->normalizeAnswer((string) $a);
+            $nb = $this->normalizeAnswer((string) $b);
+            return $na !== '' && $na === $nb;
+        };
+
+        switch ($taskType) {
+            case 'odd_one_out': {
+                $correct = (string) ($data['correct_odd_one'] ?? '');
+                $got = $map['0'] ?? '';
+                return ['manual' => false, 'ratio' => ($got !== '' && $got === $correct) ? 1.0 : 0.0];
+            }
+            case 'word_definition_matching': {
+                $words = $data['words'] ?? [];
+                $n = count($words);
+                if ($n === 0) return ['manual' => false, 'ratio' => 0.0];
+                $correct = 0;
+                for ($i = 0; $i < $n; $i++) {
+                    // Player lưu nhãn chữ (A,B,C…); định nghĩa đúng của từ i mang nhãn chr(65+i)
+                    if (($map[(string) $i] ?? '') === chr(65 + $i)) $correct++;
+                }
+                return ['manual' => false, 'ratio' => $correct / $n];
+            }
+            case 'dialogue_matching': {
+                $dialogues = $data['dialogues'] ?? [];
+                $n = count($dialogues);
+                if ($n === 0) return ['manual' => false, 'ratio' => 0.0];
+                $correct = 0;
+                foreach ($dialogues as $i => $d) {
+                    if (($map[(string) $i] ?? '') === (string) ($d['correct_answer'] ?? '')) $correct++;
+                }
+                return ['manual' => false, 'ratio' => $correct / $n];
+            }
+            case 'listening_letter_match': {
+                // Player lọc bỏ subject ví dụ rồi đánh index từ 0 → grader làm y hệt
+                $subjects = array_values(array_filter(
+                    $data['subjects'] ?? [],
+                    fn($s) => empty($s['is_example']) && empty($s['isExample'])
+                ));
+                $n = count($subjects);
+                if ($n === 0) return ['manual' => false, 'ratio' => 0.0];
+                $correct = 0;
+                foreach ($subjects as $i => $s) {
+                    $expected = (string) ($s['correct_letter'] ?? $s['correctLetter'] ?? '');
+                    if (($map[(string) $i] ?? '') === $expected && $expected !== '') $correct++;
+                }
+                return ['manual' => false, 'ratio' => $correct / $n];
+            }
+            case 'cloze_test': {
+                $gaps = $data['gaps'] ?? [];
+                $items = 0; $correct = 0;
+                foreach ($gaps as $g) {
+                    $items++;
+                    $key = (string) ($g['gap_id'] ?? '');
+                    if ($eq($map[$key] ?? '', $g['correct_answer'] ?? '')) $correct++;
+                }
+                if (!empty($data['story_title_question'])) {
+                    $items++;
+                    if ($eq($map['title'] ?? '', $data['story_title_question']['correct_answer'] ?? '')) $correct++;
+                }
+                if ($items === 0) return ['manual' => false, 'ratio' => 0.0];
+                return ['manual' => false, 'ratio' => $correct / $items];
+            }
+            case 'open_cloze': {
+                $gaps = $data['gaps'] ?? [];
+                $n = count($gaps);
+                if ($n === 0) return ['manual' => false, 'ratio' => 0.0];
+                $correct = 0;
+                foreach ($gaps as $g) {
+                    $key = (string) ($g['gap_id'] ?? '');
+                    $studentN = $this->normalizeAnswer($map[$key] ?? '');
+                    foreach (($g['correct_answers'] ?? []) as $acc) {
+                        if ($studentN !== '' && $this->normalizeAnswer($acc) === $studentN) { $correct++; break; }
+                    }
+                }
+                return ['manual' => false, 'ratio' => $correct / $n];
+            }
+            case 'story_completion': {
+                $sentences = $data['completion_sentences'] ?? [];
+                $n = count($sentences);
+                if ($n === 0) return ['manual' => false, 'ratio' => 0.0];
+                $correct = 0;
+                foreach ($sentences as $i => $s) {
+                    if ($eq($map[(string) $i] ?? '', $s['correct_answer'] ?? '')) $correct++;
+                }
+                return ['manual' => false, 'ratio' => $correct / $n];
+            }
+            case 'unscramble_words': {
+                $items = array_values(array_filter($data['items'] ?? [], fn($it) => empty($it['isExample'])));
+                $n = count($items);
+                if ($n === 0) return ['manual' => false, 'ratio' => 0.0];
+                $correct = 0;
+                foreach ($items as $i => $it) {
+                    if ($eq($map[(string) $i] ?? '', $it['correct_answer'] ?? '')) $correct++;
+                }
+                return ['manual' => false, 'ratio' => $correct / $n];
+            }
+            case 'word_bank_fill': {
+                $gaps = array_values(array_filter($data['gaps'] ?? [], fn($g) => empty($g['isExample'])));
+                $n = count($gaps);
+                if ($n === 0) return ['manual' => false, 'ratio' => 0.0];
+                $correct = 0;
+                foreach ($gaps as $g) {
+                    $key = (string) ($g['gap_number'] ?? '');
+                    if ($eq($map[$key] ?? '', $g['correct_word'] ?? '')) $correct++;
+                }
+                return ['manual' => false, 'ratio' => $correct / $n];
+            }
+            case 'reading_comprehension': {
+                $questions = $data['questions'] ?? [];
+                $n = count($questions);
+                if ($n === 0) return ['manual' => false, 'ratio' => 0.0];
+                $correct = 0;
+                foreach ($questions as $i => $qq) {
+                    if ($eq($map[(string) $i] ?? '', $qq['answer'] ?? '')) $correct++;
+                }
+                return ['manual' => false, 'ratio' => $correct / $n];
+            }
+            default:
+                // Nói / viết tự do / dạng chưa hỗ trợ → giáo viên chấm tay
+                return ['manual' => true, 'ratio' => 0.0];
+        }
     }
 
     /**
@@ -2292,6 +2487,26 @@ class StudentTestController extends Controller
             if ($isSubjective) {
                 // Mark as pending manual grading — no points, no wrong
                 $submissionAnswer->update(['saIs_correct' => null, 'saPoints_awarded' => null]);
+                continue;
+            }
+
+            // Kids task: đáp án đúng nằm trong kids_task_config.task_data (không có bảng answers).
+            if ($qType === 'kids_task') {
+                $maxScore += $question->qPoints;
+                $kidsResult = $this->gradeKidsTask($question, $submissionAnswer->saAnswer_text ?? '');
+
+                if ($kidsResult['manual']) {
+                    // Dạng nói / viết tự do → chờ giáo viên chấm tay
+                    $submissionAnswer->update(['saIs_correct' => null, 'saPoints_awarded' => null]);
+                    continue;
+                }
+
+                $awarded = round($question->qPoints * $kidsResult['ratio'], 2);
+                $submissionAnswer->update([
+                    'saIs_correct'     => $kidsResult['ratio'] >= 0.999,
+                    'saPoints_awarded' => $awarded,
+                ]);
+                $totalScore += $awarded;
                 continue;
             }
 
@@ -2934,7 +3149,8 @@ class StudentTestController extends Controller
     private function findIeltsExamForLoad($examId)
     {
         $user = request()->user();
-        $isTeacher = $user && $user->uRole === 'teacher';
+        // Admin & teacher đều được xem đề private/draft (chỉ xem trước, không thi)
+        $isTeacher = $user && in_array($user->uRole, ['teacher', 'admin']);
 
         $query = Exam::where('eId', $examId)->where('eType', 'IELTS');
 
@@ -2962,7 +3178,7 @@ class StudentTestController extends Controller
     public function loadIeltsListening(Request $request, $examId)
     {
         $user = $request->user();
-        if (!$user || !in_array($user->uRole, ['student', 'teacher'])) {
+        if (!$user || !in_array($user->uRole, ['student', 'teacher', 'admin'])) {
             return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
         }
 
@@ -2972,7 +3188,7 @@ class StudentTestController extends Controller
         }
 
         $sections = [];
-        $isTeacher = $user->uRole === 'teacher';
+        $isTeacher = in_array($user->uRole, ['teacher', 'admin']);
         for ($sectionNumber = 1; $sectionNumber <= 4; $sectionNumber++) {
             // Find audio block for this section
             $block = $exam->contentBlocks->first(function ($b) use ($sectionNumber) {
@@ -3032,7 +3248,7 @@ class StudentTestController extends Controller
     public function loadIeltsReading(Request $request, $examId)
     {
         $user = $request->user();
-        if (!$user || !in_array($user->uRole, ['student', 'teacher'])) {
+        if (!$user || !in_array($user->uRole, ['student', 'teacher', 'admin'])) {
             return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
         }
 
@@ -3042,7 +3258,7 @@ class StudentTestController extends Controller
         }
 
         $passages = [];
-        $isTeacher = $user->uRole === 'teacher';
+        $isTeacher = in_array($user->uRole, ['teacher', 'admin']);
         $runningQNumber = 1;
         for ($passageNumber = 1; $passageNumber <= 3; $passageNumber++) {
             $block = $exam->contentBlocks->first(function ($b) use ($passageNumber) {
@@ -3094,7 +3310,7 @@ class StudentTestController extends Controller
     public function loadIeltsWriting(Request $request, $examId)
     {
         $user = $request->user();
-        if (!$user || !in_array($user->uRole, ['student', 'teacher'])) {
+        if (!$user || !in_array($user->uRole, ['student', 'teacher', 'admin'])) {
             return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
         }
 
@@ -3151,7 +3367,7 @@ class StudentTestController extends Controller
     public function loadIeltsSpeaking(Request $request, $examId)
     {
         $user = $request->user();
-        if (!$user || !in_array($user->uRole, ['student', 'teacher'])) {
+        if (!$user || !in_array($user->uRole, ['student', 'teacher', 'admin'])) {
             return response()->json(['status' => 'error', 'message' => 'Bạn không có quyền truy cập.'], 401);
         }
 
@@ -3265,9 +3481,11 @@ class StudentTestController extends Controller
                 }
             }
         }
-        // Đảm bảo: nếu type không phải MCQ thì luôn null (kể cả qData lỡ có
-        // options sót lại từ import cũ).
-        if (!$isMcq) {
+        // Word-bank completion cũng dùng dropdown chọn từ danh sách → giữ options.
+        $isWordBank = !empty($qData['use_word_bank']);
+        // Đảm bảo: nếu type không phải MCQ và không phải word-bank thì luôn null
+        // (kể cả qData lỡ có options sót lại từ import cũ).
+        if (!$isMcq && !$isWordBank) {
             $options = null;
         }
 

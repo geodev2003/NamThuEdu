@@ -142,10 +142,84 @@ class TeensExamSeeder extends Seeder
             ]
         );
 
+        // ─────────────────────────────────────────────────────────────
+        // 6. Đề ĐA DẠNG dạng câu hỏi — demo cho engine teens mới
+        //    (trắc nghiệm, đúng/sai, điền từ, trả lời ngắn, nối cột, tự luận)
+        // ─────────────────────────────────────────────────────────────
+        $diverseExam = Exam::firstOrCreate(
+            ['eTitle' => 'Teens English — Đa dạng dạng bài (Demo)'],
+            [
+                'eDescription'      => 'Đề tổng hợp nhiều dạng: trắc nghiệm, đúng/sai, điền từ, trả lời ngắn, nối cột, tự luận',
+                'eType'             => 'GENERAL',
+                'eSkill'            => 'mixed',
+                'ePurpose'          => 'exam',
+                'eDifficulty'       => 'medium',
+                'eTeacher_id'       => $teacher->uId,
+                'eDuration_minutes' => 25,
+                'eTotal_score'      => 100,
+                'ePass_score'       => 50,
+                'eIs_private'       => false,
+                'eSource_type'      => 'manual',
+                'eStatus'           => 'published',
+                'age_group'         => 'teens',
+            ]
+        );
+
+        if ($diverseExam->questions()->count() === 0) {
+            foreach ($this->diverseBank() as $i => $q) {
+                $question = Question::create([
+                    'exam_id'        => $diverseExam->eId,
+                    'qContent'       => $q['content'],
+                    'qType'          => $q['type'],
+                    'qSection'       => $q['section'],
+                    'qSkill'         => $q['section'],
+                    'qSection_order' => $i + 1,
+                    'qPoints'        => 10,
+                    'qDifficulty'    => 'medium',
+                    'qPassage_text'  => $q['passage'] ?? null,
+                    'qData'          => $q['data'] ?? null,
+                ]);
+
+                if (!empty($q['options'])) {
+                    // multiple_choice / true_false: đáp án đúng ở index $q['correct']
+                    foreach ($q['options'] as $idx => $optText) {
+                        Answer::create([
+                            'question_id' => $question->qId,
+                            'aContent'    => $optText,
+                            'aIs_correct' => $idx === ($q['correct'] ?? -1),
+                        ]);
+                    }
+                } elseif (isset($q['answer'])) {
+                    // fill_blank / short_answer / matching: 1 đáp án đúng dạng text
+                    Answer::create([
+                        'question_id' => $question->qId,
+                        'aContent'    => $q['answer'],
+                        'aIs_correct' => true,
+                    ]);
+                }
+                // essay: không tạo đáp án (giáo viên chấm tay)
+            }
+            $this->command->info('   ✓ Created ' . count($this->diverseBank()) . ' diverse-type questions');
+        }
+
+        TestAssignment::firstOrCreate(
+            [
+                'exam_id'       => $diverseExam->eId,
+                'taTarget_type' => 'class',
+                'taTarget_id'   => $class->cId,
+            ],
+            [
+                'taDeadline'   => now()->addDays(30),
+                'taMax_attempt'=> 3,
+                'taIs_public'  => true,
+            ]
+        );
+
         $this->command->info('✅ TEENS seed done.');
         $this->command->info('   👩‍🏫 Teacher: 0905550001 / password123');
         $this->command->info('   🧑 Students: 0907770001 / 0907770002 / 0907770003 (pass: password123)');
-        $this->command->info('   📝 Exam: "Teens English Test (E2E Demo)" (10 câu, mixed, assigned)');
+        $this->command->info('   📝 Exam 1: "Teens English Test (E2E Demo)" (10 câu, mixed)');
+        $this->command->info('   📝 Exam 2: "Teens English — Đa dạng dạng bài (Demo)" (đa dạng dạng câu)');
     }
 
     /**
@@ -164,6 +238,62 @@ class TeensExamSeeder extends Seeder
             ['section' => 'reading', 'content' => 'Tom likes apples. What does Tom like? ->', 'options' => ['Oranges', 'Apples', 'Bananas', 'Grapes'], 'correct' => 1],
             ['section' => 'reading', 'content' => 'The cat is on the table. Where is the cat? ->', 'options' => ['Under the table', 'On the table', 'In the box', 'On the chair'], 'correct' => 1],
             ['section' => 'reading', 'content' => 'It is sunny today. How is the weather? ->', 'options' => ['Rainy', 'Snowy', 'Sunny', 'Windy'], 'correct' => 2],
+        ];
+    }
+
+    /**
+     * Ngân hàng câu hỏi ĐA DẠNG dạng — demo cho engine teens.
+     * Mỗi câu khai báo 'type' + dữ liệu phù hợp:
+     *  - options + correct (index)  → multiple_choice / true_false
+     *  - answer (text)              → fill_blank / short_answer / matching
+     *  - data (left/right)          → matching
+     *  - passage                    → đoạn đọc kèm theo
+     *  - essay                      → không có đáp án (chấm tay)
+     */
+    private function diverseBank(): array
+    {
+        return [
+            [
+                'type' => 'multiple_choice', 'section' => 'grammar',
+                'content' => 'Choose the correct word: She ___ TV every evening.',
+                'options' => ['watch', 'watches', 'watching', 'watched'], 'correct' => 1,
+            ],
+            [
+                'type' => 'multiple_choice', 'section' => 'vocabulary',
+                'content' => 'Which word has a similar meaning to "happy"?',
+                'options' => ['glad', 'sad', 'angry', 'tired'], 'correct' => 0,
+            ],
+            [
+                'type' => 'true_false', 'section' => 'grammar',
+                'content' => 'Is this sentence correct? — "He don\'t like coffee."',
+                'options' => ['True', 'False'], 'correct' => 1,
+            ],
+            [
+                'type' => 'fill_blank', 'section' => 'grammar',
+                'content' => 'Fill in the blank: I have been waiting ___ two hours.',
+                'answer' => 'for',
+            ],
+            [
+                'type' => 'short_answer', 'section' => 'vocabulary',
+                'content' => 'What is the past tense of the verb "go"?',
+                'answer' => 'went',
+            ],
+            [
+                'type' => 'matching', 'section' => 'vocabulary',
+                'content' => 'Match each English word with its Vietnamese meaning.',
+                'data' => ['left' => ['Happy', 'Big', 'Fast'], 'right' => ['Vui', 'To', 'Nhanh']],
+                'answer' => '1-a,2-b,3-c',
+            ],
+            [
+                'type' => 'multiple_choice', 'section' => 'reading',
+                'content' => 'Read the passage. What does Tom do after school?',
+                'passage' => 'Tom is a student. Every day after school, he plays football with his friends in the park. He loves sports very much.',
+                'options' => ['He reads books', 'He plays football', 'He watches TV', 'He sleeps'], 'correct' => 1,
+            ],
+            [
+                'type' => 'essay', 'section' => 'writing',
+                'content' => 'Write 2-3 sentences about your favourite hobby.',
+            ],
         ];
     }
 }

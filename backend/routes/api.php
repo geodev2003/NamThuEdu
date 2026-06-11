@@ -47,7 +47,7 @@ use App\Http\Controllers\ExamHighlightController;
 
 /* ========= PUSH NOTIFICATIONS ========= */
 Route::get('/push/vapid-public-key', [PushController::class, 'vapidPublicKey']);
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'maintenance'])->group(function () {
     Route::post('/push/subscribe', [PushController::class, 'subscribe']);
     Route::delete('/push/unsubscribe', [PushController::class, 'unsubscribe']);
 });
@@ -119,7 +119,7 @@ Route::get('/public/stats', function () {
 });
 
 // Test upload endpoint (gated behind auth to prevent public access)
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'maintenance'])->group(function () {
     Route::post('/test/upload/audio', [FileUploadController::class, 'uploadAudio']);
     Route::post('/test/upload/image', [FileUploadController::class, 'uploadImage']);
 
@@ -130,7 +130,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 /* ========= AUTHENTICATED ROUTES ========= */
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'maintenance'])->group(function () {
     
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -333,12 +333,14 @@ Route::middleware('auth:sanctum')->group(function () {
         // Test Management
         Route::post('/tests/upload', [TestController::class, 'upload']);
         
-        // User Management (Admin functions)
-        Route::middleware('admin')->group(function () {
-            Route::get('/users', [UserController::class, 'index']);
-            Route::post('/users', [UserController::class, 'store']);
-            Route::delete('/users/{id}', [UserController::class, 'destroy']);
-        });
+        // NOTE: Previously a nested `Route::middleware('admin')` block lived
+        // here exposing /teacher/users CRUD. It was unreachable by design
+        // (outer role:teacher requires uRole==='teacher', inner admin
+        // middleware requires uRole==='admin') and the canonical admin user
+        // CRUD already lives under the `role:admin` group below at
+        // /admin/users. Block removed to eliminate dead code and prevent
+        // future foot-guns where the inner middleware could be relaxed
+        // and silently grant teachers admin-style endpoints.
         
         // Test Assignment
         Route::post('/exams/{examId}/assign', [TestAssignmentController::class, 'assign']);
@@ -577,13 +579,38 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/activity-logs',       [\App\Http\Controllers\AdminActivityLogController::class, 'index']);
         Route::get('/activity-logs/stats', [\App\Http\Controllers\AdminActivityLogController::class, 'stats']);
 
+        // ── Exam Preview (kiểm duyệt) — admin xem đúng UI học viên sẽ thấy khi thi.
+        // Tái dùng các controller load có sẵn; admin bỏ qua owner-filter (xem mọi đề).
+        Route::get('/exams/{examId}/preview/kids',              [\App\Http\Controllers\KidsExamController::class, 'show']);
+        Route::get('/exams/{examId}/preview/vstep/listening',   [ExamController::class, 'loadVstepListeningExam']);
+        Route::get('/exams/{examId}/preview/vstep/reading',     [ExamController::class, 'loadVstepExam']);
+        Route::get('/exams/{examId}/preview/vstep/writing',     [ExamController::class, 'loadVstepWritingExam']);
+        Route::get('/exams/{examId}/preview/vstep/speaking',    [ExamController::class, 'loadVstepSpeakingExam']);
+        Route::get('/exams/{examId}/preview/ielts/draft',       [IeltsExamController::class, 'getDraft']);
+        Route::get('/exams/{examId}/preview/thpt/draft',        [\App\Http\Controllers\ThptExamController::class, 'getDraft']);
+
+        // Demo làm bài IELTS (admin xem thử UI học viên — chỉ xem, không lưu).
+        // Tái dùng loader của StudentTestController (đã cho phép role admin).
+        Route::get('/exams/{examId}/preview/ielts/listening',   [StudentTestController::class, 'loadIeltsListening']);
+        Route::get('/exams/{examId}/preview/ielts/reading',     [StudentTestController::class, 'loadIeltsReading']);
+        Route::get('/exams/{examId}/preview/ielts/writing',     [StudentTestController::class, 'loadIeltsWriting']);
+        Route::get('/exams/{examId}/preview/ielts/speaking',    [StudentTestController::class, 'loadIeltsSpeaking']);
+
         // User Management - View All Users
         Route::get('/users', [UserController::class, 'adminUsers']);
         Route::post('/users', [UserController::class, 'adminCreateUser']);
         Route::get('/users/export', [UserController::class, 'adminExportUsers']);
         Route::get('/users/locked', [UserController::class, 'lockedUsers']);
         Route::post('/users/bulk-action', [UserController::class, 'bulkUserAction']);
-        Route::post('/users/bulk-import', [UserController::class, 'bulkImportUsers']);
+        // Rate-limit: 5 lần/phút mỗi user. Lý do: bulk-import có thể chèn tới
+        // 1000 users/lượt (xem UserController::bulkImportUsers, max:1000) — là
+        // endpoint nặng nhất trong admin area. Nếu spam (vô tình script lặp,
+        // hoặc cố tình DOS), DB và mailer/queue sẽ ngộp. throttle:5,1 đủ rộng
+        // cho thao tác hợp lệ (admin hiếm khi import liên tục), nhưng chặn
+        // được abuse. Key của throttle middleware mặc định là user id (đã
+        // authenticated qua sanctum), nên 5/phút là per-user.
+        Route::post('/users/bulk-import', [UserController::class, 'bulkImportUsers'])
+            ->middleware('throttle:5,1');
         Route::post('/users/{id}/change-role', [UserController::class, 'changeUserRole']);
         Route::post('/users/{id}/lock', [UserController::class, 'lockUser']);
         Route::post('/users/{id}/unlock', [UserController::class, 'unlockUser']);

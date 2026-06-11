@@ -9,7 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->timestamp('notifications_read_at')->nullable()->after('plain_password');
+            // Anchored after `uPassword` (was `plain_password` before that
+            // column was dropped for OWASP A02 compliance — see the
+            // drop_plain_password_from_users_table migration).
+            $table->timestamp('notifications_read_at')->nullable()->after('uPassword');
         });
     }
 

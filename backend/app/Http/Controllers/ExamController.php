@@ -197,6 +197,9 @@ class ExamController extends Controller
             // 1. Create exam
             $ePurpose = ($request->eType === 'VSTEP' && $request->eSkill !== 'mixed') ? 'practice' : null;
 
+            // Trạng thái khởi tạo dựa trên cài đặt auto-duyệt (dùng helper chung)
+            $initialStatus = Exam::resolveModerationStatus();
+
             $exam = Exam::create([
                 'eTitle' => $request->eTitle,
                 'eDescription' => $request->eDescription,
@@ -208,6 +211,7 @@ class ExamController extends Controller
                 'eSource_type' => $request->eSource_type ?? 'manual',
                 'age_group' => $request->age_group ?? 'all',
                 'ePurpose' => $ePurpose,
+                'eStatus' => $initialStatus,  // Trạng thái dựa trên cài đặt admin
             ]);
 
             // 2. Create content blocks (if provided)
@@ -1129,17 +1133,21 @@ class ExamController extends Controller
             ], 400);
         }
 
-        // Update exam status
+        // Update exam status (theo cài đặt auto-duyệt)
+        $moderationStatus = Exam::resolveModerationStatus();
         $exam->update([
-            'eStatus' => 'published',
-            'eIs_private' => false,
+            'eStatus' => $moderationStatus,
+            'eIs_private' => $moderationStatus !== 'published',
         ]);
 
         return response()->json([
             'status' => 'success',
             'data' => [
-                'message' => 'Xuất bản đề thi thành công',
+                'message' => $moderationStatus === 'published'
+                    ? 'Xuất bản đề thi thành công'
+                    : 'Đã gửi đề thi, chờ quản trị viên duyệt',
                 'exam_id' => $exam->eId,
+                'exam_status' => $moderationStatus,
                 'questions_count' => $exam->questions->count(),
             ]
         ]);
@@ -1334,11 +1342,12 @@ class ExamController extends Controller
                 ], 404);
             }
 
-            // Update exam title and status
+            // Update exam title and status (theo cài đặt auto-duyệt)
+            $moderationStatus = Exam::resolveModerationStatus();
             $exam->update([
                 'eTitle' => $request->title,
-                'eIs_private' => false,
-                'eStatus' => 'published',
+                'eIs_private' => $moderationStatus !== 'published',
+                'eStatus' => $moderationStatus,
             ]);
 
             // Verify all 4 parts exist
@@ -1402,15 +1411,17 @@ class ExamController extends Controller
     {
         $user = $request->user();
 
-        if (!$user || $user->uRole !== 'teacher') {
+        if (!$user || !in_array($user->uRole, ['teacher', 'admin'], true)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Bạn không có quyền truy cập.'
             ], 401);
         }
 
+        $isAdmin = $user->uRole === 'admin';
+
         $exam = Exam::where('eId', $examId)
-                   ->where('eTeacher_id', $user->uId)
+                   ->when(!$isAdmin, fn($q) => $q->where('eTeacher_id', $user->uId))
                    ->with([
                        'contentBlocks' => function($q) {
                            $q->orderBy('display_order');
@@ -2602,11 +2613,12 @@ class ExamController extends Controller
                 ], 404);
             }
 
-            // Update exam title and status
+            // Update exam title and status (theo cài đặt auto-duyệt)
+            $moderationStatus = Exam::resolveModerationStatus();
             $exam->update([
                 'eTitle' => $request->title,
-                'eIs_private' => false,
-                'eStatus' => 'published',
+                'eIs_private' => $moderationStatus !== 'published',
+                'eStatus' => $moderationStatus,
             ]);
 
             // Verify all 3 parts exist with correct question counts
@@ -2670,15 +2682,17 @@ class ExamController extends Controller
     {
         $user = $request->user();
 
-        if (!$user || $user->uRole !== 'teacher') {
+        if (!$user || !in_array($user->uRole, ['teacher', 'admin'], true)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Bạn không có quyền truy cập.'
             ], 401);
         }
 
+        $isAdmin = $user->uRole === 'admin';
+
         $exam = Exam::where('eId', $examId)
-                   ->where('eTeacher_id', $user->uId)
+                   ->when(!$isAdmin, fn($q) => $q->where('eTeacher_id', $user->uId))
                    ->with([
                        'contentBlocks' => function($q) {
                            $q->orderBy('display_order');
@@ -2972,11 +2986,12 @@ class ExamController extends Controller
                 ], 404);
             }
 
-            // Update exam title and status
+            // Update exam title and status (theo cài đặt auto-duyệt)
+            $moderationStatus = Exam::resolveModerationStatus();
             $exam->update([
                 'eTitle' => $request->title,
-                'eIs_private' => false,
-                'eStatus' => 'published',
+                'eIs_private' => $moderationStatus !== 'published',
+                'eStatus' => $moderationStatus,
             ]);
 
             // Verify both tasks exist
@@ -3039,15 +3054,17 @@ class ExamController extends Controller
     {
         $user = $request->user();
 
-        if (!$user || $user->uRole !== 'teacher') {
+        if (!$user || !in_array($user->uRole, ['teacher', 'admin'], true)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Bạn không có quyền truy cập.'
             ], 401);
         }
 
+        $isAdmin = $user->uRole === 'admin';
+
         $exam = Exam::where('eId', $examId)
-                   ->where('eTeacher_id', $user->uId)
+                   ->when(!$isAdmin, fn($q) => $q->where('eTeacher_id', $user->uId))
                    ->with([
                        'contentBlocks' => function($q) {
                            $q->orderBy('display_order');
@@ -3371,11 +3388,12 @@ class ExamController extends Controller
                 ], 404);
             }
 
-            // Update exam title and status
+            // Update exam title and status (theo cài đặt auto-duyệt)
+            $moderationStatus = Exam::resolveModerationStatus();
             $exam->update([
                 'eTitle' => $request->title,
-                'eIs_private' => false,
-                'eStatus' => 'published',
+                'eIs_private' => $moderationStatus !== 'published',
+                'eStatus' => $moderationStatus,
             ]);
 
             // Verify all 3 parts exist
@@ -3439,15 +3457,17 @@ class ExamController extends Controller
     {
         $user = $request->user();
 
-        if (!$user || $user->uRole !== 'teacher') {
+        if (!$user || !in_array($user->uRole, ['teacher', 'admin'], true)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Bạn không có quyền truy cập.'
             ], 401);
         }
 
+        $isAdmin = $user->uRole === 'admin';
+
         $exam = Exam::where('eId', $examId)
-                   ->where('eTeacher_id', $user->uId)
+                   ->when(!$isAdmin, fn($q) => $q->where('eTeacher_id', $user->uId))
                    ->with([
                        'contentBlocks' => function($q) {
                            $q->orderBy('display_order');
