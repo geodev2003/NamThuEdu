@@ -196,6 +196,23 @@ export function CreateAssignment() {
           })
         )
       );
+
+      // Log activity (best-effort)
+      import("../../../../services/teacherActivityLog").then(({ logTeacherActivity }) => {
+        logTeacherActivity({
+          action: "assignment.create",
+          entity_type: "assignment",
+          entity_id: Number(selectedExam.id),
+          detail: `Giao bài "${selectedExam.title}" cho ${selectedTargets.length} ${assignmentType === "class" ? "lớp" : "học viên"}`,
+          meta: {
+            target_type: assignmentType,
+            target_count: selectedTargets.length,
+            deadline,
+            max_attempts: maxAttempts,
+          },
+        });
+      });
+
       navigate("/giao-vien/bai-tap");
     } catch {
       setError("Giao bài thất bại. Vui lòng thử lại.");

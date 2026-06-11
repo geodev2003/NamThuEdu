@@ -2,12 +2,15 @@ import { useState, useEffect } from "react";
 import { Outlet, useLocation } from "react-router";
 import { StudentNavbar } from "../components/student/StudentNavbar";
 import { usePushNotification } from "../../hooks/usePushNotification";
+import { usePwaInstall } from "../../hooks/usePwaInstall";
 import { NotificationPermissionBanner } from "../../components/NotificationPermissionBanner";
+import { PwaInstallBanner } from "../../components/PwaInstallBanner";
 import { ResultDetail } from "../features/student/test-taking/ResultDetail";
 import { X } from "lucide-react";
 
 export function StudentLayout() {
   const push = usePushNotification();
+  const pwa = usePwaInstall();
   const [activeSubmissionId, setActiveSubmissionId] = useState<number | null>(null);
   const location = useLocation();
 
@@ -60,6 +63,7 @@ export function StudentLayout() {
       }}
     >
       <NotificationPermissionBanner push={push} />
+      <PwaInstallBanner pwa={pwa} />
       <StudentNavbar />
 
       {/* Main content — extra bottom padding on mobile for bottom nav */}

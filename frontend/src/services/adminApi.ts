@@ -14,6 +14,9 @@ export interface AdminUser {
   status?: "active" | "inactive";
   uCreated_at?: string;
   created_at?: string;
+  avatar_url?: string | null;
+  avatar?: string | null;
+  age_group?: "kids" | "teens" | "adults" | string | null;
 }
 
 export interface AdminCategory {
@@ -53,12 +56,58 @@ export interface AdminExam {
   created_at?: string;
   teacher?: { uName?: string; name?: string };
   questions_count?: number;
+  // Age-group classification fields
+  age_group?: "kids" | "teens" | "adults" | string | null;
+  content_type?: string | null;
+  difficulty_level?: string | null;
+  eTarget_level?: string | null;
+  eDifficulty?: string | null;
+  eDescription?: string | null;
+  eDuration?: number | string | null;
+  eDuration_minutes?: number | string | null;
+  // IELTS-specific
+  ielts_test_type?: string | null;
+  ielts_skill?: string | null;
+}
+
+export interface AdminActivityLogItem {
+  id: number;
+  admin_id: number;
+  admin_name: string;
+  action: string;
+  entity_type: string | null;
+  entity_id: number | null;
+  detail: string | null;
+  method: string | null;
+  path: string | null;
+  ip: string | null;
+  status_code: number | null;
+  meta: Record<string, unknown> | null;
+  created_at: string | null;
+}
+
+export interface AdminActivityLogStats {
+  total: number;
+  errors: number;
+  last_7_days: number;
+  by_action: Array<{ action: string; count: number }>;
+  by_admin: Array<{ admin_id: number; admin_name: string; count: number }>;
+}
+
+export interface AdminSystemHealth {
+  overall: "healthy" | "warning" | "critical";
+  timestamp: string;
+  app: { php_version: string; laravel: string; environment: string; debug: boolean };
+  disk: { total_bytes: number; free_bytes: number; used_bytes: number; used_percent: number };
+  memory: { usage_bytes: number; peak_bytes: number; limit: string; used_percent: number };
+  database: { connected: boolean; latency_ms: number | null; counts: Record<string, number | null> };
+  drivers: { cache: string; queue: string; session: string };
+  queue: { pending_jobs: number | null };
 }
 
 export interface DashboardReportData {
   users: Record<string, unknown>;
-  courses: Record<string, unknown>;
-  exams: Record<string, unknown>;
+  courses: Record<string, unknown>;  exams: Record<string, unknown>;
   activity: Record<string, unknown>;
   performance: Record<string, unknown>;
   generated_at: string;
@@ -102,20 +151,6 @@ export interface AdminStudentRegistrationItem {
   last_login?: string | null;
 }
 
-export interface AdminStudentComplaintItem {
-  complaint_id: number;
-  student: {
-    id: number;
-    name: string | null;
-    phone: string;
-    address?: string | null;
-  };
-  type: string;
-  status: "open" | "resolved";
-  submitted_at?: string;
-  note?: string;
-}
-
 export interface AdminCreateCoursePayload {
   course_name: string;
   teacher_id: number;
@@ -154,6 +189,7 @@ export const adminApi = {
     password: string;
     role: "student" | "teacher" | "admin";
     status?: "active" | "inactive";
+    age_group?: "kids" | "teens" | "adults" | string;
   }) {
     const response = await api.post<ApiResponse<unknown>>("/admin/users", payload);
     return response.data;
@@ -164,6 +200,24 @@ export const adminApi = {
       "/admin/roles/statistics"
     );
     return unwrap(response.data);
+  },
+
+  async bulkUserAction(payload: {
+    action: "lock" | "unlock" | "activate" | "deactivate" | "delete" | "restore" | "change_role";
+    user_ids: number[];
+    role?: "student" | "teacher" | "admin";
+    reason?: string;
+  }) {
+    const response = await api.post<ApiResponse<{ changed?: number; skipped?: Array<{ user_id: number; reason: string }> }>>(
+      "/admin/users/bulk-action",
+      payload,
+    );
+    return unwrap(response.data);
+  },
+
+  async changeUserRole(userId: number, role: "student" | "teacher" | "admin") {
+    const response = await api.post<ApiResponse<unknown>>(`/admin/users/${userId}/change-role`, { role });
+    return response.data;
   },
 
   async getSystemOverview() {
@@ -224,6 +278,31 @@ export const adminApi = {
   }) {
     const response = await api.get<ApiResponse<Record<string, unknown>>>("/admin/reports/export", { params });
     return response.data;
+  },
+
+  /**
+   * Download CSV export and trigger browser save.
+   * Returns the filename so callers can show feedback.
+   */
+  async downloadReportCsv(params: {
+    type: "dashboard" | "users" | "courses" | "activity" | "trends";
+    period?: "7d" | "30d" | "90d" | "1y";
+  }) {
+    const response = await api.get("/admin/reports/export", {
+      params: { ...params, format: "csv" },
+      responseType: "blob",
+    });
+    const blob = response.data as Blob;
+    const filename = `report_${params.type}_${new Date().toISOString().slice(0, 10)}.csv`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return filename;
   },
 
   async getContentStatistics() {
@@ -351,23 +430,6 @@ export const adminApi = {
     };
   },
 
-  async getStudentComplaints(params?: { search?: string }) {
-    const response = await api.get<ApiResponse<{ summary?: Record<string, number>; data?: AdminStudentComplaintItem[] }>>(
-      "/admin/students/complaints",
-      { params: { paginate: "false", ...params } }
-    );
-    const raw = unwrap(response.data);
-    return {
-      summary: raw.summary || {},
-      items: raw.data || [],
-    };
-  },
-
-  async resolveStudentComplaint(studentId: number) {
-    const response = await api.post<ApiResponse<unknown>>(`/admin/students/complaints/${studentId}/resolve`);
-    return response.data;
-  },
-
   async createCourse(payload: AdminCreateCoursePayload) {
     const response = await api.post<ApiResponse<unknown>>("/admin/courses", payload);
     return response.data;
@@ -392,8 +454,8 @@ export const adminApi = {
     return unwrap(response.data);
   },
 
-  async updateAdminProfile(payload: { name?: string; email?: string }) {
-    const response = await api.put<ApiResponse<{ name: string; email: string }>>("/admin/profile", payload);
+  async updateAdminProfile(payload: { name?: string; email?: string; phone?: string }) {
+    const response = await api.put<ApiResponse<{ name: string; email: string; phone: string }>>("/admin/profile", payload);
     return unwrap(response.data);
   },
 
@@ -448,8 +510,50 @@ export const adminApi = {
     return unwrap(response.data) || [];
   },
 
+  // Hoạt động gần đây THẬT (HS nộp bài, GV tạo đề, GV tạo HV) — cho dropdown realtime
+  async getRecentActivity(params?: { limit?: number }) {
+    const response = await api.get<ApiResponse<Array<{
+      id: string;
+      type: "submission" | "exam" | "student";
+      title: string;
+      body: string;
+      ts: string;
+      link: string;
+    }>>>("/admin/system/recent-activity", { params });
+    return unwrap(response.data) || [];
+  },
+
   async markNotificationRead(id: number) {
     const response = await api.post<ApiResponse<unknown>>(`/admin/system/notifications/${id}/read`);
     return response.data;
+  },
+
+  // ── Audit log (real audit trail) ──
+  async getActivityLogs(params?: {
+    action?: string;
+    entity_type?: string;
+    admin_id?: number;
+    search?: string;
+    from_date?: string;
+    to_date?: string;
+    per_page?: number;
+    page?: number;
+  }) {
+    const response = await api.get<ApiResponse<{ data?: AdminActivityLogItem[]; current_page?: number; last_page?: number; total?: number } | AdminActivityLogItem[]>>(
+      "/admin/activity-logs",
+      { params },
+    );
+    return unwrap(response.data);
+  },
+
+  async getActivityLogStats() {
+    const response = await api.get<ApiResponse<AdminActivityLogStats>>("/admin/activity-logs/stats");
+    return unwrap(response.data);
+  },
+
+  // ── System health (real measurable metrics) ──
+  async getSystemHealth() {
+    const response = await api.get<ApiResponse<AdminSystemHealth>>("/admin/system/health");
+    return unwrap(response.data);
   },
 };

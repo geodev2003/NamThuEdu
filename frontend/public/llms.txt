@@ -1,0 +1,27 @@
+# NamThuEdu — AI-readable site summary
+# https://llmstxt.org
+
+> NamThuEdu là nền tảng học tiếng Anh trực tuyến tại Cần Thơ, Việt Nam. Cung cấp các khóa luyện thi VSTEP, IELTS và Cambridge Young Learners cho học sinh từ 6–18 tuổi và người đi làm.
+
+## Về chúng tôi
+
+NamThuEdu cung cấp hệ thống quản lý học tập (LMS) tích hợp AI chấm bài tự động cho kỹ năng Writing và Speaking. Nền tảng phục vụ 3 nhóm học viên: Kids (6–12 tuổi), Teens (13–17 tuổi) và Adults (18+).
+
+## Các kỳ thi được hỗ trợ
+
+- **VSTEP** (B1–C1): Luyện thi chứng chỉ tiếng Anh quốc gia Việt Nam
+- **IELTS**: Luyện thi 4 kỹ năng Listening, Reading, Writing, Speaking
+- **Cambridge Young Learners**: Starters, Movers, Flyers cho học sinh tiểu học
+
+## Tính năng nổi bật
+
+- Chấm bài Writing/Speaking bằng AI (Groq LLM + Azure Speech)
+- Hệ thống gamification: huy hiệu, xu thưởng, bảng xếp hạng
+- Giáo viên giao bài và theo dõi tiến độ real-time
+- Học viên làm bài thi online có giới hạn thời gian
+
+## Địa chỉ
+
+Cần Thơ, Việt Nam  
+Website: https://namthuedu.com  
+Liên hệ: qua trang web chính thức

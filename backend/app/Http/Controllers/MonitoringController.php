@@ -152,6 +152,47 @@ class MonitoringController extends Controller
     }
 
     /**
+     * GET /teacher/dashboard/exams-ready
+     * Đề đã hoàn thiện (published) nhưng CHƯA được giao cho lớp/học viên nào
+     * → gợi ý giáo viên "công bố / giao đề" để học viên có thể vào thi.
+     *
+     * Áp dụng cho MỌI loại đề (THPT, IELTS, VSTEP, Kids, General...) vì chỉ
+     * dựa trên eStatus + có TestAssignment hay chưa. Đề là tài sản chung nên
+     * liệt kê tất cả đề published chưa giao, không giới hạn người tạo.
+     */
+    public function examsReadyToPublish(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        $exams = Exam::query()
+            ->select('eId', 'eTitle', 'eType', 'eStatus', 'ePurpose', 'eCreated_at', 'eTeacher_id')
+            ->whereIn('eStatus', ['published', 'active'])
+            // Bỏ qua đề luyện tập — chỉ quan tâm đề thi cần giao
+            ->where(function ($q) {
+                $q->whereNull('ePurpose')->orWhere('ePurpose', '!=', 'practice');
+            })
+            // Chưa có assignment nào (chưa giao cho lớp/học viên)
+            ->whereDoesntHave('testAssignments')
+            ->orderByDesc('eCreated_at')
+            ->limit(20)
+            ->get();
+
+        $data = $exams->map(function ($e) {
+            return [
+                'id'         => $e->eId,
+                'exam_title' => $e->eTitle ?? '—',
+                'exam_type'  => $e->eType ?? 'General',
+                'created_at' => optional($e->eCreated_at)->toIso8601String(),
+            ];
+        });
+
+        return response()->json(['status' => 'success', 'data' => $data]);
+    }
+
+    /**
      * POST /teacher/dashboard/cleanup-expired
      * Force-submit ghost sessions that are past their exam duration (> 30 min overtime)
      */

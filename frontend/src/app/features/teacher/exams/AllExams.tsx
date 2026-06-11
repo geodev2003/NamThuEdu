@@ -23,6 +23,8 @@ import {
   X,
   User,
   Users,
+  MoreVertical,
+  Send,
 } from "lucide-react";
 import { getKidsExams, deleteKidsExam } from "../../../../services/kidsExamApi";
 import { api } from "../../../../services/api";
@@ -32,6 +34,7 @@ import {
   getIeltsFullExams,
   getAdultExams,
 } from "../../../../services/examGroupsApi";
+import { AssignModal, type AssignExam } from "../assignments/AssignModal";
 
 interface KidsExam {
   eId: number;
@@ -40,6 +43,8 @@ interface KidsExam {
   eDuration: number | null;
   eStatus: string;
   eCreated_at: string;
+  eUpdated_at?: string | null;
+  updated_at?: string | null;
   eType?: string;
   eSkill?: string;
   ielts_skill?: string;
@@ -51,6 +56,13 @@ interface KidsExam {
     level: string;
     age_range: string;
   };
+  thpt_config?: {
+    sections?: Array<{
+      type?: string;
+      items?: Array<unknown>;
+      blanks?: Array<unknown>;
+    }>;
+  } | null;
   questions?: any[];
   _group?: "vstep" | "ielts" | "adult" | "kids" | "teens";
   _is_owner?: boolean;
@@ -69,12 +81,15 @@ export function AllExams() {
   const [filterType, setFilterType] = useState<string>("all");
   const [filterAgeGroup, setFilterAgeGroup] = useState<string>("all");
   const [filterOwner, setFilterOwner] = useState<"all" | "mine" | "others">("all");
-  const [filterStatus, setFilterStatus] = useState<"all" | "published" | "draft">("all");
+  const [filterStatus, setFilterStatus] = useState<"published" | "draft">("published");
+  const [sortBy, setSortBy] = useState<"updated_desc" | "created_desc" | "created_asc" | "title_asc">("updated_desc");
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [assignExams, setAssignExams] = useState<AssignExam[] | null>(null);
   const itemsPerPage = 20;
 
   // Toggle chọn 1 exam
@@ -175,6 +190,17 @@ export function AllExams() {
       setExams((prev) => prev.filter((e) => e.eId !== examId));
       setDeleteConfirm(null);
 
+      // Log activity (best-effort)
+      import("../../../../services/teacherActivityLog").then(({ logTeacherActivity }) => {
+        logTeacherActivity({
+          action: "exam.delete",
+          entity_type: "exam",
+          entity_id: examId,
+          detail: `Xoá đề thi: ${exam.eTitle}`,
+          meta: { type: (exam as any).eType },
+        });
+      });
+
       // ✅ Toast thành công
       toast.success(`Đã xóa đề thi "${exam.eTitle}" thành công!`);
 
@@ -261,7 +287,21 @@ export function AllExams() {
     setCurrentPage(1);
     // Clear selection khi filter thay đổi để tránh xóa nhầm
     setSelectedIds(new Set());
+    setOpenMenuId(null);
   }, [searchQuery, filterType, filterAgeGroup, filterOwner, filterStatus]);
+
+  // Đóng dropdown menu khi click ra ngoài
+  useEffect(() => {
+    if (openMenuId === null) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-card-menu]")) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [openMenuId]);
 
   // Validate exam tồn tại khi mount - lọc bỏ exam không hợp lệ khỏi state
   useEffect(() => {
@@ -336,19 +376,35 @@ export function AllExams() {
       matchesOwner = exam._is_owner === false;
     }
 
-    // Status filter: nháp / đã xuất bản / tất cả
+    // Status filter: nháp / đã xuất bản (luôn 1 trong 2, không còn "all")
     // eStatus có thể là 'draft', 'published', 'active', 'inactive', 'archived'
-    let matchesStatus = true;
-    if (filterStatus !== "all") {
-      const status = (exam.eStatus || "").toLowerCase();
-      if (filterStatus === "draft") {
-        matchesStatus = status === "draft";
-      } else if (filterStatus === "published") {
-        matchesStatus = status === "published" || status === "active";
-      }
+    const status = (exam.eStatus || "").toLowerCase();
+    let matchesStatus: boolean;
+    if (filterStatus === "draft") {
+      matchesStatus = status === "draft";
+    } else {
+      matchesStatus = status === "published" || status === "active";
     }
 
     return matchesSearch && matchesType && matchesAgeGroup && matchesOwner && matchesStatus;
+  });
+
+  // Sort filtered exams theo lựa chọn của user.
+  // updated_desc = vừa chỉnh sửa gần nhất (mặc định, dùng updated_at fallback created_at)
+  filteredExams.sort((a, b) => {
+    const ts = (e: KidsExam) => {
+      if (sortBy === "title_asc") return 0;
+      const u = e.eUpdated_at || e.updated_at;
+      const c = e.eCreated_at;
+      const src = sortBy === "updated_desc" ? u || c : c;
+      return src ? new Date(src).getTime() : 0;
+    };
+    if (sortBy === "title_asc") {
+      return (a.eTitle || "").localeCompare(b.eTitle || "", "vi");
+    }
+    const tA = ts(a);
+    const tB = ts(b);
+    return sortBy === "created_asc" ? tA - tB : tB - tA;
   });
 
   const stats = {
@@ -403,25 +459,51 @@ export function AllExams() {
     return { label: "Chưa phân loại", color: "#6B7280" };
   };
 
+  // Đếm câu hỏi tuỳ theo loại đề. THPT lưu trong thpt_config.sections[],
+  // các loại khác có quan hệ Question hoặc backend trả questions_count.
+  const countExamQuestions = (exam: KidsExam): number => {
+    const eType = (exam.eType || "").toUpperCase();
+
+    // THPT: đếm từ thpt_config.sections[]
+    if (eType === "THPT" && exam.thpt_config?.sections) {
+      let total = 0;
+      for (const sec of exam.thpt_config.sections) {
+        if (sec?.items?.length) total += sec.items.length;
+        else if (sec?.blanks?.length) total += sec.blanks.length;
+      }
+      if (total > 0) return total;
+    }
+
+    // Default: questions_count từ backend, fallback questions[].length
+    return (exam as any).questions_count ?? exam.questions?.length ?? 0;
+  };
+
   // Đường dẫn chỉnh sửa tuỳ theo loại đề
   const getEditLink = (exam: KidsExam) => {
     const eType = (exam.eType || "").toUpperCase();
     const group = (exam as any)._group || "";
 
     // IELTS: detect qua eType hoặc _group, cần biết skill để route đúng
-    if (eType === "IELTS" || group === "ielts") {
-      const skill = (
+    if (eType === "IELTS" || group === "ielts") {      const skill = (
         exam.ielts_skill ||
         (exam.eSkill || "").toLowerCase()
       ).toLowerCase();
       const validSkills = ["listening", "reading", "writing", "speaking"];
       const s = validSkills.includes(skill) ? skill : "listening";
-      return `/giao-vien/de-thi/ielts/${s}/sua/${exam.eId}`;
+      return `/giao-vien/de-thi/ielts/${s}/edit/${exam.eId}`;
     }
 
-    // Kids exam — check age_group / kids_exam_config
+    // THPT — đề ĐGNL/THPT cấp 2-3 (eType=THPT, lưu trong thpt_config)
+    if (eType === "THPT" || group === "thpt") {
+      return `/giao-vien/de-thi/thpt/${exam.eId}/sua`;
+    }
+
+    // Kids — phải kiểm tra "truthy" (backend trả null cho non-Kids,
+    // không phải undefined → tránh false-positive)
     const isKidsExam =
-      (exam as any).age_group === "kids" || exam.kids_exam_config !== undefined;
+      (exam as any).age_group === "kids" ||
+      Boolean(exam.kids_exam_config) ||
+      eType === "KIDS";
     if (isKidsExam) {
       return `/giao-vien/de-thi/kids/tao-moi/${exam.eId}`;
     }
@@ -439,6 +521,19 @@ export function AllExams() {
   };
 
   // Đường dẫn preview tuỳ theo loại đề
+  // Đề THPT/Kids preview thực chất mở editor (route /sua hoặc /tao-moi), nên nút
+  // nên ghi "Xem và sửa" thay vì "Xem chi tiết".
+  const isEditorPreview = (exam: KidsExam) => {
+    const eType = (exam.eType || "").toUpperCase();
+    const group = (exam as any)._group || "";
+    if (eType === "THPT" || group === "thpt") return true;
+    const isKidsExam =
+      (exam as any).age_group === "kids" ||
+      Boolean(exam.kids_exam_config) ||
+      eType === "KIDS";
+    return isKidsExam;
+  };
+
   const getPreviewLink = (exam: KidsExam) => {
     const eType = (exam.eType || "").toUpperCase();
     const group = (exam as any)._group || "";
@@ -458,35 +553,55 @@ export function AllExams() {
       return `/giao-vien/de-thi/${exam.eId}/vstep`;
     }
 
+    // THPT — dùng chung editor (có thể chỉ xem). Trang preview riêng chưa có,
+    // legacy /de-thi/:id/xem không hiểu thpt_config nên hiện "0 câu hỏi".
+    if (eType === "THPT" || group === "thpt") {
+      return `/giao-vien/de-thi/thpt/${exam.eId}/sua`;
+    }
+
+    // Kids — cũng dùng editor chung
+    const isKidsExam =
+      (exam as any).age_group === "kids" ||
+      Boolean(exam.kids_exam_config) ||
+      eType === "KIDS";
+    if (isKidsExam) {
+      return `/giao-vien/de-thi/kids/tao-moi/${exam.eId}`;
+    }
+
     return `/giao-vien/de-thi/${exam.eId}/xem`;
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-orange-50/30 via-white to-amber-50/30">
-      {/* Refined Header - STICKY */}
-      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200/60 shadow-sm">
+    <div className="min-h-screen flex flex-col bg-[#F9FAFB]">
+      {/* Header - sticky, clean */}
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2 text-xs text-gray-500 mb-1.5">
-                <Link to="/giao-vien" className="hover:text-orange-600 transition-colors">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <nav className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
+                <Link to="/giao-vien" className="hover:text-gray-900 transition-colors">
                   Dashboard
                 </Link>
                 <span className="text-gray-300">/</span>
-                <span className="text-gray-700 font-medium">Ngân hàng đề thi</span>
+                <span className="text-gray-700">Ngân hàng đề thi</span>
+              </nav>
+              <div className="flex items-center gap-2.5">
+                <FileText className="w-5 h-5 text-gray-500" strokeWidth={2} />
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight truncate">
+                  Ngân hàng đề thi
+                </h1>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Ngân hàng đề thi</h1>
             </div>
             <Link
-              to="/giao-vien/de-thi/kids/tao-moi"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-lg hover:from-orange-700 hover:to-orange-600 transition-all text-sm font-semibold shadow-md hover:shadow-lg"
+              to="/giao-vien/de-thi/tao-moi"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white rounded-md text-sm font-medium hover:bg-gray-800 transition-colors flex-shrink-0 cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4" strokeWidth={2.5} />
               Tạo đề mới
             </Link>
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Loading State */}
@@ -508,108 +623,52 @@ export function AllExams() {
           </div>
         )}
 
-        {/* Stats & Age Group Filter - Unified compact panel */}
+        {/* Stats & Age Group Filter - Clean grid layout */}
         {!loading && !error && (() => {
-          const total = stats.total || 1; // tránh chia 0
-          const kidsPct = (stats.kids / total) * 100;
-          const teensPct = (stats.teens / total) * 100;
-          const adultsPct = (stats.adults / total) * 100;
-
           const groups = [
-            { key: "all", label: "Tất cả", icon: Layers, count: stats.total, color: "orange" },
-            { key: "kids", label: "Trẻ em", icon: Baby, count: stats.kids, color: "pink" },
-            { key: "teens", label: "Học sinh", icon: BookOpen, count: stats.teens, color: "blue" },
-            { key: "adults", label: "Sinh viên / Người đi làm", icon: GraduationCap, count: stats.adults, color: "violet" },
-          ] as const;
-
-          // Mapping color → tailwind classes (active state)
-          const colorMap: Record<string, { bg: string; text: string; ring: string; dot: string; iconBg: string; iconText: string }> = {
-            orange: { bg: "bg-orange-50", text: "text-orange-700", ring: "ring-orange-200", dot: "bg-orange-500", iconBg: "bg-orange-100", iconText: "text-orange-600" },
-            pink:   { bg: "bg-pink-50",   text: "text-pink-700",   ring: "ring-pink-200",   dot: "bg-pink-500",   iconBg: "bg-pink-100",   iconText: "text-pink-600" },
-            blue:   { bg: "bg-blue-50",   text: "text-blue-700",   ring: "ring-blue-200",   dot: "bg-blue-500",   iconBg: "bg-blue-100",   iconText: "text-blue-600" },
-            violet: { bg: "bg-violet-50", text: "text-violet-700", ring: "ring-violet-200", dot: "bg-violet-500", iconBg: "bg-violet-100", iconText: "text-violet-600" },
-          };
+            { key: "all" as const, label: "Tất cả", icon: Layers, count: stats.total, hint: "Toàn bộ đề thi" },
+            { key: "kids" as const, label: "Trẻ em", icon: Baby, count: stats.kids, hint: "6-12 tuổi" },
+            { key: "teens" as const, label: "Học sinh", icon: BookOpen, count: stats.teens, hint: "13-17 tuổi" },
+            { key: "adults" as const, label: "Người lớn", icon: GraduationCap, count: stats.adults, hint: "18+ tuổi" },
+          ];
 
           return (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              {/* Header: Total + Breakdown bar */}
-              <div className="px-5 pt-5 pb-4">
-                <div className="flex items-start justify-between gap-6 flex-wrap">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md shadow-orange-200/60">
-                      <Layers className="w-5 h-5 text-white" strokeWidth={2.25} />
-                    </div>
-                    <div>
-                      <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Tổng đề thi</div>
-                      <div className="flex items-baseline gap-1.5 mt-0.5">
-                        <span className="text-3xl font-bold text-gray-900 leading-none tracking-tight">{stats.total}</span>
-                        <span className="text-xs text-gray-500">đề</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Visual distribution bar - 3 nhóm học viên */}
-                  <div className="flex-1 min-w-[260px]">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Phân bổ theo nhóm tuổi</span>
-                    </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden flex">
-                      {kidsPct > 0 && <div className="bg-pink-500 transition-all" style={{ width: `${kidsPct}%` }} title={`Trẻ em: ${stats.kids}`} />}
-                      {teensPct > 0 && <div className="bg-blue-500 transition-all" style={{ width: `${teensPct}%` }} title={`Học sinh: ${stats.teens}`} />}
-                      {adultsPct > 0 && <div className="bg-violet-500 transition-all" style={{ width: `${adultsPct}%` }} title={`Sinh viên: ${stats.adults}`} />}
-                    </div>
-                    <div className="flex items-center gap-x-4 gap-y-1 mt-2 text-[11px] flex-wrap">
-                      <span className="inline-flex items-center gap-1.5 text-gray-600">
-                        <span className="w-1.5 h-1.5 rounded-full bg-pink-500" />
-                        Trẻ em <span className="font-semibold text-gray-900">{stats.kids}</span>
-                      </span>
-                      <span className="inline-flex items-center gap-1.5 text-gray-600">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                        Học sinh <span className="font-semibold text-gray-900">{stats.teens}</span>
-                      </span>
-                      <span className="inline-flex items-center gap-1.5 text-gray-600">
-                        <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
-                        Sinh viên / Người đi làm <span className="font-semibold text-gray-900">{stats.adults}</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-4 py-2 border-b border-gray-100">
+                <h2 className="text-xs font-semibold text-gray-700">Lọc theo nhóm tuổi học viên</h2>
               </div>
 
-              {/* Divider */}
-              <div className="h-px bg-gray-100" />
-
-              {/* Segmented filter — chips kéo ngang trên mobile */}
-              <div className="px-3 py-3 overflow-x-auto">
-                <div className="flex items-center gap-1.5 min-w-max">
-                  {groups.map(({ key, label, icon: Icon, count, color }) => {
-                    const isActive = filterAgeGroup === key;
-                    const c = colorMap[color];
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => setFilterAgeGroup(key)}
-                        className={`group relative inline-flex items-center gap-2 pl-2.5 pr-3 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                          isActive
-                            ? `${c.bg} ${c.text} ring-1 ${c.ring} shadow-sm`
-                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                        }`}
-                      >
-                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md transition-colors ${
-                          isActive ? c.iconBg : "bg-gray-100 group-hover:bg-gray-200"
-                        }`}>
-                          <Icon className={`w-3.5 h-3.5 ${isActive ? c.iconText : "text-gray-500"}`} strokeWidth={2.25} />
+              <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-gray-100">
+                {groups.map(({ key, label, icon: Icon, count, hint }) => {
+                  const isActive = filterAgeGroup === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setFilterAgeGroup(key)}
+                      className={`relative px-4 py-2.5 text-left transition-colors cursor-pointer ${
+                        isActive ? "bg-gray-50" : "hover:bg-gray-50/60"
+                      }`}
+                    >
+                      {isActive && (
+                        <span className="absolute top-0 left-0 right-0 h-0.5 bg-gray-900" />
+                      )}
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Icon className={`w-3.5 h-3.5 ${isActive ? "text-gray-900" : "text-gray-400"}`} strokeWidth={2} />
+                        <span className={`text-xs font-medium ${isActive ? "text-gray-900" : "text-gray-600"}`}>
+                          {label}
                         </span>
-                        <span>{label}</span>
-                        <span className={`inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-md text-[11px] font-bold tabular-nums ${
-                          isActive ? "bg-white/80 text-gray-900" : "bg-gray-100 text-gray-600 group-hover:bg-white"
+                      </div>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className={`text-xl font-bold tabular-nums leading-none ${
+                          isActive ? "text-gray-900" : "text-gray-700"
                         }`}>
                           {count}
                         </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                        <span className="text-[11px] text-gray-400">đề · {hint}</span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );
@@ -617,8 +676,8 @@ export function AllExams() {
 
         {/* Refined Search & Filters - Inline Design */}
         {!loading && !error && (
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 p-5 shadow-sm">
-            <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="space-y-3">
               {/* Search bar */}
               <div className="relative">
                 <Search className="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -627,7 +686,7 @@ export function AllExams() {
                   placeholder="Tìm theo tên đề thi..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-sm bg-white placeholder-gray-400 transition-shadow"
+                  className="w-full pl-11 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-sm bg-white placeholder-gray-400 transition-shadow"
                 />
               </div>
               
@@ -677,10 +736,10 @@ export function AllExams() {
                   </button>
                 </div>
 
-                {/* Status Filter Tabs (Đã xuất bản / Nháp) */}
+                {/* Status Filter Tabs (Đã xuất bản / Nháp) — luôn chọn 1 trong 2 */}
                 <div className="inline-flex items-center bg-gray-100 rounded-lg p-0.5 border border-gray-200">
                   <button
-                    onClick={() => setFilterStatus(filterStatus === "published" ? "all" : "published")}
+                    onClick={() => setFilterStatus("published")}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                       filterStatus === "published"
                         ? "bg-white text-emerald-600 shadow-sm"
@@ -693,7 +752,7 @@ export function AllExams() {
                     <span className="ml-1 text-[10px] font-mono opacity-70">({stats.published})</span>
                   </button>
                   <button
-                    onClick={() => setFilterStatus(filterStatus === "draft" ? "all" : "draft")}
+                    onClick={() => setFilterStatus("draft")}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                       filterStatus === "draft"
                         ? "bg-white text-amber-600 shadow-sm"
@@ -726,30 +785,53 @@ export function AllExams() {
                   className="px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-xs bg-white font-medium text-gray-700 cursor-pointer hover:border-gray-400 transition-colors"
                 >
                   <option value="all">Tất cả loại đề</option>
-                  
+
                   {/* Kids exam types */}
                   {(filterAgeGroup === "all" || filterAgeGroup === "kids") && (
-                    <>
+                    <optgroup label="Trẻ em (Cambridge YLE)">
                       <option value="yle_starters">Starters (6-8)</option>
                       <option value="yle_movers">Movers (8-11)</option>
                       <option value="yle_flyers">Flyers (9-12)</option>
-                    </>
+                    </optgroup>
                   )}
-                  
-                  {/* Teens/Adults exam types */}
-                  {(filterAgeGroup === "all" || filterAgeGroup === "teens" || filterAgeGroup === "adults") && (
-                    <>
+
+                  {/* Teens — THCS / THPT / ĐGNL */}
+                  {(filterAgeGroup === "all" || filterAgeGroup === "teens") && (
+                    <optgroup label="Học sinh (THCS / THPT / ĐGNL)">
+                      <option value="thpt">THPT / Đánh giá năng lực</option>
+                    </optgroup>
+                  )}
+
+                  {/* Adults — chứng chỉ quốc tế */}
+                  {(filterAgeGroup === "all" || filterAgeGroup === "adults") && (
+                    <optgroup label="Sinh viên / Người đi làm">
                       <option value="vstep">VSTEP</option>
                       <option value="ielts">IELTS</option>
+                      <option value="cambridge">Cambridge (KET / PET / FCE…)</option>
                       <option value="toefl">TOEFL</option>
                       <option value="toeic">TOEIC</option>
-                    </>
+                    </optgroup>
                   )}
-                  
-                  {/* General - available for all except kids */}
+
+                  {/* General — dùng được cho teens & adults */}
                   {filterAgeGroup !== "kids" && (
-                    <option value="general">Đề tổng hợp</option>
+                    <optgroup label="Khác">
+                      <option value="general">Đề tổng hợp</option>
+                    </optgroup>
                   )}
+                </select>
+
+                {/* Sort dropdown */}
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-xs bg-white font-medium text-gray-700 cursor-pointer hover:border-gray-400 transition-colors"
+                  title="Sắp xếp"
+                >
+                  <option value="updated_desc">Vừa chỉnh sửa</option>
+                  <option value="created_desc">Mới tạo nhất</option>
+                  <option value="created_asc">Cũ nhất</option>
+                  <option value="title_asc">Tên A → Z</option>
                 </select>
                 
                 {/* Clear filters */}
@@ -771,9 +853,9 @@ export function AllExams() {
           </div>
         )}
 
-        {/* Bulk Action Bar */}
-        {!loading && !error && paginatedExams.length > 0 && (
-          <div className="flex items-center justify-between bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 p-3 shadow-sm">
+        {/* Bulk Action Bar — ẩn ở trạng thái mặc định cho gọn, chỉ hiện khi đã chọn ≥1 đề */}
+        {!loading && !error && selectedIds.size > 0 && (
+          <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 p-2.5">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => {
@@ -831,9 +913,9 @@ export function AllExams() {
                 </button>
                 <button
                   onClick={() => setBulkDeleteConfirm(true)}
-                  className="group flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 rounded-lg shadow-sm hover:shadow-md hover:shadow-red-500/30 transition-all active:scale-95"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors cursor-pointer"
                 >
-                  <Trash2 className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" />
+                  <Trash2 className="w-3.5 h-3.5" />
                   Xóa {selectedIds.size} đề thi
                 </button>
               </div>
@@ -854,8 +936,6 @@ export function AllExams() {
                 <div
                   key={exam.eId}
                   onClick={(e) => {
-                    // Click vào card nhưng không phải link/button thì toggle select
-                    // Chỉ cho phép select đề của chính mình (vì bulk delete chỉ xóa được đề của mình)
                     if (!isOwner) return;
                     const target = e.target as HTMLElement;
                     if (
@@ -866,136 +946,217 @@ export function AllExams() {
                       toggleSelect(exam.eId);
                     }
                   }}
-                  className={`group relative bg-white/90 backdrop-blur-sm rounded-xl border p-5 transition-all ${
+                  className={`group relative bg-white rounded-xl border transition-all duration-200 ${
                     isOwner ? "cursor-pointer" : ""
                   } ${
                     isSelected
-                      ? "border-orange-500 ring-2 ring-orange-200 shadow-lg shadow-orange-100"
-                      : isOwner
-                        ? "border-gray-200 hover:border-orange-300 hover:shadow-lg"
-                        : "border-blue-100 bg-blue-50/30 hover:border-blue-300 hover:shadow-md"
+                      ? "border-gray-900 ring-2 ring-gray-900/5 shadow-md"
+                      : "border-gray-200 hover:border-gray-300 hover:shadow-lg hover:-translate-y-0.5"
                   }`}
                 >
-                  {/* Checkbox top-left - chỉ hiện cho đề của mình */}
-                  {isOwner && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleSelect(exam.eId);
-                      }}
-                      className={`absolute top-2 left-2 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all cursor-pointer ${
-                        isSelected
-                          ? "bg-gradient-to-br from-orange-500 to-orange-600 border-orange-600 shadow-md shadow-orange-500/30"
-                          : "bg-white border-gray-300 hover:border-orange-400"
-                      }`}
-                    >
-                      {isSelected && (
-                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                      )}
-                    </button>
-                  )}
-
-                  {/* Owner badge - chỉ hiện nếu đề không phải của mình */}
-                  {!isOwner && (
+                  {/* Wrapper clip cho blob + stripe để không tràn ra ngoài card */}
+                  <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
+                    {/* Decorative gradient blob theo type color */}
                     <div
-                      className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200"
-                      title={`Đề công khai từ ${exam._owner_name || "giáo viên khác"}`}
-                    >
-                      <Users className="w-3 h-3" />
-                      <span className="truncate max-w-[120px]">{exam._owner_name || "Giáo viên khác"}</span>
-                    </div>
-                  )}
-
-                  {/* ID badge top-right corner */}
-                  <span className="absolute top-2 right-2 text-[10px] font-mono font-semibold text-gray-400 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded">
-                    #{exam.eId}
-                  </span>
-
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-3 pl-7 pr-12">
-                    <span
-                      className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold"
-                      style={{
-                        backgroundColor: `${typeInfo.color}15`,
-                        color: typeInfo.color
-                      }}
-                    >
-                      {typeInfo.label}
-                    </span>
-                    {exam.eStatus === "draft" && (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 text-amber-700">
-                        Nháp
-                      </span>
+                      className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-20 blur-2xl transition-opacity duration-300 group-hover:opacity-30"
+                      style={{ background: `radial-gradient(circle, ${typeInfo.color}, transparent 70%)` }}
+                      aria-hidden="true"
+                    />
+                    {/* Selection indicator stripe */}
+                    {isSelected && (
+                      <span className="absolute top-0 left-0 right-0 h-0.5 bg-gray-900" />
                     )}
                   </div>
 
-                  {/* Title */}
-                  <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-orange-600 transition-colors">
-                    {exam.eTitle}
-                  </h3>
-
-                  {/* Description */}
-                  {exam.eDescription && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                      {exam.eDescription}
-                    </p>
-                  )}
-
-                  {/* Meta Info */}
-                  <div className="flex items-center gap-4 mb-3 text-xs text-gray-500">
-                    <div className="flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>{(exam as any).questions_count ?? exam.questions?.length ?? 0} câu</span>
-                    </div>
-                    {exam.eDuration && (
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>{exam.eDuration} phút</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Date */}
-                  <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-4 pb-4 border-b border-gray-100">
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>{new Date(exam.eCreated_at).toLocaleDateString("vi-VN")}</span>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    {isOwner ? (
-                      <>
-                        <Link
-                          to={getEditLink(exam)}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium cursor-pointer"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                          Sửa
-                        </Link>
-                        <Link
-                          to={getPreviewLink(exam)}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-lg hover:from-orange-700 hover:to-orange-600 transition-all text-sm font-medium shadow-sm cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          Xem
-                        </Link>
+                  {/* Card body */}
+                  <div className="relative p-4">
+                    {/* Top row: checkbox/owner-badge + status */}
+                    <div className="flex items-center justify-between gap-2 mb-3 min-h-[24px]">
+                      {isOwner ? (
                         <button
-                          onClick={() => setDeleteConfirm(exam.eId)}
-                          className="inline-flex items-center justify-center p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors cursor-pointer"
-                          title="Xóa đề thi"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSelect(exam.eId);
+                          }}
+                          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors cursor-pointer flex-shrink-0 ${
+                            isSelected
+                              ? "bg-gray-900 border-gray-900"
+                              : "bg-white/80 border-gray-300 hover:border-gray-500"
+                          }`}
+                          aria-label={isSelected ? "Bỏ chọn" : "Chọn đề thi"}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                         </button>
-                      </>
+                      ) : (
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-100 max-w-[140px]"
+                          title={`Đề công khai từ ${exam._owner_name || "giáo viên khác"}`}
+                        >
+                          <Users className="w-3 h-3 flex-shrink-0" />
+                          <span className="truncate">{exam._owner_name || "Giáo viên khác"}</span>
+                        </span>
+                      )}
+
+                      <div className="flex items-center gap-1.5">
+                        {exam.eStatus === "draft" && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-100">
+                            <span className="w-1 h-1 rounded-full bg-amber-500" />
+                            Nháp
+                          </span>
+                        )}
+                        {(exam.eStatus === "published" || exam.eStatus === "active") && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            <span className="w-1 h-1 rounded-full bg-emerald-500" />
+                            Đã xuất bản
+                          </span>
+                        )}
+                        <span className="text-[10px] font-mono text-gray-400">#{exam.eId}</span>
+                      </div>
+                    </div>
+
+                    {/* Type badge with subtle accent */}
+                    <div className="mb-2.5">
+                      <span
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide border"
+                        style={{
+                          backgroundColor: `${typeInfo.color}10`,
+                          color: typeInfo.color,
+                          borderColor: `${typeInfo.color}30`,
+                        }}
+                      >
+                        <span
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ backgroundColor: typeInfo.color }}
+                        />
+                        {typeInfo.label}
+                      </span>
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="text-[15px] font-semibold text-gray-900 leading-snug line-clamp-2 mb-1.5 transition-colors group-hover:text-gray-700">
+                      {exam.eTitle}
+                    </h3>
+
+                    {/* Description */}
+                    {exam.eDescription && (
+                      <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-3">
+                        {exam.eDescription}
+                      </p>
+                    )}
+
+                    {/* Meta row: questions · duration · date */}
+                    <div className="flex items-center gap-3 text-[11px] text-gray-500">
+                      <span className="inline-flex items-center gap-1">
+                        <FileText className="w-3.5 h-3.5 text-gray-400" />
+                        {countExamQuestions(exam)} câu
+                      </span>
+                      {exam.eDuration && (
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-gray-400" />
+                          {exam.eDuration} phút
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 ml-auto">
+                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                        {new Date(exam.eCreated_at).toLocaleDateString("vi-VN")}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions footer — đồng nhất cả owner và non-owner.
+                      Đề nháp → đổi nút thành "Sửa" để tránh dẫn vào trang preview chưa hoàn chỉnh */}
+                  <div className="relative flex items-center gap-2 px-4 py-2.5 bg-gray-50/80 backdrop-blur-sm border-t border-gray-100 rounded-b-xl">
+                    {isOwner && exam.eStatus === "draft" ? (
+                      <Link
+                        to={getEditLink(exam)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors bg-amber-600 text-white hover:bg-amber-700"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                        Tiếp tục chỉnh sửa
+                      </Link>
                     ) : (
-                      // Đề từ giáo viên khác — chỉ cho phép xem
                       <Link
                         to={getPreviewLink(exam)}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all text-sm font-medium shadow-sm cursor-pointer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors bg-gray-900 text-white hover:bg-gray-800"
                       >
-                        <Eye className="w-3.5 h-3.5" />
-                        Xem chi tiết
+                        {isEditorPreview(exam) ? (
+                          <>
+                            <Edit className="w-3.5 h-3.5" />
+                            Xem và sửa
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-3.5 h-3.5" />
+                            Xem chi tiết
+                          </>
+                        )}
                       </Link>
+                    )}
+
+                    {/* Giao đề — chỉ cho đề đã xuất bản (không phải nháp) */}
+                    {exam.eStatus !== "draft" && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAssignExams([
+                            { eId: exam.eId, eTitle: exam.eTitle, eType: exam.eType, ageGroup: getAgeGroup(exam) },
+                          ]);
+                        }}
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-colors bg-indigo-600 text-white hover:bg-indigo-700 whitespace-nowrap"
+                        title="Giao đề cho học viên"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        Giao đề
+                      </button>
+                    )}
+
+                    {isOwner && (
+                      <div className="relative" data-card-menu>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId(openMenuId === exam.eId ? null : exam.eId);
+                          }}
+                          className="inline-flex items-center justify-center w-8 h-8 text-gray-500 bg-white border border-gray-200 rounded-md hover:bg-gray-100 hover:text-gray-900 hover:border-gray-300 transition-colors cursor-pointer"
+                          title="Tùy chọn"
+                          aria-label="Tùy chọn khác"
+                          aria-expanded={openMenuId === exam.eId}
+                        >
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </button>
+
+                        {openMenuId === exam.eId && (
+                          <div
+                            className="absolute bottom-full right-0 mb-1.5 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {/* Ẩn "Chỉnh sửa" trong dropdown khi nút chính đã là "Tiếp tục chỉnh sửa" (draft) */}
+                            {exam.eStatus !== "draft" && (
+                              <Link
+                                to={getEditLink(exam)}
+                                onClick={() => setOpenMenuId(null)}
+                                className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                                Chỉnh sửa
+                              </Link>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(null);
+                                setDeleteConfirm(exam.eId);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              Xóa đề thi
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1049,9 +1210,9 @@ export function AllExams() {
                       <button
                         key={page}
                         onClick={() => setCurrentPage(page)}
-                        className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                        className={`w-9 h-9 rounded-md text-sm font-medium transition-colors ${
                           currentPage === page
-                            ? "bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-sm"
+                            ? "bg-gray-900 text-white"
                             : "bg-gray-50 text-gray-700 hover:bg-gray-100"
                         }`}
                       >
@@ -1081,9 +1242,9 @@ export function AllExams() {
 
         {/* Refined Empty State */}
         {!loading && !error && filteredExams.length === 0 && (
-          <div className="text-center py-20 bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 shadow-sm">
-            <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <FileText className="w-8 h-8 text-orange-600" />
+          <div className="text-center py-20 bg-white rounded-xl border border-gray-200">
+            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <FileText className="w-8 h-8 text-gray-500" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
               {searchQuery || filterType !== "all" ? "Không tìm thấy đề thi" : "Chưa có đề thi nào"}
@@ -1096,8 +1257,8 @@ export function AllExams() {
             </p>
             {!searchQuery && filterType === "all" && filterAgeGroup === "all" && (
               <Link
-                to="/giao-vien/de-thi/kids/tao-moi"
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-lg hover:from-orange-700 hover:to-orange-600 transition-all text-sm font-semibold shadow-md hover:shadow-lg"
+                to="/giao-vien/de-thi/tao-moi"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-medium cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 Tạo đề thi đầu tiên
@@ -1107,25 +1268,16 @@ export function AllExams() {
         )}
       </div>
 
-      {/* Refined Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 p-4 flex items-center justify-center bg-black/50 backdrop-blur-md animate-in fade-in duration-200">
-          <div
-            className="relative bg-white rounded-3xl p-7 max-w-md w-full shadow-2xl border border-gray-100
-                       transform transition-all animate-in zoom-in-95 duration-300
-                       hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]"
-          >
-            {/* Decorative gradient blob */}
-            <div className="absolute -top-12 -right-12 w-40 h-40 bg-gradient-to-br from-red-200/40 to-orange-200/40 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-gradient-to-br from-red-100/40 to-pink-200/40 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="relative flex items-start gap-4 mb-6">
-              <div className="relative w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-red-500/30 group-hover:scale-110 transition-transform">
-                <div className="absolute inset-0 bg-red-500 rounded-2xl animate-ping opacity-20" />
-                <AlertCircle className="relative w-7 h-7 text-white" strokeWidth={2.5} />
+        <div className="fixed inset-0 z-50 p-4 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="relative bg-white rounded-xl p-6 max-w-md w-full shadow-xl border border-gray-200">
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-6 h-6 text-red-600" strokeWidth={2.25} />
               </div>
               <div className="flex-1">
-                <h3 className="text-xl font-bold text-gray-900 mb-1.5 tracking-tight">
+                <h3 className="text-lg font-bold text-gray-900 mb-1">
                   Xác nhận xóa đề thi
                 </h3>
                 <p className="text-sm text-gray-600 leading-relaxed">
@@ -1138,46 +1290,26 @@ export function AllExams() {
             </div>
 
             {/* Warning info box */}
-            <div className="relative mb-6 px-4 py-3 bg-red-50/70 border border-red-100 rounded-xl">
+            <div className="mb-5 px-3 py-2 bg-red-50 border border-red-100 rounded-md">
               <div className="flex items-center gap-2 text-xs text-red-700">
-                <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                <span className="font-medium">Đề thi và tất cả câu hỏi sẽ bị xóa vĩnh viễn</span>
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>Đề thi và tất cả câu hỏi sẽ bị xóa vĩnh viễn</span>
               </div>
             </div>
 
-            <div className="relative flex gap-3">
+            <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="group flex-1 relative overflow-hidden px-4 py-3 bg-gray-100 text-gray-700 rounded-xl
-                           hover:bg-gray-900 hover:text-white
-                           active:scale-95
-                           transition-all duration-300 ease-out
-                           text-sm font-semibold
-                           hover:shadow-lg hover:shadow-gray-900/20
-                           hover:-translate-y-0.5"
+                className="flex-1 px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-sm font-medium cursor-pointer"
               >
-                <span className="relative z-10">Hủy</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-gray-200 to-gray-300 opacity-0 group-hover:opacity-0 transition-opacity" />
+                Hủy
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
-                className="group flex-1 relative overflow-hidden px-4 py-3 text-white rounded-xl
-                           bg-gradient-to-r from-red-600 via-red-500 to-orange-500
-                           hover:from-red-700 hover:via-red-600 hover:to-orange-600
-                           active:scale-95
-                           transition-all duration-300 ease-out
-                           text-sm font-semibold
-                           shadow-lg shadow-red-500/40
-                           hover:shadow-2xl hover:shadow-red-500/60
-                           hover:-translate-y-0.5
-                           ring-1 ring-red-400/50
-                           hover:ring-2 hover:ring-red-300"
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm font-medium cursor-pointer"
               >
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  <Trash2 className="w-4 h-4 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-300" />
-                  <span>Xóa đề thi</span>
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                <Trash2 className="w-4 h-4" />
+                Xóa đề thi
               </button>
             </div>
           </div>
@@ -1186,22 +1318,14 @@ export function AllExams() {
 
       {/* Bulk Delete Confirmation Modal */}
       {bulkDeleteConfirm && (
-        <div className="fixed inset-0 z-50 p-4 flex items-center justify-center bg-black/50 backdrop-blur-md animate-in fade-in duration-200">
-          <div
-            className="relative bg-white rounded-3xl p-7 max-w-md w-full shadow-2xl border border-gray-100
-                       transform transition-all animate-in zoom-in-95 duration-300
-                       hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]"
-          >
-            <div className="absolute -top-12 -right-12 w-40 h-40 bg-gradient-to-br from-red-200/40 to-orange-200/40 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-gradient-to-br from-red-100/40 to-pink-200/40 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="relative flex items-start gap-4 mb-6">
-              <div className="relative w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-red-500/30">
-                <div className="absolute inset-0 bg-red-500 rounded-2xl animate-ping opacity-20" />
-                <Trash2 className="relative w-7 h-7 text-white" strokeWidth={2.5} />
+        <div className="fixed inset-0 z-50 p-4 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="relative bg-white rounded-xl p-6 max-w-md w-full shadow-xl border border-gray-200">
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Trash2 className="w-6 h-6 text-red-600" strokeWidth={2.25} />
               </div>
               <div className="flex-1">
-                <h3 className="text-xl font-bold text-gray-900 mb-1.5 tracking-tight">
+                <h3 className="text-lg font-bold text-gray-900 mb-1">
                   Xóa {selectedIds.size} đề thi?
                 </h3>
                 <p className="text-sm text-gray-600 leading-relaxed">
@@ -1217,7 +1341,7 @@ export function AllExams() {
               </div>
             </div>
 
-            <div className="relative mb-6 px-4 py-3 bg-red-50/70 border border-red-100 rounded-xl max-h-40 overflow-y-auto">
+            <div className="mb-5 px-3 py-2.5 bg-red-50 border border-red-100 rounded-md max-h-40 overflow-y-auto">
               <div className="text-xs text-red-700 font-medium mb-2">
                 Danh sách đề thi sẽ bị xóa:
               </div>
@@ -1240,56 +1364,43 @@ export function AllExams() {
               </ul>
             </div>
 
-            <div className="relative flex gap-3">
+            <div className="flex gap-3">
               <button
                 onClick={() => setBulkDeleteConfirm(false)}
                 disabled={bulkDeleting}
-                className="group flex-1 relative overflow-hidden px-4 py-3 bg-gray-100 text-gray-700 rounded-xl
-                           hover:bg-gray-900 hover:text-white
-                           active:scale-95
-                           transition-all duration-300 ease-out
-                           text-sm font-semibold
-                           hover:shadow-lg hover:shadow-gray-900/20
-                           hover:-translate-y-0.5
-                           disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span className="relative z-10">Hủy</span>
+                Hủy
               </button>
               <button
                 onClick={handleBulkDelete}
                 disabled={bulkDeleting}
-                className="group flex-1 relative overflow-hidden px-4 py-3 text-white rounded-xl
-                           bg-gradient-to-r from-red-600 via-red-500 to-orange-500
-                           hover:from-red-700 hover:via-red-600 hover:to-orange-600
-                           active:scale-95
-                           transition-all duration-300 ease-out
-                           text-sm font-semibold
-                           shadow-lg shadow-red-500/40
-                           hover:shadow-2xl hover:shadow-red-500/60
-                           hover:-translate-y-0.5
-                           ring-1 ring-red-400/50
-                           hover:ring-2 hover:ring-red-300
-                           disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm font-medium cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  {bulkDeleting ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Đang xóa...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="w-4 h-4 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-300" />
-                      <span>Xóa {selectedIds.size} đề thi</span>
-                    </>
-                  )}
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                {bulkDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Đang xóa...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Xóa {selectedIds.size} đề thi</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Assign Modal — giao đề cho học viên (từ card "Giao đề") */}
+      <AssignModal
+        open={assignExams !== null}
+        exams={assignExams ?? []}
+        onClose={() => setAssignExams(null)}
+        onAssigned={() => setAssignExams(null)}
+      />
     </div>
   );
 }

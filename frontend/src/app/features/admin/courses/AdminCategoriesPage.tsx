@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { adminApi, AdminCategory } from "@/services/adminApi";
+import { AdminTableSkeleton } from "../components/AdminPageSkeleton";
 
 const toId = (c: AdminCategory) => c.cId || c.caId || 0;
 const toName = (c: AdminCategory) => c.cName || c.caName || "N/A";
@@ -106,7 +107,7 @@ export function AdminCategoriesPage() {
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         {loading ? (
-          <div className="p-8 text-center text-slate-500">Đang tải dữ liệu...</div>
+          <AdminTableSkeleton rows={7} cols={4} />
         ) : error ? (
           <div className="p-8 text-center text-red-600">{error}</div>
         ) : (

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Activity, BarChart3, CalendarClock, Users } from "lucide-react";
+import { Activity, BarChart3, CalendarClock, Download, Users } from "lucide-react";
 import { adminApi } from "@/services/adminApi";
+import { AdminStatsSkeleton } from "../components/AdminPageSkeleton";
 
 type ActivityData = {
   total_users?: number;
@@ -18,6 +19,8 @@ export function AdminStudentsReportPage() {
   const [report, setReport] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -38,6 +41,20 @@ export function AdminStudentsReportPage() {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      setExportMsg(null);
+      const filename = await adminApi.downloadReportCsv({ type: "users", period: "30d" });
+      setExportMsg(`Đã tải ${filename}`);
+    } catch {
+      setExportMsg("Xuất CSV thất bại.");
+    } finally {
+      setExporting(false);
+      setTimeout(() => setExportMsg(null), 3000);
+    }
+  };
+
   useEffect(() => {
     load();
   }, []);
@@ -54,21 +71,38 @@ export function AdminStudentsReportPage() {
 
   return (
     <div className="min-h-screen p-6" style={{ background: "#F8FAFC" }}>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Báo cáo học viên</h1>
           <p className="text-sm text-slate-500">Tổng hợp hoạt động và tăng trưởng người dùng</p>
         </div>
-        <button
-          onClick={load}
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          Tải lại
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={load}
+            className="cursor-pointer rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            Tải lại
+          </button>
+          <button
+            data-testid="admin-export-csv"
+            onClick={handleExport}
+            disabled={exporting}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+          >
+            <Download className="h-4 w-4" />
+            {exporting ? "Đang xuất..." : "Xuất CSV"}
+          </button>
+        </div>
       </div>
 
+      {exportMsg && (
+        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+          {exportMsg}
+        </div>
+      )}
+
       {loading ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">Đang tải dữ liệu...</div>
+        <AdminStatsSkeleton cards={4} />
       ) : error ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-red-600">{error}</div>
       ) : (

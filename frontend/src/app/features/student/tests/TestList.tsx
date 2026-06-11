@@ -103,8 +103,8 @@ export function TestList() {
   // Theme palette switches based on age group
   const { PRIMARY, PRIMARY_LIGHT, PRIMARY_MID, ACCENT } = isKids ? THEME_KIDS : THEME_DEFAULT;
 
-  // URL base — keep kids in /hoc-vien/kids/* namespace
-  const BASE = isKids ? '/hoc-vien/kids' : STUDENT_BASE_PATH;
+  // URL base — kids dùng chung namespace /hoc-vien như các nhóm khác
+  const BASE = STUDENT_BASE_PATH;
 
   const isAdultLevelExam = (t: any) => {
     const s = String(t.exam_type || '').toLowerCase() + ' ' + String(t.exam_title || '').toLowerCase();
@@ -350,126 +350,92 @@ export function TestList() {
               const progress = test.attempts_allowed > 0 ? (test.attempts_used / test.attempts_allowed) * 100 : 0;
 
               return (
-                <div key={test.assignment_id} 
-                     className="relative bg-white rounded-3xl p-6 transition-all duration-300 group"
-                     style={{
-                        border: "1.5px solid #F0F0F8",
-                        boxShadow: "0 4px 20px rgba(124,58,237,0.06)"
-                     }}
-                     onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "translateY(-4px)";
-                        e.currentTarget.style.boxShadow = `0 16px 40px rgba(124,58,237,0.14)`;
-                        e.currentTarget.style.borderColor = `rgba(124,58,237,0.25)`;
-                     }}
-                     onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.boxShadow = "0 4px 20px rgba(124,58,237,0.06)";
-                        e.currentTarget.style.borderColor = "#F0F0F8";
-                     }}>
-                   
-                   {/* Urgent Badge */}
-                   {isUrgent && !isCompleted && (
-                      <div className="absolute top-5 right-5 flex items-center gap-1.5 px-3 py-2 rounded-xl animate-pulse"
-                           style={{ background: "#FEF2F2", color: "#DC2626", border: "2px solid #FCA5A5", boxShadow: "0 4px 12px rgba(220,38,38,0.2)" }}>
-                         <AlertCircle className="w-4 h-4" />
-                         <span style={{ fontSize: 12, fontWeight: 900 }}>URGENT</span>
-                      </div>
-                   )}
-
-                   {/* Icon with gradient background */}
-                   <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform"
-                        style={{ background: `linear-gradient(135deg, ${color}15, ${color}25)` }}>
-                      <Icon className="w-8 h-8" style={{ color }} />
-                      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"
-                           style={{ background: `linear-gradient(135deg, ${color}30, ${color}10)` }} />
-                   </div>
-
-                   {/* Title */}
-                   <h3 className="line-clamp-2 mb-3" 
-                       style={{ fontSize: 18, fontWeight: 800, color: "#1F1344", lineHeight: 1.4, minHeight: 50 }}>
+                <div
+                  key={test.assignment_id}
+                  className="group relative flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
+                >
+                  <div className="flex flex-col flex-1 p-5">
+                    {/* Title */}
+                    <h3 className="text-lg font-bold text-gray-900 line-clamp-2 leading-snug mb-3 min-h-[56px]">
                       {test.exam_title}
-                   </h3>
+                    </h3>
 
-                   {/* Labels */}
-                   <div className="flex flex-wrap gap-2 mb-5">
-                     <span className="px-3 py-1.5 rounded-lg text-xs font-bold" 
-                           style={{ background: formatMeta.bg, color: color }}>
-                       {formatMeta.label}
+                    {/* Stats row - inline với icons */}
+                    <div className="flex items-center flex-wrap gap-x-3 gap-y-1.5 text-sm text-gray-600 mb-1.5">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        {test.exam_duration} phút
                       </span>
-                      <span className="px-3 py-1.5 rounded-lg text-xs font-bold" 
-                            style={{ background: "#F3F4F6", color: "#4B5563" }}>
-                         {test.exam_type}
+                      <span className="text-gray-300">|</span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <BookOpen className="w-4 h-4 text-gray-400" />
+                        {test.attempts_used}/{test.attempts_allowed}
+                      </span>
+                    </div>
+
+                    {/* Sub stats */}
+                    <p className="text-sm text-gray-600 mb-4">
+                      {test.exam_skill && (
+                        <span className="capitalize">{test.exam_skill}</span>
+                      )}
+                      {test.exam_skill && ' | '}
+                      <span className="font-medium">{test.total_questions} câu hỏi</span>
+                    </p>
+
+                    {/* Hashtag tags */}
+                    <div className="flex flex-wrap gap-2 mb-5">
+                      <span className="px-3 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700">
+                        #{test.exam_type}
                       </span>
                       {test.exam_skill && (
-                        <span className="px-3 py-1.5 rounded-lg text-xs font-bold capitalize"
-                              style={{ background: `${getSkillColor(test.exam_skill)}15`, color: getSkillColor(test.exam_skill) }}>
-                          {test.exam_skill}
+                        <span className="px-3 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 capitalize">
+                          #{test.exam_skill}
                         </span>
                       )}
-                   </div>
+                      {isUrgent && !isCompleted && (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-red-50 text-red-600">
+                          <AlertCircle className="w-3 h-3" />
+                          Gấp
+                        </span>
+                      )}
+                    </div>
 
-                   {/* Stats Grid */}
-                   <div className="space-y-3 mb-5 p-4 rounded-2xl" style={{ background: "#F8F7FF" }}>
-                      <div className="flex items-center justify-between">
-                         <span className="flex items-center gap-2 text-sm font-medium" style={{ color: "#6B7280" }}>
-                           <ClipboardList className="w-4 h-4" /> Câu hỏi
-                         </span>
-                         <span className="font-bold" style={{ color: "#1F1344" }}>{test.total_questions}</span>
+                    {/* Progress (only when started) */}
+                    {test.attempts_allowed > 0 && progress > 0 && progress < 100 && (
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs font-medium text-gray-500">Tiến độ</span>
+                          <span className="text-xs font-bold text-blue-600">{Math.round(progress)}%</span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                          <div className="h-full rounded-full bg-blue-500 transition-all duration-500" style={{ width: `${progress}%` }} />
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                         <span className="flex items-center gap-2 text-sm font-medium" style={{ color: "#6B7280" }}>
-                           <Clock className="w-4 h-4" /> Thời gian
-                         </span>
-                         <span className="font-bold" style={{ color: "#1F1344" }}>{test.exam_duration} phút</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                         <span className="flex items-center gap-2 text-sm font-medium" style={{ color: "#6B7280" }}>
-                           <BookOpen className="w-4 h-4" /> Lần làm
-                         </span>
-                         <span className="font-bold" style={{ color: "#1F1344" }}>{test.attempts_used}/{test.attempts_allowed}</span>
-                      </div>
-                   </div>
+                    )}
 
-                   {/* Progress Bar */}
-                   {test.attempts_allowed > 0 && (
-                     <div className="mb-5">
-                       <div className="flex items-center justify-between mb-2">
-                         <span style={{ fontSize: 12, fontWeight: 600, color: "#6B7280" }}>Tiến độ</span>
-                         <span style={{ fontSize: 12, fontWeight: 800, color: PRIMARY }}>{Math.round(progress)}%</span>
-                       </div>
-                       <div className="h-2 rounded-full overflow-hidden" style={{ background: "#E5E7EB" }}>
-                         <div className="h-full rounded-full transition-all duration-500"
-                              style={{ 
-                                width: `${progress}%`,
-                                background: `linear-gradient(90deg, ${color}, ${color}CC)`
-                              }} />
-                       </div>
-                     </div>
-                   )}
-
-                   {/* Action Button */}
-                   {isCompleted ? (
-                      <Link to={`${BASE}/ket-qua/${test.submission_id}`}
-                            className="w-full flex justify-between items-center px-5 py-4 rounded-xl font-bold transition-all hover:scale-[1.02]"
-                            style={{ background: "#F0FDF4", color: "#16A34A", border: "2px solid #86EFAC" }}>
-                         <span className="flex items-center gap-2">
-                           <CheckCircle className="w-5 h-5" />
-                           Đã hoàn thành
-                         </span>
-                         <ArrowRight className="w-5 h-5" />
-                      </Link>
-                   ) : (
-                      <Link to={`${BASE}/phong-cho/${test.assignment_id}`}
-                            className={`w-full flex justify-between items-center px-5 py-4 rounded-xl font-bold transition-all ${canStart ? 'hover:scale-[1.02]' : 'opacity-50 cursor-not-allowed'}`}
-                            style={{ background: color, color: "#fff", boxShadow: `0 4px 16px ${color}40` }}
-                            onClick={(e) => !canStart && e.preventDefault()}>
-                         <span className="flex items-center gap-2">
-                           <Play className="w-5 h-5 fill-current" />
-                           {test.attempts_used > 0 ? "Tiếp tục làm" : "Làm bài ngay"}
-                         </span>
-                         <ArrowRight className="w-5 h-5" />
-                      </Link>
-                   )}
+                    {/* Action button - outline style "Chi tiết" - pinned to bottom */}
+                    <div className="mt-auto pt-2">
+                      {isCompleted ? (
+                        <Link
+                          to={`${BASE}/ket-qua/${test.submission_id}`}
+                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-green-500 text-green-600 text-sm font-semibold hover:bg-green-50 transition-colors"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Xem kết quả
+                        </Link>
+                      ) : (
+                        <Link
+                          to={`${BASE}/phong-cho/${test.assignment_id}`}
+                          onClick={(e) => !canStart && e.preventDefault()}
+                          className={`w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-blue-500 text-blue-600 text-sm font-semibold transition-colors ${
+                            canStart ? 'hover:bg-blue-50' : 'opacity-50 cursor-not-allowed'
+                          }`}
+                        >
+                          {test.attempts_used > 0 ? 'Tiếp tục làm' : 'Chi tiết'}
+                        </Link>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
            })}

@@ -27,9 +27,6 @@ const ListenWriteEditor: React.FC<ListenWriteEditorProps> = ({
   examId,
   questionId,
 }) => {
-  console.log('🎯 ListenWriteEditor loaded with initialData:', initialData);
-  console.log('🎯 examId:', examId, 'questionId:', questionId);
-  
   const toast = useToastContext();
   const [title, setTitle] = useState(initialData?.title || 'Nghe và viết');
   const [points, setPoints] = useState(initialData?.points || 5);
@@ -302,82 +299,76 @@ const ListenWriteEditor: React.FC<ListenWriteEditorProps> = ({
   };
 
   return (
-    <div className="min-h-[600px] rounded-xl border-2 border-indigo-200 bg-white p-6 shadow-lg">
+    <div className="min-h-[600px] space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <span className="text-4xl">✍️</span>
+      <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">✍️</span>
           <div>
-            <h3 className="font-baloo text-2xl font-bold text-indigo-600">
-              Nghe và Viết
+            <h3 className="text-base font-semibold text-slate-900">
+              Nghe và viết
             </h3>
-            <p className="text-sm text-gray-500">Part 2 - Nghe và viết từ</p>
+            <p className="text-sm text-slate-500">Part 2 - Nghe và viết từ</p>
           </div>
         </div>
         <button
           onClick={onCancel}
-          className="rounded-full p-2 transition-colors hover:bg-gray-100"
+          className="rounded-full p-2 transition-colors hover:bg-slate-100"
         >
-          <X className="h-6 w-6 text-gray-500" />
+          <X className="h-5 w-5 text-slate-500" />
         </button>
       </div>
 
       {/* Settings */}
-      <div className="mb-6 grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">
             Tiêu đề câu hỏi / Hướng dẫn <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:outline-none"
+            className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
             placeholder="Ví dụ: Nghe và viết. Có một ví dụ."
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-slate-500">
             Hướng dẫn này sẽ hiển thị cho học sinh biết phải làm gì
           </p>
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">
             Điểm
           </label>
           <input
             type="number"
             value={points}
             onChange={(e) => setPoints(parseInt(e.target.value))}
-            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:outline-none"
+            className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
             min="1"
           />
         </div>
       </div>
 
       {/* Main Image - Prominent position */}
-      <div className="mb-6">
-        <label className="mb-2 flex items-center gap-2 text-lg font-bold text-gray-800">
-          <span className="text-3xl">🖼️</span>
+      <div>
+        <label className="mb-1.5 flex items-center gap-2 text-sm font-medium text-slate-700">
+          <span className="text-lg">🖼️</span>
           <span>Hình ảnh chính cho câu hỏi</span>
         </label>
-        <p className="mb-3 text-sm text-gray-600">
-          Hình ảnh này sẽ hiển thị cho tất cả học sinh khi làm bài. Rất quan trọng! 🌟
-        </p>
-        <p className="mb-3 text-xs font-medium text-indigo-600 bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-200">
-          💡 Mẹo: Bạn có thể <span className="font-bold">Ctrl+V</span> để paste ảnh trực tiếp từ clipboard!
+        <p className="mb-2 text-xs text-slate-500">
+          Hình ảnh này sẽ hiển thị cho tất cả học sinh khi làm bài. Có thể Ctrl+V để paste trực tiếp.
         </p>
         
         {!mainImageUrl ? (
-          <label className="flex cursor-pointer items-center justify-center space-x-3 rounded-xl border-2 border-dashed border-indigo-300 bg-gradient-to-br from-indigo-50 to-purple-50 p-8 transition-all hover:border-indigo-500 hover:shadow-lg">
-            <Upload className="h-8 w-8 text-indigo-600" />
+          <label className="flex cursor-pointer items-center justify-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 transition-colors hover:border-orange-400 hover:bg-orange-50/40">
+            <Upload className="h-7 w-7 text-slate-400" />
             <div className="text-center">
-              <span className="block text-xl font-bold text-indigo-700">
-                {isUploading ? '⏳ Đang tải lên...' : 'Nhấn để tải hình ảnh lên'}
+              <span className="block text-sm font-medium text-slate-700">
+                {isUploading ? 'Đang tải lên...' : 'Nhấn để tải hình ảnh lên'}
               </span>
-              <span className="mt-1 block text-sm text-gray-500">
-                PNG, JPG, GIF, WebP (tối đa 20MB)
-              </span>
-              <span className="mt-1 block text-xs text-indigo-600 font-medium">
-                hoặc Ctrl+V để paste ảnh
+              <span className="mt-1 block text-xs text-slate-500">
+                PNG, JPG, GIF, WebP (tối đa 20MB) hoặc Ctrl+V để paste
               </span>
             </div>
             <input
@@ -389,8 +380,8 @@ const ListenWriteEditor: React.FC<ListenWriteEditorProps> = ({
             />
           </label>
         ) : (
-          <div className="relative overflow-hidden rounded-xl border-4 border-indigo-300 bg-white shadow-lg">
-            <div className="flex items-center justify-center bg-gray-50 p-4">
+          <div className="relative overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="flex items-center justify-center bg-slate-50 p-4">
               <img
                 src={mainImageUrl}
                 alt="Main question image"
@@ -400,29 +391,26 @@ const ListenWriteEditor: React.FC<ListenWriteEditorProps> = ({
             <button
               type="button"
               onClick={() => setMainImageUrl('')}
-              className="absolute right-3 top-3 rounded-full bg-red-500 p-2.5 text-white shadow-lg transition-all hover:scale-110 hover:bg-red-600"
+              className="absolute right-3 top-3 rounded-full bg-red-500 p-2 text-white shadow-sm transition-colors hover:bg-red-600"
               title="Xóa hình ảnh"
             >
-              <X className="h-6 w-6" />
+              <X className="h-5 w-5" />
             </button>
-            <div className="bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-2 text-center">
-              <span className="text-sm font-bold text-white">✨ Hình ảnh chính đã sẵn sàng!</span>
-            </div>
           </div>
         )}
       </div>
 
       {/* Main Audio */}
-      <div className="mb-6">
-        <label className="mb-2 block font-medium text-gray-700">
+      <div>
+        <label className="mb-1.5 block text-sm font-medium text-slate-700">
           Audio File <span className="text-red-500">*</span>
         </label>
         
         {!audioPreview ? (
           <div className="flex items-center space-x-4">
-            <label className="flex cursor-pointer items-center space-x-2 rounded-lg border-2 border-dashed border-gray-300 px-6 py-3 transition-colors hover:border-indigo-500">
-              <Upload className="h-5 w-5 text-gray-500" />
-              <span className="text-gray-700">
+            <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-3 transition-colors hover:border-orange-400 hover:bg-orange-50/40">
+              <Upload className="h-5 w-5 text-slate-400" />
+              <span className="text-sm text-slate-700">
                 {isUploading ? 'Đang upload...' : 'Upload Audio'}
               </span>
               <input
@@ -433,13 +421,13 @@ const ListenWriteEditor: React.FC<ListenWriteEditorProps> = ({
                 disabled={isUploading}
               />
             </label>
-            <span className="text-sm text-gray-500">MP3, WAV (max 10MB)</span>
-            {isUploading && <span className="text-sm text-indigo-600 animate-pulse">⏳ Uploading...</span>}
+            <span className="text-xs text-slate-500">MP3, WAV (max 10MB)</span>
+            {isUploading && <span className="text-sm text-orange-600 animate-pulse">Đang tải...</span>}
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="flex items-center space-x-3 rounded-lg border-2 border-indigo-200 bg-indigo-50 p-4">
-              <Volume2 className="h-6 w-6 text-indigo-600" />
+            <div className="flex items-center space-x-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <Volume2 className="h-6 w-6 text-slate-500" />
               <div className="flex-1">
                 <p className="font-medium text-gray-900">Audio chính</p>
                 <audio 
@@ -467,15 +455,15 @@ const ListenWriteEditor: React.FC<ListenWriteEditorProps> = ({
       </div>
 
       {/* Items */}
-      <div className="mb-6 space-y-4">
+      <div className="space-y-4">
         {/* Sticky header with add button */}
-        <div className="sticky top-0 z-40 -mx-6 -mt-6 mb-4 flex items-center justify-between bg-white px-6 py-4 shadow-md">
-          <h4 className="font-baloo text-lg font-bold text-gray-800">
+        <div className="sticky top-0 z-40 -mx-6 mb-4 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+          <h4 className="text-sm font-semibold text-slate-900">
             Danh sách câu hỏi ({items.length})
           </h4>
           <button
             onClick={handleAddItem}
-            className="flex items-center space-x-2 rounded-lg bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700"
+            className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600"
           >
             <Plus className="h-4 w-4" />
             <span>Thêm câu</span>
@@ -485,16 +473,16 @@ const ListenWriteEditor: React.FC<ListenWriteEditorProps> = ({
         {items.map((item, index) => (
           <div
             key={item.id}
-            className={`rounded-lg border-2 p-4 ${
+            className={`rounded-xl border p-4 ${
               item.isExample
-                ? 'border-amber-400 bg-amber-50'
-                : 'border-gray-200 bg-gray-50'
+                ? 'border-amber-300 bg-amber-50'
+                : 'border-slate-200 bg-slate-50'
             }`}
           >
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <span className={`font-bold ${
-                  item.isExample ? 'text-amber-700' : 'text-indigo-600'
+                <span className={`text-sm font-semibold ${
+                  item.isExample ? 'text-amber-700' : 'text-slate-700'
                 }`}>
                   {item.isExample ? '📌 Câu ví dụ' : `Câu ${index + 1}`}
                 </span>
@@ -516,52 +504,52 @@ const ListenWriteEditor: React.FC<ListenWriteEditorProps> = ({
                   type="checkbox"
                   checked={item.isExample || false}
                   onChange={(e) => {
-                    setItems(items.map(i => 
+                    setItems(items.map(i =>
                       i.id === item.id ? { ...i, isExample: e.target.checked } : i
                     ));
                   }}
-                  className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                  className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-400"
                 />
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium text-slate-700">
                   ✨ Đây là câu ví dụ (không tính điểm, hiển thị sẵn đáp án)
                 </span>
               </label>
               
               {/* Question Text */}
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
+                <label className="mb-1 block text-xs font-medium text-slate-600">
                   Câu hỏi
                 </label>
                 <input
                   type="text"
                   value={item.text}
                   onChange={(e) => handleItemChange(item.id, 'text', e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
                   placeholder="Nhập câu hỏi..."
                 />
               </div>
 
               {/* Answer */}
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
+                <label className="mb-1 block text-xs font-medium text-slate-600">
                   Đáp án đúng *
                 </label>
                 <input
                   type="text"
                   value={item.answer}
                   onChange={(e) => handleItemChange(item.id, 'answer', e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
                   placeholder="Nhập đáp án..."
                 />
               </div>
 
               {/* Item Audio */}
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
+                <label className="mb-1 block text-xs font-medium text-slate-600">
                   Audio riêng (tùy chọn)
                 </label>
                 <div className="flex items-center space-x-2">
-                  <label className="flex cursor-pointer items-center space-x-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm transition-colors hover:bg-gray-50">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50">
                     <Upload className="h-4 w-4" />
                     <span>Tải audio</span>
                     <input
@@ -575,7 +563,7 @@ const ListenWriteEditor: React.FC<ListenWriteEditorProps> = ({
                   {item.audioUrl && (
                     <button
                       onClick={() => toggleAudio(item.audioUrl!)}
-                      className="flex items-center space-x-1 rounded-lg border border-indigo-600 bg-white px-3 py-2 text-sm text-indigo-600 transition-colors hover:bg-indigo-50"
+                      className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
                     >
                       {playingAudio === item.audioUrl ? (
                         <Pause className="h-4 w-4" />
@@ -592,18 +580,18 @@ const ListenWriteEditor: React.FC<ListenWriteEditorProps> = ({
       </div>
 
       {/* Actions */}
-      <div className="flex justify-end space-x-3">
+      <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
         <button
           onClick={onCancel}
-          className="rounded-lg border border-gray-300 px-6 py-2 transition-colors hover:bg-gray-50"
+          className="rounded-lg border border-slate-300 px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
         >
           Hủy
         </button>
         <button
           onClick={handleSave}
-          className="rounded-lg bg-indigo-600 px-6 py-2 text-white transition-colors hover:bg-indigo-700"
+          className="rounded-lg bg-orange-500 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600"
         >
-          💾 Lưu câu hỏi
+          Lưu câu hỏi
         </button>
       </div>
 

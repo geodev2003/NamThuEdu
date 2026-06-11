@@ -1,47 +1,45 @@
 /**
  * adminRoutes — Tất cả route dành cho admin.
  * Base path: "/admin" — Layout: AdminLayout (sidebar dark slate).
+ * Tất cả page đều lazy-loaded để Suspense fallback (AdminPageSkeleton)
+ * trong AdminLayout hiển thị khung skeleton khi chuyển trang.
  */
-import AdminLayout from "../layouts/AdminLayout";
-import { AdminDashboard } from "../features/admin/dashboard/AdminDashboard";
-import { UnderConstruction } from "../components/shared/UnderConstruction";
-import { AdminUsersPage } from "../features/admin/users/AdminUsersPage";
-import { AdminPostsPage } from "../features/admin/content/AdminPostsPage";
-import { AdminExamsPage } from "../features/admin/content/AdminExamsPage";
-import { AdminStudentsReportPage } from "../features/admin/reports/AdminStudentsReportPage";
-import { AdminTeachersPage } from "../features/admin/teachers/AdminTeachersPage";
-import { AdminCoursesPage } from "../features/admin/courses/AdminCoursesPage";
-import { AdminCategoriesPage } from "../features/admin/courses/AdminCategoriesPage";
-import { AdminCourseCreatePage } from "../features/admin/courses/AdminCourseCreatePage";
-import { AdminRevenueReportPage } from "../features/admin/reports/AdminRevenueReportPage";
-import { AdminTeachersReportPage } from "../features/admin/reports/AdminTeachersReportPage";
-import { AdminSystemLogsPage } from "../features/admin/system/AdminSystemLogsPage";
-import { AdminServerHealthPage } from "../features/admin/system/AdminServerHealthPage";
-import { AdminBackupPage } from "../features/admin/system/AdminBackupPage";
-import { AdminNotificationsPage } from "../features/admin/notifications/AdminNotificationsPage";
-import { AdminSettingsPage } from "../features/admin/settings/AdminSettingsPage";
-import { AdminProfilePage } from "../features/admin/profile/AdminProfilePage";
+import { lazy } from "react";
 import { Navigate } from "react-router";
-import { AdminTeacherAssignmentsPage } from "../features/admin/teachers/AdminTeacherAssignmentsPage";
-import { AdminStudentRegistrationsPage } from "../features/admin/students/AdminStudentRegistrationsPage";
-import { AdminStudentComplaintsPage } from "../features/admin/students/AdminStudentComplaintsPage";
+import AdminLayout from "../layouts/AdminLayout";
+import { ProtectedRoute } from "../../components/auth";
+import { UnderConstruction } from "../components/shared/UnderConstruction";
+
+// ─── Lazy admin pages ────────────────────────────────────────────────────────
+const AdminDashboard               = lazy(() => import("../features/admin/dashboard/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
+const AdminUsersPage               = lazy(() => import("../features/admin/users/AdminUsersPage").then(m => ({ default: m.AdminUsersPage })));
+const AdminPostsPage               = lazy(() => import("../features/admin/content/AdminPostsPage").then(m => ({ default: m.AdminPostsPage })));
+
+const AdminStudentsReportPage      = lazy(() => import("../features/admin/reports/AdminStudentsReportPage").then(m => ({ default: m.AdminStudentsReportPage })));
+const AdminCoursesPage             = lazy(() => import("../features/admin/courses/AdminCoursesPage").then(m => ({ default: m.AdminCoursesPage })));
+const AdminCategoriesPage          = lazy(() => import("../features/admin/courses/AdminCategoriesPage").then(m => ({ default: m.AdminCategoriesPage })));
+const AdminCourseCreatePage        = lazy(() => import("../features/admin/courses/AdminCourseCreatePage").then(m => ({ default: m.AdminCourseCreatePage })));
+const AdminRevenueReportPage       = lazy(() => import("../features/admin/reports/AdminRevenueReportPage").then(m => ({ default: m.AdminRevenueReportPage })));
+const AdminTeachersReportPage      = lazy(() => import("../features/admin/reports/AdminTeachersReportPage").then(m => ({ default: m.AdminTeachersReportPage })));
+const AdminSettingsPage            = lazy(() => import("../features/admin/settings/AdminSettingsPage").then(m => ({ default: m.AdminSettingsPage })));
+
+function ProtectedAdminLayout() {
+  return (
+    <ProtectedRoute requiredRole="admin">
+      <AdminLayout />
+    </ProtectedRoute>
+  );
+}
 
 export const adminRoutes = {
   path: "/admin",
-  Component: AdminLayout,
+  Component: ProtectedAdminLayout,
   children: [
     // Tổng quan
     { index: true, Component: AdminDashboard },
 
-    // Giáo viên
-    { path: "teachers", Component: AdminTeachersPage },
-    { path: "teachers/new", Component: () => <Navigate to="/admin/teachers" replace /> },
-    { path: "teachers/assignments", Component: AdminTeacherAssignmentsPage },
-
-    // Học viên
-    { path: "students", Component: AdminUsersPage },
-    { path: "students/new-registrations", Component: AdminStudentRegistrationsPage },
-    { path: "students/complaints", Component: AdminStudentComplaintsPage },
+    // Người dùng (Học viên & Giáo viên)
+    { path: "users", Component: AdminUsersPage },
 
     // Khóa học
     { path: "courses", Component: AdminCoursesPage },
@@ -50,41 +48,48 @@ export const adminRoutes = {
 
     // Nội dung
     { path: "content/posts", Component: AdminPostsPage },
-    { path: "content/exams", Component: AdminExamsPage },
+    { path: "content/exams", Component: () => <Navigate to="/admin/courses" replace /> },
 
     // Báo cáo
     { path: "reports/revenue", Component: AdminRevenueReportPage },
     { path: "reports/students", Component: AdminStudentsReportPage },
     { path: "reports/teachers", Component: AdminTeachersReportPage },
 
-    // Hệ thống
-    { path: "system/activity-logs", Component: AdminSystemLogsPage },
-    { path: "system/server-health", Component: AdminServerHealthPage },
-    { path: "system/backups", Component: AdminBackupPage },
+    // Hệ thống (Redirect to /admin as these pages are removed)
+    { path: "system/activity-logs", Component: () => <Navigate to="/admin" replace /> },
+    { path: "system/audit-logs", Component: () => <Navigate to="/admin" replace /> },
+    { path: "system/server-health", Component: () => <Navigate to="/admin" replace /> },
+    { path: "system/backups", Component: () => <Navigate to="/admin" replace /> },
 
     // Thông báo & Cài đặt
-    { path: "notifications", Component: AdminNotificationsPage },
+    { path: "notifications", Component: () => <Navigate to="/admin" replace /> },
     { path: "settings", Component: AdminSettingsPage },
-    { path: "profile", Component: AdminProfilePage },
+    { path: "profile", Component: () => <Navigate to="/admin/settings?tab=profile" replace /> },
 
-    // Legacy redirects (old URLs)
-    { path: "giao-vien", Component: () => <Navigate to="/admin/teachers" replace /> },
-    { path: "giao-vien/them-moi", Component: () => <Navigate to="/admin/teachers/new" replace /> },
-    { path: "giao-vien/phan-cong", Component: () => <Navigate to="/admin/teachers/assignments" replace /> },
-    { path: "students/dang-ky", Component: () => <Navigate to="/admin/students/new-registrations" replace /> },
-    { path: "students/khieu-nai", Component: () => <Navigate to="/admin/students/complaints" replace /> },
+    // Legacy/Redirect routes to unified "Người dùng"
+    { path: "teachers", Component: () => <Navigate to="/admin/users?tab=teachers" replace /> },
+    { path: "teachers/new", Component: () => <Navigate to="/admin/users?tab=teachers" replace /> },
+    { path: "teachers/assignments", Component: () => <Navigate to="/admin/users?tab=teachers" replace /> },
+    { path: "students", Component: () => <Navigate to="/admin/users?tab=students" replace /> },
+    { path: "students/new-registrations", Component: () => <Navigate to="/admin/users?tab=students" replace /> },
+    { path: "giao-vien", Component: () => <Navigate to="/admin/users?tab=teachers" replace /> },
+    { path: "giao-vien/them-moi", Component: () => <Navigate to="/admin/users?tab=teachers" replace /> },
+    { path: "giao-vien/phan-cong", Component: () => <Navigate to="/admin/users?tab=teachers" replace /> },
+    { path: "students/dang-ky", Component: () => <Navigate to="/admin/users?tab=students" replace /> },
+    { path: "students/complaints", Component: () => <Navigate to="/admin/users?tab=students" replace /> },
+    { path: "students/khieu-nai", Component: () => <Navigate to="/admin/users?tab=students" replace /> },
     { path: "khoa-hoc", Component: () => <Navigate to="/admin/courses" replace /> },
     { path: "khoa-hoc/tao-moi", Component: () => <Navigate to="/admin/courses/new" replace /> },
     { path: "khoa-hoc/danh-muc", Component: () => <Navigate to="/admin/courses/categories" replace /> },
     { path: "noi-dung/bai-viet", Component: () => <Navigate to="/admin/content/posts" replace /> },
-    { path: "noi-dung/de-thi", Component: () => <Navigate to="/admin/content/exams" replace /> },
+    { path: "noi-dung/de-thi", Component: () => <Navigate to="/admin/courses" replace /> },
     { path: "bao-cao/doanh-thu", Component: () => <Navigate to="/admin/reports/revenue" replace /> },
     { path: "bao-cao/students", Component: () => <Navigate to="/admin/reports/students" replace /> },
     { path: "bao-cao/giao-vien", Component: () => <Navigate to="/admin/reports/teachers" replace /> },
-    { path: "he-thong/nhat-ky", Component: () => <Navigate to="/admin/system/activity-logs" replace /> },
-    { path: "he-thong/server", Component: () => <Navigate to="/admin/system/server-health" replace /> },
-    { path: "he-thong/backup", Component: () => <Navigate to="/admin/system/backups" replace /> },
-    { path: "thong-bao", Component: () => <Navigate to="/admin/notifications" replace /> },
+    { path: "he-thong/nhat-ky", Component: () => <Navigate to="/admin" replace /> },
+    { path: "he-thong/server", Component: () => <Navigate to="/admin" replace /> },
+    { path: "he-thong/backup", Component: () => <Navigate to="/admin" replace /> },
+    { path: "thong-bao", Component: () => <Navigate to="/admin" replace /> },
     { path: "cai-dat", Component: () => <Navigate to="/admin/settings" replace /> },
 
     // Catch-all

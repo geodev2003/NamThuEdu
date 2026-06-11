@@ -72,6 +72,7 @@ class IeltsExamController extends Controller
             'ielts_test_type' => 'required|string|in:Academic,General Training',
             'ielts_skill' => 'required|string|in:' . implode(',', self::ALLOWED_SKILLS),
             'eDifficulty' => 'nullable|string',
+            'age_group' => 'nullable|in:kids,teens,adults,all',
         ]);
 
         if ($validator->fails()) {
@@ -93,6 +94,7 @@ class IeltsExamController extends Controller
             'ePurpose' => 'exam',
             'eDifficulty' => $request->input('eDifficulty', 'medium'),
             'eTeacher_id' => $user->uId,
+            'age_group' => $request->input('age_group', 'all'),
             'ielts_config' => [
                 'test_type' => $testType,
                 'skill' => $skill,
@@ -134,6 +136,7 @@ class IeltsExamController extends Controller
             'ielts_test_type' => 'sometimes|string|in:Academic,General Training',
             'ielts_config' => 'sometimes|array',
             'ielts_data' => 'sometimes|array',
+            'age_group' => 'sometimes|in:kids,teens,adults,all',
         ]);
 
         if ($validator->fails()) {
@@ -142,6 +145,10 @@ class IeltsExamController extends Controller
 
         // Update metadata
         $updates = $request->only(['eTitle', 'eDescription']);
+
+        if ($request->has('age_group')) {
+            $updates['age_group'] = $request->input('age_group');
+        }
 
         if ($request->has('ielts_test_type')) {
             $testType = $request->input('ielts_test_type');
@@ -301,6 +308,13 @@ class IeltsExamController extends Controller
 
         $config = $exam->ielts_config ?? [];
 
+        // Ưu tiên draft_data (do user gõ chưa publish). Nếu trống (đề đã publish hoặc
+        // import từ chỗ khác) → reconstruct từ contentBlocks + questions thật trong DB.
+        $ieltsData = $config['draft_data'] ?? null;
+        if (!$ieltsData) {
+            $ieltsData = $this->reconstructIeltsDraftFromExam($exam);
+        }
+
         return response()->json([
             'status' => 'success',
             'data' => [
@@ -312,9 +326,126 @@ class IeltsExamController extends Controller
                 'ielts_test_type' => $exam->ielts_test_type,
                 'ielts_skill' => $exam->ielts_skill,
                 'ielts_config' => $config,
-                'ielts_data' => $config['draft_data'] ?? null,
+                'ielts_data' => $ieltsData,
+                'age_group' => $exam->age_group ?? 'all',
             ],
         ]);
+    }
+
+    /**
+     * Reconstruct draft data (cho editor frontend) từ contentBlocks + questions
+     * trong DB. Dùng khi exam đã publish hoặc import xong nhưng `draft_data`
+     * trong ielts_config không có.
+     */
+    private function reconstructIeltsDraftFromExam(Exam $exam): array
+    {
+        $skill = strtolower((string) ($exam->ielts_skill ?? ''));
+
+        // LISTENING: 4 sections
+        if ($skill === 'listening') {
+            $sections = [];
+            for ($n = 1; $n <= 4; $n++) {
+                $block = $exam->contentBlocks->first(function ($b) use ($n) {
+                    return ($b->block_type === 'audio')
+                        && (($b->metadata['section_number'] ?? null) == $n);
+                });
+                $meta = $block ? ($block->metadata ?? []) : [];
+
+                // Lấy audio URL từ content (đã chứa filename hash thật trên disk)
+                $storedAudio = $block ? ($block->content ?? '') : '';
+                $audioFile = $storedAudio
+                    ? basename(parse_url($storedAudio, PHP_URL_PATH))
+                    : ($meta['audio_filename'] ?? '');
+                $audioUrl = $audioFile ? url('files/audio/' . $audioFile) : '';
+
+                $questions = $exam->questions
+                    ->where('qSkill', 'listening')
+                    ->where('qPart', $n)
+                    ->sortBy(fn($q) => ($q->qData['question_number'] ?? $q->qSection_order))
+                    ->values()
+                    ->map(function ($q) {
+                        $data = $q->qData ?? [];
+                        $options = $data['options'] ?? null;
+                        // Fallback build options từ answers nếu qData không có
+                        if (!$options && $q->relationLoaded('answers') && $q->answers->count() >= 2) {
+                            $options = [];
+                            $letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+                            $sorted = $q->answers->sortBy(fn($a) => $a->aOrder ?? $a->aId)->values();
+                            foreach ($sorted as $idx => $ans) {
+                                if (!isset($letters[$idx])) break;
+                                $options[$letters[$idx]] = $ans->aContent;
+                            }
+                        }
+                        return [
+                            'id'             => 's' . ($q->qPart ?? 1) . '-q' . ($data['question_number'] ?? $q->qSection_order),
+                            'questionNumber' => $data['question_number'] ?? $q->qSection_order,
+                            // Normalize underscore→hyphen để match dropdown options frontend
+                            'questionType'   => str_replace('_', '-', (string) ($q->qType ?? 'multiple-choice')),
+                            'questionText'   => $q->qContent ?? '',
+                            'options'        => $options ?: ['A' => '', 'B' => '', 'C' => '', 'D' => ''],
+                            'correctAnswer'  => $data['correct_answer'] ?? '',
+                        ];
+                    })
+                    ->toArray();
+
+                $sections[] = [
+                    'sectionNumber'      => $n,
+                    'sectionTitle'       => $meta['section_title'] ?? '',
+                    'sectionInstruction' => $meta['instructions'] ?? '',
+                    'audioUrl'           => $audioUrl,
+                    'audioFileName'      => $meta['audio_filename'] ?? $audioFile,
+                    'transcript'         => $meta['transcript'] ?? '',
+                    'questions'          => $questions,
+                ];
+            }
+            return ['sections' => $sections];
+        }
+
+        // READING: passages
+        if ($skill === 'reading') {
+            $passages = [];
+            $textBlocks = $exam->contentBlocks
+                ->filter(fn($b) => in_array($b->block_type, ['text', 'passage']))
+                ->sortBy(fn($b) => $b->metadata['passage_number'] ?? $b->display_order ?? 0)
+                ->values();
+            foreach ($textBlocks as $block) {
+                $meta = $block->metadata ?? [];
+                $passageNum = $meta['passage_number'] ?? ($block->display_order ?? 1);
+                $questions = $exam->questions
+                    ->where('qSkill', 'reading')
+                    ->where('qPart', $passageNum)
+                    ->sortBy(fn($q) => ($q->qData['question_number'] ?? $q->qSection_order))
+                    ->values()
+                    ->map(function ($q) {
+                        $data = $q->qData ?? [];
+                        return [
+                            'id'             => 'p' . ($q->qPart ?? 1) . '-q' . ($data['question_number'] ?? $q->qSection_order),
+                            'questionNumber' => $data['question_number'] ?? $q->qSection_order,
+                            'questionType'   => str_replace('_', '-', (string) ($q->qType ?? 'multiple-choice')),
+                            'questionText'   => $q->qContent ?? '',
+                            'options'        => $data['options'] ?? ['A' => '', 'B' => '', 'C' => '', 'D' => ''],
+                            'correctAnswer'  => $data['correct_answer'] ?? '',
+                        ];
+                    })
+                    ->toArray();
+                $passages[] = [
+                    'passageNumber'      => $passageNum,
+                    'passageTitle'       => $meta['passage_title'] ?? '',
+                    'passageText'        => $block->content ?? '',
+                    'passageInstruction' => $meta['instructions'] ?? '',
+                    'questions'          => $questions,
+                ];
+            }
+            return ['passages' => $passages];
+        }
+
+        // WRITING / SPEAKING: trả config tối thiểu (editor có thể tự fill default)
+        if ($skill === 'writing' || $skill === 'speaking') {
+            $key = $skill === 'writing' ? 'tasks' : 'parts';
+            return [$key => $config[$skill][$key] ?? []];
+        }
+
+        return [];
     }
 
     /* ============================================================
@@ -372,8 +503,8 @@ class IeltsExamController extends Controller
                 'totalQuestions' => $totalQuestions ?: self::DEFAULT_TOTAL_QUESTIONS[$skill],
                 'totalParts' => count($sections) ?: self::DEFAULT_PARTS_COUNT[$skill],
                 'sections' => $sections,
-                'participants' => 0, // Lazy: query participants chỉ khi user tab vào
-                'commentsCount' => 0,
+                'participants' => $this->countParticipants($exam->eId),
+                'commentsCount' => $this->countComments($exam->eId),
                 'playMode' => $playModes,
             ],
         ]);
@@ -517,6 +648,9 @@ class IeltsExamController extends Controller
 
     private function sectionDisplayName(string $skill, int $num, array $meta): string
     {
+        if (!empty($meta['section_title'])) {
+            return $meta['section_title'];
+        }
         if (!empty($meta['title'])) {
             return $meta['title'];
         }
@@ -537,9 +671,35 @@ class IeltsExamController extends Controller
     private function countParticipants(int $examId): int
     {
         try {
+            // Đếm số user khác nhau đã thực sự thi/luyện đề này > 1 phút.
+            // - Đã submit: sSubmit_time - sStart_time >= 60s
+            // - Đang làm: now() - sStart_time >= 60s (chưa submit nhưng đã ngồi > 1p)
+            // → đảm bảo không count user mở thử rồi tắt ngay.
             return \App\Models\Submission::where('exam_id', $examId)
-                ->distinct('student_id')
-                ->count('student_id');
+                ->whereNotNull('sStart_time')
+                ->where(function ($q) {
+                    $q->whereRaw('TIMESTAMPDIFF(SECOND, sStart_time, sSubmit_time) >= 60')
+                      ->orWhere(function ($q2) {
+                          $q2->whereNull('sSubmit_time')
+                             ->whereRaw('TIMESTAMPDIFF(SECOND, sStart_time, NOW()) >= 60');
+                      });
+                })
+                ->distinct('user_id')
+                ->count('user_id');
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Tổng số bình luận của 1 đề (gồm cả top-level + replies, đã bỏ deleted).
+     */
+    private function countComments(int $examId): int
+    {
+        try {
+            return \App\Models\ExamComment::where('exam_id', $examId)
+                ->where('is_deleted', false)
+                ->count();
         } catch (\Throwable $e) {
             return 0;
         }

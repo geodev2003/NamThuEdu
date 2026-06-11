@@ -205,6 +205,16 @@ const CreateKidsExam: React.FC = () => {
       });
 
       if (status === 'published') {
+        // Log activity (best-effort)
+        import("../../../../../services/teacherActivityLog").then(({ logTeacherActivity }) => {
+          logTeacherActivity({
+            action: "exam.create",
+            entity_type: "exam",
+            entity_id: Number(currentExamId),
+            detail: `Xuất bản đề Kids: ${examData.title || "Đề Kids"}`,
+            meta: { type: "Kids", exam_type: examData.examType },
+          });
+        });
         alert('Đã xuất bản đề thi thành công! 🎉');
         navigate('/giao-vien/de-thi');
       } else {
@@ -220,40 +230,53 @@ const CreateKidsExam: React.FC = () => {
 
   return (
     <ToastProvider>
-      <div className="flex h-screen flex-col bg-[#F8FAFC]">
-        {/* Header - Flat Design */}
-        <div className="border-b border-gray-200 bg-white">
-          <div className="px-4 py-4">
+      <div className="kids-builder flex h-screen flex-col bg-[#F8FAFC]">
+        {/* Header - Premium Flat Design */}
+        <div className="border-b border-slate-200 bg-white shadow-sm z-10">
+          <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => navigate('/giao-vien/de-thi')}
-                  className="flex items-center gap-2 text-gray-600 hover:text-[#2563EB] transition-colors duration-200"
+                  className="group flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors duration-200 text-sm font-medium"
                 >
-                  <ArrowLeft className="h-5 w-5" />
-                  <span className="font-medium">Quay lại</span>
+                  <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                  <span>Quay lại</span>
                 </button>
-                <div className="h-6 w-px bg-gray-300"></div>
-                <h1 className="text-xl font-semibold text-[#1E293B]">
-                  Tạo đề thi mới
-                </h1>
+                <div className="h-4 w-px bg-slate-200"></div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-lg font-bold text-slate-800 tracking-tight">
+                    {examId ? 'Chỉnh sửa đề thi Kids' : 'Thiết kế đề thi Kids'}
+                  </h1>
+                  {isSaving ? (
+                    <span className="flex items-center gap-1.5 text-xs text-slate-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      Đang tự động lưu...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-xs text-slate-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Đã tự động lưu
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => handleSave('draft')}
                   disabled={isSaving}
-                  className="flex items-center gap-2 px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 active:bg-slate-100 transition-all duration-200 text-sm font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Save className="h-4 w-4" />
+                  <Save className="h-4 w-4 text-slate-500" />
                   <span>Lưu nháp</span>
                 </button>
                 {currentStep === 3 && (
                   <button
                     onClick={() => handleSave('published')}
                     disabled={isSaving}
-                    className="flex items-center gap-2 px-5 py-2 bg-[#F97316] text-white rounded-lg hover:bg-[#EA580C] transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 active:scale-95 text-white rounded-lg transition-all duration-200 text-sm font-semibold shadow-md shadow-orange-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <span>Xuất bản</span>
+                    <span>Xuất bản đề thi</span>
                   </button>
                 )}
               </div>
@@ -261,16 +284,24 @@ const CreateKidsExam: React.FC = () => {
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="px-4 py-6">
+        {/* Content Area */}
+        <div className={`flex-1 flex flex-col ${currentStep === 2 ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+          <div className={`mx-auto w-full flex-1 flex flex-col ${
+            currentStep === 2 
+              ? 'max-w-7xl px-4 py-4 overflow-hidden h-full' 
+              : 'max-w-5xl px-4 py-6'
+          }`}>
             {/* Step Indicator */}
-            <div className="mb-8">
+            <div className="mb-6">
               <StepIndicator currentStep={currentStep} />
             </div>
 
             {/* Step Content - Clean Card */}
-            <div className="bg-white rounded-lg border-2 border-gray-200 p-8">
+            <div className={`bg-white shadow-sm flex flex-col ${
+              currentStep === 2 
+                ? 'flex-1 h-full overflow-hidden p-0 border border-slate-200 rounded-xl' 
+                : 'rounded-xl border border-slate-200 p-6 md:p-8'
+            }`}>
               {currentStep === 1 && (
                 <Step1ExamType
                   examData={examData}

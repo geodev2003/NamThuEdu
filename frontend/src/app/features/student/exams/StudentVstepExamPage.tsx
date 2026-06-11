@@ -31,7 +31,7 @@ import { usePageTitle } from "../../../../hooks/usePageTitle";
 type SkillKey = "listening" | "reading" | "writing" | "speaking";
 interface Choice { A: string; B: string; C: string; D: string }
 interface Q { qId: number; questionNumber: number; questionText: string; options: Choice; correctAnswer?: string }
-interface ListeningSection { sectionNumber: number; sectionName: string; audioUrl: string; audioDuration?: number; transcript?: string; questions: Q[] }
+interface ListeningSection { sectionNumber: number; sectionName: string; instructions?: string; audioUrl: string; audioDuration?: number; transcript?: string; questions: Q[] }
 interface ListeningPart { partNumber: number; partName?: string; sections: ListeningSection[] }
 interface ReadingPart { partNumber: number; partName?: string; passage: string; questions: Q[] }
 interface WritingTask { taskNumber: number; taskName: string; prompt: string; wordCount?: [number, number] | number; timeLimit?: number; questionId?: number }
@@ -296,6 +296,19 @@ export function StudentVstepExamPage() {
       .then((res: any) => {
         const data = res?.data?.data ?? res?.data;
         if (!data) return;
+
+        // ─── IELTS exam: VSTEP page không thể render đúng (filter A/B/C/D drop
+        // text completion answers). Redirect sang route IELTS để render đúng UI.
+        const eType = String(data.exam?.eType ?? "").toUpperCase();
+        if (eType === "IELTS" && !teacherMode) {
+          const skill = String(data.exam?.eSkill ?? "listening").toLowerCase();
+          navigate(
+            `${STUDENT_BASE_PATH}/lam-bai-ielts/${data.exam_id}/${skill}?review=${reviewSubmissionId}`,
+            { replace: true }
+          );
+          return;
+        }
+
         if (data.user?.uName) setReviewStudentName(data.user.uName);
         if (data.exam?.eTitle) setExamTitle(data.exam.eTitle);
         // Pre-fill student's MCQ answers
@@ -698,6 +711,17 @@ export function StudentVstepExamPage() {
     };
   }, [listeningParts, readingParts, writingTasks, speakingParts, answers, writingDrafts, speakingDone]);
 
+  /* ── Skills thực sự có nội dung trong đề (IELTS thường chỉ 1 skill) ────── */
+  const skillsInExam = useMemo<SkillKey[]>(() => {
+    const present: SkillKey[] = [];
+    if (stats.lq > 0) present.push("listening");
+    if (stats.rq > 0) present.push("reading");
+    if (stats.wq > 0) present.push("writing");
+    if (stats.sq > 0) present.push("speaking");
+    // Fallback: nếu chưa load được gì thì hiện đủ (tránh footer trống)
+    return present.length > 0 ? present : (Object.keys(PARTS_PER_SKILL) as SkillKey[]);
+  }, [stats.lq, stats.rq, stats.wq, stats.sq]);
+
   /* ── Format time ────────────────────────────────────────── */
   const fmtTime = (s: number) => {
     const m = Math.floor(s / 60), ss = s % 60;
@@ -957,7 +981,7 @@ export function StudentVstepExamPage() {
       {bottomVisible && (
         <footer className="flex-shrink-0 bg-white border-t border-slate-200 shadow-[0_-2px_8px_rgba(0,0,0,0.04)] overflow-visible">
           <div className="relative px-8 py-3 flex items-center justify-center gap-6 overflow-visible">
-            {(Object.keys(PARTS_PER_SKILL) as SkillKey[]).map((s) => {
+            {skillsInExam.map((s) => {
               const meta = SKILL_META[s];
               const Icon = meta.icon;
               const totalSkillQs =
@@ -1148,9 +1172,15 @@ function ListeningView({
                 Câu {sec.questions[0]?.questionNumber}–{sec.questions[sec.questions.length - 1]?.questionNumber}
               </span>
             </div>
+            {sec.instructions && (
+              <div className="px-5 py-3 bg-sky-50/60 border-b border-sky-100">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-sky-700 mb-0.5">Yêu cầu</p>
+                <p className="text-sm text-slate-700 leading-relaxed">{sec.instructions}</p>
+              </div>
+            )}
             <div className="p-5">
               <div className="sticky top-0 z-10 -mx-5 px-5 py-2 bg-white/95 backdrop-blur-sm border-b border-slate-100">
-                <AudioPlayer src={sec.audioUrl} />
+                <AudioPlayer src={sec.audioUrl} reviewMode={reviewMode} />
               </div>
               <div className="mt-6 space-y-5">
                 {sec.questions.map((q) => (
@@ -2512,7 +2542,7 @@ function QuestionCard({ q, selected, onSelect, flagged, onToggleFlag, reviewMode
 
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 
-function AudioPlayer({ src }: { src?: string }) {
+function AudioPlayer({ src, reviewMode = false }: { src?: string; reviewMode?: boolean }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const seekRef = useRef<HTMLDivElement | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -2549,14 +2579,33 @@ function AudioPlayer({ src }: { src?: string }) {
     };
   }, [src]);
 
+  // Khi component unmount (rời trang/đổi part) → dừng audio đang phát.
+  // Đặc biệt cần thiết cho review mode: rời sang skill khác mà audio vẫn chạy là khó chịu.
+  useEffect(() => {
+    return () => {
+      const a = audioRef.current;
+      if (a && !a.paused) {
+        try { a.pause(); } catch {}
+      }
+    };
+  }, []);
+
   const toggle = () => {
     const a = audioRef.current;
-    if (!a || played) return;
+    if (!a) return;
+    // Review mode: cho phép play/pause/replay tự do
+    if (reviewMode) {
+      if (a.paused) { a.play(); setPlaying(true); }
+      else { a.pause(); setPlaying(false); }
+      return;
+    }
+    // Exam mode: chỉ phát 1 lần
+    if (played) return;
     a.play(); setPlaying(true); setPlayed(true);
   };
 
   const seek = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (played) return;
+    if (played && !reviewMode) return;
     const bar = seekRef.current; const a = audioRef.current;
     if (!bar || !a || !duration) return;
     const rect = bar.getBoundingClientRect();
@@ -2587,19 +2636,19 @@ function AudioPlayer({ src }: { src?: string }) {
     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
       <audio ref={audioRef} src={src} preload="metadata" />
       <div className="px-4 py-2.5 flex items-center gap-3">
-        <button onClick={toggle} disabled={played} title={played ? "Bài nghe đã phát" : "Phát bài nghe"}
-          className={`w-9 h-9 rounded-full text-white flex items-center justify-center transition-all flex-shrink-0 ${played ? "bg-slate-300 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-700 active:scale-95"}`}>
+        <button onClick={toggle} disabled={!reviewMode && played} title={reviewMode ? (playing ? "Tạm dừng" : "Phát") : (played ? "Bài nghe đã phát" : "Phát bài nghe")}
+          className={`w-9 h-9 rounded-full text-white flex items-center justify-center transition-all flex-shrink-0 ${(!reviewMode && played) ? "bg-slate-300 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-700 active:scale-95 cursor-pointer"}`}>
           {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
         </button>
         <span className="text-xs font-mono text-slate-500 flex-shrink-0 w-10 text-right">{fmt(currentTime)}</span>
-        <div ref={seekRef} onClick={seek} className={`relative flex-1 h-1.5 bg-slate-200 rounded-full group ${played ? "cursor-default" : "cursor-pointer"}`}>
+        <div ref={seekRef} onClick={seek} className={`relative flex-1 h-1.5 bg-slate-200 rounded-full group ${(!reviewMode && played) ? "cursor-default" : "cursor-pointer"}`}>
           <div className="absolute inset-y-0 left-0 bg-slate-400 rounded-full transition-all" style={{ width: `${progress}%` }} />
           <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 bg-slate-700 rounded-full border-2 border-white shadow opacity-0 group-hover:opacity-100 transition-opacity" style={{ left: `${progress}%` }} />
         </div>
         <span className="text-xs font-mono text-slate-400 flex-shrink-0 w-10">{fmt(duration)}</span>
-        <button onClick={toggleMute} className="text-slate-400 hover:text-slate-600 transition-colors flex-shrink-0"><VolumeIcon className="w-4 h-4" /></button>
+        <button onClick={toggleMute} className="text-slate-400 hover:text-slate-600 transition-colors flex-shrink-0 cursor-pointer"><VolumeIcon className="w-4 h-4" /></button>
       </div>
-      {!played && (<div className="px-4 py-1.5 bg-amber-50 border-t border-amber-100 flex items-center gap-1.5"><span className="text-[11px] text-amber-600">⚠ Bài nghe phát <strong>1 lần duy nhất</strong> — Nhấn Play khi sẵn sàng.</span></div>)}
+      {!reviewMode && !played && (<div className="px-4 py-1.5 bg-amber-50 border-t border-amber-100 flex items-center gap-1.5"><span className="text-[11px] text-amber-600">⚠ Bài nghe phát <strong>1 lần duy nhất</strong> — Nhấn Play khi sẵn sàng.</span></div>)}
     </div>
   );
 }

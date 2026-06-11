@@ -10,9 +10,11 @@ import {
 } from "lucide-react";
 import { useBlog } from "../../../../hooks/useBlog";
 import { useToast } from "../../../../hooks/useToast";
+import { usePageHeader } from "../../../../contexts/TeacherHeaderContext";
 
 export function BlogList() {
   const { t } = useTranslation();
+  usePageHeader({ breadcrumb: [t("breadcrumb.dashboard"), t("breadcrumb.blog")] });
   const navigate = useNavigate();
   const { blogs, loading, error, fetchBlogs, deleteBlog, submitForReview } = useBlog();
   const { success: showSuccess, error: showError } = useToast();

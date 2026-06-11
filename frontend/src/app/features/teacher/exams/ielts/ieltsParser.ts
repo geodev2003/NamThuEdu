@@ -264,24 +264,31 @@ export const parseIeltsReadingFromText = (rawText: string): IeltsReadingImport |
     const block = sliceBlock(text, positions, i);
     const lines = block.split('\n');
 
-    // Lấy title: dòng đầu tiên non-empty không phải header
+    // Lấy title: dòng đầu tiên non-empty không phải header.
+    // Bỏ qua dòng chỉ dẫn "You should spend about N minutes..." và "Questions N"
+    // để title đúng là TIÊU ĐỀ THẬT của bài đọc (vd "Making time for science").
     let title = '';
     let bodyStartLine = 1;
-    for (let j = 1; j < Math.min(6, lines.length); j++) {
+    for (let j = 1; j < Math.min(8, lines.length); j++) {
       const l = lines[j].trim();
       if (!l) continue;
       if (isBoundaryLine(l)) continue;
+      if (/you should spend about/i.test(l)) continue;     // dòng chỉ dẫn thời gian
+      if (/^Questions?\s+\d+/i.test(l)) continue;           // header nhóm câu hỏi
+      if (/^which are based on/i.test(l)) continue;         // phần đuôi chỉ dẫn
       title = l;
       bodyStartLine = j + 1;
       break;
     }
 
-    // Tìm dòng đầu tiên của câu hỏi đầu tiên: "N." mà có dấu hiệu list câu hỏi (có "Questions" hoặc options A./B. trong vài dòng tiếp theo, hoặc là line bắt đầu bằng số)
+    // Tìm điểm bắt đầu của phần câu hỏi để CẮT body cho sạch (không lẫn câu hỏi).
+    // Theo yêu cầu: reading chỉ cần TEXT bài đọc, KHÔNG bóc câu hỏi.
     let firstQ = -1;
     for (let j = bodyStartLine; j < lines.length; j++) {
       const trimmed = lines[j].trim();
+      // Mốc câu hỏi: header "Questions N" hoặc dòng đánh số "N." có context câu hỏi.
+      if (/^Questions?\s+\d+/i.test(trimmed)) { firstQ = j; break; }
       if (!/^\d+[\.\)]\s+/.test(trimmed)) continue;
-      // Kiểm tra context: nhìn 2 dòng trước có "Questions" hay không, hoặc 6 dòng sau có A./B./C./D. options không, hoặc text TFNG/YNNG keyword
       const ctxBefore = lines.slice(Math.max(0, j - 5), j).join('\n');
       const ctxAfter = lines.slice(j + 1, Math.min(j + 8, lines.length)).join('\n');
       if (
@@ -294,58 +301,18 @@ export const parseIeltsReadingFromText = (rawText: string): IeltsReadingImport |
       }
     }
 
-    let body = '';
-    let questions: IeltsReadingImport['passages'][number]['questions'] = [];
-
-    if (firstQ === -1) {
-      // Không có câu hỏi → toàn bộ là body
-      body = lines.slice(bodyStartLine).join('\n').trim();
-    } else {
-      body = lines.slice(bodyStartLine, firstQ).join('\n').trim();
-      const qBlock = lines.slice(firstQ).join('\n');
-
-      // Detect TFNG / YNNG context
-      const isTfng = /\bTRUE\b.*\bFALSE\b.*\bNOT\s+GIVEN\b/is.test(qBlock);
-      const isYnng = /\bYES\b.*\bNO\b.*\bNOT\s+GIVEN\b/is.test(qBlock);
-
-      const mcqs = parseMcqList(qBlock);
-      const completions = parseCompletionList(qBlock);
-      const byNum = new Map<number, IeltsReadingImport['passages'][number]['questions'][number]>();
-
-      for (const q of mcqs) {
-        byNum.set(q.number, {
-          questionNumber: q.number,
-          questionType: 'multiple-choice',
-          questionText: q.text,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-        });
-      }
-      for (const q of completions) {
-        if (byNum.has(q.number)) continue;
-        let qType = 'sentence-completion';
-        if (isTfng) qType = 'true-false-not-given';
-        else if (isYnng) qType = 'yes-no-not-given';
-        else if (/_{2,}|\.{4,}/.test(q.text)) qType = 'summary-completion';
-        else if (/^(According to|What|Which|How|Where|Who|Why|When)/i.test(q.text)) qType = 'short-answer';
-
-        byNum.set(q.number, {
-          questionNumber: q.number,
-          questionType: qType,
-          questionText: q.text,
-          correctAnswer: q.correctAnswer,
-        });
-      }
-
-      questions = Array.from(byNum.values()).sort((a, b) => a.questionNumber - b.questionNumber);
-    }
+    // Body = phần text từ sau title đến trước câu hỏi (hoặc hết block nếu không có câu hỏi).
+    const body = (firstQ === -1
+      ? lines.slice(bodyStartLine)
+      : lines.slice(bodyStartLine, firstQ)
+    ).join('\n').trim();
 
     passages.push({
       passageNumber: num,
       title,
       body,
       wordCount: body ? body.split(/\s+/).filter(Boolean).length : 0,
-      questions,
+      questions: [], // Chỉ import text bài đọc — câu hỏi do giáo viên tự thêm.
     });
   }
 
@@ -649,24 +616,38 @@ export const scoreParsedQuality = (
   else if (skill === 'reading') {
     const p = payload as IeltsReadingImport;
     const passages = p.passages || [];
-    const totalQ = passages.reduce((s, pa) => s + (pa.questions?.length || 0), 0);
 
-    // 3 passages: +30
-    if (passages.length === 3) score += 30;
-    else { score += passages.length * 8; issues.push(`Chỉ có ${passages.length}/3 passages`); }
+    // Reading chỉ cần TEXT bài đọc (không bóc câu hỏi). Đánh giá theo:
+    //  - số passage hợp lý (đúng 3)
+    //  - body có nội dung thực sự (đủ dài)
+    if (passages.length === 0) {
+      return { score: 0, passed: false, issues: ['Không nhận diện được passage nào — cần AI'] };
+    }
 
-    // ≥35 questions: +25
-    if (totalQ >= 35) score += 25;
-    else if (totalQ >= 25) score += 15;
-    else issues.push(`Chỉ có ${totalQ}/40 câu hỏi`);
+    // Số passage hợp lý (đúng 3). Nếu >3 thường do tách nhầm dòng chỉ dẫn.
+    if (passages.length === 3) score += 40;
+    else if (passages.length > 3) {
+      score += 25;
+      issues.push(`Có ${passages.length} passages (>3) — có thể tách nhầm`);
+    } else {
+      score += passages.length * 18;
+      issues.push(`Chỉ có ${passages.length}/3 passages`);
+    }
 
-    // Body có nội dung thực sự (wordCount ≥ 200): +15 mỗi passage
+    // Body có nội dung thực sự: +20 mỗi passage (tối đa 60).
     let goodPassages = 0;
     for (const pa of passages) {
-      if ((pa.wordCount || 0) >= 200 && pa.body && pa.body.length > 500) goodPassages++;
+      if ((pa.wordCount || 0) >= 150 && pa.body && pa.body.length > 400) goodPassages++;
     }
-    score += goodPassages * 15;
-    if (goodPassages < passages.length) issues.push('Một vài passage có body quá ngắn');
+    score += Math.min(goodPassages, 3) * 20;
+
+    // Cần ít nhất 1 passage có body đủ dài, nếu không thì để AI thử lại.
+    if (goodPassages === 0) {
+      return { score: 10, passed: false, issues: ['Không passage nào có nội dung đủ dài — cần AI'] };
+    }
+    if (goodPassages < Math.min(passages.length, 3)) {
+      issues.push('Một vài passage có body quá ngắn');
+    }
   }
 
   else if (skill === 'writing') {

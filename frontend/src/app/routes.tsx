@@ -23,6 +23,7 @@ import { authRoutes } from "./routes/authRoutes";
 import { teacherRoutes } from "./routes/teacherRoutes";
 import { studentLegacyRoutes, studentRoutes, kidsRoutes, teensRoutes, adultsRoutes } from "./routes/studentRoutes";
 import { adminRoutes } from "./routes/adminRoutes";
+import { adminPreviewRoutes } from "./routes/adminPreviewRoutes";
 import { MockTestPage } from "./features/test/MockTestPage";
 import { PublicBlogList } from "./features/public/PublicBlogList";
 import { PublicBlogDetail } from "./features/public/PublicBlogDetail";
@@ -54,12 +55,15 @@ export const router = createBrowserRouter([
   studentRoutes,
   
   // ─── Age-Specific Student Portals ───────────────────────────────────────
-  kidsRoutes,    // "/hoc-vien/kids/*"   - Colorful, emoji-rich for 6-12 years
+  kidsRoutes,    // "/hoc-vien/kids/*"   - Redirect → /hoc-vien (kids share namespace now)
   teensRoutes,   // "/hoc-vien/teens/*"  - Modern, trendy for 13-17 years  
   adultsRoutes,  // "/hoc-vien/adults/*" - Professional, minimal for 18+ years
   
   // ─── Legacy Student Routes ──────────────────────────────────────────────
   studentLegacyRoutes,
+
+  // ─── Admin Exam Preview (full-screen, no sidebar) ────────────────────────
+  adminPreviewRoutes,
 
   // ─── Admin Console   ("/admin") ──────────────────────────────────────────
   adminRoutes,

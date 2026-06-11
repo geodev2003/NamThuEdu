@@ -10,12 +10,10 @@ import {
   Users,
   FileText,
   GraduationCap,
-  ClipboardList,
   BarChart3,
   Settings,
   LogOut,
   ChevronDown,
-  Lightbulb,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -56,22 +54,6 @@ const navigationData: MenuItem[] = [
     submenu: [
       { name: "allExams", href: "/giao-vien/de-thi" },
       { name: "createExam", href: "/giao-vien/de-thi/tao-moi" },
-    ],
-  },
-  {
-    name: "assignments",
-    icon: ClipboardList,
-    badge: 8,
-    submenu: [
-      { name: "assignmentList", href: "/giao-vien/bai-tap" },
-      { name: "assignmentStats", href: "/giao-vien/bai-tap/thong-ke" },
-    ],
-  },
-  {
-    name: "practice",
-    icon: Lightbulb,
-    submenu: [
-      { name: "practiceList", href: "/giao-vien/luyen-tap" },
     ],
   },
   {
@@ -201,7 +183,7 @@ export function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onTog
     for (const item of navigationData) {
       if (item.submenu) {
         const isOnSubmenuPage = item.submenu.some((sub) =>
-          location.pathname.startsWith(sub.href)
+          sub?.href ? location.pathname.startsWith(sub.href) : false
         );
         if (isOnSubmenuPage) {
           return item.name;
@@ -226,7 +208,9 @@ export function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onTog
   const isMenuActive = (item: MenuItem): boolean => {
     if (item.href && location.pathname === item.href) return true;
     if (item.submenu) {
-      return item.submenu.some((sub) => location.pathname.startsWith(sub.href));
+      return item.submenu.some((sub) =>
+        sub?.href ? location.pathname.startsWith(sub.href) : false
+      );
     }
     return false;
   };
@@ -490,18 +474,18 @@ export function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onTog
         <div>
           {!isCollapsed && <p className="px-2 mb-1 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Assessment</p>}
           <div className="space-y-0.5">
-            {navigationData.slice(2, 6).map((item) => renderMenuItem(item))}
+            {navigationData.slice(2, 4).map((item) => renderMenuItem(item))}
           </div>
         </div>
         <div>
           {!isCollapsed && <p className="px-2 mb-1 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Content</p>}
           <div className="space-y-0.5">
-            {navigationData.slice(6, 8).map((item) => renderMenuItem(item))}
+            {navigationData.slice(4, 6).map((item) => renderMenuItem(item))}
           </div>
         </div>
         <div className="h-px bg-indigo-100" />
         <div className="space-y-0.5">
-          {renderMenuItem(navigationData[8])}
+          {renderMenuItem(navigationData[6])}
         </div>
       </nav>
 

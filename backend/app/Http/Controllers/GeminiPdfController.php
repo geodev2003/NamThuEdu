@@ -25,6 +25,18 @@ class GeminiPdfController extends Controller
     private $uploadBaseUrl = 'https://generativelanguage.googleapis.com/upload/v1beta/files';
     private $generateUrl   = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
+    /**
+     * Danh sách model fallback theo thứ tự ưu tiên khi model chính quá tải (503/429).
+     * Lưu ý: gemini-1.5-* đã bị Google deprecate (trả 404 trên v1beta).
+     * Chỉ dùng các model 2.x đang được hỗ trợ.
+     */
+    private $modelFallbacks = [
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
+    ];
+
     public function __construct()
     {
         $this->apiKey = config('services.gemini.api_key');
@@ -73,6 +85,367 @@ class GeminiPdfController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Gợi ý đáp án IELTS từ transcript (Listening) hoặc passage (Reading) bằng Groq.
+     * Dùng để giúp giáo viên import xong có sẵn đáp án "tham khảo" — vẫn cảnh báo
+     * có thể sai và yêu cầu giáo viên review.
+     *
+     * Route: POST /api/teacher/ielts/suggest-answers
+     * Body: {
+     *   skill: 'listening'|'reading',
+     *   context: string,            // transcript hoặc passage text
+     *   questions: [{ number, text, type, options? }]
+     * }
+     * Return: { success, answers: [{ number, answer, confidence }], warning }
+     */
+    public function suggestIeltsAnswers(Request $request)
+    {
+        $request->validate([
+            'skill'     => 'required|string|in:listening,reading',
+            'context'   => 'required|string|max:30000',
+            'questions' => 'required|array|min:1|max:50',
+            'questions.*.number' => 'required|numeric',
+            'questions.*.text'   => 'required|string',
+            'questions.*.type'   => 'nullable|string',
+            'questions.*.options' => 'nullable|array',
+        ]);
+
+        $groqKey = config('services.groq.api_key');
+        if (empty($groqKey)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'GROQ_API_KEY chưa được cấu hình.',
+            ], 500);
+        }
+
+        try {
+            $prompt = $this->buildSuggestAnswersPrompt(
+                $request->input('skill'),
+                $request->input('context'),
+                $request->input('questions')
+            );
+            $result = $this->callGroqJson($prompt, $groqKey);
+
+            $answers = $result['answers'] ?? [];
+            if (!is_array($answers)) {
+                throw new \Exception('Groq trả về cấu trúc answers không hợp lệ.');
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'answers' => array_values($answers),
+                    'warning' => 'Đáp án do AI gợi ý — vui lòng kiểm tra lại trước khi xuất bản.',
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Groq suggest-answers error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function buildSuggestAnswersPrompt(string $skill, string $context, array $questions): string
+    {
+        $skillLabel = $skill === 'listening' ? 'Listening transcript' : 'Reading passage';
+        $qLines = [];
+        foreach ($questions as $q) {
+            $num = $q['number'] ?? '?';
+            $text = trim($q['text'] ?? '');
+            $type = strtolower($q['type'] ?? '');
+            $line = "Q{$num} [{$type}]: {$text}";
+            if (!empty($q['options']) && is_array($q['options'])) {
+                $opts = [];
+                foreach ($q['options'] as $k => $v) {
+                    if ($v) $opts[] = "{$k}. {$v}";
+                }
+                if ($opts) $line .= "\n   Options: " . implode(' | ', $opts);
+            }
+            $qLines[] = $line;
+        }
+        $questionsBlock = implode("\n", $qLines);
+
+        return "You are an expert IELTS test answer key generator.
+
+Below is an IELTS {$skillLabel} and a list of questions. Determine the BEST answer for each question STRICTLY based on the {$skillLabel} content.
+
+Rules:
+1. For multiple-choice questions: return the letter (A, B, C, or D) that matches the {$skillLabel}.
+2. For gap-fill / table-completion / sentence-completion / form-completion / note-completion / short-answer: return the EXACT word(s) or number copied verbatim from the {$skillLabel} (max 3 words unless instruction says otherwise).
+3. For TRUE/FALSE/NOT GIVEN or YES/NO/NOT GIVEN: return one of those values exactly.
+4. For matching: return the matching letter or label.
+5. If you cannot find the answer in the {$skillLabel}, return empty string '' for that question (do NOT guess wildly).
+6. Provide a 'confidence' value: 'high' | 'medium' | 'low' for each answer.
+7. Keep numbers as digits (e.g., '5', '1990', not 'five').
+8. Keep words lowercase unless they're proper nouns.
+
+Return ONLY valid JSON in this exact format:
+{
+  \"answers\": [
+    { \"number\": 1, \"answer\": \"...\", \"confidence\": \"high|medium|low\" },
+    { \"number\": 2, \"answer\": \"...\", \"confidence\": \"high|medium|low\" }
+  ]
+}
+
+{$skillLabel}:
+\"\"\"
+{$context}
+\"\"\"
+
+Questions:
+{$questionsBlock}";
+    }
+
+    /**
+     * Diarize transcript: dùng Groq LLM (free tier) phân tách speaker A/B
+     * dựa trên ngữ nghĩa hội thoại — chính xác hơn pitch-based vì hiểu context.
+     * Tiết kiệm Gemini API quota cho task PDF parsing.
+     *
+     * Route: POST /api/teacher/ielts/diarize-transcript
+     * Body: { transcript: string, max_speakers?: 2|3 }
+     * Return: { success, speaker_lines: string[] } — mỗi line dạng "A: ..." hoặc "B: ..."
+     */
+    public function diarizeTranscript(Request $request)
+    {
+        $request->validate([
+            'transcript'   => 'required|string|max:50000',
+            'max_speakers' => 'nullable|integer|min:2|max:4',
+        ]);
+
+        $groqKey = config('services.groq.api_key');
+        if (empty($groqKey)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'GROQ_API_KEY chưa được cấu hình.',
+            ], 500);
+        }
+
+        $transcript = trim($request->input('transcript'));
+        $maxSpeakers = (int) $request->input('max_speakers', 2);
+
+        if (strlen($transcript) < 20) {
+            return response()->json([
+                'success' => true,
+                'data' => ['speaker_lines' => [$transcript]],
+            ]);
+        }
+
+        try {
+            $prompt = $this->buildDiarizationPrompt($transcript, $maxSpeakers);
+            $result = $this->callGroqJson($prompt, $groqKey);
+
+            $lines = $result['lines'] ?? [];
+            if (!is_array($lines) || count($lines) === 0) {
+                return response()->json([
+                    'success' => true,
+                    'data' => ['speaker_lines' => [$transcript]],
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => ['speaker_lines' => array_values($lines)],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Groq diarize error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function buildDiarizationPrompt(string $transcript, int $maxSpeakers): string
+    {
+        $speakerList = [];
+        for ($i = 0; $i < $maxSpeakers; $i++) {
+            $speakerList[] = chr(65 + $i); // A, B, C, D
+        }
+        $labels = implode('/', $speakerList);
+
+        return "You are an expert dialogue analyzer. Below is an English transcript without speaker labels (it may be from an IELTS Listening conversation).
+
+Your task: assign speaker labels to each utterance/turn based on the conversation flow and meaning.
+
+Rules:
+1. Use labels: {$labels} (max {$maxSpeakers} distinct speakers)
+2. Detect speaker changes from semantic clues:
+   - Questions vs answers
+   - Different perspectives or roles (interviewer/customer, tutor/student, host/guest)
+   - Topic switches and turn-taking signals (\"Yes, sure\", \"That's great\", \"What about...\", \"I'd suggest...\")
+3. Split the transcript into TURNS. Each turn = consecutive sentences from one speaker.
+4. Keep the EXACT original wording. Do NOT paraphrase, summarize, or fix grammar.
+5. If the transcript is clearly a monologue (1 speaker), return all text as a single 'A:' turn.
+
+Return ONLY valid JSON in this format:
+{
+  \"lines\": [
+    \"A: <first turn text>\",
+    \"B: <second turn text>\",
+    \"A: <third turn text>\"
+  ]
+}
+
+Transcript to analyze:
+\"\"\"
+{$transcript}
+\"\"\"";
+    }
+
+    /**
+     * Gọi Groq Chat Completions API với JSON mode.
+     * Free tier ~ 14400 req/day, latency rất thấp (~500ms).
+     * Có fallback model khi rate-limit.
+     */
+    private function callGroqJson(string $prompt, string $apiKey): array
+    {
+        $models = [
+            config('services.groq.model', 'llama-3.3-70b-versatile'),
+            'llama-3.1-8b-instant',
+            'gemma2-9b-it',
+        ];
+        // Loại trùng giữ thứ tự
+        $models = array_values(array_unique(array_filter($models)));
+
+        $url = 'https://api.groq.com/openai/v1/chat/completions';
+        $verifySsl = !app()->environment('local');
+        $response = null;
+        $lastError = '';
+
+        foreach ($models as $model) {
+            $payload = [
+                'model' => $model,
+                'messages' => [[
+                    'role' => 'user',
+                    'content' => $prompt,
+                ]],
+                'temperature' => 0.1,
+                'response_format' => ['type' => 'json_object'],
+            ];
+
+            for ($attempt = 1; $attempt <= 2; $attempt++) {
+                try {
+                    $response = Http::withOptions(['verify' => $verifySsl])
+                        ->withHeaders([
+                            'Authorization' => 'Bearer ' . $apiKey,
+                            'Content-Type'  => 'application/json',
+                        ])
+                        ->timeout(45)
+                        ->post($url, $payload);
+                } catch (\Throwable $e) {
+                    $lastError = $e->getMessage();
+                    sleep($attempt);
+                    continue;
+                }
+
+                if ($response->successful()) break 2;
+
+                $status = $response->status();
+                $lastError = $response->body();
+
+                if ($status === 429 || $status === 503) {
+                    sleep($attempt);
+                    continue;
+                }
+                if ($status === 404 || $status === 400) {
+                    Log::warning("Groq model '{$model}' unavailable ({$status}), trying next");
+                    break;
+                }
+                break 2;
+            }
+        }
+
+        if (!$response || !$response->successful()) {
+            throw new \Exception('Groq API failed: ' . $lastError);
+        }
+
+        $body = $response->json();
+        $text = $body['choices'][0]['message']['content'] ?? null;
+        if (!$text) {
+            throw new \Exception('Groq không trả về kết quả.');
+        }
+
+        // Một số model trả kèm code fence dù đã bật response_format json
+        $text = preg_replace('/^```json\s*/i', '', trim($text));
+        $text = preg_replace('/\s*```$/i', '', $text);
+
+        $parsed = json_decode($text, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new \Exception('Groq trả về JSON không hợp lệ: ' . json_last_error_msg());
+        }
+        return $parsed;
+    }
+
+    /**
+     * @deprecated Giữ lại cho các nơi khác có thể đang dùng — task diarize đã chuyển sang Groq.
+     * Gọi Gemini với text-only prompt (không có file).
+     */
+    private function generateTextOnly(string $prompt): array
+    {
+        $payload = [
+            'contents' => [[
+                'parts' => [['text' => $prompt]],
+            ]],
+            'generationConfig' => [
+                'temperature' => 0.1,
+                'responseMimeType' => 'application/json',
+            ],
+        ];
+
+        $verifySsl = !app()->environment('local');
+        $response = null;
+        $lastError = '';
+
+        foreach ($this->modelFallbacks as $model) {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . $this->apiKey;
+            for ($attempt = 1; $attempt <= 2; $attempt++) {
+                try {
+                    $response = Http::withOptions(['verify' => $verifySsl])
+                        ->timeout(60)
+                        ->post($url, $payload);
+                } catch (\Throwable $e) {
+                    $lastError = $e->getMessage();
+                    sleep($attempt);
+                    continue;
+                }
+                if ($response->successful()) break 2;
+
+                $status = $response->status();
+                $lastError = $response->body();
+                if ($status === 503 || $status === 429) {
+                    sleep($attempt);
+                    continue;
+                }
+                if ($status === 404 || ($status === 400 && stripos($lastError, 'model') !== false)) {
+                    Log::warning("Gemini model '{$model}' unavailable (status {$status}), trying next");
+                    break;
+                }
+                break 2;
+            }
+        }
+
+        if (!$response || !$response->successful()) {
+            throw new \Exception('Gemini diarize failed: ' . $lastError);
+        }
+
+        $body = $response->json();
+        $text = $body['candidates'][0]['content']['parts'][0]['text'] ?? null;
+        if (!$text) {
+            throw new \Exception('Gemini không trả về kết quả.');
+        }
+
+        $text = preg_replace('/^```json\s*/i', '', trim($text));
+        $text = preg_replace('/\s*```$/i', '', $text);
+
+        $parsed = json_decode($text, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new \Exception('Gemini trả về JSON không hợp lệ: ' . json_last_error_msg());
+        }
+        return $parsed;
     }
 
     /**
@@ -201,32 +574,78 @@ class GeminiPdfController extends Controller
     {
         $verifySsl = app()->environment('production');
 
-        $response = Http::withOptions(['verify' => $verifySsl])
-            ->timeout(60)->post(
-            $this->generateUrl . '?key=' . $this->apiKey,
-            [
-                'contents' => [
-                    [
-                        'parts' => [
-                            [
-                                'file_data' => [
-                                    'mime_type' => 'application/pdf',
-                                    'file_uri'  => $fileUri,
-                                ],
+        $payload = [
+            'contents' => [
+                [
+                    'parts' => [
+                        [
+                            'file_data' => [
+                                'mime_type' => 'application/pdf',
+                                'file_uri'  => $fileUri,
                             ],
-                            ['text' => $prompt],
                         ],
+                        ['text' => $prompt],
                     ],
                 ],
-                'generationConfig' => [
-                    'temperature'     => 0.1,
-                    'responseMimeType' => 'application/json',
-                ],
-            ]
-        );
+            ],
+            'generationConfig' => [
+                'temperature'      => 0.1,
+                'responseMimeType' => 'application/json',
+            ],
+        ];
 
-        if (!$response->successful()) {
-            throw new \Exception('Lỗi Gemini generateContent: ' . $response->body());
+        $response = null;
+        $lastError = '';
+
+        // Thử lần lượt từng model; mỗi model retry tối đa 3 lần với backoff khi gặp 503/429
+        foreach ($this->modelFallbacks as $model) {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . $this->apiKey;
+
+            for ($attempt = 1; $attempt <= 3; $attempt++) {
+                try {
+                    $response = Http::withOptions(['verify' => $verifySsl])
+                        ->timeout(90)
+                        ->post($url, $payload);
+                } catch (\Throwable $e) {
+                    $lastError = $e->getMessage();
+                    sleep($attempt); // backoff khi lỗi mạng
+                    continue;
+                }
+
+                if ($response->successful()) {
+                    break 2; // thành công → thoát cả 2 vòng lặp
+                }
+
+                $status = $response->status();
+                $lastError = $response->body();
+
+                // 503 (quá tải) hoặc 429 (rate limit) → retry/fallback; lỗi khác → dừng model này
+                if ($status === 503 || $status === 429) {
+                    sleep($attempt); // 1s, 2s, 3s
+                    continue;
+                }
+
+                // 404 = model không tồn tại / đã deprecate → skip sang model kế tiếp.
+                // 400 với "model" trong message thường là cùng nguyên nhân → cũng skip.
+                $isModelGone =
+                    $status === 404 ||
+                    ($status === 400 && stripos($lastError, 'model') !== false);
+                if ($isModelGone) {
+                    \Log::warning("Gemini model '{$model}' unavailable (status {$status}), trying next fallback");
+                    break; // thoát retry loop, vòng for ngoài sẽ thử model kế tiếp
+                }
+
+                // Lỗi không retry được khác (401, 403, 500 cụ thể, ...) → dừng hẳn
+                break 2;
+            }
+        }
+
+        if (!$response || !$response->successful()) {
+            $isOverloaded = $response && in_array($response->status(), [503, 429]);
+            $msg = $isOverloaded
+                ? 'Hệ thống AI đang quá tải. Vui lòng thử lại sau ít phút hoặc nhập nội dung đề thủ công bên dưới.'
+                : 'Lỗi Gemini generateContent: ' . $lastError;
+            throw new \Exception($msg);
         }
 
         $body = $response->json();
@@ -264,11 +683,14 @@ Return ONLY valid JSON in this exact format:
   \"sections\": [
     {
       \"sectionNumber\": 1,
+      \"sectionTitle\": \"Restaurant recommendations\",
+      \"sectionInstruction\": \"Complete the table below. Write NO MORE THAN TWO WORDS for each answer.\",
       \"transcript\": \"\",
       \"questions\": [
         {
           \"questionNumber\": 1,
           \"questionType\": \"form-completion\",
+          \"taskTitle\": \"Places to eat in the city centre\",
           \"questionText\": \"Good for people who are especially keen on ___\",
           \"options\": {\"A\": \"\", \"B\": \"\", \"C\": \"\"},
           \"correctAnswer\": \"\"
@@ -286,14 +708,28 @@ CRITICAL RULES — READ CAREFULLY:
    - sectionNumber=3 contains all 10 questions of Part 3 (Q21-30)
    - sectionNumber=4 contains all 10 questions of Part 4 (Q31-40)
 
+1b. sectionTitle — REQUIRED for each section. A short topic/context phrase describing what the part is about, inferred from the content (e.g. 'Restaurant recommendations', 'Pottery class', 'Loneliness and mental health', 'Rivers in cities'). Do NOT use generic labels like 'Section 1' or 'Part 1'. Use empty string '' only if the topic truly cannot be determined.
+
+1c. sectionInstruction — REQUIRED for each section. The exact instruction line(s) of that part, copied from the PDF (e.g. 'Complete the notes below. Write ONE WORD ONLY for each answer.', 'Choose the correct letter, A, B or C.', 'Complete the table below. Write NO MORE THAN TWO WORDS for each answer.'). Combine the 'Complete...' line and the 'Write...' line into one string. Use empty string '' only if no instruction is present.
+
+1d. taskTitle — For each question, the heading/title of the table, notes box, or question group it belongs to (e.g. 'Places to eat in the city centre', 'River transport notes'). Questions in the same table/group MUST share the SAME taskTitle. Leave empty string '' when there is no such heading (e.g. standalone MCQ).
+
 2. questionText — THE MOST IMPORTANT FIELD. NEVER copy the generic instruction (e.g. 'Complete the table below', 'Complete the notes below', 'Write ONE WORD ONLY'). Instead:
    - For TABLE completion (Section 1 typically): Each blank in the table corresponds to one question. The questionText must contain the SPECIFIC sentence or phrase around the numbered blank, with ___ marking the gap.
-     EXAMPLE — if the table cell says 'Good for people who are especially keen on 1 ___' → questionText for Q1 = 'Good for people who are especially keen on ___'
-     EXAMPLE — if cell says 'The 2 ___ is a good place for a drink' → questionText for Q2 = 'The ___ is a good place for a drink'
-     EXAMPLE — if cell says 'A famous chef' (header for Q5 in 'Name of restaurant' column) and the blank is 'The 5 ___' → questionText = 'The ___ (famous chef restaurant)'
-   - For NOTE completion (Section 4 typically): Each numbered blank in the notes/bullet points becomes one question. Capture the EXACT sentence containing the blank, with ___ marking the gap.
+     ★ CRITICAL FOR TABLES WITH A ROW LABEL (e.g. restaurant name, person name, place name in the leftmost column):
+       PREPEND that row label to questionText using ' — ' (space-emdash-space) as separator, so the student knows which row/entity the blank belongs to.
+       EXAMPLE — table row 'The Junction | ... | keen on 1 ___' → questionText for Q1 = 'The Junction — Good for people who are especially keen on ___'
+       EXAMPLE — same row, 'The 2 ___ is a good place for a drink' → Q2 = 'The Junction — The ___ is a good place for a drink'
+       EXAMPLE — row 'Paloma | 3 ___ food, good for sharing' → Q3 = 'Paloma — ___ food, good for sharing'
+       EXAMPLE — if the ROW LABEL ITSELF is the blank (e.g. leftmost cell is 'The 5 ___', a restaurant whose name must be filled in), then questionText = 'The ___ (name of the restaurant)' and DO NOT prepend anything.
+       Reuse the SAME row label for every blank belonging to that row.
+     ★ NEVER include the question number inside questionText. Strip leading/trailing question numbers.
+       WRONG: 'Set lunch costs 9 £ ___ per person'  →  RIGHT: 'Set lunch costs £ ___ per person'
+       WRONG: 'Portions probably of 10 ___ size'    →  RIGHT: 'Portions probably of ___ size'
+   - For NOTE completion (Section 4 typically): Each numbered blank in the notes/bullet points becomes one question. Capture the EXACT sentence containing the blank, with ___ marking the gap. NEVER include question numbers in the text.
      EXAMPLE — bullet 'pollution from 31 ___ on the river bank' → questionText = 'pollution from ___ on the river bank'
      EXAMPLE — '32 ___ was declared biologically dead' → questionText = '___ was declared biologically dead'
+     ★ ONE question = ONE blank. If a sentence has two blanks (e.g. blank 39 and blank 40), split it: Q39 gets the part up to its blank, Q40 gets ONLY its own clause with a single ___ . NEVER put two ___ or another question's number in one questionText.
    - For SENTENCE/SHORT-ANSWER completion: Capture the full sentence with ___ at the gap.
 
 3. For 'Choose TWO letters A-E' questions (e.g. Q17-18, Q19-20, Q21-22): create TWO separate question rows with the SAME options A-E and SAME questionText (the kilns question for Q17 AND Q18, same options A-E, etc).

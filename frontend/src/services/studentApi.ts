@@ -65,6 +65,13 @@ export interface UpcomingTest {
   days_until: number;
 }
 
+export interface TodayActivity {
+  today_minutes: number;
+  daily_goal: number;
+  goal_percentage: number;
+  sessions: number;
+}
+
 export interface Submission {
   sId: number;
   sScore: number;
@@ -238,6 +245,10 @@ export const studentApi = {
   getUpcomingTests: (params?: { days?: number }) =>
     api.get<{ status: string; data: UpcomingTest[] }>('/student/tests/upcoming', { params }),
 
+  // Daily activity (for "Mục tiêu hôm nay" ring)
+  getTodayActivity: () =>
+    api.get<{ status: string; data: TodayActivity }>('/student/analytics/today'),
+
   getLeaderboard: (params?: { limit?: number }) =>
     api.get('/student/gamification/leaderboard', { params }),
 
@@ -293,7 +304,7 @@ export const studentApi = {
 
   // VSTEP direct exam — start by exam ID (no assignment needed)
   startDirectVstepExam: (examId: number, resume = false) =>
-    api.post<{ status: string; data: { submissionId: number; timeRemaining: number } }>(`/student/exams/${examId}/start-direct${resume ? '?resume=1' : ''}`),
+    api.post<{ status: string; data: { submissionId: number; timeRemaining: number; time_remaining?: number; started_at?: string; total_duration?: number } }>(`/student/exams/${examId}/start-direct${resume ? '?resume=1' : ''}`),
 
   loadStudentVstepListening: (examId: number) =>
     api.get(`/student/exams/${examId}/vstep/listening`),

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { Link, useLocation, Outlet, useNavigate } from "react-router";
 import {
   LayoutDashboard,
@@ -15,12 +15,16 @@ import {
   Bell,
   Database,
   Zap,
-  ServerCrash,
   Search,
   ChevronRight,
+  FileEdit,
 } from "lucide-react";
 import { logout } from "../../services/authApi";
+import { adminApi } from "../../services/adminApi";
+import { getAuthUser } from "../../utils/authStorage";
 import { NotificationDropdown } from "../features/admin/components/NotificationDropdown";
+import { AdminPageSkeleton } from "../features/admin/components/AdminPageSkeleton";
+import { useNotificationSound } from "../../hooks/useNotificationSound";
 
 interface NavItem {
   label: string;
@@ -34,40 +38,22 @@ interface NavItem {
 const adminNav: NavItem[] = [
   { label: "Tổng quan", href: "/admin", icon: LayoutDashboard },
   {
-    label: "Giáo viên",
-    icon: GraduationCap,
-    submenu: [
-      { label: "Danh sách giáo viên", href: "/admin/teachers" },
-      { label: "Phân công lớp", href: "/admin/teachers/assignments" },
-    ],
-  },
-  {
-    label: "Học viên",
+    label: "Người dùng",
     icon: Users,
-    badge: 12,
     submenu: [
-      { label: "Tất cả học viên", href: "/admin/students" },
-      { label: "Đăng ký mới", href: "/admin/students/new-registrations" },
-      { label: "Khiếu nại", href: "/admin/students/complaints" },
+      { label: "Danh sách người dùng", href: "/admin/users" },
     ],
   },
+  { label: "Đề thi", href: "/admin/courses", icon: FileText },
   {
     label: "Khóa học",
     icon: BookOpen,
     submenu: [
-      { label: "Tất cả khóa học", href: "/admin/courses" },
       { label: "Tạo khóa học", href: "/admin/courses/new" },
       { label: "Danh mục", href: "/admin/courses/categories" },
     ],
   },
-  {
-    label: "Nội dung",
-    icon: FileText,
-    submenu: [
-      { label: "Bài viết", href: "/admin/content/posts" },
-      { label: "Ngân hàng đề", href: "/admin/content/exams" },
-    ],
-  },
+  { label: "Bài viết", href: "/admin/content/posts", icon: FileEdit },
   {
     label: "Báo cáo",
     icon: BarChart3,
@@ -77,30 +63,11 @@ const adminNav: NavItem[] = [
       { label: "Hiệu suất GV", href: "/admin/reports/teachers" },
     ],
   },
-  {
-    label: "Hệ thống",
-    icon: Activity,
-    indicator: "online",
-    submenu: [
-      { label: "Nhật ký hoạt động", href: "/admin/system/activity-logs" },
-      { label: "Sức khỏe server", href: "/admin/system/server-health" },
-      { label: "Backup dữ liệu", href: "/admin/system/backups" },
-    ],
-  },
-  {
-    label: "Thông báo",
-    href: "/admin/notifications",
-    icon: Bell,
-    badge: 4,
-  },
   { label: "Cài đặt", href: "/admin/settings", icon: Settings },
 ];
 
-const ADMIN = "#0F172A";
 const ADMIN_ACCENT = "#F59E0B";
-const ADMIN_ACCENT_LIGHT = "#FEF3C7";
 const ADMIN_BG = "#F8FAFC";
-const ADMIN_ACTIVE_BG = "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)";
 
 const AVATAR_PRESETS_LAYOUT = [
   { id: "amber",  gradient: "linear-gradient(135deg,#F59E0B,#EF4444)" },
@@ -120,6 +87,56 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
   const [avatarGradient, setAvatarGradient] = useState(getAvatarGradient);
+
+  // ── Real data state ──
+  const authUser = getAuthUser();
+  const adminName = String(authUser?.name ?? authUser?.uName ?? "Administrator");
+  const adminInitials = adminName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("") || "AD";
+
+  const [notifBadge, setNotifBadge] = useState<number | null>(null);
+  const [serverLatency, setServerLatency] = useState<number | null>(null);
+  const [serverStatus, setServerStatus] = useState<"online" | "warning" | "offline">("online");
+
+  const { playSound } = useNotificationSound();
+
+  const loadSidebarData = useCallback(async () => {
+    try {
+      const [notifs, health] = await Promise.allSettled([
+        adminApi.getNotifications(),
+        adminApi.getSystemHealth(),
+      ]);
+
+      if (notifs.status === "fulfilled") {
+        const unread = notifs.value.filter((n) => !n.is_read).length;
+        setNotifBadge((prev) => {
+          if (prev !== null && unread > prev) {
+            playSound();
+          }
+          return unread;
+        });
+      }
+      if (health.status === "fulfilled") {
+        const h = health.value;
+        setServerLatency(h.database?.latency_ms ?? null);
+        setServerStatus(h.overall === "healthy" ? "online" : h.overall === "warning" ? "warning" : "offline");
+      }
+    } catch {
+      // silently fail — UI keeps showing stale/null values
+    }
+  }, [playSound]);
+
+  useEffect(() => {
+    loadSidebarData();
+    const interval = setInterval(() => {
+      loadSidebarData();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [loadSidebarData]);
 
   const handleLogout = async () => {
     await logout();
@@ -142,12 +159,32 @@ export function AdminLayout() {
   }, [location.pathname]);
 
   const isActive = (item: NavItem) => {
-    if (item.href) return location.pathname === item.href;
-    return item.submenu?.some((s) => location.pathname.startsWith(s.href)) ?? false;
+    if (item.href) {
+      if (item.href === "/admin/courses") {
+        return location.pathname === "/admin/courses";
+      }
+      return location.pathname === item.href || location.pathname.startsWith(item.href + "/");
+    }
+    return item.submenu?.some((s) => {
+      if (s.href === "/admin/courses") {
+        return location.pathname === "/admin/courses";
+      }
+      return location.pathname === s.href || location.pathname.startsWith(s.href + "/");
+    }) ?? false;
   };
 
-  const isSubActive = (href: string) =>
-    location.pathname === href || location.pathname.startsWith(href + "/");
+  const isSubActive = (href: string) => {
+    if (href === "/admin/courses") {
+      return location.pathname === "/admin/courses";
+    }
+    return location.pathname === href || location.pathname.startsWith(href + "/");
+  };
+
+  // Map nav badge to real data per item label
+  const getLiveBadge = (label: string): number | null => {
+    if (label === "Thông báo") return notifBadge;
+    return null;
+  };
 
   return (
     <div className="flex h-screen" style={{ background: ADMIN_BG }}>
@@ -185,11 +222,11 @@ export function AdminLayout() {
           <div className="flex items-center gap-3 rounded-xl px-3 py-3"
             style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)" }}>
             <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold text-white"
-              style={{ background: "linear-gradient(135deg, #F59E0B, #EF4444)", boxShadow: "0 2px 8px rgba(245,158,11,0.35)" }}>
-              AD
+              style={{ background: avatarGradient, boxShadow: "0 2px 8px rgba(245,158,11,0.35)" }}>
+              {adminInitials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-white truncate" style={{ fontSize: 13 }}>Administrator</p>
+              <p className="font-semibold text-white truncate" style={{ fontSize: 13 }}>{adminName}</p>
               <div className="flex items-center gap-1 mt-0.5">
                 <Shield className="w-3 h-3 flex-shrink-0" style={{ color: ADMIN_ACCENT }} />
                 <span style={{ fontSize: 11, color: ADMIN_ACCENT, fontWeight: 500 }}>Super Admin</span>
@@ -226,11 +263,14 @@ export function AdminLayout() {
                     <Icon className="w-4.5 h-4.5 flex-shrink-0" style={{ color: active ? ADMIN_ACCENT : "#475569" }} />
                     <span className="flex-1 text-left">{item.label}</span>
                     {item.indicator === "online" && <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />}
-                    {item.badge && (
-                      <span className="px-1.5 py-0.5 rounded-full text-white" style={{ background: "#EF4444", fontSize: 10, fontWeight: 700 }}>
-                        {item.badge}
-                      </span>
-                    )}
+                    {(() => {
+                      const live = getLiveBadge(item.label);
+                      return live && live > 0 ? (
+                        <span className="px-1.5 py-0.5 rounded-full text-white" style={{ background: "#EF4444", fontSize: 10, fontWeight: 700 }}>
+                          {live}
+                        </span>
+                      ) : null;
+                    })()}
                     <ChevronDown className="w-3.5 h-3.5 transition-transform duration-200 flex-shrink-0"
                       style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", color: "#475569" }} />
                   </button>
@@ -276,11 +316,14 @@ export function AdminLayout() {
                 {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ background: ADMIN_ACCENT }} />}
                 <Icon className="w-4.5 h-4.5 flex-shrink-0" style={{ color: active ? ADMIN_ACCENT : "#475569" }} />
                 <span className="flex-1">{item.label}</span>
-                {item.badge && (
-                  <span className="px-1.5 py-0.5 rounded-full text-white" style={{ background: "#EF4444", fontSize: 10, fontWeight: 700 }}>
-                    {item.badge}
-                  </span>
-                )}
+                {(() => {
+                  const live = getLiveBadge(item.label);
+                  return live && live > 0 ? (
+                    <span className="px-1.5 py-0.5 rounded-full text-white" style={{ background: "#EF4444", fontSize: 10, fontWeight: 700 }}>
+                      {live}
+                    </span>
+                  ) : null;
+                })()}
               </Link>
             );
           })}
@@ -290,15 +333,25 @@ export function AdminLayout() {
         <div className="relative z-10 px-4 py-4 flex-shrink-0"
           style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           {/* Server status */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3"
-            style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
-            <Database className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#10B981" }} />
-            <div className="flex-1 min-w-0">
-              <p style={{ fontSize: 11, fontWeight: 700, color: "#10B981" }}>Server: Online</p>
-              <p style={{ fontSize: 10, color: "#34D399" }}>Uptime 99.8% • 12ms</p>
-            </div>
-            <Zap className="w-3 h-3 flex-shrink-0" style={{ color: "#10B981" }} />
-          </div>
+          {(() => {
+            const statusColor = serverStatus === "online" ? "#10B981" : serverStatus === "warning" ? "#F59E0B" : "#EF4444";
+            const statusBg = serverStatus === "online" ? "rgba(16,185,129,0.08)" : serverStatus === "warning" ? "rgba(245,158,11,0.08)" : "rgba(239,68,68,0.08)";
+            const statusBorder = serverStatus === "online" ? "rgba(16,185,129,0.2)" : serverStatus === "warning" ? "rgba(245,158,11,0.2)" : "rgba(239,68,68,0.2)";
+            const statusLabel = serverStatus === "online" ? "Server: Online" : serverStatus === "warning" ? "Server: Cảnh báo" : "Server: Offline";
+            return (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3"
+                style={{ background: statusBg, border: `1px solid ${statusBorder}` }}>
+                <Database className="w-3.5 h-3.5 flex-shrink-0" style={{ color: statusColor }} />
+                <div className="flex-1 min-w-0">
+                  <p style={{ fontSize: 11, fontWeight: 700, color: statusColor }}>{statusLabel}</p>
+                  <p style={{ fontSize: 10, color: statusColor, opacity: 0.85 }}>
+                    {serverLatency != null ? `DB ${serverLatency}ms` : "Đang đo..."}
+                  </p>
+                </div>
+                <Zap className="w-3 h-3 flex-shrink-0" style={{ color: statusColor }} />
+              </div>
+            );
+          })()}
           {/* Logout */}
           <button onClick={handleLogout}
             className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl w-full transition-all duration-150"
@@ -314,60 +367,89 @@ export function AdminLayout() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
-        <header className="flex-shrink-0 flex items-center gap-4 px-6 bg-white"
-          style={{ height: 60, borderBottom: "1px solid #E2E8F0", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+        {/* Top bar — Data-Dense theme (slate / amber / blue focus) */}
+        <header className="flex-shrink-0 flex items-center gap-4 px-6 bg-white relative"
+          style={{ height: 60, borderBottom: "1px solid #E2E8F0", boxShadow: "0 1px 2px rgba(15,23,42,0.04)" }}>
+          {/* amber top hairline accent */}
+          <div className="absolute top-0 left-0 right-0 h-[2px]"
+            style={{ background: "linear-gradient(90deg, #F59E0B, transparent 45%)" }} />
 
           {/* Left: breadcrumb */}
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-1 h-5 rounded-full flex-shrink-0" style={{ background: "linear-gradient(180deg, #F59E0B, #D97706)" }} />
-            <span style={{ fontSize: 11, color: "#94A3B8" }}>Admin</span>
+            <div className="w-1 h-5 rounded-full flex-shrink-0"
+              style={{ background: "linear-gradient(180deg, #F59E0B, #D97706)" }} />
+            <span className="font-mono uppercase tracking-wider" style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600 }}>Admin</span>
             <ChevronRight className="h-3 w-3 flex-shrink-0" style={{ color: "#CBD5E1" }} />
-            <span className="font-semibold truncate" style={{ fontSize: 14, color: "#0F172A" }}>
+            <span className="font-semibold truncate" style={{ fontSize: 14, color: "#0F172A", letterSpacing: "-0.01em" }}>
               {location.pathname === "/admin" || location.pathname === "/admin/dashboard" ? "Tổng quan" :
-               location.pathname.startsWith("/admin/teachers") ? "Giáo viên" :
-               location.pathname.startsWith("/admin/students") ? "Học viên" :
-               location.pathname.startsWith("/admin/courses") ? "Khóa học" :
-               location.pathname.startsWith("/admin/content") ? "Nội dung" :
+               location.pathname.startsWith("/admin/users") ? "Người dùng" :
+               location.pathname === "/admin/courses" ? "Đề thi" :
+               location.pathname.startsWith("/admin/courses/new") ? "Khóa học" :
+               location.pathname.startsWith("/admin/courses/categories") ? "Khóa học" :
+               location.pathname.startsWith("/admin/content/posts") ? "Bài viết" :
                location.pathname.startsWith("/admin/reports") ? "Báo cáo" :
-               location.pathname.startsWith("/admin/system") ? "Hệ thống" :
-               location.pathname.startsWith("/admin/notifications") ? "Thông báo" :
                location.pathname.startsWith("/admin/settings") ? "Cài đặt" :
                location.pathname.startsWith("/admin/profile") ? "Hồ sơ" : "Admin"}
             </span>
           </div>
 
           {/* Center: search */}
-          <div className="flex-1 max-w-xs">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: "#94A3B8" }} />
+          <div className="flex-1 max-w-sm">
+            <div className="relative group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 transition-colors group-focus-within:text-blue-600" style={{ color: "#94A3B8" }} />
               <input
                 type="text"
-                placeholder="Tìm kiếm..."
-                className="w-full pl-9 pr-4 py-2 rounded-lg text-sm outline-none transition-all"
+                placeholder="Tìm kiếm người dùng, đề thi, khóa học..."
+                className="w-full pl-9 pr-12 h-9 rounded-xl text-sm outline-none transition-all duration-150"
                 style={{
                   background: "#F8FAFC",
                   border: "1px solid #E2E8F0",
-                  fontSize: 13,
                   color: "#334155",
                 }}
-                onFocus={(e) => { e.target.style.borderColor = "#F59E0B"; e.target.style.background = "#FFFBEB"; }}
-                onBlur={(e) => { e.target.style.borderColor = "#E2E8F0"; e.target.style.background = "#F8FAFC"; }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#2563EB";
+                  e.target.style.background = "#FFFFFF";
+                  e.target.style.boxShadow = "0 0 0 4px rgba(37,99,235,0.08)";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "#E2E8F0";
+                  e.target.style.background = "#F8FAFC";
+                  e.target.style.boxShadow = "none";
+                }}
               />
+              <kbd className="hidden md:flex absolute right-2.5 top-1/2 -translate-y-1/2 items-center gap-0.5 rounded-md px-1.5 py-0.5 font-mono pointer-events-none"
+                style={{ fontSize: 10, color: "#94A3B8", background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+                ⌘K
+              </kbd>
             </div>
           </div>
 
           {/* Right: actions + profile */}
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-3 ml-auto">
             {/* System status */}
-            <div className="hidden sm:flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
-              style={{ background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
-              <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-              <span style={{ fontSize: 11, color: "#065F46", fontWeight: 600 }}>Hệ thống Online</span>
-            </div>
+            {(() => {
+              const ok = serverStatus === "online";
+              const warn = serverStatus === "warning";
+              const dot = ok ? "#10B981" : warn ? "#F59E0B" : "#EF4444";
+              return (
+                <div className="hidden sm:flex items-center gap-2 rounded-lg px-2.5 py-1.5"
+                  style={{ background: "#0F172A", border: "1px solid #1E293B" }}>
+                  <div className="relative flex h-1.5 w-1.5 flex-shrink-0">
+                    {ok && <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: dot }} />}
+                    <div className="h-1.5 w-1.5 rounded-full" style={{ background: dot }} />
+                  </div>
+                  <span className="font-mono tracking-wide" style={{ fontSize: 10.5, color: "#E2E8F0", fontWeight: 600 }}>
+                    {ok ? "ONLINE" : warn ? "WARNING" : "OFFLINE"}
+                  </span>
+                  {serverLatency != null && (
+                    <span className="font-mono tabular-nums" style={{ fontSize: 10, color: "#64748B" }}>· {serverLatency}ms</span>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Date */}
-            <span className="hidden md:block" style={{ fontSize: 12, color: "#94A3B8" }}>
+            <span className="hidden lg:block font-medium tabular-nums" style={{ fontSize: 12, color: "#64748B" }}>
               {new Date().toLocaleDateString("vi-VN", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })}
             </span>
 
@@ -379,23 +461,34 @@ export function AdminLayout() {
             <div className="h-5 w-px" style={{ background: "#E2E8F0" }} />
 
             {/* Admin profile chip */}
-            <Link to="/admin/profile"
-              className="flex items-center gap-2 rounded-xl px-3 py-1.5 cursor-pointer transition-all no-underline"
+            <Link to="/admin/settings?tab=profile"
+              className="flex items-center gap-2.5 rounded-xl pl-1 pr-2.5 py-1 cursor-pointer transition-all duration-150 no-underline"
               style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#FFFBEB"; (e.currentTarget as HTMLAnchorElement).style.borderColor = "#FDE68A"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#F8FAFC"; (e.currentTarget as HTMLAnchorElement).style.borderColor = "#E2E8F0"; }}>
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                style={{ background: avatarGradient }}>AD</div>
-              <div className="hidden sm:block">
-                <p style={{ fontSize: 12, fontWeight: 600, color: "#0F172A", lineHeight: 1.2 }}>Administrator</p>
-                <p style={{ fontSize: 10, color: "#F59E0B", fontWeight: 500 }}>Super Admin</p>
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLAnchorElement).style.background = "#FFFBEB";
+                (e.currentTarget as HTMLAnchorElement).style.borderColor = "#FDE68A";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLAnchorElement).style.background = "#F8FAFC";
+                (e.currentTarget as HTMLAnchorElement).style.borderColor = "#E2E8F0";
+              }}>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                style={{ background: avatarGradient, boxShadow: "0 2px 6px rgba(245,158,11,0.3)" }}>{adminInitials}</div>
+              <div className="hidden sm:block text-left">
+                <p style={{ fontSize: 12.5, fontWeight: 600, color: "#0F172A", lineHeight: 1.2 }}>{adminName}</p>
+                <div className="flex items-center gap-1">
+                  <Shield className="w-2.5 h-2.5 flex-shrink-0" style={{ color: "#D97706" }} />
+                  <p style={{ fontSize: 10, color: "#D97706", fontWeight: 600, lineHeight: 1 }}>Super Admin</p>
+                </div>
               </div>
               <ChevronDown className="h-3 w-3 flex-shrink-0" style={{ color: "#94A3B8" }} />
             </Link>
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto">
-          <Outlet />
+        <div className="flex-1 overflow-y-auto w-full max-w-[1680px] mx-auto">
+          <Suspense fallback={<AdminPageSkeleton />}>
+            <Outlet />
+          </Suspense>
         </div>
       </div>
     </div>

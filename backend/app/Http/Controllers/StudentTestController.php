@@ -11,12 +11,42 @@ use App\Models\Exam;
 use App\Models\Submission;
 use App\Models\SubmissionAnswer;
 use App\Models\Question;
+use App\Models\ExamComment;
 use App\Services\StudentProgressService;
 use App\Services\VstepGradingService;
 use App\Jobs\GradeVstepSubjectiveJob;
 
 class StudentTestController extends Controller
 {
+    /**
+     * Áp dụng bộ lọc đề thi theo độ tuổi học viên lên một query của bảng exams.
+     *
+     * Quy tắc phân loại:
+     * - VSTEP        : chỉ dành cho adults
+     * - STARTERS/MOVERS/FLYERS (Cambridge YL) : chỉ dành cho kids
+     * - Các loại còn lại (IELTS, ...) : dùng chung
+     *
+     * Dùng chung cho index / upcomingTests / inProgressTests / getReminders
+     * để tránh tình trạng teens vẫn thấy đề VSTEP ở dashboard.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder  $examQuery
+     * @param  string|null  $ageGroup
+     */
+    private function applyAgeGroupExamFilter($examQuery, ?string $ageGroup): void
+    {
+        $vstepOnly     = ['VSTEP'];
+        $kidsOnlyTypes = ['STARTERS', 'MOVERS', 'FLYERS'];
+
+        // Ẩn VSTEP với học viên không phải adults
+        if ($ageGroup !== 'adults') {
+            $examQuery->whereNotIn('eType', $vstepOnly);
+        }
+        // Ẩn STARTERS/MOVERS/FLYERS với học viên không phải kids
+        if ($ageGroup !== 'kids') {
+            $examQuery->whereNotIn('eType', $kidsOnlyTypes);
+        }
+    }
+
     /**
      * @OA\Get(
      *     path="/student/tests",
@@ -51,9 +81,6 @@ class StudentTestController extends Controller
         // Get class IDs where student is enrolled (now stored on users.class_id directly)
         $classIds = $user->class_id ? [$user->class_id] : [];
 
-        // Phân loại exam theo độ tuổi
-        $adultOnlyTypes = ['VSTEP', 'IELTS'];
-        $kidsOnlyTypes  = ['STARTERS', 'MOVERS', 'FLYERS'];
         $ageGroup = $user->age_group;
 
         // Get assignments for student (individual or class-based)
@@ -61,19 +88,12 @@ class StudentTestController extends Controller
         $assignments = TestAssignment::with(['exam' => function ($q) {
                                             $q->withCount('questions');
                                         }])
-                                    ->whereHas('exam', function ($q) use ($ageGroup, $adultOnlyTypes, $kidsOnlyTypes) {
+                                    ->whereHas('exam', function ($q) use ($ageGroup) {
                                         $q->where(function ($inner) {
                                             $inner->where('eType', '!=', 'VSTEP')
                                                   ->orWhere('eSkill', 'mixed');
                                         });
-                                        // Ẩn VSTEP/IELTS với học viên không phải adults
-                                        if ($ageGroup !== 'adults') {
-                                            $q->whereNotIn('eType', $adultOnlyTypes);
-                                        }
-                                        // Ẩn STARTERS/MOVERS/FLYERS với học viên không phải kids
-                                        if ($ageGroup !== 'kids') {
-                                            $q->whereNotIn('eType', $kidsOnlyTypes);
-                                        }
+                                        $this->applyAgeGroupExamFilter($q, $ageGroup);
                                     })
                                     ->where(function ($query) use ($user, $classIds) {
                                         // Individual assignments
@@ -228,11 +248,17 @@ class StudentTestController extends Controller
             ], 403);
         }
 
-        // VSTEP / IELTS chỉ dành cho sinh viên và người đi làm
-        if (in_array($assignment->exam->eType, ['VSTEP', 'IELTS']) && $user->age_group !== 'adults') {
+        // VSTEP chỉ adults; IELTS: adults + teens; Cambridge YL: chỉ kids
+        if ($assignment->exam->eType === 'VSTEP' && $user->age_group !== 'adults') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Đề thi ' . $assignment->exam->eType . ' chỉ dành cho học viên từ 18 tuổi trở lên (sinh viên / người đi làm).'
+                'message' => 'Đề thi VSTEP chỉ dành cho học viên từ 18 tuổi trở lên.'
+            ], 403);
+        }
+        if ($assignment->exam->eType === 'IELTS' && !in_array($user->age_group, ['adults', 'teens'])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đề thi IELTS dành cho học viên từ 13 tuổi trở lên.'
             ], 403);
         }
 
@@ -332,11 +358,17 @@ class StudentTestController extends Controller
             ], 403);
         }
 
-        // VSTEP / IELTS chỉ dành cho sinh viên và người đi làm
-        if (in_array($assignment->exam->eType, ['VSTEP', 'IELTS']) && $user->age_group !== 'adults') {
+        // VSTEP chỉ adults; IELTS: adults + teens; Cambridge YL: chỉ kids
+        if ($assignment->exam->eType === 'VSTEP' && $user->age_group !== 'adults') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Đề thi ' . $assignment->exam->eType . ' chỉ dành cho học viên từ 18 tuổi trở lên (sinh viên / người đi làm).'
+                'message' => 'Đề thi VSTEP chỉ dành cho học viên từ 18 tuổi trở lên.'
+            ], 403);
+        }
+        if ($assignment->exam->eType === 'IELTS' && !in_array($user->age_group, ['adults', 'teens'])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Đề thi IELTS dành cho học viên từ 13 tuổi trở lên.'
             ], 403);
         }
 
@@ -658,8 +690,8 @@ class StudentTestController extends Controller
             ], 400);
         }
 
-        // For VSTEP exams: only gate on MCQ questions (writing/speaking are manually graded)
-        $isVstep = strtoupper($submission->exam->eType ?? '') === 'VSTEP';
+        // For VSTEP/IELTS exams: only gate on MCQ questions (writing/speaking are manually graded)
+        $isVstep = in_array(strtoupper($submission->exam->eType ?? ''), ['VSTEP', 'IELTS']);
         $subjectiveTypes = ['essay', 'writing', 'speaking'];
         if ($isVstep) {
             $mcqQuestions = $submission->exam->questions->filter(function ($q) use ($subjectiveTypes) {
@@ -728,8 +760,8 @@ class StudentTestController extends Controller
                 ], 400);
             }
 
-            // Grade all answers — skip subjective (writing/speaking) for VSTEP
-            $isVstepTx = strtoupper($submission->exam->eType ?? '') === 'VSTEP';
+            // Grade all answers — skip subjective (writing/speaking) for VSTEP/IELTS
+            $isVstepTx = in_array(strtoupper($submission->exam->eType ?? ''), ['VSTEP', 'IELTS']);
             $subjTypes  = ['essay', 'writing', 'speaking'];
             $gradingResult = $this->gradeAnswers($submission->answers, $submission->exam_id, $isVstepTx, $subjTypes);
             if ($gradingResult['error']) {
@@ -740,9 +772,16 @@ class StudentTestController extends Controller
             $scorePercentage = $gradingResult['scorePercentage'];
             $vstepMeta       = $gradingResult['vstepMeta'];
 
-            // VSTEP: W+S need AI grading — only if writing answer has meaningful content (>=30 chars)
+            // VSTEP/IELTS: W+S need AI grading — only if writing answer has meaningful content (>=30 chars)
             $hasSubjectiveContent = false;
             if ($isVstepTx && $vstepMeta) {
+                // Xác định các skill thực sự có trong đề (IELTS thường chỉ 1 skill/đề)
+                $examSections = $submission->exam->questions
+                    ->map(fn($q) => strtolower($q->qSection ?? ''))
+                    ->unique()->filter()->values()->all();
+                $hasWritingSection  = in_array('writing', $examSections, true);
+                $hasSpeakingSection = in_array('speaking', $examSections, true);
+
                 $hasWriting = $submission->answers->contains(function ($a) {
                     if (strtolower($a->question->qSection ?? '') !== 'writing') return false;
                     return strlen(trim($a->saAnswer_text ?? '')) >= 30;
@@ -751,20 +790,28 @@ class StudentTestController extends Controller
                 $hasSpeaking = !empty($rawFeedback['speaking_audio'] ?? []);
                 $hasSubjectiveContent = $hasWriting || $hasSpeaking;
 
-                // Auto-grade empty/short writing answers as 0 immediately
-                if (!$hasWriting) {
+                // Auto-grade empty/short writing answers as 0 — chỉ khi đề CÓ phần writing
+                if ($hasWritingSection && !$hasWriting) {
                     $submission->answers->filter(fn($a) =>
                         strtolower($a->question->qSection ?? '') === 'writing'
                     )->each(fn($a) => $a->update(['saPoints_awarded' => 0]));
                     $vstepMeta['writing'] = 0;
                 }
-                // Recalculate overall score with writing=0 if no meaningful speaking either
-                if (!$hasSubjectiveContent) {
+                if ($hasSpeakingSection && !$hasSpeaking) {
                     $vstepMeta['speaking'] = 0;
-                    $allScores = array_filter([$vstepMeta['listening'], $vstepMeta['reading'], 0, 0]);
-                    $scorePercentage = count($allScores) > 0
-                        ? round((array_sum($allScores) / 4) * 10, 2)
-                        : $scorePercentage;
+                }
+
+                // Recalculate overall = trung bình các skill CÓ điểm (bỏ qua skill không có trong đề)
+                if (!$hasSubjectiveContent) {
+                    $present = array_filter([
+                        $vstepMeta['listening'],
+                        $vstepMeta['reading'],
+                        $hasWritingSection ? ($vstepMeta['writing'] ?? null) : null,
+                        $hasSpeakingSection ? ($vstepMeta['speaking'] ?? null) : null,
+                    ], fn($v) => $v !== null);
+                    if (count($present) > 0) {
+                        $scorePercentage = round((array_sum($present) / count($present)) * 10, 2);
+                    }
                 }
             }
 
@@ -942,7 +989,7 @@ class StudentTestController extends Controller
             ], 404);
         }
 
-        $isVstep = strtoupper($submission->exam->eType ?? '') === 'VSTEP';
+        $isVstep = in_array(strtoupper($submission->exam->eType ?? ''), ['VSTEP', 'IELTS']);
 
         if (!$isVstep) {
             return response()->json([
@@ -995,6 +1042,11 @@ class StudentTestController extends Controller
         })->count();
         $speakingAudios  = isset($raw['speaking_audio']) ? count((array) $raw['speaking_audio']) : 0;
 
+        // Các skill thực sự có trong đề (IELTS thường chỉ 1 skill/đề)
+        $examSections = $submission->exam->questions
+            ->map(fn($q) => strtolower($q->qSection ?? ''))
+            ->unique()->filter()->values()->all();
+
         // VSTEP band from available (non-null) scores
         $availableScores = array_filter([
             $vstepScores['listening'] ?? null,
@@ -1021,10 +1073,12 @@ class StudentTestController extends Controller
             'vstep_band'     => $vstepBand,
             'overall_avg'    => $overallAvg,
             'skill_stats'    => $skillStats,
+            'exam_sections'  => $examSections,
             'writing_submitted'  => $writingAnswers > 0,
             'speaking_submitted' => $speakingAudios > 0 || $speakingAnswers > 0,
-            'pending_skills' => array_values(array_filter(['writing', 'speaking'], function ($s) use ($vstepScores) {
-                return is_null($vstepScores[$s] ?? null);
+            'pending_skills' => array_values(array_filter(['writing', 'speaking'], function ($s) use ($vstepScores, $examSections) {
+                // Chỉ pending nếu đề CÓ skill đó và chưa có điểm
+                return in_array($s, $examSections, true) && is_null($vstepScores[$s] ?? null);
             })),
         ];
 
@@ -1105,8 +1159,8 @@ class StudentTestController extends Controller
     {
         DB::beginTransaction();
         try {
-            // Grade answers — skip subjective types for VSTEP
-            $isVstepAuto = strtoupper($submission->exam->eType ?? '') === 'VSTEP';
+            // Grade answers — skip subjective types for VSTEP/IELTS
+            $isVstepAuto = in_array(strtoupper($submission->exam->eType ?? ''), ['VSTEP', 'IELTS']);
             $subjTypes   = ['essay', 'writing', 'speaking'];
             $gradingResult = $this->gradeAnswers($submission->answers, $submission->exam_id, $isVstepAuto, $subjTypes);
             if ($gradingResult['error']) {
@@ -1296,6 +1350,7 @@ class StudentTestController extends Controller
                     'exam_title' => $submission->exam->eTitle,
                     'exam_id' => $submission->exam_id,
                     'exam_type' => $submission->exam->eType,
+                    'exam_skill' => $submission->exam->eSkill,
                 ],
                 'detailed_answers' => $detailedAnswers,
                 'summary' => [
@@ -1586,10 +1641,14 @@ class StudentTestController extends Controller
     public function inProgressTests(Request $request)
     {
         $studentId = $request->user()->uId;
+        $ageGroup  = $request->user()->age_group ?? null;
 
         // Get submissions that are in progress (not submitted yet)
         $inProgressSubmissions = Submission::where('user_id', $studentId)
             ->where('sStatus', 'in_progress')
+            ->whereHas('exam', function ($q) use ($ageGroup) {
+                $this->applyAgeGroupExamFilter($q, $ageGroup);
+            })
             ->with(['exam'])
             ->orderBy('sStart_time', 'desc')
             ->get();
@@ -1597,7 +1656,9 @@ class StudentTestController extends Controller
         $tests = $inProgressSubmissions->map(function ($submission) {
             $exam = $submission->exam;
             $duration = $exam->eDuration_minutes ?? $exam->eDuration ?? 0;
-            $timeElapsed = now()->diffInMinutes($submission->sStart_time);
+            // sStart_time luôn ở quá khứ → số phút đã trôi qua phải dương.
+            // Truyền absolute=true để không bị âm khi Carbon trả về giá trị có dấu.
+            $timeElapsed = \Carbon\Carbon::parse($submission->sStart_time)->diffInMinutes(now(), true);
             $timeRemaining = max(0, $duration - $timeElapsed);
 
             return [
@@ -1630,6 +1691,7 @@ class StudentTestController extends Controller
         // Get class IDs where student is enrolled (now stored on users.class_id directly)
         $student  = $request->user();
         $classIds = $student && $student->class_id ? [$student->class_id] : [];
+        $ageGroup = $student->age_group ?? null;
 
         // Get assignments that are upcoming (deadline within next X days, not yet expired)
         $upcomingAssignments = TestAssignment::where(function ($query) use ($studentId, $classIds) {
@@ -1640,6 +1702,9 @@ class StudentTestController extends Controller
                     $q->where('taTarget_type', 'class')
                       ->whereIn('taTarget_id', $classIds);
                 });
+            })
+            ->whereHas('exam', function ($q) use ($ageGroup) {
+                $this->applyAgeGroupExamFilter($q, $ageGroup);
             })
             ->whereNotNull('taDeadline')
             ->where('taDeadline', '>=', now())
@@ -1942,6 +2007,57 @@ class StudentTestController extends Controller
             ];
         }
 
+        // ── Replies vào comment của user trong exam discussions (last 14 days) ──
+        // Lấy id các comment do user viết
+        $userCommentIds = ExamComment::where('user_id', $studentId)
+            ->where('is_deleted', false)
+            ->pluck('id');
+
+        if ($userCommentIds->isNotEmpty()) {
+            $replies = ExamComment::with(['user', 'exam', 'parent'])
+                ->whereIn('parent_id', $userCommentIds)
+                ->where('user_id', '!=', $studentId)        // không tự notify chính mình
+                ->where('is_deleted', false)
+                ->where('created_at', '>=', now()->subDays(14))
+                ->orderBy('created_at', 'desc')
+                ->take(15)
+                ->get();
+
+            foreach ($replies as $reply) {
+                if (!$reply->exam || !$reply->user) continue;
+
+                $replierName = $reply->user->uName ?: 'Một người dùng';
+                $examTitle   = $reply->exam->eTitle ?: 'đề thi';
+                $preview     = mb_substr(preg_replace('/\s+/', ' ', (string) $reply->content), 0, 80);
+                if (mb_strlen((string) $reply->content) > 80) {
+                    $preview .= '…';
+                }
+
+                // URL: trang IELTS detail nếu là exam IELTS, fallback chung
+                $eType = strtolower((string) ($reply->exam->eType ?? ''));
+                if ($eType === 'ielts') {
+                    $actionUrl = '/de-thi/ielts/' . $reply->exam_id
+                        . '?tab=discussion#comment-' . $reply->id;
+                } else {
+                    // Generic exam detail (chưa có discussion ở các loại khác — vẫn link đề thi)
+                    $actionUrl = '/de-thi/' . $reply->exam_id
+                        . '?tab=discussion#comment-' . $reply->id;
+                }
+
+                $notifications[] = [
+                    'id'           => 'comment_reply_' . $reply->id,
+                    'title'        => $replierName . ' đã trả lời bình luận của bạn',
+                    'message'      => '"' . $preview . '" — trong đề "' . $examTitle . '"',
+                    'type'         => 'message',
+                    'color'        => '#7C3AED',
+                    'is_read'      => false,
+                    'created_at'   => $reply->created_at,
+                    'action_url'   => $actionUrl,
+                    'action_label' => 'Xem bình luận',
+                ];
+            }
+        }
+
         // Sort newest first
         usort($notifications, function ($a, $b) {
             return strtotime((string)$b['created_at']) - strtotime((string)$a['created_at']);
@@ -2037,6 +2153,7 @@ class StudentTestController extends Controller
     public function getReminders(Request $request)
     {
         $studentId = $request->user()->uId;
+        $ageGroup  = $request->user()->age_group ?? null;
 
         $reminders = \App\Models\AssignmentReminder::with([
                 'assignment.exam:eId,eTitle,eType,eSkill,eDuration_minutes',
@@ -2044,6 +2161,9 @@ class StudentTestController extends Controller
             ])
             ->where('student_id', $studentId)
             ->whereNull('dismissed_at')
+            ->whereHas('assignment.exam', function ($q) use ($ageGroup) {
+                $this->applyAgeGroupExamFilter($q, $ageGroup);
+            })
             ->orderByDesc('updated_at')
             ->get();
 
@@ -2420,6 +2540,7 @@ class StudentTestController extends Controller
         }
 
         $resume = $request->boolean('resume');
+        $totalSeconds = ($exam->eDuration_minutes ?? 179) * 60;
 
         if ($resume) {
             // F5/reload — resume existing in_progress if any
@@ -2430,12 +2551,19 @@ class StudentTestController extends Controller
                 ->orderByDesc('sId')
                 ->first();
             if ($existing) {
-                $elapsed      = now()->diffInSeconds($existing->sStart_time ?? now());
-                $totalSeconds = ($exam->eDuration_minutes ?? 179) * 60;
-                $remaining    = max(0, $totalSeconds - $elapsed);
+                $startTime = $existing->sStart_time ?? now();
+                $elapsed   = max(0, \Carbon\Carbon::parse($startTime)->diffInSeconds(now(), false));
+                $remaining = max(0, $totalSeconds - $elapsed);
                 return response()->json([
                     'status' => 'success',
-                    'data'   => ['submissionId' => $existing->sId, 'timeRemaining' => round($remaining / 60)],
+                    'data'   => [
+                        'submissionId'   => $existing->sId,
+                        'started_at'     => $startTime,
+                        'total_duration' => $totalSeconds,
+                        'time_remaining' => $remaining,
+                        // backward-compat (phút)
+                        'timeRemaining'  => round($remaining / 60),
+                    ],
                 ]);
             }
         }
@@ -2456,7 +2584,14 @@ class StudentTestController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data'   => ['submissionId' => $submission->sId, 'timeRemaining' => $exam->eDuration_minutes ?? 179],
+            'data'   => [
+                'submissionId'   => $submission->sId,
+                'started_at'     => $submission->sStart_time,
+                'total_duration' => $totalSeconds,
+                'time_remaining' => $totalSeconds,
+                // backward-compat (phút)
+                'timeRemaining'  => $exam->eDuration_minutes ?? 179,
+            ],
         ]);
     }
 
@@ -2482,6 +2617,14 @@ class StudentTestController extends Controller
         }
 
         $parts = [];
+
+        // IELTS lưu listening khác VSTEP: mỗi section = 1 ContentBlock (section_number,
+        // section_title, instructions, audio_filename) — KHÔNG có part_number/audio_duration.
+        // Detect IELTS và build theo cấu trúc 4 section × 10 câu.
+        if (in_array(strtoupper($exam->eType ?? ''), ['IELTS'])) {
+            return $this->buildIeltsListeningForVstepPage($exam);
+        }
+
         foreach (self::LISTENING_LAYOUT as $partNumber => $layout) {
             $sectionCount = $layout['sectionCount'];
             $qPerSection  = $layout['questionsPerSection'];
@@ -2519,7 +2662,8 @@ class StudentTestController extends Controller
 
                 $sections[] = [
                     'sectionNumber'       => $s,
-                    'sectionName'         => $block->metadata['section_name'] ?? "{$layout['sectionLabel']} {$s}",
+                    'sectionName'         => $block->metadata['section_title'] ?? $block->metadata['section_name'] ?? "{$layout['sectionLabel']} {$s}",
+                    'instructions'        => $block->metadata['instructions'] ?? '',
                     'audioUrl'            => $freshAudioUrl,
                     'audioDuration'       => $block->metadata['audio_duration'] ?? 0,
                     'transcript'          => $block->metadata['transcript'] ?? '',
@@ -2547,6 +2691,81 @@ class StudentTestController extends Controller
                 'partName'            => "Part {$partNumber}",
                 'sectionCount'        => $sectionCount,
                 'questionsPerSection' => $qPerSection,
+                'sections'            => $sections,
+            ];
+        }
+
+        return response()->json(['status' => 'success', 'data' => ['exam_id' => $exam->eId, 'title' => $exam->eTitle, 'parts' => $parts]]);
+    }
+
+    /**
+     * Build listening parts cho đề IELTS để hiển thị trên trang VSTEP-style player.
+     * IELTS: mỗi ContentBlock audio = 1 section (section_number/section_title/instructions/audio_filename).
+     */
+    private function buildIeltsListeningForVstepPage(Exam $exam)
+    {
+        $audioBlocks = $exam->contentBlocks
+            ->filter(fn($b) => ($b->block_type ?? '') === 'audio')
+            ->sortBy(fn($b) => $b->metadata['section_number'] ?? $b->display_order ?? 0)
+            ->values();
+
+        $questionsByPart = $exam->questions
+            ->where('qSkill', 'listening')
+            ->sortBy('qSection_order')
+            ->groupBy('qPart');
+
+        $parts = [];
+        $partNumbers = $questionsByPart->keys()->sort()->values();
+
+        foreach ($partNumbers as $partNumber) {
+            $block = $audioBlocks->first(function ($b) use ($partNumber) {
+                return ($b->metadata['section_number'] ?? null) == $partNumber;
+            });
+            $meta = $block->metadata ?? [];
+
+            $storedAudio = $block->content ?? '';
+            $audioFile   = ($storedAudio ? basename(parse_url($storedAudio, PHP_URL_PATH)) : '')
+                ?: ($meta['audio_filename'] ?? '');
+            $freshAudio  = $audioFile ? url('files/audio/' . $audioFile) : '';
+
+            $sectionQuestions = $questionsByPart->get($partNumber, collect())
+                ->sortBy('qSection_order')
+                ->values();
+
+            $sectionTitle = ($meta['section_title'] ?? '')
+                ?: ($sectionQuestions->first()->qData['section_title'] ?? '')
+                ?: "Part {$partNumber}";
+
+            $sections = [[
+                'sectionNumber' => (int) $partNumber,
+                'sectionName'   => $sectionTitle,
+                'instructions'  => $meta['instructions'] ?? '',
+                'audioUrl'      => $freshAudio,
+                'audioDuration' => $meta['audio_duration'] ?? 0,
+                'transcript'    => $meta['transcript'] ?? '',
+                'questions'     => $sectionQuestions->map(fn($q) => [
+                    'qId'             => $q->qId,
+                    'questionNumber'  => $q->qData['question_number'] ?? $q->qSection_order,
+                    'questionText'    => $q->qContent,
+                    'taskTitle'       => $q->qData['task_title'] ?? null,
+                    'taskInstruction' => $q->qData['task_instruction'] ?? null,
+                    'options'         => $q->qData['options'] ?? (function () use ($q) {
+                        $sorted = ($q->answers ?? collect())->sortBy(fn($a) => $a->aOrder !== null ? $a->aOrder : $a->aId)->values();
+                        return [
+                            'A' => $sorted[0]->aContent ?? '',
+                            'B' => $sorted[1]->aContent ?? '',
+                            'C' => $sorted[2]->aContent ?? '',
+                            'D' => $sorted[3]->aContent ?? '',
+                        ];
+                    })(),
+                ])->values()->toArray(),
+            ]];
+
+            $parts[] = [
+                'partNumber'          => (int) $partNumber,
+                'partName'            => $sectionTitle,
+                'sectionCount'        => 1,
+                'questionsPerSection' => $sectionQuestions->count(),
                 'sections'            => $sections,
             ];
         }
@@ -2708,12 +2927,26 @@ class StudentTestController extends Controller
     /**
      * Resolve & load the IELTS exam for a student/teacher viewer.
      * Throws 404 if exam not found, returns the model otherwise.
+     *
+     * Lưu ý: Teacher có thể xem cả đề private/draft của chính họ
+     * (dùng cho preview / xem thử). Student chỉ thấy đề công khai.
      */
     private function findIeltsExamForLoad($examId)
     {
-        return Exam::where('eId', $examId)
-            ->where('eType', 'IELTS')
-            ->where(function ($q) { $q->whereNull('eIs_private')->orWhere('eIs_private', false); })
+        $user = request()->user();
+        $isTeacher = $user && $user->uRole === 'teacher';
+
+        $query = Exam::where('eId', $examId)->where('eType', 'IELTS');
+
+        if (!$isTeacher) {
+            // Student: chỉ load đề công khai
+            $query->where(function ($q) {
+                $q->whereNull('eIs_private')->orWhere('eIs_private', false);
+            });
+        }
+        // Teacher: được phép xem cả đề private (kể cả draft) — dùng cho xem thử
+
+        return $query
             ->with([
                 'contentBlocks' => fn($q) => $q->orderBy('display_order'),
                 'questions'     => fn($q) => $q->orderBy('qPart')->orderBy('qSection_order'),
@@ -2748,10 +2981,14 @@ class StudentTestController extends Controller
                     && (($meta['section_number'] ?? null) == $sectionNumber);
             });
 
-            // Regenerate audio URL from filename (avoid stale host/port)
-            $storedAudio   = $block->content ?? '';
-            $audioFilename = ($block->metadata['audio_filename'] ?? '')
-                ?: ($storedAudio ? basename(parse_url($storedAudio, PHP_URL_PATH)) : '');
+            $blockMeta = $block ? ($block->metadata ?? []) : [];
+
+            // Regenerate audio URL from real stored URL (not metadata.audio_filename
+            // which holds the user's original upload name — file thực trên disk dùng
+            // tên hashed do server tạo). Chỉ fallback sang metadata khi block.content rỗng.
+            $storedAudio   = $block ? ($block->content ?? '') : '';
+            $audioFilename = ($storedAudio ? basename(parse_url($storedAudio, PHP_URL_PATH)) : '')
+                ?: ($blockMeta['audio_filename'] ?? '');
             $freshAudioUrl = $audioFilename ? url('files/audio/' . $audioFilename) : '';
 
             $sectionQuestions = $exam->questions
@@ -2762,15 +2999,15 @@ class StudentTestController extends Controller
 
             $sections[] = [
                 'sectionNumber' => $sectionNumber,
-                'sectionName'   => "Section {$sectionNumber}",
+                'sectionName'   => $blockMeta['section_title'] ?? $blockMeta['section_name'] ?? "Section {$sectionNumber}",
                 'audioUrl'      => $freshAudioUrl,
-                'audioDuration' => $block->metadata['audio_duration'] ?? 0,
+                'audioDuration' => $blockMeta['audio_duration'] ?? 0,
                 'questionStart' => ($sectionNumber - 1) * 10 + 1,
                 'questionsPerSection' => 10,
-                'instructions'  => $block->metadata['instructions'] ?? '',
-                'context'       => $block->metadata['context'] ?? '',
-                'transcript'    => $isTeacher ? ($block->metadata['transcript'] ?? '') : null,
-                'questionType'  => $block->metadata['question_type'] ?? 'multiple_choice',
+                'instructions'  => $blockMeta['instructions'] ?? '',
+                'context'       => $blockMeta['context'] ?? '',
+                'transcript'    => $isTeacher ? ($blockMeta['transcript'] ?? '') : null,
+                'questionType'  => $blockMeta['question_type'] ?? 'multiple_choice',
                 'questions'     => $sectionQuestions->map(fn($q) => $this->serializeIeltsQuestion($q, $isTeacher))->values()->toArray(),
             ];
         }
@@ -2989,9 +3226,35 @@ class StudentTestController extends Controller
         $qData = $q->qData ?? [];
         $type  = (string) ($q->qType ?? 'multiple_choice');
 
+        // Chỉ MCQ-style mới có options. Các dạng "completion" / "short answer" /
+        // "labelling" dùng input text — KHÔNG được build options A/B/C/D từ
+        // bảng answers, vì records trong đó là variants đáp án đúng (không phải
+        // lựa chọn để chọn). Nếu build sẽ ra dropdown vô nghĩa cho student.
+        $mcqTypes = [
+            'multiple_choice',
+            'multiple_choice_multi',
+            'mcq',
+            'true_false_not_given',
+            'yes_no_not_given',
+            'matching',
+            'matching_headings',
+            'matching_features',
+            'matching_information',
+            'matching_sentence_endings',
+        ];
+        $isMcq = in_array($type, $mcqTypes, true);
+
         // Build MCQ options if available
         $options = $qData['options'] ?? null;
-        if (!$options && $q->relationLoaded('answers')) {
+
+        // Lọc options rác: import cũ hay để {A:null,B:null,C:null,D:null} —
+        // toàn giá trị null/rỗng. Coi như KHÔNG có options thật.
+        if (is_array($options)) {
+            $nonEmpty = array_filter($options, fn($v) => $v !== null && trim((string) $v) !== '');
+            $options = count($nonEmpty) > 0 ? $nonEmpty : null;
+        }
+
+        if ($isMcq && !$options && $q->relationLoaded('answers')) {
             $sorted = $q->answers->sortBy(fn($a) => $a->aOrder !== null ? $a->aOrder : $a->aId)->values();
             if ($sorted->count() >= 2) {
                 $options = [];
@@ -3001,6 +3264,11 @@ class StudentTestController extends Controller
                     $options[$letters[$idx]] = $ans->aContent;
                 }
             }
+        }
+        // Đảm bảo: nếu type không phải MCQ thì luôn null (kể cả qData lỡ có
+        // options sót lại từ import cũ).
+        if (!$isMcq) {
+            $options = null;
         }
 
         $extraData = $includeAnswer

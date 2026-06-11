@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
+import { usePageHeader } from "../../../../contexts/TeacherHeaderContext";
 import {
   BookOpen,
   Users,
@@ -153,6 +154,7 @@ const statusLabels = {
 export function CourseList() {
   usePageTitle(PAGE_TITLES.TEACHER_COURSES);
   const { t } = useTranslation();
+  usePageHeader({ breadcrumb: [t("breadcrumb.dashboard"), t("breadcrumb.courses")] });
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");

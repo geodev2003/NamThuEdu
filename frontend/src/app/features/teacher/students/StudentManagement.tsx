@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useToast } from "../../../../hooks/useToast";
 import { useDebounce } from "../../../../hooks/useDebounce";
+import { usePageHeader } from "../../../../contexts/TeacherHeaderContext";
 import { ToastContainer } from "../../../../components/ui";
 import { useNavigate } from "react-router";
 import { EditStudentModal } from "./EditStudentModal";
@@ -45,6 +46,9 @@ interface StudentStats {
 export function StudentManagement() {
   usePageTitle(PAGE_TITLES.TEACHER_STUDENTS);
   const { t } = useTranslation();
+  usePageHeader({
+    breadcrumb: [t("breadcrumb.dashboard"), t("breadcrumb.students")],
+  });
   const navigate = useNavigate();
   const { toasts, removeToast, success, error, warning } = useToast();
   const toast = { success, error, warning };
@@ -223,7 +227,6 @@ export function StudentManagement() {
               name: student.uName || 'N/A',
               phone: student.uPhone || 'N/A',
               email: student.uEmail || 'Chưa có',
-              class: student.class_name || 'Chưa có lớp',
               ageGroup: student.age_group || 'teens',
               course: courseMonth,
               status: student.uStatus || 'active',
@@ -397,6 +400,17 @@ export function StudentManagement() {
 
         if (response.ok) {
           toast.success(t('teacher.students.management.toast.restoreSuccess', { name: studentName }));
+
+          // Log activity (best-effort)
+          import("../../../../services/teacherActivityLog").then(({ logTeacherActivity }) => {
+            logTeacherActivity({
+              action: "student.restore",
+              entity_type: "student",
+              entity_id: studentId,
+              detail: `Khôi phục học viên: ${studentName}`,
+            });
+          });
+
           fetchDeletedStudents();
           fetchStudents();
         } else {
@@ -575,6 +589,17 @@ export function StudentManagement() {
 
         if (response.ok) {
           setStudents(students.filter(s => s.id !== student.id));
+
+          // Log activity (best-effort)
+          import("../../../../services/teacherActivityLog").then(({ logTeacherActivity }) => {
+            logTeacherActivity({
+              action: "student.delete",
+              entity_type: "student",
+              entity_id: student.id,
+              detail: `Xoá học viên: ${student.name}`,
+            });
+          });
+
           toast.success(t('teacher.students.management.toast.deleteSuccess', { name: student.name }));
         } else {
           const errorData = await response.json();
@@ -680,6 +705,18 @@ export function StudentManagement() {
         } else {
           toast.warning(t('teacher.students.management.toast.bulkDeletePartial', { success: successCount, fail: failCount }));
         }
+
+        // Log bulk delete (best-effort)
+        if (successCount > 0) {
+          import("../../../../services/teacherActivityLog").then(({ logTeacherActivity }) => {
+            logTeacherActivity({
+              action: "student.delete",
+              entity_type: "student",
+              detail: `Xoá ${successCount} học viên cùng lúc`,
+              meta: { bulk: true, success: successCount, failed: failCount },
+            });
+          });
+        }
       } catch (error) {
         console.error('Error bulk deleting students:', error);
         toast.error(t('teacher.students.management.toast.deleteError'));
@@ -712,7 +749,6 @@ export function StudentManagement() {
         'Số điện thoại': student.phone,
         'Email': student.email === 'Chưa có' ? '' : student.email,
         'Nhóm tuổi': student.ageGroup === 'kids' ? 'Trẻ em' : student.ageGroup === 'teens' ? 'Thiếu niên' : 'Người lớn',
-        'Lớp': student.class,
         'Khóa': student.course,
         'Trạng thái': student.status === 'active' ? 'Đang học' : 'Tạm nghỉ',
         'Ngày tạo': student.createdAt,
@@ -729,7 +765,6 @@ export function StudentManagement() {
         { wch: 15 }, // SĐT
         { wch: 30 }, // Email
         { wch: 15 }, // Nhóm tuổi
-        { wch: 20 }, // Lớp
         { wch: 15 }, // Khóa
         { wch: 12 }, // Trạng thái
         { wch: 12 }, // Ngày tạo
@@ -807,24 +842,18 @@ export function StudentManagement() {
   };
 
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <h1 className="text-3xl font-bold text-[#111827] mb-1">
-              {t('teacher.students.management.title')}
-            </h1>
-            <p className="text-[#6B7280] text-sm">
-              {t('teacher.students.management.breadcrumb')}
-            </p>
-          </div>
+    <div className="px-6 py-5">
+      {/* Header - inline title + tabs */}
+      <div className="flex items-end justify-between mb-4">
+        <div>
+          <h1 className="text-[15px] font-bold text-slate-900 leading-tight">
+            {t('teacher.students.management.title')}
+          </h1>
+          <p className="text-slate-500 text-[11px] mt-0.5">
+            {t('teacher.students.management.breadcrumb')}
+          </p>
         </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="border-b border-[#E5E7EB] mb-6">
-        <div className="flex gap-1">
+        <div className="flex gap-0.5">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -833,13 +862,13 @@ export function StudentManagement() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className="flex items-center gap-2 px-6 py-3 font-medium text-sm transition-all relative group"
-                style={{
-                  color: isActive ? "#EA580C" : "#6B7280",
-                  borderBottom: isActive ? "2px solid #EA580C" : "2px solid transparent",
-                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 font-medium text-[12px] rounded-md transition-all cursor-pointer ${
+                  isActive
+                    ? "bg-slate-900 text-white"
+                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5" />
                 {t(`teacher.students.management.tabs.${tab.id}`)}
               </button>
             );
@@ -851,41 +880,41 @@ export function StudentManagement() {
       {activeTab === "list" && (
         <div>
           {/* Stats Cards */}
-          <div className="grid grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-4 gap-4 mb-5">
             {studentStats.map((stat, index) => {
               const Icon = stat.icon;
               const TrendIcon = stat.trend === "up" ? TrendingUp : TrendingDown;
               return (
                 <div
                   key={index}
-                  className="bg-white rounded-xl p-6 border border-[#E5E7EB]"
+                  className="bg-white rounded-xl p-4 border border-slate-200"
                 >
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start justify-between mb-3">
                     <div
-                      className="w-12 h-12 rounded-lg flex items-center justify-center"
+                      className="w-10 h-10 rounded-lg flex items-center justify-center"
                       style={{ backgroundColor: `${stat.color}15` }}
                     >
-                      <Icon className="w-6 h-6" style={{ color: stat.color }} />
+                      <Icon className="w-5 h-5" style={{ color: stat.color }} />
                     </div>
-                    <div className="flex items-center gap-1 text-sm font-medium" style={{ color: stat.trend === "up" ? "#10B981" : "#EF4444" }}>
-                      <TrendIcon className="w-4 h-4" />
+                    <div className="flex items-center gap-0.5 text-[11px] font-semibold" style={{ color: stat.trend === "up" ? "#10B981" : "#EF4444" }}>
+                      <TrendIcon className="w-3 h-3" />
                       {Math.abs(stat.change)}%
                     </div>
                   </div>
-                  <p className="text-2xl font-bold text-[#111827] mb-1">
+                  <p className="text-xl font-bold text-slate-900 mb-0.5">
                     {stat.value.toLocaleString()}
                   </p>
-                  <p className="text-sm text-[#6B7280]">{stat.label}</p>
+                  <p className="text-[11px] text-slate-500">{stat.label}</p>
                 </div>
               );
             })}
           </div>
 
           {/* Search & Filter Bar with Action Buttons */}
-          <div className="bg-white rounded-xl p-4 border border-[#E5E7EB] mb-4">
-            <div className="flex items-center gap-3">
-              <div className="relative w-80">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9CA3AF]" />
+          <div className="bg-white rounded-xl p-3 border border-slate-200 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="relative w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder={t('teacher.students.management.search.placeholder')}
@@ -894,7 +923,7 @@ export function StudentManagement() {
                     setSearchQuery(e.target.value);
                     setCurrentPage(1); // Reset to page 1 when searching
                   }}
-                  className="w-full pl-10 pr-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full pl-9 pr-3 py-2 text-[13px] border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300"
                 />
               </div>
               <select 
@@ -903,7 +932,7 @@ export function StudentManagement() {
                   setCourseFilter(e.target.value);
                   setCurrentPage(1); // Reset to page 1 when filtering
                 }}
-                className="px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="px-3 py-2 text-[13px] border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 cursor-pointer"
               >
                 <option value="all">{t('teacher.students.management.search.allCourses')}</option>
                 {uniqueCourses.map((course) => (
@@ -916,7 +945,7 @@ export function StudentManagement() {
                   setStatusFilter(e.target.value);
                   setCurrentPage(1); // Reset to page 1 when filtering
                 }}
-                className="px-4 py-2.5 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="px-3 py-2 text-[13px] border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 cursor-pointer"
               >
                 <option value="all">{t('teacher.students.management.search.allStatuses')}</option>
                 <option value="active">{t('teacher.students.management.status.active')}</option>

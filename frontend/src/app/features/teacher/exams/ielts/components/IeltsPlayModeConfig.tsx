@@ -22,7 +22,8 @@ interface Props {
   onChange: (next: PlayModeConfig) => void;
 }
 
-const ALL_TIME_OPTIONS: (number | null)[] = [null, 5, 10, 15, 20, 30, 45, 60, 75, 90];
+// Theo chuẩn IELTS: Listening 40' (30 audio + 10 transfer) · Reading 60' · Writing 60' · Speaking 11–14'
+const ALL_TIME_OPTIONS: (number | null)[] = [null, 5, 10, 11, 14, 15, 20, 30, 40, 45, 60, 75, 90];
 
 export function IeltsPlayModeConfig({ skill, value, onChange }: Props) {
   const structure = IELTS_STRUCTURE[skill];

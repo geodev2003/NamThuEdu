@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet-async";
 
 const SITE_NAME = "NamThuEdu";
-const SITE_URL = "https://namthu.vn";
+const SITE_URL = "https://namthuedu.com";
 const DEFAULT_IMAGE = "/images/banner.png";
 const DEFAULT_DESCRIPTION =
   "Tổng hợp bài viết học tiếng Anh, ngữ pháp, từ vựng, mẹo thi VSTEP và IELTS từ đội ngũ giáo viên NamThuEdu tại Cần Thơ.";
@@ -35,11 +35,24 @@ export function BlogSEO({
     ? canonical.startsWith("http") ? canonical : `${SITE_URL}${canonical}`
     : undefined;
 
+  const breadcrumbJsonLd =
+    type === "article" && canonicalUrl
+      ? JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Trang chủ", item: SITE_URL },
+            { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}/bai-viet` },
+            { "@type": "ListItem", position: 3, name: title, item: canonicalUrl },
+          ],
+        })
+      : null;
+
   const articleJsonLd =
     type === "article"
       ? JSON.stringify({
           "@context": "https://schema.org",
-          "@type": "Article",
+          "@type": "BlogPosting",
           headline: title,
           description: description,
           image: fullImage,
@@ -102,6 +115,9 @@ export function BlogSEO({
       {/* JSON-LD Structured Data */}
       {articleJsonLd && (
         <script type="application/ld+json">{articleJsonLd}</script>
+      )}
+      {breadcrumbJsonLd && (
+        <script type="application/ld+json">{breadcrumbJsonLd}</script>
       )}
     </Helmet>
   );

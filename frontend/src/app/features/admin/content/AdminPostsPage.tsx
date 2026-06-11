@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Search, Trash2, XCircle } from "lucide-react";
 import { adminApi, AdminPost } from "@/services/adminApi";
+import { RejectReasonModal } from "../components/RejectReasonModal";
+import { AdminTableSkeleton } from "../components/AdminPageSkeleton";
 
 function postId(post: AdminPost) {
   return post.pId || post.id || 0;
@@ -21,6 +23,7 @@ export function AdminPostsPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<AdminPost | null>(null);
 
   const loadPosts = async () => {
     try {
@@ -72,10 +75,17 @@ export function AdminPostsPage() {
   };
 
   const handleReject = async (id: number) => {
-    const reason = "Nội dung chưa đạt tiêu chuẩn xuất bản.";
+    const target = posts.find((p) => postId(p) === id);
+    if (target) setRejectTarget(target);
+  };
+
+  const submitReject = async (reason: string) => {
+    if (!rejectTarget) return;
+    const id = postId(rejectTarget);
     try {
       setBusyId(id);
       await adminApi.rejectPost(id, reason);
+      setRejectTarget(null);
       await loadPosts();
     } finally {
       setBusyId(null);
@@ -140,7 +150,7 @@ export function AdminPostsPage() {
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         {loading ? (
-          <div className="p-8 text-center text-slate-500">Đang tải dữ liệu...</div>
+          <AdminTableSkeleton rows={7} cols={5} />
         ) : error ? (
           <div className="p-8 text-center text-red-600">{error}</div>
         ) : (
@@ -210,6 +220,15 @@ export function AdminPostsPage() {
           </table>
         )}
       </div>
+
+      <RejectReasonModal
+        open={!!rejectTarget}
+        title="Từ chối bài viết"
+        subject={rejectTarget ? postTitle(rejectTarget) : ""}
+        busy={busyId === (rejectTarget ? postId(rejectTarget) : 0)}
+        onCancel={() => setRejectTarget(null)}
+        onConfirm={submitReject}
+      />
     </div>
   );
 }

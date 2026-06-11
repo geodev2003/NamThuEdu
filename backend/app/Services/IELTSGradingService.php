@@ -6,6 +6,7 @@ use App\Models\Submission;
 use App\Models\GradingHistory;
 use App\Models\SubmissionAnswer;
 use App\Models\Question;
+use App\Services\PushNotificationService;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 
@@ -264,6 +265,21 @@ class IELTSGradingService
         }
 
         $submission->update($updateData);
+
+        // Push notification khi chấm xong
+        if (!$pendingW && !$pendingS) {
+            try {
+                $examTitle = optional($submission->exam)->eTitle ?? 'Bài thi IELTS';
+                (new PushNotificationService())->sendToUser(
+                    (int) $submission->user_id,
+                    '✅ Bài thi đã có điểm',
+                    $examTitle . ' · Xem kết quả ngay',
+                    ['url' => '/hoc-vien/ket-qua/' . $submission->sId]
+                );
+            } catch (\Exception $e) {
+                Log::warning('[Push] IELTS grading push failed: ' . $e->getMessage());
+            }
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════

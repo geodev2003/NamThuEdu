@@ -72,28 +72,36 @@ function deriveStatus(exam: any): "Draft" | "Published" | "Private" {
   return "Draft";
 }
 
-const typeColors = {
+const typeColors: Record<string, string> = {
   VSTEP: "bg-orange-100 text-orange-700 border-orange-200",
   IELTS: "bg-green-100 text-green-700 border-green-200",
   Cambridge: "bg-purple-100 text-purple-700 border-purple-200",
   General: "bg-gray-100 text-gray-700 border-gray-200",
+  THPT: "bg-blue-100 text-blue-700 border-blue-200",
+  KIDS: "bg-orange-100 text-orange-700 border-orange-200",
 };
 
-const skillIcons = {
+const skillIcons: Record<string, typeof Headphones> = {
   Listening: Headphones,
   Reading: BookOpen,
   Writing: Pen,
   Speaking: MessageSquare,
 };
 
-const skillColors = {
+/** Lấy icon kỹ năng an toàn — fallback BookOpen khi skill lạ (Mixed/Full/etc.) */
+const getSkillIcon = (skill: string) => skillIcons[skill] ?? BookOpen;
+
+const skillColors: Record<string, string> = {
   Listening: "text-orange-600",
   Reading: "text-green-600",
   Writing: "text-orange-600",
   Speaking: "text-purple-600",
 };
 
-const statusColors = {
+const typeColorsFallback = "bg-gray-100 text-gray-700 border-gray-200";
+const skillColorFallback = "text-gray-600";
+
+const statusColors: Record<string, string> = {
   Draft: "bg-orange-100 text-orange-700",
   Published: "bg-green-100 text-green-700",
   Private: "bg-gray-100 text-gray-700",
@@ -564,7 +572,7 @@ export function MyExams() {
           ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {filteredExams.map((exam) => {
-              const SkillIcon = skillIcons[exam.skill];
+              const SkillIcon = getSkillIcon(exam.skill);
               return (
                 <div
                   key={exam.id}
@@ -587,13 +595,13 @@ export function MyExams() {
                           className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                         />
                         <span
-                          className={`inline-block px-3 py-1 rounded-lg text-xs font-semibold border ${typeColors[exam.type]}`}
+                          className={`inline-block px-3 py-1 rounded-lg text-xs font-semibold border ${typeColors[exam.type] ?? typeColorsFallback}`}
                         >
                           {exam.type}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <SkillIcon className={`w-5 h-5 ${skillColors[exam.skill]}`} />
+                        <SkillIcon className={`w-5 h-5 ${skillColors[exam.skill] ?? skillColorFallback}`} />
                         <div className="relative">
                           <button
                             onClick={() =>
@@ -676,7 +684,7 @@ export function MyExams() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className={`inline-block whitespace-nowrap px-2 py-0.5 rounded-md text-xs font-semibold ${statusColors[exam.status]}`}>
+                      <span className={`inline-block whitespace-nowrap px-2 py-0.5 rounded-md text-xs font-semibold ${statusColors[exam.status] ?? "bg-gray-100 text-gray-700"}`}>
                         {exam.status === "Draft"
                           ? "Bản nháp"
                           : exam.status === "Published"
@@ -785,7 +793,7 @@ export function MyExams() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {filteredExams.map((exam) => {
-                    const SkillIcon = skillIcons[exam.skill];
+                    const SkillIcon = getSkillIcon(exam.skill);
                     return (
                       <tr key={exam.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4">
@@ -807,7 +815,7 @@ export function MyExams() {
                             to={getPreviewUrl(exam)}
                             className="font-semibold text-gray-900 hover:text-orange-600 transition-colors flex items-center gap-2"
                           >
-                            <SkillIcon className={`w-4 h-4 ${skillColors[exam.skill]}`} />
+                            <SkillIcon className={`w-4 h-4 ${skillColors[exam.skill] ?? skillColorFallback}`} />
                             <span>{exam.title}</span>
                           </Link>
                           {exam.createdFrom && (
@@ -816,7 +824,7 @@ export function MyExams() {
                         </td>
                         <td className="px-6 py-4">
                           <span
-                            className={`inline-block whitespace-nowrap px-2.5 py-1 rounded-md text-xs font-semibold border ${typeColors[exam.type]}`}
+                            className={`inline-block whitespace-nowrap px-2.5 py-1 rounded-md text-xs font-semibold border ${typeColors[exam.type] ?? typeColorsFallback}`}
                           >
                             {exam.type}
                           </span>
@@ -838,7 +846,7 @@ export function MyExams() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`inline-block whitespace-nowrap px-2.5 py-1 rounded-md text-xs font-semibold ${statusColors[exam.status]}`}>
+                          <span className={`inline-block whitespace-nowrap px-2.5 py-1 rounded-md text-xs font-semibold ${statusColors[exam.status] ?? "bg-gray-100 text-gray-700"}`}>
                             {exam.status === "Draft"
                               ? "Bản nháp"
                               : exam.status === "Published"

@@ -1,23 +1,17 @@
 /**
  * IELTS exam — Top bar theo theme NamThuEdu (orange brand).
  *
- * Hiển thị: candidate name, test ID, section label, countdown timer.
- * Timer: vàng dưới 5 phút, đỏ dưới 1 phút.
+ * Hiển thị: candidate name, test ID, section label.
+ * Timer đã được chuyển sang panel navigator bên phải để tránh trùng lặp.
  *
  * KHÔNG sticky — scroll cùng nội dung để không che header global.
  */
-import { useEffect, useState } from "react";
-import { Clock, User, Headphones } from "lucide-react";
-import { IELTS_TIMER_THRESHOLDS } from "../types";
+import { User, Headphones } from "lucide-react";
 
 interface IeltsTopBarProps {
   candidateName: string;
   testId: string | number;
   sectionLabel: string;
-  /** Tổng số giây còn lại */
-  timeLeft: number;
-  /** Hiển thị timer? (false khi đang setup) */
-  showTimer?: boolean;
 }
 
 // ─── Theme NamThuEdu ──────────────────────────────────────────────────────
@@ -28,31 +22,7 @@ export function IeltsTopBar({
   candidateName,
   testId,
   sectionLabel,
-  timeLeft,
-  showTimer = true,
 }: IeltsTopBarProps) {
-  // Re-render mỗi giây khi timer đang chạy
-  const [, force] = useState(0);
-  useEffect(() => {
-    if (!showTimer) return;
-    const id = setInterval(() => force((x) => x + 1), 1000);
-    return () => clearInterval(id);
-  }, [showTimer]);
-
-  const m = Math.max(0, Math.floor(timeLeft / 60));
-  const s = Math.max(0, timeLeft % 60);
-  const mm = String(m).padStart(2, "0");
-  const ss = String(s).padStart(2, "0");
-
-  const danger = timeLeft <= IELTS_TIMER_THRESHOLDS.danger;
-  const warn = !danger && timeLeft <= IELTS_TIMER_THRESHOLDS.warning;
-
-  const timerStyles = danger
-    ? "bg-red-50 text-red-700 border-red-200"
-    : warn
-      ? "bg-amber-50 text-amber-700 border-amber-200"
-      : "bg-orange-50 text-orange-700 border-orange-200";
-
   return (
     <header className="bg-white border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
@@ -82,31 +52,11 @@ export function IeltsTopBar({
           </div>
         </div>
 
-        {/* ── Center: Section label ── */}
-        <div className="hidden md:flex flex-1 justify-center">
+        {/* ── Right: Section label (chiếm chỗ phải, căn lề phải khi đủ rộng) ── */}
+        <div className="hidden md:flex flex-shrink-0">
           <span className="text-sm font-semibold text-gray-700 truncate">
             {sectionLabel}
           </span>
-        </div>
-
-        {/* ── Right: Timer ── */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {showTimer ? (
-            <div
-              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border tabular-nums text-sm font-bold transition-colors ${timerStyles} ${
-                danger ? "animate-pulse" : ""
-              }`}
-              role="timer"
-              aria-live={warn || danger ? "assertive" : "polite"}
-            >
-              <Clock className="w-4 h-4" />
-              <span>
-                {mm}:{ss}
-              </span>
-            </div>
-          ) : (
-            <div className="text-xs text-gray-400 italic">Đang chuẩn bị…</div>
-          )}
         </div>
       </div>
 

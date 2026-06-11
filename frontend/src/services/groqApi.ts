@@ -699,12 +699,21 @@ export type IeltsImportTestType = 'Academic' | 'General Training';
 export interface IeltsListeningImport {
   sections: Array<{
     sectionNumber: 1 | 2 | 3 | 4;
+    /** Optional topic/context title for the section (e.g. "Restaurant recommendations") */
+    sectionTitle?: string;
+    sectionName?: string;
+    /** Main instruction of the section copied verbatim (e.g. "Complete the notes below...") */
+    sectionInstruction?: string;
     transcript?: string;
     audioUrl?: string;
     questions: Array<{
       questionNumber: number;
       questionType: string;       // multiple-choice | form-completion | note-completion | ...
       questionText: string;
+      /** Optional shared task title (e.g. "Loneliness and mental health") */
+      taskTitle?: string;
+      /** Optional shared task instruction (e.g. "Choose the correct letter, A, B or C.") */
+      taskInstruction?: string;
       options?: { A?: string; B?: string; C?: string; D?: string };
       correctAnswer: string;
     }>;
@@ -770,11 +779,15 @@ Return ONLY valid JSON in this exact format (no markdown, no explanation):
   "sections": [
     {
       "sectionNumber": 1,
+      "sectionTitle": "Hotel booking",
+      "sectionInstruction": "Complete the form below. Write NO MORE THAN TWO WORDS AND/OR A NUMBER for each answer.",
       "transcript": "...optional transcript...",
       "questions": [
         {
           "questionNumber": 1,
           "questionType": "form-completion",
+          "taskTitle": "Hotel Booking Form",
+          "taskInstruction": "Complete the form below. Write NO MORE THAN TWO WORDS AND/OR A NUMBER for each answer.",
           "questionText": "Full name: Sarah ___1___",
           "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
           "correctAnswer": "Thompson"
@@ -801,7 +814,23 @@ RULES:
 - For multiple-choice, fill options A/B/C/D and correctAnswer = letter
 - For other types, options can be omitted; correctAnswer = expected word/phrase or letter
 - Default correctAnswer = "" if not in source
-- Only return sections present in the text`;
+- Only return sections present in the text
+
+TASK GROUPING (IMPORTANT for student UX):
+- "sectionTitle": REQUIRED per section. Short topic/context phrase of the whole part, inferred from content (e.g. "Restaurant recommendations", "Pottery class", "Reclaiming urban rivers"). Never use generic "Section 1". Empty "" only if undeterminable.
+- "sectionInstruction": REQUIRED per section. The MAIN instruction line(s) of that part, copied VERBATIM from the source (e.g. "Complete the notes below. Write ONE WORD ONLY for each answer."). Do NOT invent or paraphrase — copy exactly as written. Combine the "Complete..." line and the "Write..." line into one string. Empty "" only if no instruction present.
+- "taskTitle": If multiple questions share a topic title in the source PDF (e.g. "Loneliness and mental health" above Q27–30), repeat the SAME taskTitle for every question in that group. Leave empty string "" when no title.
+- "taskInstruction": The shared instruction for a SUB-GROUP of questions when it differs from the section instruction (e.g. a section where Q21–22 are "Choose TWO letters, A–E." but Q23–30 are "Choose the correct letter, A, B or C."). Copy verbatim. Repeat the SAME instruction for every question in the same sub-group. Leave "" if it equals the section instruction.
+- For grouped MCQ where multiple questions share the same stem (e.g. "Which TWO things..." answered by Q21 AND Q22), put the SAME questionText for each question in the group — frontend will merge them.
+
+MATCHING questions (questionType = "matching") — CRITICAL for student comprehension:
+- The source shows a shared QUESTION/heading (e.g. "Where does the speaker decide to put items in?"), a LEGEND box of lettered choices (A, B, C...), and a list of ITEMS (e.g. "kettle", "alarm clock") each to be matched to a letter.
+- "questionText": put ONLY the item being matched (e.g. "kettle"). Do NOT put the letter here.
+- "taskInstruction": put the shared question + the "Write the correct letter..." line, copied verbatim (e.g. "Where does the speaker decide to put items in? Write the correct letter, A, B or C, next to questions 7-10."). Repeat the SAME taskInstruction for EVERY matching question in the group.
+- "options": put the LEGEND meanings, e.g. { "A": "in emergency pack", "B": "in personal package", "C": "in storage with the furniture" }. Repeat the SAME options object for EVERY matching question in the group.
+- "correctAnswer": the matching LETTER only (e.g. "C").
+EXAMPLE matching question:
+  { "questionNumber": 8, "questionType": "matching", "questionText": "kettle", "taskTitle": "Items", "taskInstruction": "Where does the speaker decide to put items in? Write the correct letter, A, B or C.", "options": { "A": "in emergency pack", "B": "in personal package", "C": "in storage with the furniture" }, "correctAnswer": "C" }`;
 
 const IELTS_READING_PROMPT = (testType: IeltsImportTestType) => `You are an IELTS ${testType} exam parser. Extract the READING section.
 
@@ -844,6 +873,131 @@ RULES:
 - For MCQ: options A-D + correctAnswer letter
 - For other: options can be omitted; correctAnswer = expected word/phrase
 - Include the full passage body and an estimated wordCount`;
+
+/**
+ * Prompt parse CHÍNH XÁC 1 passage (body + toàn bộ câu hỏi của passage đó).
+ * Tách riêng từng passage giúp: tránh truncation token + ép AI bóc câu hỏi ra
+ * khỏi body (vấn đề lớn nhất khi parse cả 3 passage một lần).
+ */
+const IELTS_READING_PASSAGE_PROMPT = (
+  testType: IeltsImportTestType,
+  passageNumber: number,
+) => `You are an IELTS ${testType} exam parser. Extract EXACTLY ONE reading passage (Passage ${passageNumber}) together with ALL of its questions.
+
+Return ONLY valid JSON in this exact format:
+{
+  "passageNumber": ${passageNumber},
+  "title": "passage title",
+  "body": "...reading passage text ONLY...",
+  "wordCount": 0,
+  "questions": [
+    {
+      "questionNumber": 1,
+      "questionType": "true-false-not-given",
+      "questionText": "Statement / question text",
+      "options": { "A": "...", "B": "...", "C": "..." },
+      "correctAnswer": "TRUE"
+    }
+  ]
+}
+
+CRITICAL RULES:
+- "title" = the passage's REAL heading (e.g. "MAKING TIME FOR SCIENCE").
+  NEVER use the line "You should spend about N minutes on Questions ..." as the
+  title — that is just an instruction. Ignore it completely.
+- "body" = ONLY the reading passage prose. You MUST REMOVE from the body:
+  • every "Questions N–M" section and all question text / answer options
+  • all instructions (e.g. "Choose the correct letter", "Do the following statements ...")
+  • page footers / copyright lines (e.g. "© The British Council 2012 ...") and page numbers
+- "questions" = extract EVERY numbered question as its own object. This array
+  MUST NOT be empty. Never leave question text inside the body.
+- Keep the ORIGINAL question numbers from the source.
+
+questionType MUST be one of:
+"multiple-choice", "true-false-not-given", "yes-no-not-given",
+"matching-headings", "matching-information", "matching-features",
+"matching-sentence-endings", "sentence-completion", "summary-completion",
+"short-answer", "diagram-labelling"
+
+PER-TYPE RULES:
+- true-false-not-given: correctAnswer ∈ {"TRUE","FALSE","NOT GIVEN"}; omit options.
+- yes-no-not-given: correctAnswer ∈ {"YES","NO","NOT GIVEN"}; omit options.
+- multiple-choice: options A–D (or A–C) + correctAnswer = the letter.
+- matching-features / matching-information / matching-headings: put the shared
+  list of choices (A, B, C, ...) in EACH question's "options"; questionText = the
+  item being classified; correctAnswer = the letter.
+- sentence-completion / summary-completion / short-answer: omit options;
+  correctAnswer = the expected word(s) from the passage.`;
+
+/**
+ * Tách full text thành các đoạn theo từng passage, dựa vào marker
+ * "You should spend about N minutes on Questions ...".
+ * Trả về [] nếu không tìm thấy ≥2 marker (để caller fallback sang parse 1 lần).
+ */
+function splitReadingIntoPassages(text: string): string[] {
+  const marker = /You should spend about\s+\d+\s+minutes\s+on\s+Questions/gi;
+  const indices: number[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = marker.exec(text)) !== null) indices.push(m.index);
+  if (indices.length < 2) return [];
+  const chunks: string[] = [];
+  for (let i = 0; i < indices.length; i++) {
+    const start = indices[i];
+    const end = i + 1 < indices.length ? indices[i + 1] : text.length;
+    chunks.push(text.slice(start, end).trim());
+  }
+  return chunks;
+}
+
+/**
+ * Parse READING bằng cách tách từng passage rồi gọi AI riêng cho mỗi passage
+ * (song song, tối đa 3). Gộp lại thành { passages: [...] } với số passage
+ * được đánh lại 1/2/3 theo thứ tự.
+ */
+async function parseReadingMultiPass(
+  fullText: string,
+  testType: IeltsImportTestType,
+): Promise<IeltsReadingImport | null> {
+  const chunks = splitReadingIntoPassages(fullText);
+
+  // Fallback: không tách được → parse 1 lần với token lớn + prompt gốc.
+  if (chunks.length < 2) {
+    const text = fullText.slice(0, 18_000);
+    const result = await callGroqJson(
+      IELTS_READING_PROMPT(testType),
+      `Extract IELTS ${testType} reading from:\n\n${text}`,
+      8000,
+    );
+    if (result && Array.isArray(result.passages)) return result as IeltsReadingImport;
+    return null;
+  }
+
+  // Parse song song từng passage; lỗi 1 passage không làm hỏng cả đề.
+  const results = await Promise.all(
+    chunks.map(async (chunk, i) => {
+      const passageNumber = i + 1;
+      try {
+        const res = await callGroqJson(
+          IELTS_READING_PASSAGE_PROMPT(testType, passageNumber),
+          `Extract Passage ${passageNumber} from:\n\n${chunk.slice(0, 9_000)}`,
+          4500,
+        );
+        if (res && Array.isArray(res.questions)) {
+          return { ...res, passageNumber } as IeltsReadingImport['passages'][number];
+        }
+      } catch {
+        /* bỏ qua passage lỗi */
+      }
+      return null;
+    }),
+  );
+
+  const passages = results.filter(
+    (p): p is IeltsReadingImport['passages'][number] => p !== null,
+  );
+  if (passages.length === 0) return null;
+  return { passages };
+}
 
 const IELTS_WRITING_PROMPT = (testType: IeltsImportTestType) => `You are an IELTS ${testType} exam parser. Extract the WRITING section.
 
@@ -923,6 +1077,11 @@ export const parseIeltsSkillFromText = async (
 ): Promise<IeltsSkillImport | null> => {
   if (!GROQ_API_KEY) throw new Error('Missing VITE_GROQ_API_KEY');
 
+  // READING: parse từng passage riêng (tránh truncation + ép bóc câu hỏi).
+  if (skill === 'reading') {
+    return await parseReadingMultiPass(fullText, testType);
+  }
+
   const text = fullText.slice(0, 18_000); // safety cap để tránh vượt token
   let prompt: string;
   let maxTokens = 3000;
@@ -930,10 +1089,6 @@ export const parseIeltsSkillFromText = async (
     case 'listening':
       prompt = IELTS_LISTENING_PROMPT(testType);
       maxTokens = 3500;
-      break;
-    case 'reading':
-      prompt = IELTS_READING_PROMPT(testType);
-      maxTokens = 4000;
       break;
     case 'writing':
       prompt = IELTS_WRITING_PROMPT(testType);
@@ -955,8 +1110,68 @@ export const parseIeltsSkillFromText = async (
 
   // Validate shape per skill
   if (skill === 'listening' && Array.isArray(result.sections)) return result as IeltsListeningImport;
-  if (skill === 'reading' && Array.isArray(result.passages)) return result as IeltsReadingImport;
   if (skill === 'writing' && Array.isArray(result.tasks)) return result as IeltsWritingImport;
   if (skill === 'speaking' && Array.isArray(result.parts)) return result as IeltsSpeakingImport;
   return null;
+};
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Kids Cambridge YLE — Exam metadata suggestion (title + description)
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+export interface KidsExamMetaSuggestion {
+  title: string;
+  description: string;
+}
+
+/**
+ * Sinh gợi ý tên đề + mô tả ngắn cho Cambridge YLE Kids exam.
+ *
+ * @param level   'starters' | 'movers' | 'flyers'
+ * @param topic   Mô tả ngắn chủ đề/ý tưởng giáo viên muốn (vd: "động vật trong rừng",
+ *                "đồ ăn yêu thích"). Có thể để trống — AI tự gợi ý ngẫu nhiên.
+ */
+export const generateKidsExamMeta = async (
+  level: 'starters' | 'movers' | 'flyers',
+  topic = ''
+): Promise<KidsExamMetaSuggestion> => {
+  const levelLabel = {
+    starters: 'Cambridge YLE Starters (Pre-A1, 6-8 tuổi)',
+    movers: 'Cambridge YLE Movers (A1, 8-11 tuổi)',
+    flyers: 'Cambridge YLE Flyers (A2, 9-12 tuổi)',
+  }[level];
+
+  const messages: GroqMessage[] = [
+    {
+      role: 'system',
+      content:
+        'Bạn là chuyên gia thiết kế đề thi tiếng Anh cho trẻ em theo chuẩn Cambridge YLE. ' +
+        'Trả lời ngắn gọn, tự nhiên bằng tiếng Việt, không thêm câu mở đầu hay giải thích.',
+    },
+    {
+      role: 'user',
+      content: `Hãy gợi ý tên đề thi và mô tả ngắn cho một đề ${levelLabel}.
+${topic ? `Chủ đề/ý tưởng giáo viên muốn: "${topic}".` : 'Hãy chọn một chủ đề phù hợp lứa tuổi (ví dụ: động vật, gia đình, đồ ăn, lớp học, sở thích…).'}
+
+Yêu cầu output ĐÚNG JSON, không markdown:
+{
+  "title": "Tên đề ngắn gọn 6-12 từ tiếng Việt, có thể chèn 1 từ tiếng Anh chủ đề",
+  "description": "Mô tả 1-2 câu ngắn về nội dung đề và đối tượng phù hợp"
+}`,
+    },
+  ];
+
+  const raw = await callGroqAPI(messages);
+  try {
+    const match = raw.match(/\{[\s\S]*\}/);
+    const parsed = match ? JSON.parse(match[0]) : JSON.parse(raw);
+    return {
+      title: typeof parsed.title === 'string' ? parsed.title.trim() : '',
+      description: typeof parsed.description === 'string' ? parsed.description.trim() : '',
+    };
+  } catch (err) {
+    console.error('generateKidsExamMeta parse failed:', err);
+    return { title: '', description: '' };
+  }
 };

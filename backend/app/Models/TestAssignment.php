@@ -19,12 +19,20 @@ class TestAssignment extends Model
         'taTarget_type',
         'taTarget_id',
         'taDeadline',
+        'taStart_time',
+        'taNotify_before_minutes',
+        'taNotified_at',
+        'taInstructions',
         'taMax_attempt',
         'taIs_public',
+        'taCreated_at',
     ];
 
     protected $casts = [
         'taDeadline' => 'datetime',
+        'taStart_time' => 'datetime',
+        'taNotified_at' => 'datetime',
+        'taNotify_before_minutes' => 'integer',
         'taIs_public' => 'boolean',
         'taCreated_at' => 'datetime',
     ];

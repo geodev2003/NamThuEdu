@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getAuthToken } from '../../../../utils/authStorage';
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { TemplateGuide } from "./TemplateGuide";
 import { useSidebar } from "../../../../contexts/SidebarContext";
 import { useToast } from "../../../../hooks/useToast";
@@ -230,6 +230,13 @@ const examTypeData = [
     isKids: true,
   },
   {
+    value: "THPT",
+    icon: "🎓",
+    name: "THPT Quốc Gia",
+    description: "Đầu vào Đại học (4 parts × 25 câu)",
+    duration: "60 phút",
+  },
+  {
     value: "General",
     icon: "📄",
     name: "General",
@@ -317,6 +324,7 @@ function suggestExamDescription(type: ExamType, skill: ExamSkill): string {
 export function CreateExam() {
   const navigate = useNavigate();
   const { examId } = useParams();
+  const [searchParams] = useSearchParams();
   const { isCollapsed: isSidebarCollapsed } = useSidebar();
   const toast = useToast();
   const [currentExamId, setCurrentExamId] = useState<string | null>(examId || null);
@@ -326,6 +334,7 @@ export function CreateExam() {
   // Step 1: Basic Info
   const [examType, setExamType] = useState<ExamType>(null);
   const [examSkill, setExamSkill] = useState<ExamSkill>(null);
+  const [ageGroup, setAgeGroup] = useState<'kids' | 'teens' | 'adults' | 'all'>('all');
   const [examTitle, setExamTitle] = useState("");
   const [examDescription, setExamDescription] = useState("");
   const [duration, setDuration] = useState(60);
@@ -367,6 +376,36 @@ export function CreateExam() {
       setDurationUnit("minutes");
     }
   }, [examType, examSkill]);
+
+  // Auto-suggest age_group based on exam type
+  useEffect(() => {
+    if (examType === "Kids" as any) {
+      setAgeGroup('kids');
+    } else if (examType === "VSTEP") {
+      setAgeGroup('adults');
+    }
+    // IELTS, Cambridge, General → giữ nguyên user chọn (default 'all')
+  }, [examType]);
+
+  // Pre-fill from setup wizard query params (?type=...&skill=...&age_group=...)
+  useEffect(() => {
+    if (examId) return; // edit mode skip
+    const t = searchParams.get('type');
+    const s = searchParams.get('skill');
+    const ag = searchParams.get('age_group');
+    if (t && ['VSTEP', 'IELTS', 'Cambridge', 'General'].includes(t)) {
+      setExamType(t as ExamType);
+    }
+    if (s) {
+      const cap = s.charAt(0).toUpperCase() + s.slice(1);
+      const skillVal = (s === 'mixed' ? 'Mixed' : cap) as ExamSkill;
+      setExamSkill(skillVal);
+    }
+    if (ag && ['kids', 'teens', 'adults', 'all'].includes(ag)) {
+      setAgeGroup(ag as typeof ageGroup);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Step 2: Questions
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -587,6 +626,7 @@ export function CreateExam() {
         eDuration_minutes: durationMinutes,
         eIs_private: visibility === "private",
         eSource_type: "manual",
+        age_group: ageGroup,
       });
 
       console.log('✅ Exam created:', createRes);
@@ -637,7 +677,7 @@ export function CreateExam() {
         toast.success("Đã lưu nháp đề thi thành công");
       }
 
-      navigate("/giao-vien/de-thi/cua-toi");
+      navigate("/giao-vien/de-thi");
     } catch (error: any) {
       console.error('❌ Error saving exam:', error);
       console.error('Error details:', error?.response?.data);
@@ -710,6 +750,15 @@ export function CreateExam() {
         navigate(`/giao-vien/de-thi/ielts/${skillSlug}/tao-moi`, {
           replace: true,
           state: { title: examTitle, description: examDescription, duration },
+        });
+        return;
+      }
+
+      // THPT: route to dedicated creator
+      if (currentStep === 1 && (examType as any) === "THPT") {
+        navigate(`/giao-vien/de-thi/thpt/tao-moi`, {
+          replace: true,
+          state: { title: examTitle, description: examDescription },
         });
         return;
       }
@@ -1109,7 +1158,8 @@ export function CreateExam() {
         eSkill: normalizedSkill,
         eDuration_minutes: duration,
         eIs_private: false,
-        eSource_type: 'manual' as const
+        eSource_type: 'manual' as const,
+        age_group: ageGroup,
       };
 
       // Use teacherApi service instead of direct fetch
@@ -1202,7 +1252,8 @@ export function CreateExam() {
         eSkill: examSkill.toLowerCase() as 'listening' | 'reading' | 'writing' | 'speaking' | 'mixed',
         eDuration_minutes: duration,
         eIs_private: false,
-        eSource_type: 'manual' as const
+        eSource_type: 'manual' as const,
+        age_group: ageGroup,
       };
 
       let result;
@@ -1284,6 +1335,9 @@ export function CreateExam() {
             setExamTitle(exam.eTitle);
             setExamDescription(exam.eDescription);
             setDuration(exam.eDuration_minutes);
+            if ((exam as any).age_group) {
+              setAgeGroup((exam as any).age_group);
+            }
             setDurationUnit('minutes'); // Backend only stores minutes
             setQuestions((exam.questions || []) as unknown as Question[]);
             
@@ -1890,6 +1944,36 @@ Your response will be evaluated in terms of Task Fulfillment, Organization, Voca
                   </p>
                 </div>
               )}
+            </div>
+
+            {/* Age Group selector */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Nhóm học viên</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Chọn nhóm tuổi mà bài thi này dành cho. Hệ thống sẽ chỉ giao bài cho học viên/lớp đúng nhóm.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { value: 'all', label: 'Mọi nhóm', desc: 'Hiển thị cho tất cả' },
+                  { value: 'kids', label: 'Kids', desc: '6-12 tuổi' },
+                  { value: 'teens', label: 'Teens', desc: '13-17 tuổi' },
+                  { value: 'adults', label: 'Adults', desc: '18+ tuổi' },
+                ].map(opt => (
+                  <button
+                    type="button"
+                    key={opt.value}
+                    onClick={() => setAgeGroup(opt.value as typeof ageGroup)}
+                    className={`p-3 border-2 rounded-xl text-center transition-all ${
+                      ageGroup === opt.value
+                        ? 'border-orange-500 bg-orange-50'
+                        : 'border-gray-200 hover:border-orange-300'
+                    }`}
+                  >
+                    <div className="font-bold text-sm text-gray-900">{opt.label}</div>
+                    <div className="text-[11px] text-gray-500 mt-0.5">{opt.desc}</div>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Exam Info - Only show when exam type and skill are selected */}

@@ -20,6 +20,12 @@ class Kernel extends ConsoleKernel
                  ->everyFiveMinutes()
                  ->withoutOverlapping()
                  ->runInBackground();
+
+        // Gửi thông báo "trước giờ" cho bài tập đã hẹn lịch — mỗi phút
+        $schedule->command('assignments:send-scheduled-reminders')
+                 ->everyMinute()
+                 ->withoutOverlapping()
+                 ->runInBackground();
                  
         // Monitor WebSocket connections mỗi phút
         $schedule->call(function () {

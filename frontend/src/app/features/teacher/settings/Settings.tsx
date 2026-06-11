@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
-import { Header } from "../../../components/shared/Header";
+import { usePageHeader } from "../../../../contexts/TeacherHeaderContext";
 import { ToastContainer } from "../../../../components/ui/ToastContainer";
 import { useToast } from "../../../../hooks/useToast";
 import { usePageTitle, PAGE_TITLES } from "../../../../hooks/usePageTitle";
@@ -30,8 +30,6 @@ import {
   Laptop,
   LogOut,
   Trash2,
-  ChevronLeft,
-  ChevronRight,
   Scissors,
   FileText,
   ChevronDown,
@@ -50,7 +48,6 @@ export function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [mounted, setMounted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const toast = useToast();
@@ -63,6 +60,10 @@ export function Settings() {
   const userEmail = userProfile?.email || `${userPhone}@namthuedu.com`;
 
   const activeTab = searchParams.get("tab") || "profile";
+
+  usePageHeader({
+    breadcrumb: [t("breadcrumb.dashboard"), t("breadcrumb.settings")],
+  });
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 50);
@@ -111,123 +112,46 @@ export function Settings() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <ToastContainer toasts={toast.toasts} onClose={toast.removeToast} />
-      <Header
-        breadcrumb={[t("breadcrumb.dashboard"), t("breadcrumb.settings")]}
-      />
 
-      <div className="flex-1 overflow-y-auto" style={{ background: "#EEEEF3" }}>
-        <div className="px-8 py-6">
-          {/* Header Section */}
-          <div
-            className="mb-6"
-            style={{
-              opacity: mounted ? 1 : 0,
-              transform: mounted ? "translateY(0)" : "translateY(-12px)",
-              transition: "opacity 400ms ease, transform 400ms ease",
-            }}
-          >
-            <h1
-              className="text-[#111827] mb-2"
-              style={{ fontSize: "32px", fontWeight: 700 }}
-            >
+      <div className="flex-1 overflow-y-auto bg-[#F9FAFB]">
+        <div className="px-6 py-5">
+          {/* Header + Tabs */}
+          <div className="mb-5">
+            <h1 className="text-[15px] font-bold text-slate-900">
               Cài đặt
             </h1>
-            <p
-              className="text-[#6B7280]"
-              style={{ fontSize: "15px", lineHeight: "1.6" }}
-            >
+            <p className="text-[11px] text-slate-500 mt-0.5 mb-3">
               Quản lý thông tin cá nhân và tùy chỉnh hệ thống
             </p>
+            <div className="flex gap-1 flex-wrap">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabChange(tab.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-all cursor-pointer ${
+                      isActive
+                        ? "bg-slate-900 text-white"
+                        : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="flex gap-6">
-            {/* Sidebar Navigation */}
-            <div
-              className={`flex-shrink-0 self-start sticky top-0 transition-all duration-300 ${
-                sidebarCollapsed ? "w-[70px]" : "w-[280px]"
-              }`}
-              style={{
-                opacity: mounted ? 1 : 0,
-                transform: mounted ? "translateX(-12px)" : "translateX(-24px)",
-                transition: "opacity 400ms ease 100ms, transform 400ms ease 100ms, width 300ms ease",
-              }}
-            >
-              <div className="bg-white rounded-xl border border-[#E5E7EB] p-3 relative">
-                {/* Toggle Button */}
-                <button
-                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                  className="absolute -right-3 top-6 w-6 h-6 bg-white border border-[#E5E7EB] rounded-full flex items-center justify-center text-[#6B7280] hover:text-[#EA580C] hover:border-[#EA580C] transition-all shadow-sm z-10"
-                  title={sidebarCollapsed ? "Mở rộng" : "Thu gọn"}
-                >
-                  {sidebarCollapsed ? (
-                    <ChevronRight className="w-4 h-4" />
-                  ) : (
-                    <ChevronLeft className="w-4 h-4" />
-                  )}
-                </button>
-
-                <div className="space-y-1">
-                  {tabs.map((tab) => {
-                    const Icon = tab.icon;
-                    const isActive = activeTab === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => handleTabChange(tab.id)}
-                        className={`w-full flex items-center rounded-lg transition-all duration-200 ${
-                          sidebarCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
-                        }`}
-                        style={{
-                          background: isActive
-                            ? "linear-gradient(135deg, #EA580C 0%, #C2410C 100%)"
-                            : "transparent",
-                          color: isActive ? "#FFFFFF" : "#6B7280",
-                          fontSize: "14px",
-                          fontWeight: isActive ? 600 : 500,
-                        }}
-                        title={sidebarCollapsed ? tab.label : undefined}
-                      >
-                        <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-                        {!sidebarCollapsed && <span>{tab.label}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Logout Button */}
-                <div className="mt-4 pt-4 border-t border-[#E5E7EB]">
-                  <button
-                    className={`w-full flex items-center rounded-lg text-[#EF4444] hover:bg-[#FEE2E2] transition-all duration-200 ${
-                      sidebarCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
-                    }`}
-                    title={sidebarCollapsed ? "Đăng xuất" : undefined}
-                  >
-                    <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
-                    {!sidebarCollapsed && (
-                      <span style={{ fontSize: "14px", fontWeight: 500 }}>
-                        Đăng xuất
-                      </span>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Main Content */}
-            <div
-              className="flex-1"
-              style={{
-                opacity: mounted ? 1 : 0,
-                transform: mounted ? "translateY(0)" : "translateY(12px)",
-                transition: "opacity 400ms ease 200ms, transform 400ms ease 200ms",
-              }}
-            >
-              {activeTab === "profile" && <ProfileTab userName={userName} userEmail={userEmail} userProfile={userProfile} onSave={handleSave} loading={loading} toast={toast} />}
-              {activeTab === "account" && <AccountTab userProfile={userProfile} onSave={handleSave} showPassword={showPassword} setShowPassword={setShowPassword} toast={toast} />}
-              {activeTab === "notifications" && <NotificationsTab onSave={handleSave} toast={toast} />}
-              {activeTab === "pdf-tools" && <PdfCutterTab />}
-              {activeTab === "legal" && <LegalContentTab toast={toast} />}
-            </div>
+          {/* Main Content - constrained width, centered */}
+          <div className="max-w-5xl mx-auto">
+            {activeTab === "profile" && <ProfileTab userName={userName} userEmail={userEmail} userProfile={userProfile} onSave={handleSave} loading={loading} toast={toast} />}
+            {activeTab === "account" && <AccountTab userProfile={userProfile} onSave={handleSave} showPassword={showPassword} setShowPassword={setShowPassword} toast={toast} />}
+            {activeTab === "notifications" && <NotificationsTab onSave={handleSave} toast={toast} />}
+            {activeTab === "pdf-tools" && <PdfCutterTab />}
+            {activeTab === "legal" && <LegalContentTab toast={toast} />}
           </div>
         </div>
       </div>
@@ -470,23 +394,28 @@ function ProfileTab({ userName, userEmail, userProfile, onSave, loading, toast }
 
   const handleRemoveAvatar = async () => {
     try {
+      setUploading(true);
       await teacherApi.user.removeAvatar();
-      setAvatarPreview(null);
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        user.avatar_url = null;
-        user.avatar = null;
-        localStorage.setItem('user', JSON.stringify(user));
-      }
-      
-      // Dispatch custom event to notify Sidebar
-      window.dispatchEvent(new Event('avatarUpdated'));
-      
       toast.success('Đã xóa ảnh đại diện!');
+      
+      // Wait 2 seconds after toast shows, then switch to default avatar
+      setTimeout(() => {
+        setAvatarPreview('/images/default-avatar.png');
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          user.avatar_url = '/images/default-avatar.png';
+          user.avatar = '/images/default-avatar.png';
+          localStorage.setItem('user', JSON.stringify(user));
+        }
+        // Dispatch custom event to notify Sidebar
+        window.dispatchEvent(new Event('avatarUpdated'));
+        setUploading(false);
+      }, 2000);
     } catch (error) {
       console.error('Failed to remove avatar:', error);
       toast.error('Không thể xóa ảnh đại diện');
+      setUploading(false);
     }
   };
 

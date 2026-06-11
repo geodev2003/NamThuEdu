@@ -37,86 +37,49 @@ class TeacherDashboardController extends Controller
             ], 401);
         }
 
-        // Get class IDs for this teacher
-        $classIds = \App\Models\Classes::where('cTeacher_id', $user->uId)->pluck('cId');
-        
+        // Class system đã deprecated — count toàn bộ student trong hệ thống
+        // (giáo viên hiện không còn "lớp riêng", hệ thống dùng age_group).
+        $studentBase = \App\Models\User::where('uRole', 'student')
+            ->whereNull('uDeleted_at');
+
         // Total students
-        $totalStudents = \App\Models\User::where('uRole', 'student')
-            ->whereIn('class_id', $classIds)
-            ->whereNull('uDeleted_at')
-            ->count();
-            
+        $totalStudents = (clone $studentBase)->count();
+
         // Active students (status = active)
-        $activeStudents = \App\Models\User::where('uRole', 'student')
-            ->whereIn('class_id', $classIds)
-            ->whereNull('uDeleted_at')
-            ->where('uStatus', 'active')
-            ->count();
-            
+        $activeStudents = (clone $studentBase)->where('uStatus', 'active')->count();
+
         // Inactive students (status = inactive)
-        $inactiveStudents = \App\Models\User::where('uRole', 'student')
-            ->whereIn('class_id', $classIds)
-            ->whereNull('uDeleted_at')
-            ->where('uStatus', 'inactive')
-            ->count();
-            
+        $inactiveStudents = (clone $studentBase)->where('uStatus', 'inactive')->count();
+
         // New students this month
-        $newStudentsThisMonth = \App\Models\User::where('uRole', 'student')
-            ->whereIn('class_id', $classIds)
-            ->whereNull('uDeleted_at')
+        $newStudentsThisMonth = (clone $studentBase)
             ->whereMonth('uCreated_at', now()->month)
             ->whereYear('uCreated_at', now()->year)
             ->count();
-            
+
         // Calculate changes (compare with last month)
-        // Total students last month (students created before this month)
-        $totalStudentsLastMonth = \App\Models\User::where('uRole', 'student')
-            ->whereIn('class_id', $classIds)
-            ->whereNull('uDeleted_at')
-            ->where(function($query) {
-                $query->where(function($q) {
-                    $q->whereYear('uCreated_at', '<', now()->year);
-                })->orWhere(function($q) {
-                    $q->whereYear('uCreated_at', '=', now()->year)
-                      ->whereMonth('uCreated_at', '<', now()->month);
-                });
-            })
-            ->count();
-            
-        // Active students last month (check status updates)
-        $activeStudentsLastMonth = \App\Models\User::where('uRole', 'student')
-            ->whereIn('class_id', $classIds)
-            ->whereNull('uDeleted_at')
+        $beforeThisMonth = function ($query) {
+            $query->where(function ($q) {
+                $q->whereYear('uCreated_at', '<', now()->year);
+            })->orWhere(function ($q) {
+                $q->whereYear('uCreated_at', '=', now()->year)
+                  ->whereMonth('uCreated_at', '<', now()->month);
+            });
+        };
+
+        $totalStudentsLastMonth = (clone $studentBase)->where($beforeThisMonth)->count();
+
+        $activeStudentsLastMonth = (clone $studentBase)
             ->where('uStatus', 'active')
-            ->where(function($query) {
-                $query->where(function($q) {
-                    $q->whereYear('uCreated_at', '<', now()->year);
-                })->orWhere(function($q) {
-                    $q->whereYear('uCreated_at', '=', now()->year)
-                      ->whereMonth('uCreated_at', '<', now()->month);
-                });
-            })
+            ->where($beforeThisMonth)
             ->count();
-            
-        // Inactive students last month
-        $inactiveStudentsLastMonth = \App\Models\User::where('uRole', 'student')
-            ->whereIn('class_id', $classIds)
-            ->whereNull('uDeleted_at')
+
+        $inactiveStudentsLastMonth = (clone $studentBase)
             ->where('uStatus', 'inactive')
-            ->where(function($query) {
-                $query->where(function($q) {
-                    $q->whereYear('uCreated_at', '<', now()->year);
-                })->orWhere(function($q) {
-                    $q->whereYear('uCreated_at', '=', now()->year)
-                      ->whereMonth('uCreated_at', '<', now()->month);
-                });
-            })
+            ->where($beforeThisMonth)
             ->count();
-            
-        // New students last month
-        $newStudentsLastMonth = \App\Models\User::where('uRole', 'student')
-            ->whereIn('class_id', $classIds)
-            ->whereNull('uDeleted_at')
+
+        $newStudentsLastMonth = (clone $studentBase)
             ->whereMonth('uCreated_at', now()->subMonth()->month)
             ->whereYear('uCreated_at', now()->subMonth()->year)
             ->count();
@@ -179,12 +142,21 @@ class TeacherDashboardController extends Controller
         $totalClasses = \App\Models\Classes::where('cTeacher_id', $user->uId)->count();
         $totalExams = \App\Models\Exam::where('teacher_id', $user->uId)->count();
         
-        // Get total students - use class_id in users table
-        $classIds = \App\Models\Classes::where('cTeacher_id', $user->uId)->pluck('cId');
-        $totalStudents = \App\Models\User::where('uRole', 'student')
-            ->whereIn('class_id', $classIds)
-            ->whereNull('uDeleted_at')
-            ->count();
+        // Get total students - đếm số học viên distinct đã từng dùng exam của
+        // teacher này (có submission >= 60s). Không phụ thuộc class vì hệ
+        // thống mới student không thuộc class cố định, chỉ thuộc age_group.
+        $teacherExamIdsForCount = \App\Models\Exam::where('teacher_id', $user->uId)->pluck('eId');
+        $totalStudents = Submission::whereIn('exam_id', $teacherExamIdsForCount)
+            ->whereNotNull('sStart_time')
+            ->where(function ($q) {
+                $q->whereRaw('TIMESTAMPDIFF(SECOND, sStart_time, sSubmit_time) >= 60')
+                  ->orWhere(function ($q2) {
+                      $q2->whereNull('sSubmit_time')
+                         ->whereRaw('TIMESTAMPDIFF(SECOND, sStart_time, NOW()) >= 60');
+                  });
+            })
+            ->distinct('user_id')
+            ->count('user_id');
 
         // Get this month's new items
         $newCoursesThisMonth = \App\Models\Course::where('cTeacher', $user->uId)
@@ -196,7 +168,6 @@ class TeacherDashboardController extends Controller
             ->count();
             
         $newStudentsThisMonth = \App\Models\User::where('uRole', 'student')
-            ->whereIn('class_id', $classIds)
             ->whereNull('uDeleted_at')
             ->whereMonth('uCreated_at', now()->month)
             ->count();
@@ -252,6 +223,56 @@ class TeacherDashboardController extends Controller
 
         $scoreImprovement = $lastWeekAvg > 0 ? round((($thisWeekAvg - $lastWeekAvg) / $lastWeekAvg) * 100, 1) : 0;
 
+        // ── Assignment & submission stats ──────────────────────────────────
+        // Lấy id các đề của giáo viên này
+        $teacherExamIds = \App\Models\Exam::where('teacher_id', $user->uId)->pluck('eId');
+
+        // Tổng số bài đã giao (TestAssignment của các đề thuộc teacher)
+        $totalAssignments = \App\Models\TestAssignment::whereIn('exam_id', $teacherExamIds)->count();
+
+        // Số bài giao trong tháng này (cho metric +X)
+        $newAssignmentsThisMonth = \App\Models\TestAssignment::whereIn('exam_id', $teacherExamIds)
+            ->whereMonth('taCreated_at', now()->month)
+            ->count();
+
+        // Tính expected submissions theo logic mới (không có khái niệm class
+        // cố định). Giả định mỗi assignment được giao cho TẤT CẢ học viên
+        // active hiện có (vì hệ thống mới chia theo age_group).
+        // - target_type=student: 1 user
+        // - target_type=class:   tất cả student active (fallback chung)
+        $assignments = \App\Models\TestAssignment::whereIn('exam_id', $teacherExamIds)
+            ->select('taId', 'taTarget_type', 'taTarget_id')
+            ->get();
+
+        $allActiveStudentsCount = \App\Models\User::where('uRole', 'student')
+            ->whereNull('uDeleted_at')
+            ->where('uStatus', 'active')
+            ->count();
+
+        $expectedSubmissions = 0;
+        foreach ($assignments as $asg) {
+            if ($asg->taTarget_type === 'student') {
+                $expectedSubmissions += 1;
+            } else {
+                // Mọi target khác (class cũ, all, age_group...) → fallback
+                $expectedSubmissions += $allActiveStudentsCount;
+            }
+        }
+
+        // Số lượt thực sự đã làm (có assignment_id, status submitted hoặc graded)
+        $completedSubmissions = Submission::whereIn('exam_id', $teacherExamIds)
+            ->whereNotNull('assignment_id')
+            ->whereIn('sStatus', ['submitted', 'graded'])
+            ->count();
+
+        // Số chưa làm = expected - completed (clamp >= 0)
+        $pendingSubmissions = max(0, $expectedSubmissions - $completedSubmissions);
+
+        // Tỉ lệ hoàn thành (%)
+        $completionRate = $expectedSubmissions > 0
+            ? round(($completedSubmissions / $expectedSubmissions) * 100, 1)
+            : 0;
+
         return response()->json([
             'status' => 'success',
             'data' => [
@@ -268,6 +289,13 @@ class TeacherDashboardController extends Controller
                 'deadlines_this_week' => $deadlinesThisWeek,
                 'average_score' => round($avgScore ?? 0, 1),
                 'score_improvement' => $scoreImprovement,
+                // ── New: assignment / submission metrics ──
+                'total_assignments' => $totalAssignments,
+                'new_assignments_this_month' => $newAssignmentsThisMonth,
+                'expected_submissions' => $expectedSubmissions,
+                'completed_submissions' => $completedSubmissions,
+                'pending_submissions' => $pendingSubmissions,
+                'completion_rate' => $completionRate,
             ]
         ]);
     }
@@ -374,16 +402,13 @@ class TeacherDashboardController extends Controller
             ->get();
             
         foreach ($recentAssignments as $assignment) {
-            $className = 'Class';
-            if ($assignment->target_type === 'class' && $assignment->target_id) {
-                $class = \App\Models\Classes::find($assignment->target_id);
-                $className = $class ? $class->cName : 'Class';
-            }
+            // Class system deprecated — chỉ hiện label chung "Học viên" cho mọi target.
+            $targetLabel = 'Học viên';
             
             $activities[] = [
                 'id' => 'assignment_' . $assignment->id,
                 'type' => 'assigned',
-                'detail' => $className,
+                'detail' => $targetLabel,
                 'time' => now()->diffInHours($assignment->taCreated_at),
                 'timeUnit' => 'hoursAgo',
                 'timestamp' => $assignment->taCreated_at,
@@ -425,6 +450,236 @@ class TeacherDashboardController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $activities
+        ]);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/teacher/dashboard/top-students",
+     *     tags={"Teacher Dashboard"},
+     *     summary="Get top 5 most active students",
+     *     description="Top học viên có nhiều submission nhất 30 ngày qua, kèm điểm trung bình",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(response=200, description="OK")
+     * )
+     */
+    public function getTopStudents(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        $teacherExamIds = \App\Models\Exam::where('teacher_id', $user->uId)->pluck('eId');
+        if ($teacherExamIds->isEmpty()) {
+            return response()->json(['status' => 'success', 'data' => []]);
+        }
+
+        // Top 5 user_id có nhiều submission nhất trong 30 ngày qua
+        // — chỉ tính submission có start_time và đã thực sự làm > 60s (loại "mở thử")
+        $rows = Submission::whereIn('exam_id', $teacherExamIds)
+            ->where('sStart_time', '>=', now()->subDays(30))
+            ->whereNotNull('sStart_time')
+            ->where(function ($q) {
+                $q->whereRaw('TIMESTAMPDIFF(SECOND, sStart_time, sSubmit_time) >= 60')
+                  ->orWhere(function ($q2) {
+                      $q2->whereNull('sSubmit_time')
+                         ->whereRaw('TIMESTAMPDIFF(SECOND, sStart_time, NOW()) >= 60');
+                  });
+            })
+            ->select('user_id', \DB::raw('COUNT(*) as submission_count'), \DB::raw('AVG(sScore) as avg_score'))
+            ->groupBy('user_id')
+            ->orderByDesc('submission_count')
+            ->take(5)
+            ->get();
+
+        if ($rows->isEmpty()) {
+            return response()->json(['status' => 'success', 'data' => []]);
+        }
+
+        $userIds = $rows->pluck('user_id')->toArray();
+        $users = \App\Models\User::whereIn('uId', $userIds)
+            ->whereNull('uDeleted_at')
+            ->get(['uId', 'uName', 'avatar_url', 'age_group'])
+            ->keyBy('uId');
+
+        $maxCount = (int) $rows->max('submission_count');
+
+        $data = $rows->map(function ($r) use ($users, $maxCount) {
+            $u = $users->get($r->user_id);
+            if (!$u) return null;
+            $count = (int) $r->submission_count;
+            return [
+                'user_id'          => $u->uId,
+                'name'             => $u->uName,
+                'avatar'           => $u->avatar_url,
+                'age_group'        => $u->age_group, // adults | teen | kids
+                'submission_count' => $count,
+                'avg_score'        => $r->avg_score !== null ? round((float) $r->avg_score / 10, 1) : null,
+                'progress_pct'     => $maxCount > 0 ? (int) round(($count / $maxCount) * 100) : 0,
+            ];
+        })->filter()->values();
+
+        return response()->json(['status' => 'success', 'data' => $data]);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/teacher/dashboard/activity-chart",
+     *     tags={"Teacher Dashboard"},
+     *     summary="Get daily submissions + average score for last 14 days",
+     *     description="Trả về data cho biểu đồ cột (số bài nộp / ngày) + đường (điểm TB / ngày) trong 14 ngày gần nhất.",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(response=200, description="OK")
+     * )
+     */
+    public function getActivityChart(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || $user->uRole !== 'teacher') {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        $mode = $request->input('mode', '7d'); // 'today' | '7d' | '30d'
+        if (!in_array($mode, ['today', '7d', '30d'], true)) {
+            $mode = '7d';
+        }
+
+        // CHỈ tính bài thi VSTEP full skill (mixed) — đề thi chính thức tổng hợp
+        // 4 kỹ năng. Loại bỏ các đề lẻ (listening/reading/writing/speaking riêng)
+        // và các đề loại khác (IELTS, Kids, Practice).
+        $teacherExamIds = \App\Models\Exam::where('teacher_id', $user->uId)
+            ->where('eType', 'VSTEP')
+            ->where('eSkill', 'mixed')
+            ->pluck('eId');
+
+        // ────────────────────────────────────────────────────────────
+        // Mode "today": group theo GIỜ trong ngày hôm nay (24 buckets)
+        // ────────────────────────────────────────────────────────────
+        if ($mode === 'today') {
+            $startOfDay = now()->startOfDay();
+            $endOfDay   = now()->endOfDay();
+
+            $buckets = [];
+            for ($h = 0; $h < 24; $h++) {
+                $buckets[$h] = [
+                    'date'        => $startOfDay->copy()->addHours($h)->format('Y-m-d H:00'),
+                    'label'       => sprintf('%02dh', $h),
+                    'weekday'     => $startOfDay->isoFormat('dd'),
+                    'submissions' => 0,
+                    'avg_score'   => null,
+                    'students'    => 0,
+                ];
+            }
+
+            if ($teacherExamIds->isNotEmpty()) {
+                $rows = Submission::whereIn('exam_id', $teacherExamIds)
+                    ->whereNotNull('sStart_time')
+                    ->whereBetween('sStart_time', [$startOfDay, $endOfDay])
+                    ->where(function ($q) {
+                        $q->whereRaw('TIMESTAMPDIFF(SECOND, sStart_time, sSubmit_time) >= 60')
+                          ->orWhere(function ($q2) {
+                              $q2->whereNull('sSubmit_time')
+                                 ->whereRaw('TIMESTAMPDIFF(SECOND, sStart_time, NOW()) >= 60');
+                          });
+                    })
+                    ->selectRaw('HOUR(sStart_time) as h, COUNT(*) as cnt, AVG(sScore) as avg_score, COUNT(DISTINCT user_id) as students')
+                    ->groupBy('h')
+                    ->get();
+
+                foreach ($rows as $r) {
+                    $h = (int) $r->h;
+                    if (!isset($buckets[$h])) continue;
+                    $buckets[$h]['submissions'] = (int) $r->cnt;
+                    $buckets[$h]['students']    = (int) $r->students;
+                    $buckets[$h]['avg_score']   = $r->avg_score !== null
+                        ? round((float) $r->avg_score / 10, 1)
+                        : null;
+                }
+            }
+
+            $values     = array_values($buckets);
+            $total      = array_sum(array_column($values, 'submissions'));
+            $allScores  = array_filter(array_column($values, 'avg_score'), function ($v) { return $v !== null; });
+            $overallAvg = !empty($allScores) ? round(array_sum($allScores) / count($allScores), 1) : null;
+            $peakBucket = collect($values)->sortByDesc('submissions')->first();
+
+            return response()->json([
+                'status' => 'success',
+                'data'   => $values,
+                'meta'   => [
+                    'mode'              => 'today',
+                    'total_submissions' => $total,
+                    'overall_avg_score' => $overallAvg,
+                    'peak_day'          => $peakBucket,
+                    'days'              => 1,
+                ],
+            ]);
+        }
+
+        // ────────────────────────────────────────────────────────────
+        // Mode "7d" / "30d": group theo NGÀY
+        // ────────────────────────────────────────────────────────────
+        $days = $mode === '30d' ? 30 : 7;
+
+        $buckets = [];
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $date = now()->subDays($i)->startOfDay();
+            $buckets[$date->format('Y-m-d')] = [
+                'date'         => $date->format('Y-m-d'),
+                'label'        => $date->format('d/m'),
+                'weekday'      => $date->isoFormat('dd'),
+                'submissions'  => 0,
+                'avg_score'    => null,
+                'students'     => 0,
+            ];
+        }
+
+        if ($teacherExamIds->isEmpty()) {
+            return response()->json(['status' => 'success', 'data' => array_values($buckets)]);
+        }
+
+        $start = now()->subDays($days - 1)->startOfDay();
+
+        $rows = Submission::whereIn('exam_id', $teacherExamIds)
+            ->whereNotNull('sStart_time')
+            ->where('sStart_time', '>=', $start)
+            ->where(function ($q) {
+                $q->whereRaw('TIMESTAMPDIFF(SECOND, sStart_time, sSubmit_time) >= 60')
+                  ->orWhere(function ($q2) {
+                      $q2->whereNull('sSubmit_time')
+                         ->whereRaw('TIMESTAMPDIFF(SECOND, sStart_time, NOW()) >= 60');
+                  });
+            })
+            ->selectRaw('DATE(sStart_time) as d, COUNT(*) as cnt, AVG(sScore) as avg_score, COUNT(DISTINCT user_id) as students')
+            ->groupBy('d')
+            ->get();
+
+        foreach ($rows as $r) {
+            $key = (string) $r->d;
+            if (!isset($buckets[$key])) continue;
+            $buckets[$key]['submissions'] = (int) $r->cnt;
+            $buckets[$key]['students']    = (int) $r->students;
+            $buckets[$key]['avg_score']   = $r->avg_score !== null
+                ? round((float) $r->avg_score / 10, 1)
+                : null;
+        }
+
+        $total = array_sum(array_column($buckets, 'submissions'));
+        $allScores = array_filter(array_column($buckets, 'avg_score'), function ($v) { return $v !== null; });
+        $overallAvg = !empty($allScores) ? round(array_sum($allScores) / count($allScores), 1) : null;
+        $peakDay = collect($buckets)->sortByDesc('submissions')->first();
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => array_values($buckets),
+            'meta'   => [
+                'mode'              => $mode,
+                'total_submissions' => $total,
+                'overall_avg_score' => $overallAvg,
+                'peak_day'          => $peakDay,
+                'days'              => $days,
+            ],
         ]);
     }
 

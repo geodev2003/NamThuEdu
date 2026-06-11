@@ -63,8 +63,11 @@ export const publishVstepExam = async (examId: string, data: VstepExamData) => {
 /**
  * Load đề VSTEP Reading đã lưu
  */
-export const loadVstepExam = async (examId: string) => {
-  const response = await api.get(`/teacher/exams/${examId}/vstep/load`);
+export const loadVstepExam = async (examId: string, admin = false) => {
+  const url = admin
+    ? `/admin/exams/${examId}/preview/vstep/reading`
+    : `/teacher/exams/${examId}/vstep/load`;
+  const response = await api.get(url);
   return response.data;
 };
 
@@ -198,8 +201,11 @@ export const publishVstepListeningExam = async (examId: string, data: VstepListe
 /**
  * Load đề VSTEP Listening đã lưu
  */
-export const loadVstepListeningExam = async (examId: string) => {
-  const response = await api.get(`/teacher/exams/${examId}/vstep/listening/load`);
+export const loadVstepListeningExam = async (examId: string, admin = false) => {
+  const url = admin
+    ? `/admin/exams/${examId}/preview/vstep/listening`
+    : `/teacher/exams/${examId}/vstep/listening/load`;
+  const response = await api.get(url);
   return response.data;
 };
 
@@ -250,8 +256,11 @@ export const publishVstepWritingExam = async (examId: string, data: VstepWriting
 /**
  * Load đề VSTEP Writing đã lưu
  */
-export const loadVstepWritingExam = async (examId: string) => {
-  const response = await api.get(`/teacher/exams/${examId}/vstep/writing/load`);
+export const loadVstepWritingExam = async (examId: string, admin = false) => {
+  const url = admin
+    ? `/admin/exams/${examId}/preview/vstep/writing`
+    : `/teacher/exams/${examId}/vstep/writing/load`;
+  const response = await api.get(url);
   return response.data;
 };
 
@@ -327,7 +336,10 @@ export const publishVstepSpeakingExam = async (examId: string, data: VstepSpeaki
 /**
  * Load đề VSTEP Speaking đã lưu
  */
-export const loadVstepSpeakingExam = async (examId: string) => {
-  const response = await api.get(`/teacher/exams/${examId}/vstep/speaking/load`);
+export const loadVstepSpeakingExam = async (examId: string, admin = false) => {
+  const url = admin
+    ? `/admin/exams/${examId}/preview/vstep/speaking`
+    : `/teacher/exams/${examId}/vstep/speaking/load`;
+  const response = await api.get(url);
   return response.data;
 };

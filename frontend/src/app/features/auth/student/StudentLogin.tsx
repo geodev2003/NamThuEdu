@@ -5,25 +5,29 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { useNavigate, Link, useSearchParams } from 'react-router';
 import { useThemeContext } from '../../../../contexts/ThemeContext';
 import { login, LoginFormData } from '../../../../services/authApi';
 import { usePageTitle, PAGE_TITLES } from '../../../../hooks/usePageTitle';
-import { Eye, EyeOff, Phone, Lock, GraduationCap } from 'lucide-react';
+import { Eye, EyeOff, Phone, Lock, GraduationCap, AlertTriangle } from 'lucide-react';
 import { Header } from '../../public/components/Header';
 import { setAuthData, getRememberedPhone, clearAuthData } from '../../../../utils/authStorage';
 import '../../../../styles/loginAnimations.css';
 
 export function StudentLogin() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { syncWithAuth } = useThemeContext();
   usePageTitle(PAGE_TITLES.LOGIN);
-  
+
+  const maintenanceMsg = searchParams.get('message');
+  const isMaintenance = searchParams.get('maintenance') === '1';
+
   const [formData, setFormData] = useState<LoginFormData>({
     phone: '',
     password: '',
   });
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [pwAnimKey, setPwAnimKey] = useState(0);
   const [rememberMe, setRememberMe] = useState(false);
@@ -35,10 +39,25 @@ export function StudentLogin() {
       setRememberMe(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (isMaintenance && maintenanceMsg) {
+      setToast({ msg: decodeURIComponent(maintenanceMsg), show: true });
+      const timer = setTimeout(() => {
+        setToast(prev => prev ? { ...prev, show: false } : null);
+      }, 5000);
+      const clearTimer = setTimeout(() => setToast(null), 5500);
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(clearTimer);
+      };
+    }
+  }, [isMaintenance, maintenanceMsg]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(maintenanceMsg);
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
+  const [toast, setToast] = useState<{msg: string; show: boolean} | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -87,7 +106,7 @@ export function StudentLogin() {
         // Redirect based on age_group
         switch (user.age_group) {
           case 'kids':
-            navigate('/hoc-vien/kids');
+            navigate('/hoc-vien');
             break;
           case 'teens':
             navigate('/hoc-vien/teens');
@@ -116,6 +135,21 @@ export function StudentLogin() {
         transition: 'opacity 300ms ease-out'
       }}
     >
+      {/* Maintenance Toast */}
+      {toast && (
+        <div
+          className={`fixed top-5 right-5 z-[9999] flex items-center gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 shadow-lg transition-all duration-500 ${
+            toast.show ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
+          }`}
+          style={{ maxWidth: 380 }}
+        >
+          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+          <div>
+            <p className="text-sm font-bold text-amber-800">Hệ thống đang bảo trì</p>
+            <p className="text-xs text-amber-700">{toast.msg}</p>
+          </div>
+        </div>
+      )}
       {/* Success Overlay */}
       {loginSuccess && (
         <div 
@@ -210,6 +244,17 @@ export function StudentLogin() {
           {/* Heading */}
           <h1 className="text-3xl font-extrabold text-gray-900 mb-1">Đăng nhập Học viên</h1>
           <p className="text-gray-500 text-sm mb-8">Truy cập hệ thống học tập trực tuyến</p>
+
+          {/* Maintenance notification */}
+          {isMaintenance && maintenanceMsg && (
+            <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 animate-fadeIn">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+              <div>
+                <p className="text-sm font-bold text-amber-800">Hệ thống đang bảo trì</p>
+                <p className="text-xs text-amber-700 mt-0.5">{decodeURIComponent(maintenanceMsg)}</p>
+              </div>
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">

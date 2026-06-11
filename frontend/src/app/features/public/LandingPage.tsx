@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { usePageTitle, PAGE_TITLES } from "../../../hooks/usePageTitle";
@@ -50,8 +51,57 @@ export function LandingPage() {
     loadData();
   }, []);
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "EducationalOrganization",
+        "@id": "https://namthuedu.com/#organization",
+        "name": "NamThuEdu",
+        "url": "https://namthuedu.com",
+        "logo": "https://namthuedu.com/favicon.png",
+        "description": "Nền tảng học tiếng Anh chuẩn VSTEP, IELTS và Cambridge tại Cần Thơ, Việt Nam.",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Cần Thơ",
+          "addressCountry": "VN"
+        },
+        "hasOfferCatalog": {
+          "@type": "OfferCatalog",
+          "name": "Khóa luyện thi tiếng Anh",
+          "itemListElement": [
+            { "@type": "Course", "name": "Luyện thi VSTEP B1–C1", "description": "Luyện thi chứng chỉ tiếng Anh quốc gia VSTEP" },
+            { "@type": "Course", "name": "Luyện thi IELTS", "description": "Luyện thi IELTS 4 kỹ năng" },
+            { "@type": "Course", "name": "Cambridge Young Learners", "description": "Starters, Movers, Flyers cho học sinh tiểu học" }
+          ]
+        }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://namthuedu.com/#website",
+        "url": "https://namthuedu.com",
+        "name": "NamThuEdu",
+        "inLanguage": "vi",
+        "publisher": { "@id": "https://namthuedu.com/#organization" },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://namthuedu.com/blog?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    ]
+  };
+
   return (
     <div className="min-h-screen bg-white text-slate-900">
+      <Helmet>
+        <title>NamThuEdu — Học tiếng Anh thông minh hơn | VSTEP, IELTS, Cambridge</title>
+        <meta name="description" content="NamThuEdu - Nền tảng học tiếng Anh chuẩn VSTEP, IELTS và Cambridge tại Cần Thơ. Luyện thi thông minh với AI chấm bài tự động." />
+        <link rel="canonical" href="https://namthuedu.com/" />
+        <meta property="og:url" content="https://namthuedu.com/" />
+        <meta property="og:title" content="NamThuEdu — Học tiếng Anh thông minh hơn" />
+        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+      </Helmet>
       <Header />
 
       <main>

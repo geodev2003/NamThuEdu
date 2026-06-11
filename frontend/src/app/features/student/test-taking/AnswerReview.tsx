@@ -28,7 +28,11 @@ export function AnswerReview() {
   });
 
   const rawData = (data as any)?.data?.data ?? (data as any)?.data;
-  const isVstep = rawData?.submission_info?.exam_type?.toUpperCase() === "VSTEP";
+  const examType = String(rawData?.submission_info?.exam_type ?? "").toUpperCase();
+  const isVstep = examType === "VSTEP";
+  const isIelts = examType === "IELTS";
+  // Cả VSTEP và IELTS đều có UI review riêng → AnswerReview chỉ là trung gian redirect
+  const shouldRedirect = isVstep || isIelts;
   const examId = rawData?.submission_info?.exam_id;
 
   // Ensure modal is closed on mount
@@ -37,11 +41,16 @@ export function AnswerReview() {
   }, []);
 
   useEffect(() => {
-    if (isVstep && examId && submissionId) {
+    if (shouldRedirect && examId && submissionId) {
       window.dispatchEvent(new Event("close-result-modal"));
-      navigate(`/hoc-vien/lam-bai-vstep/${examId}?review=${submissionId}`, { replace: true });
+      const ieltsSkill = String(rawData?.submission_info?.exam_skill ?? "listening").toLowerCase();
+      if (isIelts) {
+        navigate(`/hoc-vien/lam-bai-ielts/${examId}/${ieltsSkill}?review=${submissionId}`, { replace: true });
+      } else {
+        navigate(`/hoc-vien/lam-bai-vstep/${examId}?review=${submissionId}`, { replace: true });
+      }
     }
-  }, [isVstep, examId, submissionId, navigate]);
+  }, [shouldRedirect, isIelts, examId, submissionId, navigate, rawData]);
 
   const rawItems = rawData?.detailed_answers ?? (Array.isArray(rawData) ? rawData : []);
   const items: any[] = Array.isArray(rawItems)
@@ -66,14 +75,14 @@ export function AnswerReview() {
     { key: "unanswered", label: "Chưa trả lời", count: unansweredCount, color: "#F59E0B" },
   ];
 
-  if (isLoading || isVstep) {
+  if (isLoading || shouldRedirect) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3">
         <div className="w-10 h-10 border-4 rounded-full animate-spin"
           style={{ borderColor: PRIMARY_LIGHT, borderTopColor: PRIMARY }} />
-        {isVstep && (
+        {shouldRedirect && (
           <p className="text-sm font-semibold text-slate-500 animate-pulse">
-            Đang chuyển hướng sang giao diện xem lại bài thi VSTEP...
+            Đang chuyển hướng sang giao diện xem lại bài thi {isIelts ? "IELTS" : "VSTEP"}...
           </p>
         )}
       </div>

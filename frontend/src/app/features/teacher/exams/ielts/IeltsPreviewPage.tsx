@@ -10,15 +10,17 @@ import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
 import { api } from "../../../../../services/api";
 import { IeltsExamStudentPreview } from "./IeltsExamStudentPreview";
+import { IeltsTestPreviewPage } from "./IeltsTestPreviewPage";
 import type { IeltsSkill, IeltsTestType } from "./structure";
 
 const DEFAULT_PLAY_MODE = {
   practice_enabled: true,
   full_test_enabled: true,
+  // Theo chuẩn IELTS: Listening 40' · Reading 60' · Writing 60' · Speaking 11–14'
   time_limit_options: [null, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60],
 };
 
-export function IeltsPreviewPage() {
+export function IeltsPreviewPage({ admin = false, backTo }: { admin?: boolean; backTo?: string } = {}) {
   const { examId, skill: skillParam } = useParams<{ examId: string; skill: string }>();
   const navigate = useNavigate();
 
@@ -31,11 +33,16 @@ export function IeltsPreviewPage() {
   const [testType, setTestType] = useState<IeltsTestType>("Academic");
   const [skillData, setSkillData] = useState<any>(null);
   const [playMode, setPlayMode] = useState(DEFAULT_PLAY_MODE);
+  // Khi true: render demo làm bài INLINE (không điều hướng route — tránh lỗi iframe).
+  const [demoActive, setDemoActive] = useState(false);
 
   useEffect(() => {
     if (!examId) return;
     setLoading(true);
-    api.get(`/teacher/exams/${examId}/ielts/draft`)
+    const draftUrl = admin
+      ? `/admin/exams/${examId}/preview/ielts/draft`
+      : `/teacher/exams/${examId}/ielts/draft`;
+    api.get(draftUrl)
       .then((res) => {
         const data = res.data?.data;
         if (!data) throw new Error("Không tìm thấy dữ liệu đề thi");
@@ -52,7 +59,19 @@ export function IeltsPreviewPage() {
       .finally(() => setLoading(false));
   }, [examId]);
 
-  const goBack = () => navigate(-1);
+  const goBack = () => (backTo ? navigate(backTo) : navigate(-1));
+
+  // Demo làm bài render inline (cả admin lẫn giáo viên) — chỉ xem, không điều hướng.
+  if (demoActive && examId) {
+    return (
+      <IeltsTestPreviewPage
+        admin={admin}
+        examId={examId}
+        skill={skill}
+        onBack={() => setDemoActive(false)}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] flex flex-col">
@@ -77,7 +96,7 @@ export function IeltsPreviewPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-6">
+      <div className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-6">
         {loading && (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
@@ -103,6 +122,9 @@ export function IeltsPreviewPage() {
             examDescription={examDescription}
             skillData={skillData}
             playMode={playMode}
+            examId={examId}
+            admin={admin}
+            onStartDemo={() => setDemoActive(true)}
           />
         )}
       </div>

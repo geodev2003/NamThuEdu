@@ -163,6 +163,47 @@ export function ExamLobby() {
     };
   }, []);
 
+  // Auto-skip lobby for IELTS — go straight to exam, no device check needed
+  const autoStartedRef = useRef(false);
+  const [autoStarting, setAutoStarting] = useState(false);
+  useEffect(() => {
+    if (loadingExam || autoStartedRef.current || !assignmentId) return;
+    const isIelts =
+      String(examInfo.examType ?? "").toUpperCase() === "IELTS" ||
+      examInfo.title.toLowerCase().includes("ielts");
+    if (!isIelts) return;
+
+    autoStartedRef.current = true;
+    setAutoStarting(true);
+    (async () => {
+      try {
+        // Stop camera/mic streams since we're skipping the device-check flow
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+        }
+        const startRes: any = await studentApi.startTest(assignmentId);
+        const sid = Number(startRes?.data?.data?.submissionId ?? 0);
+        if (!sid) throw new Error("missing-submission-id");
+        try {
+          await studentApi.connectTestWebsocket(sid);
+        } catch {
+          await studentApi.reconnectTestWebsocket(sid);
+        }
+        const routeId = examId ?? assignmentId;
+        navigate(
+          `${STUDENT_BASE_PATH}/lam-bai-ielts/${routeId}?submissionId=${sid}`,
+          { replace: true }
+        );
+      } catch {
+        // Fallback: keep lobby visible if auto-start fails
+        autoStartedRef.current = false;
+        setAutoStarting(false);
+        setStatusMessage(t("student.examLobby.sessionFailed"));
+      }
+    })();
+  }, [loadingExam, examInfo.examType, examInfo.title, examId, assignmentId, navigate, t]);
+
   const enableCamera = async () => {
     const cameraOk = await requestCameraOnly(false);
     if (cameraOk) {
@@ -265,6 +306,12 @@ export function ExamLobby() {
       <div className="pointer-events-none absolute -top-24 -left-16 h-72 w-72 rounded-full bg-[#DBEAFE] blur-3xl opacity-70" />
       <div className="pointer-events-none absolute -bottom-24 -right-12 h-80 w-80 rounded-full bg-[#FFE8D6] blur-3xl opacity-70" />
 
+      {autoStarting ? (
+        <div className="relative max-w-[640px] mx-auto mt-24 flex flex-col items-center justify-center gap-4 text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-[#2563EB]" />
+          <p className="text-lg font-bold text-[#1E293B]">{t("student.examLobby.startingSession")}</p>
+        </div>
+      ) : (
       <div className="relative max-w-[1360px] mx-auto rounded-[32px] border-[3px] border-[#BFDBFE] bg-white p-4 md:p-8 shadow-[0_18px_60px_rgba(15,23,42,0.12)]">
         <button
           onClick={() => navigate(`${STUDENT_BASE_PATH}/bai-tap`)}
@@ -386,6 +433,7 @@ export function ExamLobby() {
           </section>
         </div>
       </div>
+      )}
     </div>
   );
 }

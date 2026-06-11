@@ -217,6 +217,15 @@ export const CreateVstepFull = () => {
       if (res.status === "success" && res.data) {
         const id = String(res.data.eId);
         setRealExamId(id);
+        // Log activity (best-effort)
+        const { logTeacherActivity } = await import("../../../../../services/teacherActivityLog");
+        logTeacherActivity({
+          action: "exam.create",
+          entity_type: "exam",
+          entity_id: Number(id),
+          detail: `Tạo đề thi VSTEP: ${examTitle.trim()}`,
+          meta: { type: "VSTEP", skill: "mixed", duration },
+        });
         navigate(`/giao-vien/de-thi/vstep/full/sua/${id}`, { replace: true });
         setStep(1);
         success("Đề thi đã được tạo! Bắt đầu nhập nội dung.");
@@ -262,59 +271,75 @@ export const CreateVstepFull = () => {
   // ─── Step 0: Thông tin đề thi ──────────────────────────────────────────────
   if (step === 0 && !isResuming) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col">
+      <div className="min-h-screen bg-[#F9FAFB] flex flex-col">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
-          <div className="px-8 py-4 flex items-center gap-3">
+        <div className="bg-white border-b border-slate-200 sticky top-0 z-40">
+          <div className="px-6 h-14 flex items-center gap-2.5">
             <button
               onClick={() => navigate("/giao-vien/de-thi/tao-moi")}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-all cursor-pointer group"
+              className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer group"
+              aria-label="Quay lại"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600 group-hover:text-gray-900" />
+              <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:text-slate-900" />
             </button>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Tạo đề thi VSTEP Full Test</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Bước 1/2 — Thông tin cơ bản</p>
+            <div className="min-w-0">
+              <h1 className="text-sm font-semibold text-slate-800 leading-tight truncate">Tạo đề thi VSTEP Full Test</h1>
+              <p className="text-[11px] text-slate-400 leading-tight">Bước 1/2 — Thông tin cơ bản</p>
             </div>
           </div>
         </div>
 
         {/* Form */}
         <div className="flex-1 flex items-start justify-center px-4 py-12">
-          <div className="w-full max-w-2xl space-y-6">
+          <div className="w-full max-w-xl space-y-5">
 
-            {/* Card tổng quan VSTEP */}
-            <div className="bg-gradient-to-r from-orange-500 to-rose-500 rounded-2xl p-6 text-white shadow-lg">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                  <FileText className="w-5 h-5" />
+            {/* Tổng quan VSTEP — trung tính, tinh tế */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6">
+              <div className="flex items-start gap-3.5">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-900">
+                  <FileText className="h-5 w-5 text-white" />
                 </div>
-                <div>
-                  <p className="font-bold text-lg">VSTEP B1–C1 Full Test</p>
-                  <p className="text-white/80 text-sm">Đầy đủ 4 kỹ năng theo chuẩn Bộ Giáo dục</p>
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-900">VSTEP B1–C1 Full Test</p>
+                  <p className="mt-0.5 text-[13px] text-slate-500">Đầy đủ 4 kỹ năng theo chuẩn Bộ Giáo dục</p>
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-3 mt-4">
-                {SKILL_TABS.map((tab) => {
+
+              {/* Trình tự 4 kỹ năng */}
+              <div className="mt-5 grid grid-cols-4 gap-2">
+                {SKILL_TABS.map((tab, i) => {
                   const Icon = tab.icon;
                   return (
-                    <div key={tab.id} className="bg-white/15 rounded-lg p-2.5 text-center">
-                      <Icon className="w-4 h-4 mx-auto mb-1" />
-                      <p className="text-xs font-medium capitalize">{tab.name}</p>
+                    <div
+                      key={tab.id}
+                      className="flex flex-col items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 py-3"
+                    >
+                      <div className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white">
+                        <Icon className="h-4 w-4 text-slate-600" />
+                        <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 text-[9px] font-semibold text-white">
+                          {i + 1}
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-medium capitalize text-slate-600">{tab.name}</span>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            {/* Form card */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 space-y-6">
-              <h2 className="text-lg font-bold text-gray-900">Thông tin đề thi</h2>
+            {/* Form */}
+            <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6">
+              <div>
+                <h2 className="text-[15px] font-semibold text-slate-900">Thông tin đề thi</h2>
+                <p className="mt-0.5 text-[13px] text-slate-400">
+                  Nhập tiêu đề và thời lượng, sau đó thêm nội dung cho từng kỹ năng.
+                </p>
+              </div>
 
               {/* Tên đề thi */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Tên đề thi <span className="text-red-500">*</span>
+                <label className="mb-1.5 block text-[13px] font-medium text-slate-700">
+                  Tên đề thi <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -327,22 +352,20 @@ export const CreateVstepFull = () => {
                     }
                   }}
                   placeholder="VD: VSTEP B2 - Full Test 2026"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-400 transition"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/15"
                   maxLength={255}
                   autoFocus
                 />
-                <p className="text-xs text-gray-400 mt-1.5">
-                  {examTitle.length}/255 ký tự
-                  {!examTitle.trim() && (
-                    <span className="ml-2 text-orange-500">• Ấn Enter để dùng gợi ý</span>
-                  )}
+                <p className="mt-1.5 text-[11px] text-slate-400">
+                  {examTitle.length}/255
+                  {!examTitle.trim() && <span className="ml-1.5">· Nhấn Enter để dùng gợi ý</span>}
                 </p>
               </div>
 
               {/* Mô tả */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Mô tả <span className="text-gray-400 font-normal">(tùy chọn)</span>
+                <label className="mb-1.5 block text-[13px] font-medium text-slate-700">
+                  Mô tả <span className="font-normal text-slate-400">(tùy chọn)</span>
                 </label>
                 <textarea
                   value={examDescription}
@@ -357,34 +380,32 @@ export const CreateVstepFull = () => {
                   }}
                   rows={3}
                   placeholder="VD: Đề thi VSTEP B2 đầy đủ 4 kỹ năng theo chuẩn Bộ Giáo dục..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-400 resize-none transition"
+                  className="w-full resize-none rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/15"
                   maxLength={1000}
                 />
-                <p className="text-xs text-gray-400 mt-1.5">
-                  {examDescription.length}/1000 ký tự
-                  {!examDescription.trim() && (
-                    <span className="ml-2 text-orange-500">• Ấn Enter để dùng gợi ý</span>
-                  )}
+                <p className="mt-1.5 text-[11px] text-slate-400">
+                  {examDescription.length}/1000
+                  {!examDescription.trim() && <span className="ml-1.5">· Nhấn Enter để dùng gợi ý</span>}
                 </p>
               </div>
 
               {/* Thời gian */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <Clock className="w-4 h-4 inline mr-1.5 text-gray-500" />
+                <label className="mb-1.5 flex items-center gap-1.5 text-[13px] font-medium text-slate-700">
+                  <Clock className="h-3.5 w-3.5 text-slate-400" />
                   Tổng thời gian làm bài
                 </label>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   <input
                     type="number"
                     value={duration}
                     onChange={(e) => setDuration(Math.max(1, Number(e.target.value)))}
                     min={1}
                     max={480}
-                    className="w-32 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 text-center font-semibold text-gray-900"
+                    className="w-28 rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-center text-sm font-semibold text-slate-900 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/15"
                   />
-                  <span className="text-gray-600 font-medium">phút</span>
-                  <span className="text-sm text-gray-400">(mặc định VSTEP: 172 phút)</span>
+                  <span className="text-sm text-slate-600">phút</span>
+                  <span className="text-[13px] text-slate-400">· mặc định 172 phút</span>
                 </div>
               </div>
 
@@ -392,21 +413,21 @@ export const CreateVstepFull = () => {
               <button
                 onClick={handleCreateExam}
                 disabled={!examTitle.trim() || isCreating}
-                className={`w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-semibold text-white transition-all duration-200 cursor-pointer
+                className={`flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold transition-colors duration-200 cursor-pointer
                   ${examTitle.trim() && !isCreating
-                    ? "bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 shadow-lg hover:shadow-xl"
-                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    ? "bg-slate-900 text-white hover:bg-slate-800"
+                    : "cursor-not-allowed bg-slate-100 text-slate-400"
                   }`}
               >
                 {isCreating ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Đang tạo đề thi...
                   </>
                 ) : (
                   <>
                     Bắt đầu nhập nội dung
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="h-4 w-4" />
                   </>
                 )}
               </button>
@@ -419,58 +440,56 @@ export const CreateVstepFull = () => {
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      {/* Header - Minimalist & Clean */}
-      <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
-        <div className="px-8 py-4">
-          <div className="flex items-center justify-between">
-            {/* Left: Back + Title */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigate("/giao-vien/de-thi")}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 cursor-pointer group"
-                aria-label={t('vstep.full.actions.back')}
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-600 group-hover:text-gray-900 transition-colors" />
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {t('vstep.full.title')}
-                </h1>
-                <p className="text-sm text-gray-600 mt-0.5">
-                  {t('vstep.full.subtitle')}
-                </p>
-              </div>
+      {/* Header - compact */}
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-40">
+        <div className="px-6 h-14 flex items-center justify-between">
+          {/* Left: Back + Title */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <button
+              onClick={() => navigate("/giao-vien/de-thi")}
+              className="p-1.5 hover:bg-slate-100 rounded-lg transition-all cursor-pointer group"
+              aria-label={t('vstep.full.actions.back')}
+            >
+              <ArrowLeft className="w-4 h-4 text-slate-600 group-hover:text-slate-900" />
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-[14px] font-bold text-slate-800 leading-tight truncate">
+                {t('vstep.full.title')}
+              </h1>
+              <p className="text-[11px] text-slate-500 leading-tight truncate">
+                {t('vstep.full.subtitle')}
+              </p>
             </div>
+          </div>
 
-            {/* Right: Import + Progress Indicator */}
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setShowImportModal(true)}
-                disabled={!realExamId || realExamId.startsWith('vstep-full-')}
-                className="flex items-center gap-2 h-10 px-4 bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-lg text-sm font-semibold hover:from-orange-600 hover:to-rose-600 transition-all shadow-md hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
-                title="Import nguyên đề (Listening, Reading, Writing)"
-              >
-                <Upload className="w-4 h-4" />
-                Import đề
-              </button>
-              <div className="text-right">
-                <p className="text-sm font-semibold text-gray-900">
-                  {completedSkills.size}/4 {t('vstep.full.progress.skills')}
-                </p>
-                <div className="w-48 h-2 bg-gray-200 rounded-full mt-1.5 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 transition-all duration-500 ease-out"
-                    style={{ width: `${progressPercentage}%` }}
-                  />
-                </div>
+          {/* Right: Import + Progress Indicator */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <button
+              onClick={() => setShowImportModal(true)}
+              disabled={!realExamId || realExamId.startsWith('vstep-full-')}
+              className="flex items-center gap-1.5 h-8 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[12px] font-semibold transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+              title="Import nguyên đề (Listening, Reading, Writing)"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Import đề
+            </button>
+            <div className="text-right">
+              <p className="text-[11px] font-semibold text-slate-700 leading-tight">
+                {completedSkills.size}/4 {t('vstep.full.progress.skills')}
+              </p>
+              <div className="w-36 h-1.5 bg-slate-200 rounded-full mt-1 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 transition-all duration-500 ease-out"
+                  style={{ width: `${progressPercentage}%` }}
+                />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Skill Tabs - Clean & Minimal */}
-        <div className="px-8">
-          <div className="flex gap-1 border-b border-gray-200">
+        {/* Skill Tabs */}
+        <div className="px-6">
+          <div className="flex gap-0.5">
             {SKILL_TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = currentSkill === tab.id;
@@ -481,17 +500,17 @@ export const CreateVstepFull = () => {
                   key={tab.id}
                   onClick={() => setCurrentSkill(tab.id)}
                   className={`
-                    relative flex items-center gap-2.5 px-6 py-3 font-medium transition-all duration-200 cursor-pointer
+                    relative flex items-center gap-1.5 px-4 py-2 font-medium transition-all duration-200 cursor-pointer text-[12px]
                     ${isActive
                       ? `${tab.color} ${tab.bgColor} border-b-2 ${tab.borderColor}`
                       : `text-gray-600 hover:text-gray-900 ${tab.hoverBg}`
                     }
                   `}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span className="text-sm">{tab.name}</span>
+                  <Icon className="w-4 h-4" />
+                  <span>{tab.name}</span>
                   {isCompleted && (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 ml-1" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 ml-0.5" />
                   )}
                 </button>
               );

@@ -230,6 +230,7 @@ export interface CreateExamRequest {
   eDuration_minutes: number;
   eIs_private: boolean;
   eSource_type?: 'manual' | 'template' | 'imported';
+  age_group?: 'kids' | 'teens' | 'adults' | 'all';
 }
 
 export interface UpdateExamRequest extends Partial<CreateExamRequest> {}
@@ -640,6 +641,7 @@ export interface CreateExamRequest {
   eDuration_minutes: number;
   eIs_private: boolean;
   eSource_type: 'manual' | 'template' | 'imported';
+  age_group?: 'kids' | 'teens' | 'adults' | 'all';
 }
 
 export interface UpdateExamRequest extends Partial<CreateExamRequest> {}

@@ -23,12 +23,11 @@
  * Khi không có data: hiển thị empty state cho từng tab.
  */
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import {
   Clock,
   Users,
   MessageCircle,
-  Target,
-  Trophy,
   Lightbulb,
   AlertCircle,
   Lock,
@@ -38,6 +37,7 @@ import {
 import type { IeltsSkill, IeltsTestType } from "./structure";
 import { IELTS_STRUCTURE } from "./structure";
 import type { PlayModeConfig } from "./components/IeltsPlayModeConfig";
+import { useToastContext } from "../../../../../contexts/ToastContext";
 
 interface Props {
   skill: IeltsSkill;
@@ -47,6 +47,15 @@ interface Props {
   /** Skill data đã nhập từ editor — khi null, hiện empty state cho mỗi tab */
   skillData: any;
   playMode: PlayModeConfig;
+  /** Khi truyền vào, 2 nút "LUYỆN TẬP" và "BẮT ĐẦU THI" sẽ mở trang demo làm bài. */
+  examId?: number | string;
+  /** Chế độ admin: điều hướng demo sang route /admin thay vì /giao-vien. */
+  admin?: boolean;
+  /**
+   * Khi truyền vào, nút "LUYỆN TẬP"/"BẮT ĐẦU THI" sẽ gọi callback này
+   * để render demo INLINE (không điều hướng route). Ưu tiên hơn navigate.
+   */
+  onStartDemo?: () => void;
 }
 
 type ModeTab = "practice" | "full_test";
@@ -57,11 +66,35 @@ export function IeltsExamStudentPreview({
   examTitle,
   skillData,
   playMode,
+  examId,
+  admin = false,
+  onStartDemo,
 }: Props) {
   const structure = IELTS_STRUCTURE[skill];
+  const navigate = useNavigate();
+  const toast = useToastContext();
   const [activeTab, setActiveTab] = useState<ModeTab>(
     playMode.practice_enabled ? "practice" : "full_test"
   );
+
+  // Mở demo làm bài. Ưu tiên callback inline (onStartDemo) — tránh lỗi
+  // routing khi nhúng trong iframe/modal. Fallback sang navigate khi standalone.
+  const openDemoPlayer = () => {
+    if (!examId) {
+      toast.warning("Tính năng xem thử chỉ khả dụng khi mở từ trang Xem đề thi");
+      return;
+    }
+    toast.info("🔍 Chế độ xem thử · Đáp án sẽ không được lưu");
+    if (onStartDemo) {
+      onStartDemo();
+      return;
+    }
+    navigate(
+      admin
+        ? `/admin/de-thi/xem/ielts/${skill}/thu/${examId}`
+        : `/giao-vien/de-thi/ielts/${skill}/thu/${examId}`
+    );
+  };
 
   // Lấy danh sách sections từ skillData (mỗi editor có shape khác nhau)
   const sections = useMemo(() => extractSections(skill, skillData, structure), [
@@ -151,6 +184,7 @@ export function IeltsExamStudentPreview({
             sections={sections}
             timeLimitOptions={playMode.time_limit_options}
             enabled={playMode.practice_enabled}
+            onStart={openDemoPlayer}
           />
         )}
 
@@ -158,6 +192,7 @@ export function IeltsExamStudentPreview({
           <FullTestModeView
             duration={structure.duration}
             enabled={playMode.full_test_enabled}
+            onStart={openDemoPlayer}
           />
         )}
       </div>
@@ -170,10 +205,12 @@ function PracticeModeView({
   sections,
   timeLimitOptions,
   enabled,
+  onStart,
 }: {
   sections: SectionPreview[];
   timeLimitOptions: (number | null)[];
   enabled: boolean;
+  onStart?: () => void;
 }) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [timeLimit, setTimeLimit] = useState<string>("");
@@ -273,8 +310,8 @@ function PracticeModeView({
       {/* CTA */}
       <button
         type="button"
-        disabled={selected.size === 0}
-        className="px-6 py-2.5 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer"
+        onClick={onStart}
+        className="px-6 py-2.5 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-sm cursor-pointer"
       >
         LUYỆN TẬP
       </button>
@@ -286,9 +323,11 @@ function PracticeModeView({
 function FullTestModeView({
   duration,
   enabled,
+  onStart,
 }: {
   duration: number;
   enabled: boolean;
+  onStart?: () => void;
 }) {
   if (!enabled) return <DisabledMode label="Làm full test" />;
   return (
@@ -302,7 +341,9 @@ function FullTestModeView({
       </div>
       <button
         type="button"
-        className="px-6 py-2.5 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-sm cursor-pointer"
+        onClick={onStart}
+        className="px-6 py-2.5 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer"
+        title={!onStart ? "Chỉ có thể vào làm thử khi xem từ trang đề thi đã lưu" : undefined}
       >
         BẮT ĐẦU THI
       </button>

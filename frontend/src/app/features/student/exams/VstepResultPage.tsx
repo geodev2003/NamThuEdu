@@ -25,84 +25,77 @@ import { studentApi } from "../../../../services/studentApi";
 const STUDENT_BASE = "/hoc-vien";
 
 // ── Skill config ─────────────────────────────────────────────────────────────
-const SKILLS = [
-  { key: "listening", label: "Listening",  Icon: Headphones, color: "#F97316", bg: "#FFF7ED", border: "#FED7AA", dark: "#C2410C" },
-  { key: "reading",   label: "Reading",    Icon: BookOpen,   color: "#0EA5E9", bg: "#E0F2FE", border: "#7DD3FC", dark: "#0369A1" },
-  { key: "writing",   label: "Writing",    Icon: PenLine,    color: "#10B981", bg: "#D1FAE5", border: "#6EE7B7", dark: "#047857" },
-  { key: "speaking",  label: "Speaking",   Icon: Mic,        color: "#7C3AED", bg: "#EDE9FE", border: "#C4B5FD", dark: "#5B21B6" },
-];
+type SkillKey = "listening" | "reading" | "writing" | "speaking";
 
-// ── Radial gauge (0-10) ───────────────────────────────────────────────────────
-function RadialGauge({ score, color, size = 100 }: { score: number | null; color: string; size?: number }) {
-  const r = size * 0.38;
-  const cx = size / 2;
-  const cy = size / 2;
-  const circumference = 2 * Math.PI * r;
-  const pct = score !== null ? Math.min(score / 10, 1) : 0;
-  const offset = circumference - pct * circumference;
-
-  if (score === null) {
-    return (
-      <div
-        className="flex items-center justify-center rounded-full"
-        style={{ width: size, height: size, background: "#F3F4F6", flexShrink: 0 }}
-      >
-        <div className="text-center">
-          <Clock className="w-6 h-6 text-slate-300 mx-auto mb-0.5" />
-          <span style={{ fontSize: 10, color: "#9CA3AF" }}>Pending</span>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
-      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#F3F4F6" strokeWidth={size * 0.09} />
-        <circle
-          cx={cx} cy={cy} r={r} fill="none"
-          stroke={color} strokeWidth={size * 0.09}
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          style={{ transition: "stroke-dashoffset 1.2s ease-out" }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span style={{ fontSize: size * 0.24, fontWeight: 900, color, lineHeight: 1 }}>
-          {score.toFixed(1)}
-        </span>
-        <span style={{ fontSize: size * 0.1, color: "#9CA3AF" }}>/10</span>
-      </div>
-    </div>
-  );
+interface SkillConfig {
+  key: SkillKey;
+  label: string;
+  Icon: typeof Headphones;
+  /** Tailwind classes — bg nhạt + text đậm cho icon nhận diện */
+  iconBg: string;
+  iconText: string;
 }
 
-// ── Band scale bar ────────────────────────────────────────────────────────────
-function BandScaleBar({ avg }: { avg: number | null }) {
-  const pct = avg !== null ? (avg / 10) * 100 : null;
+const SKILLS: SkillConfig[] = [
+  { key: "listening", label: "Listening", Icon: Headphones, iconBg: "bg-orange-50",  iconText: "text-orange-600" },
+  { key: "reading",   label: "Reading",   Icon: BookOpen,   iconBg: "bg-sky-50",     iconText: "text-sky-600" },
+  { key: "writing",   label: "Writing",   Icon: PenLine,    iconBg: "bg-emerald-50", iconText: "text-emerald-600" },
+  { key: "speaking",  label: "Speaking",  Icon: Mic,        iconBg: "bg-violet-50",  iconText: "text-violet-600" },
+];
 
+function bandLabel(avg: number | null): string {
+  if (avg === null) return "—";
+  if (avg >= 8.5) return "Xuất sắc";
+  if (avg >= 7) return "Tốt";
+  if (avg >= 5.5) return "Khá";
+  if (avg >= 4) return "Trung bình";
+  return "Cần cố gắng";
+}
+
+/** Định dạng khoảng thời gian làm bài giữa 2 mốc (ms) → "Xh Ym Zs"
+ *  - Nếu chênh lệch vượt thời lượng đề (vd start_time lưu sai từ session cũ),
+ *    cap về đúng thời lượng cho phép để tránh hiển thị "333 phút" vô lý.
+ *  - Cap tối đa 24h cho mọi trường hợp để chắc chắn.
+ */
+function formatDuration(
+  startMs: number,
+  endMs: number,
+  maxMinutes?: number | null
+): string | null {
+  let diff = Math.round((endMs - startMs) / 1000);
+  if (!isFinite(diff) || diff <= 0) return null;
+  const hardCap = (maxMinutes && maxMinutes > 0 ? maxMinutes : 24 * 60) * 60;
+  if (diff > hardCap) diff = hardCap;
+  const h = Math.floor(diff / 3600);
+  const m = Math.floor((diff % 3600) / 60);
+  const s = diff % 60;
+  if (h > 0) return m === 0 ? `${h} giờ` : `${h} giờ ${m} phút`;
+  if (m === 0) return `${s} giây`;
+  return s === 0 ? `${m} phút` : `${m} phút ${s} giây`;
+}
+
+interface StatItem {
+  label: string;
+  value: string;
+  sub?: string;
+}
+
+/** Stats hàng ngang, divider thẳng giữa các cột — minimalist. */
+function StatsOverview({ items }: { items: StatItem[] }) {
+  if (items.length === 0) return null;
+  const cols =
+    items.length >= 4 ? "sm:grid-cols-4" : items.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
   return (
-    <div className="w-full mt-4">
-      <div className="relative h-4 rounded-full overflow-hidden" style={{ background: "linear-gradient(90deg, #EF4444 0%, #F59E0B 40%, #10B981 60%, #0EA5E9 75%, #7C3AED 100%)" }}>
-        {pct !== null && (
-          <div
-            className="absolute top-0 bottom-0 flex items-center"
-            style={{ left: `${pct}%`, transform: "translateX(-50%)" }}
-          >
-            <div className="w-4 h-4 rounded-full border-2 border-white shadow-md bg-white" />
-          </div>
-        )}
-      </div>
-      <div className="flex justify-between mt-1.5">
-        <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>0</span>
-        <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>10</span>
-      </div>
-      <div className="flex justify-between -mt-0.5 mb-1">
-        {[0, 2.5, 5, 7.5, 10].map((v) => (
-          <span key={v} style={{ fontSize: 10, color: "#9CA3AF" }}>{v}</span>
-        ))}
-      </div>
+    <div className={`grid grid-cols-2 ${cols} divide-x divide-y sm:divide-y-0 divide-slate-100`}>
+      {items.map((it) => (
+        <div key={it.label} className="px-4 py-4 text-center">
+          <p className="text-xl font-semibold text-slate-800 tabular-nums leading-none">{it.value}</p>
+          <p className="text-[11px] font-medium text-slate-500 mt-1.5 uppercase tracking-wide">
+            {it.label}
+          </p>
+          {it.sub && <p className="text-[10px] text-slate-400 mt-0.5">{it.sub}</p>}
+        </div>
+      ))}
     </div>
   );
 }
@@ -140,14 +133,12 @@ export function VstepResultPage() {
     retry: 1,
   });
 
-  // Countdown 8→0 while grading_subjective
   useEffect(() => {
     if (!isGradingSubjective) { setCountdown(8); return; }
     const t = setInterval(() => setCountdown((c) => (c > 1 ? c - 1 : 8)), 1000);
     return () => clearInterval(t);
   }, [isGradingSubjective]);
 
-  // Detect when grading flips from pending → done → show toast
   const polledStatus = (statusPoll as any)?.data?.data?.sStatus ?? null;
   useEffect(() => {
     if (prevGradingRef.current === true && polledStatus === "graded") {
@@ -157,30 +148,65 @@ export function VstepResultPage() {
     }
     if (polledStatus !== null) prevGradingRef.current = polledStatus === "grading_subjective";
   }, [polledStatus, submissionId, queryClient]);
-  const examTitle  = raw?.exam?.eTitle ?? "VSTEP Exam";
+
+  const examTitle = raw?.exam?.eTitle ?? "Kết quả bài thi";
   const submitTime = raw?.sSubmit_time ? new Date(raw.sSubmit_time) : null;
 
-  // Merge polled scores on top of initial scores (live updates while grading_subjective)
   const polledScores = (statusPoll as any)?.data?.data?.vstep_scores ?? null;
-  const baseScores   = vstepMeta?.vstep_scores ?? {};
-  const scores       = polledScores ? { ...baseScores, ...polledScores } : baseScores;
+  const baseScores = vstepMeta?.vstep_scores ?? {};
+  const scores = polledScores ? { ...baseScores, ...polledScores } : baseScores;
 
-  const available = Object.values(scores).filter((v) => typeof v === "number" && !isNaN(v as number)) as number[];
-  const overallAvg = available.length > 0 ? +(available.reduce((a, b) => a + b, 0) / available.length).toFixed(2) : (vstepMeta?.overall_avg ?? null);
+  // Chỉ render skill thực sự có trong đề (IELTS thường 1 skill/đề)
+  const examSections: string[] = vstepMeta?.exam_sections ?? ["listening", "reading", "writing", "speaking"];
+  const activeSkills = SKILLS.filter((s) => examSections.includes(s.key));
+  const visibleSkills = activeSkills.length > 0 ? activeSkills : SKILLS;
+  const isSingleSkill = visibleSkills.length === 1;
 
-  const skillStats    = vstepMeta?.skill_stats ?? {};
-  const pendingSkills = (["writing", "speaking"] as const).filter((s) => scores[s] === null || scores[s] === undefined);
+  const available = visibleSkills
+    .map((s) => scores[s.key])
+    .filter((v) => typeof v === "number" && !isNaN(v as number)) as number[];
+  const overallAvg = available.length > 0
+    ? +(available.reduce((a, b) => a + b, 0) / available.length).toFixed(2)
+    : (vstepMeta?.overall_avg ?? null);
 
-  // Answers for MCQ review (sorted by question number)
+  const skillStats = vstepMeta?.skill_stats ?? {};
+  const pendingSkills: SkillKey[] = (vstepMeta?.pending_skills ?? []) as SkillKey[];
+
+  // ── Thống kê tổng quan (MCQ: listening + reading) ──────────────────────────
+  const totalMcq =
+    (skillStats.listening?.total ?? 0) + (skillStats.reading?.total ?? 0);
+  const correctMcq =
+    (skillStats.listening?.correct ?? 0) + (skillStats.reading?.correct ?? 0);
+  const accuracy = totalMcq > 0 ? Math.round((correctMcq / totalMcq) * 100) : null;
+  const durationText =
+    raw?.sStart_time && raw?.sSubmit_time
+      ? formatDuration(
+          new Date(raw.sStart_time).getTime(),
+          new Date(raw.sSubmit_time).getTime(),
+          raw?.exam?.eDuration_minutes ?? raw?.exam?.eDuration ?? null
+        )
+      : null;
+
+  const statsItems: StatItem[] = [];
+  if (totalMcq > 0) {
+    statsItems.push({ label: "Câu đúng", value: `${correctMcq}/${totalMcq}` });
+    if (accuracy !== null) statsItems.push({ label: "Độ chính xác", value: `${accuracy}%` });
+  }
+  if (overallAvg !== null && !isGradingSubjective) {
+    statsItems.push({ label: "Điểm số", value: overallAvg.toFixed(1), sub: "/10" });
+  }
+  if (durationText) {
+    statsItems.push({ label: "Thời gian", value: durationText });
+  }
+
   const answers = (raw?.answers ?? []) as any[];
-  const listeningAnswers = answers.filter(
-    (a) => (a.question?.qSection ?? "").toLowerCase() === "listening"
-  ).sort((a, b) => (a.question?.qNumber ?? 0) - (b.question?.qNumber ?? 0));
-  const readingAnswers = answers.filter(
-    (a) => (a.question?.qSection ?? "").toLowerCase() === "reading"
-  ).sort((a, b) => (a.question?.qNumber ?? 0) - (b.question?.qNumber ?? 0));
+  const listeningAnswers = answers
+    .filter((a) => (a.question?.qSection ?? "").toLowerCase() === "listening")
+    .sort((a, b) => (a.question?.qNumber ?? 0) - (b.question?.qNumber ?? 0));
+  const readingAnswers = answers
+    .filter((a) => (a.question?.qSection ?? "").toLowerCase() === "reading")
+    .sort((a, b) => (a.question?.qNumber ?? 0) - (b.question?.qNumber ?? 0));
 
-  // Build qId → correct answer letter from exam.questions.answers (fully loaded)
   const examQMap = useMemo(() => {
     const map: Record<number, string> = {};
     const LETTERS = ["A", "B", "C", "D"];
@@ -194,24 +220,34 @@ export function VstepResultPage() {
     return map;
   }, [raw]);
 
+  // ── Helper: tone của điểm theo band ────────────────────────────────────────
+  const scoreTone = (avg: number | null) => {
+    if (avg === null) return { text: "text-slate-800", chip: "bg-slate-100 text-slate-600" };
+    if (avg >= 7) return { text: "text-emerald-600", chip: "bg-emerald-50 text-emerald-700" };
+    if (avg >= 5.5) return { text: "text-sky-600", chip: "bg-sky-50 text-sky-700" };
+    if (avg >= 4) return { text: "text-amber-600", chip: "bg-amber-50 text-amber-700" };
+    return { text: "text-rose-600", chip: "bg-rose-50 text-rose-700" };
+  };
+  const tone = scoreTone(overallAvg);
+
   // ── Loading / error ────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-sky-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
       </div>
     );
   }
 
   if (isError || !raw) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="min-h-[60vh] flex items-center justify-center px-4">
         <div className="text-center">
-          <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+          <AlertCircle className="w-9 h-9 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-600 font-medium mb-4">Không tìm thấy kết quả bài thi.</p>
           <button
             onClick={() => navigate(`${STUDENT_BASE}/de-thi`)}
-            className="px-5 py-2 bg-sky-500 text-white rounded-xl font-bold text-sm hover:bg-sky-600 transition"
+            className="px-5 py-2.5 bg-slate-800 text-white rounded-lg font-medium text-sm hover:bg-slate-900 transition-colors"
           >
             Về trang đề thi
           </button>
@@ -221,135 +257,213 @@ export function VstepResultPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto py-6 px-4 space-y-5">
+    <div className="max-w-2xl mx-auto py-8 px-4 space-y-5">
       {/* ── Back ────────────────────────────────────────────────────────────── */}
       <button
         onClick={() => navigate(`${STUDENT_BASE}/de-thi`)}
-        className="flex items-center gap-1.5 text-sm font-medium text-sky-600 hover:text-sky-700 hover:underline transition"
+        className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         Về trang đề thi
       </button>
 
-      {/* ── Header Hero ─────────────────────────────────────────────────────── */}
-      <div
-        className="rounded-3xl p-6 text-center"
-        style={{ background: "white", border: "1.5px solid #F0EEFF", boxShadow: "0 8px 32px rgba(124,58,237,0.10)" }}
-      >
-        <p className="text-xs text-slate-400 mb-1 font-medium uppercase tracking-wide">Kết quả bài thi VSTEP</p>
-        <h1 className="text-xl font-extrabold text-slate-800 mb-1">{examTitle}</h1>
-        {submitTime && (
-          <p className="text-xs text-slate-400 mb-5">
-            Nộp lúc {submitTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
-            {" "}ngày {submitTime.toLocaleDateString("vi-VN")}
+      {/* ── Hero card: tiêu đề + điểm + stats — gộp 1 khối, tối giản ──────── */}
+      <div className="rounded-2xl border border-slate-200 bg-white">
+        {/* Header */}
+        <div className="px-6 pt-6 pb-5 text-center border-b border-slate-100">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            Kết quả bài thi
           </p>
-        )}
-
-        {/* Average score */}
-        {!isGradingSubjective && overallAvg !== null ? (
-          <div className="mb-4">
-            <p className="text-sm text-slate-500 font-medium mb-1">
-              Điểm trung bình
+          <h1 className="text-base font-semibold text-slate-900 mt-1.5 leading-snug">
+            {examTitle}
+          </h1>
+          {submitTime && (
+            <p className="text-[11px] text-slate-400 mt-1">
+              Nộp lúc{" "}
+              {submitTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+              {" · "}
+              {submitTime.toLocaleDateString("vi-VN")}
             </p>
-            <p className="text-3xl font-black text-slate-800 tabular-nums">
-              {overallAvg.toFixed(2)}<span className="text-base font-medium text-slate-400">/10</span>
-            </p>
-          </div>
-        ) : (
-          <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-base bg-slate-100 text-slate-500 mb-4">
-            <Clock className="w-5 h-5" />
-            {isGradingSubjective ? "Chờ kết quả Writing & Speaking…" : "Đang tính điểm tổng…"}
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Band scale bar — hide pointer while grading_subjective */}
-        <BandScaleBar avg={isGradingSubjective ? null : overallAvg} />
+        {/* Score */}
+        <div className="px-6 py-7 text-center">
+          {!isGradingSubjective && overallAvg !== null ? (
+            <>
+              <div className="flex items-end justify-center gap-1">
+                <span className={`text-6xl font-bold tabular-nums leading-none ${tone.text}`}>
+                  {overallAvg.toFixed(1)}
+                </span>
+                <span className="text-xl font-medium text-slate-300 mb-1.5">/10</span>
+              </div>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400 mt-2">
+                {isSingleSkill ? `Điểm ${visibleSkills[0].label}` : "Điểm trung bình"}
+              </p>
+              <span
+                className={`mt-3 inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${tone.chip}`}
+              >
+                {bandLabel(overallAvg)}
+              </span>
+            </>
+          ) : (
+            <div className="flex items-center justify-center gap-2.5 py-4 text-slate-500">
+              <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+              <span className="text-sm font-medium">
+                {isGradingSubjective ? "Đang chấm Writing & Speaking…" : "Đang tính điểm…"}
+              </span>
+            </div>
+          )}
+        </div>
 
-        {pendingSkills.length > 0 && (
-          <div
-            className="mt-4 rounded-2xl px-4 py-3 flex items-start gap-3"
-            style={{ background: "linear-gradient(135deg,#EDE9FE,#DBEAFE)", border: "1.5px solid #C4B5FD" }}
-          >
-            <div className="flex-shrink-0 mt-0.5">
-              <Bot className="w-5 h-5" style={{ color: "#7C3AED" }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold" style={{ color: "#5B21B6" }}>
-                AI đang chấm {pendingSkills.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(" & ")}
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: "#6D28D9" }}>
-                Kết quả sẽ tự động cập nhật. Không cần tải lại trang.
-              </p>
-            </div>
-            <div className="flex-shrink-0 flex items-center gap-1.5" style={{ color: "#7C3AED" }}>
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: "2s" }} />
-              <span className="text-xs font-bold tabular-nums">{countdown}s</span>
-            </div>
+        {/* Stats inline trong cùng card */}
+        {statsItems.length > 0 && (
+          <div className="border-t border-slate-100">
+            <StatsOverview items={statsItems} />
           </div>
         )}
       </div>
 
-      {/* ── 4 Skill Score Cards ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3">
-        {SKILLS.map(({ key, label, Icon, color, bg, border, dark }) => {
-          const score   = scores[key] ?? null;
-          const stats   = skillStats[key] ?? null;
-          const isPending = score === null;
+      {/* ── AI grading banner ───────────────────────────────────────────────── */}
+      {pendingSkills.length > 0 && (
+        <div className="rounded-xl border border-violet-200 bg-violet-50/60 px-4 py-3 flex items-start gap-3">
+          <Bot className="w-5 h-5 text-violet-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-violet-800">
+              AI đang chấm {pendingSkills.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(" & ")}
+            </p>
+            <p className="text-xs text-violet-700/70 mt-0.5">
+              Kết quả sẽ tự động cập nhật. Không cần tải lại trang.
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 text-violet-500 flex-shrink-0">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: "2s" }} />
+            <span className="text-xs font-medium tabular-nums">{countdown}s</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Answer overview — grid hiện trạng thái mỗi câu (đã trả lời / bỏ qua) ── */}
+      {(listeningAnswers.length > 0 || readingAnswers.length > 0) && (
+        <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-semibold text-slate-700">Tổng quan câu trả lời</p>
+            <div className="flex items-center gap-3 text-[10px] text-slate-500">
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" /> Đúng
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-sm bg-rose-400" /> Sai
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-sm bg-slate-200 border border-slate-300" /> Bỏ trống
+              </span>
+            </div>
+          </div>
+
+          {[
+            { key: "listening", label: "Listening", rows: listeningAnswers },
+            { key: "reading",   label: "Reading",   rows: readingAnswers },
+          ]
+            .filter((g) => g.rows.length > 0)
+            .map((g) => {
+              const answeredCount = g.rows.filter(
+                (r) => r.saAnswer_text != null && String(r.saAnswer_text).trim() !== ""
+              ).length;
+              const skipped = g.rows.length - answeredCount;
+              return (
+                <div key={g.key} className="mb-4 last:mb-0">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-slate-600">{g.label}</span>
+                    <span className="text-[11px] text-slate-500 tabular-nums">
+                      Đã trả lời {answeredCount}/{g.rows.length}
+                      {skipped > 0 && (
+                        <span className="ml-2 text-rose-500 font-semibold">
+                          · Bỏ trống {skipped}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-10 gap-1">
+                    {g.rows.map((r, idx) => {
+                      const num = r.question?.qNumber ?? idx + 1;
+                      const text = r.saAnswer_text;
+                      const answered = text != null && String(text).trim() !== "";
+                      const correct = !!r.saIs_correct;
+
+                      let tone: string;
+                      if (!answered) {
+                        tone = "bg-slate-100 text-slate-400 border border-slate-200";
+                      } else if (correct) {
+                        tone = "bg-emerald-500 text-white";
+                      } else {
+                        tone = "bg-rose-400 text-white";
+                      }
+
+                      return (
+                        <span
+                          key={r.saId ?? `${g.key}-${idx}`}
+                          title={
+                            !answered
+                              ? `Câu ${num}: chưa trả lời`
+                              : `Câu ${num}: bạn ${correct ? "trả lời đúng" : "trả lời sai"} — "${text}"`
+                          }
+                          className={`h-7 rounded text-[11px] font-semibold tabular-nums flex items-center justify-center cursor-default ${tone}`}
+                        >
+                          {num}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      )}
+
+      {/* ── Skill scores ────────────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-slate-200 bg-white divide-y divide-slate-100">
+        {visibleSkills.map(({ key, label, Icon, iconBg, iconText }) => {
+          const score = scores[key] ?? null;
+          const stats = skillStats[key] ?? null;
           const isSubjective = key === "writing" || key === "speaking";
+          const isPending = score === null;
           const submitted =
             key === "writing" ? vstepMeta?.writing_submitted :
             key === "speaking" ? vstepMeta?.speaking_submitted : false;
 
           return (
-            <div
-              key={key}
-              className="rounded-2xl p-4 flex flex-col gap-3"
-              style={{ background: bg, border: `1.5px solid ${border}` }}
-            >
-              {/* Skill header */}
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: color }}
-                >
-                  <Icon className="w-4 h-4 text-white" />
+            <div key={key} className="flex items-center justify-between px-5 py-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-lg ${iconBg} flex items-center justify-center`}>
+                  <Icon className={`w-4 h-4 ${iconText}`} />
                 </div>
-                <span className="font-bold text-sm" style={{ color: dark }}>{label}</span>
-              </div>
-
-              {/* Gauge */}
-              <div className="flex justify-center">
-                <RadialGauge score={score} color={color} size={90} />
-              </div>
-
-              {/* Sub-stats */}
-              {!isSubjective && stats ? (
-                <div className="text-center">
-                  <span className="text-xs font-bold" style={{ color: dark }}>
-                    {stats.correct}/{stats.total}
-                  </span>
-                  <span className="text-xs text-slate-500"> câu đúng</span>
-                </div>
-              ) : isPending && isSubjective ? (
-                <div className="text-center">
-                  {submitted ? (
-                    <span
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold"
-                      style={{ background: color + "22", color: dark }}
-                    >
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      AI đang chấm...
-                    </span>
-                  ) : (
-                    <span
-                      className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold"
-                      style={{ background: "#F3F4F6", color: "#9CA3AF" }}
-                    >
-                      Chưa có bài nộp
-                    </span>
+                <div>
+                  <p className="font-semibold text-sm text-slate-800">{label}</p>
+                  {!isSubjective && stats && (
+                    <p className="text-xs text-slate-400">{stats.correct}/{stats.total} câu đúng</p>
+                  )}
+                  {isSubjective && isPending && (
+                    <p className="text-xs text-slate-400">
+                      {submitted ? "AI đang chấm…" : "Chưa có bài nộp"}
+                    </p>
                   )}
                 </div>
-              ) : null}
+              </div>
+
+              {isPending ? (
+                <span className="flex items-center gap-1.5 text-slate-400 text-sm">
+                  <Clock className="w-4 h-4" />
+                  Chờ chấm
+                </span>
+              ) : (
+                <div className="flex items-baseline gap-1">
+                  <span className={`text-2xl font-bold tabular-nums ${scoreTone(score as number).text}`}>
+                    {(score as number).toFixed(1)}
+                  </span>
+                  <span className="text-xs text-slate-400">/10</span>
+                </div>
+              )}
             </div>
           );
         })}
@@ -357,24 +471,19 @@ export function VstepResultPage() {
 
       {/* ── Toast: grading done ──────────────────────────────────────────────── */}
       {gradingDoneToast && (
-        <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 rounded-2xl shadow-xl text-white text-sm font-bold"
-          style={{ background: "linear-gradient(135deg,#059669,#10B981)", minWidth: 260 }}
-        >
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 rounded-lg shadow-lg text-white text-sm font-medium bg-slate-800">
           <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
           Writing & Speaking đã được chấm xong!
         </div>
       )}
 
-      {/* ── Grading Status Timeline ──────────────────────────────────────────── */}
-      <div
-        className="rounded-2xl p-5 bg-white"
-        style={{ border: "1.5px solid #F0EEFF" }}
-      >
-        <p className="text-sm font-bold text-slate-700 mb-4">Trạng thái chấm bài</p>
+      {/* ── Grading status timeline ──────────────────────────────────────────── */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <p className="text-sm font-semibold text-slate-700 mb-4">Trạng thái chấm bài</p>
         <div className="space-y-3">
           {[
             {
+              show: true,
               done: true,
               label: "Nộp bài thành công",
               sub: submitTime
@@ -382,35 +491,38 @@ export function VstepResultPage() {
                 : undefined,
             },
             {
+              show: examSections.includes("listening") || examSections.includes("reading"),
               done: true,
-              label: "Chấm Listening & Reading",
+              label: "Chấm trắc nghiệm (Listening & Reading)",
               sub: `${(skillStats.listening?.correct ?? 0) + (skillStats.reading?.correct ?? 0)} câu đúng / ${(skillStats.listening?.total ?? 0) + (skillStats.reading?.total ?? 0)} câu`,
             },
             {
+              show: examSections.includes("writing"),
               done: !pendingSkills.includes("writing"),
               label: "Chấm Writing (AI)",
               sub: pendingSkills.includes("writing")
-                ? (vstepMeta?.writing_submitted ? "Bài viết đã nộp · AI đang chấm..." : "Chưa có bài nộp")
+                ? (vstepMeta?.writing_submitted ? "Bài viết đã nộp · AI đang chấm…" : "Chưa có bài nộp")
                 : `Điểm: ${scores.writing?.toFixed(1)}/10`,
             },
             {
+              show: examSections.includes("speaking"),
               done: !pendingSkills.includes("speaking"),
               label: "Chấm Speaking (AI)",
               sub: pendingSkills.includes("speaking")
-                ? (vstepMeta?.speaking_submitted ? "Audio đã upload · AI đang chấm..." : "Chưa có audio")
+                ? (vstepMeta?.speaking_submitted ? "Audio đã upload · AI đang chấm…" : "Chưa có audio")
                 : `Điểm: ${scores.speaking?.toFixed(1)}/10`,
             },
-          ].map((step, i) => (
+          ].filter((s) => s.show).map((step, i) => (
             <div key={i} className="flex items-start gap-3">
               <div className="flex-shrink-0 mt-0.5">
                 {step.done ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                  <CheckCircle2 className="w-5 h-5 text-slate-700" />
                 ) : (
-                  <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
+                  <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
                 )}
               </div>
               <div>
-                <p className={`text-sm font-medium ${step.done ? "text-slate-800" : "text-amber-600"}`}>
+                <p className={`text-sm font-medium ${step.done ? "text-slate-800" : "text-slate-500"}`}>
                   {step.label}
                 </p>
                 {step.sub && <p className="text-xs text-slate-400 mt-0.5">{step.sub}</p>}
@@ -420,35 +532,25 @@ export function VstepResultPage() {
         </div>
       </div>
 
-      {/* ── MCQ Answer Review (collapsible per skill) ────────────────────────── */}
+      {/* ── MCQ answer review (collapsible) ──────────────────────────────────── */}
       {[
-        { key: "listening", label: "Listening", cfg: SKILLS[0], rows: listeningAnswers },
-        { key: "reading",   label: "Reading",   cfg: SKILLS[1], rows: readingAnswers },
-      ].map(({ key, label, cfg, rows }) => {
+        { key: "listening", label: "Listening", Icon: Headphones, rows: listeningAnswers },
+        { key: "reading",   label: "Reading",   Icon: BookOpen,   rows: readingAnswers },
+      ].map(({ key, label, Icon, rows }) => {
         if (rows.length === 0) return null;
         const isOpen = expandedSkill === key;
         const correct = rows.filter((r) => r.saIs_correct).length;
 
         return (
-          <div
-            key={key}
-            className="rounded-2xl overflow-hidden"
-            style={{ border: `1.5px solid ${cfg.border}` }}
-          >
+          <div key={key} className="rounded-xl overflow-hidden border border-slate-200 bg-white">
             <button
-              className="w-full flex items-center justify-between px-5 py-3.5 text-left"
-              style={{ background: cfg.bg }}
+              className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50 transition-colors"
               onClick={() => setExpandedSkill(isOpen ? null : key)}
             >
-              <div className="flex items-center gap-2">
-                <cfg.Icon className="w-4 h-4" style={{ color: cfg.color }} />
-                <span className="font-bold text-sm" style={{ color: cfg.dark }}>
-                  {label} — Chi tiết đáp án
-                </span>
-                <span
-                  className="text-xs font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: cfg.color + "20", color: cfg.dark }}
-                >
+              <div className="flex items-center gap-2.5">
+                <Icon className="w-4 h-4 text-slate-500" />
+                <span className="font-semibold text-sm text-slate-800">{label} — Chi tiết đáp án</span>
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                   {correct}/{rows.length}
                 </span>
               </div>
@@ -460,7 +562,7 @@ export function VstepResultPage() {
             </button>
 
             {isOpen && (
-              <div className="bg-white divide-y divide-slate-100">
+              <div className="divide-y divide-slate-100 border-t border-slate-100">
                 {rows.map((ans, idx) => {
                   const qText = ans.question?.qContent?.replace(/<[^>]*>/g, "").slice(0, 80) ?? `Câu ${idx + 1}`;
                   const correctAns = examQMap[ans.question?.qId] ?? "—";
@@ -476,19 +578,15 @@ export function VstepResultPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-slate-600 truncate">{qText}</p>
                         <div className="flex gap-3 mt-1 text-xs">
-                          <span>
+                          <span className="text-slate-500">
                             Bạn chọn:{" "}
-                            <span
-                              className="font-bold"
-                              style={{ color: ans.saIs_correct ? "#10B981" : "#EF4444" }}
-                            >
+                            <span className={`font-semibold ${ans.saIs_correct ? "text-emerald-600" : "text-red-500"}`}>
                               {ans.saAnswer_text ?? "—"}
                             </span>
                           </span>
                           {!ans.saIs_correct && (
-                            <span>
-                              Đáp án:{" "}
-                              <span className="font-bold text-emerald-600">{correctAns}</span>
+                            <span className="text-slate-500">
+                              Đáp án: <span className="font-semibold text-emerald-600">{correctAns}</span>
                             </span>
                           )}
                         </div>
@@ -504,31 +602,39 @@ export function VstepResultPage() {
 
       {/* ── CTA ─────────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3 pb-4">
-        {raw?.exam_id && (
-          <Link
-            to={`${STUDENT_BASE}/lam-bai-vstep/${raw.exam_id}?review=${submissionId}`}
-            className="flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm transition-opacity hover:opacity-90"
-            style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", color: "#fff" }}
-          >
-            <Eye className="w-4 h-4" />
-            Xem lại bài thi (đúng / sai từng câu)
-          </Link>
-        )}
+        {raw?.exam_id && (() => {
+          // IELTS dùng route riêng (lam-bai-ielts) vì đáp án là text completion,
+          // không phải MCQ A/B/C/D như VSTEP. Mở vào /lam-bai-vstep sẽ render sai
+          // (filter A/B/C/D drop hết text → hiển thị "Bỏ trống").
+          const isIelts = String(raw?.exam?.eType ?? "").toUpperCase() === "IELTS";
+          const skill = String(raw?.exam?.eSkill ?? "listening").toLowerCase();
+          const reviewUrl = isIelts
+            ? `${STUDENT_BASE}/lam-bai-ielts/${raw.exam_id}/${skill}?review=${submissionId}`
+            : `${STUDENT_BASE}/lam-bai-vstep/${raw.exam_id}?review=${submissionId}`;
+          return (
+            <Link
+              to={reviewUrl}
+              className="flex items-center justify-center gap-2 py-3 rounded-lg font-semibold text-sm text-white bg-slate-900 hover:bg-slate-800 transition-colors"
+            >
+              <Eye className="w-4 h-4" />
+              Xem lại bài thi (đúng / sai từng câu)
+            </Link>
+          );
+        })()}
         <div className="grid grid-cols-2 gap-3">
           <Link
             to={`${STUDENT_BASE}/dap-an/${submissionId}`}
-            className="flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm transition-opacity hover:opacity-90"
-            style={{ background: "linear-gradient(135deg, #7C3AED, #0EA5E9)", color: "#fff" }}
+            className="flex items-center justify-center gap-2 py-3 rounded-lg font-medium text-sm text-slate-700 border border-slate-200 hover:bg-slate-50 transition-colors"
           >
             <Eye className="w-4 h-4" />
-            Xem đáp án đầy đủ
+            Đáp án đầy đủ
           </Link>
           <button
             onClick={() => navigate(`${STUDENT_BASE}/de-thi`)}
-            className="flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm border-2 border-slate-200 text-slate-600 hover:bg-slate-50 transition"
+            className="flex items-center justify-center gap-2 py-3 rounded-lg font-medium text-sm text-slate-700 border border-slate-200 hover:bg-slate-50 transition-colors"
           >
             <Home className="w-4 h-4" />
-            Về trang đề thi
+            Trang đề thi
           </button>
         </div>
       </div>

@@ -6,7 +6,9 @@ use App\Models\GradingHistory;
 use App\Models\Submission;
 use App\Models\SubmissionAnswer;
 use App\Models\User;
+use App\Services\PushNotificationService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Handles teacher review actions on AI-graded answers.
@@ -263,6 +265,19 @@ class GradingReviewService
                 'ghNew_score'   => $overallAvg,
                 'ghMetadata'    => [$scoresKey => $skillScores],
             ]);
+
+            // Push notification khi giáo viên chấm xong
+            try {
+                $examTitle = optional($submission->exam)->eTitle ?? 'Bài thi';
+                (new PushNotificationService())->sendToUser(
+                    (int) $submission->user_id,
+                    '📝 Giáo viên đã chấm xong bài của bạn',
+                    $examTitle . ' · Xem kết quả ngay',
+                    ['url' => '/hoc-vien/ket-qua/' . $submission->sId]
+                );
+            } catch (\Exception $e) {
+                Log::warning('[Push] Teacher review push failed: ' . $e->getMessage());
+            }
         });
 
         return $submission->fresh();

@@ -843,23 +843,65 @@ class SystemReportController extends Controller
         }
     }
 
+    /**
+     * Flatten any nested array/object into "dot.notation" => scalar map
+     * for CSV export.
+     */
+    private function flattenForCsv($data, $prefix = '')
+    {
+        $rows = [];
+        if (!is_array($data) && !is_object($data)) {
+            $rows[$prefix !== '' ? $prefix : 'value'] = is_bool($data) ? ($data ? 'true' : 'false') : (string) $data;
+            return $rows;
+        }
+        $arr = is_object($data) ? (array) $data : $data;
+        foreach ($arr as $k => $v) {
+            $key = $prefix === '' ? (string) $k : $prefix . '.' . $k;
+            if (is_array($v) || is_object($v)) {
+                $rows = array_merge($rows, $this->flattenForCsv($v, $key));
+            } else {
+                $rows[$key] = is_bool($v) ? ($v ? 'true' : 'false') : (string) ($v ?? '');
+            }
+        }
+        return $rows;
+    }
+
     private function exportToCsv($data, $type)
     {
-        // CSV export implementation
-        return response()->json([
-            'status' => 'success',
-            'message' => 'CSV export sẽ được implement trong phiên bản sau',
-            'data' => $data
-        ]);
+        $flat = $this->flattenForCsv($data);
+        $filename = 'report_' . $type . '_' . date('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Cache-Control'       => 'no-store, no-cache',
+        ];
+
+        $callback = function () use ($flat, $type) {
+            $out = fopen('php://output', 'w');
+            // BOM for Excel UTF-8
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['type', $type]);
+            fputcsv($out, ['generated_at', now()->toDateTimeString()]);
+            fputcsv($out, []);
+            fputcsv($out, ['key', 'value']);
+            foreach ($flat as $k => $v) {
+                fputcsv($out, [$k, $v]);
+            }
+            fclose($out);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     private function exportToPdf($data, $type)
     {
-        // PDF export implementation
+        // PDF export — fallback to JSON until a PDF library is added.
         return response()->json([
             'status' => 'success',
             'message' => 'PDF export sẽ được implement trong phiên bản sau',
-            'data' => $data
+            'data' => $data,
+            'type' => $type,
         ]);
     }
 }

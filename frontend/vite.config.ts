@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
   ],
   optimizeDeps: {
-    exclude: ['pdfjs-dist'],
+    exclude: ['pdfjs-dist', '@huggingface/transformers'],
   },
   build: {
     chunkSizeWarningLimit: 2500,

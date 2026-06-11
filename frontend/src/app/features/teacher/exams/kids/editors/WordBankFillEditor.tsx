@@ -434,46 +434,44 @@ const WordBankFillEditor: React.FC<WordBankFillEditorProps> = ({
   };
 
   return (
-    <div className="space-y-6 rounded-2xl border-4 border-violet-200 bg-white p-6 shadow-xl">
+    <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       {/* Header */}
-      <div className="border-b-4 border-violet-100 pb-4">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-5xl">🏦</span>
-            <div>
-              <h3 className="font-baloo text-3xl font-bold text-violet-600">
-                Điền Từ Từ Ngân Hàng Từ
-              </h3>
-              <p className="text-sm text-gray-600">
-                Học viên chọn từ trong ngân hàng để điền vào chỗ trống (Starters, Movers)
-              </p>
-            </div>
+      <div className="border-b border-slate-200 pb-4">
+        <div className="mb-4 flex items-center gap-3">
+          <span className="text-2xl">🏦</span>
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">
+              Điền từ từ ngân hàng từ
+            </h3>
+            <p className="text-sm text-slate-500">
+              Học viên chọn từ trong ngân hàng để điền vào chỗ trống (Starters, Movers)
+            </p>
           </div>
         </div>
 
         {/* Title Input */}
         <div>
-          <label className="mb-2 block font-baloo text-lg font-bold text-gray-700">
-            📝 Tiêu đề câu hỏi:
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">
+            Tiêu đề câu hỏi
           </label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full rounded-xl border-2 border-violet-200 px-4 py-3 text-lg focus:border-violet-400 focus:outline-none"
+            className="w-full rounded-lg border border-slate-300 px-4 py-2.5 focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
             placeholder="VD: Chọn từ đúng để điền vào chỗ trống"
           />
         </div>
       </div>
 
       {/* Instructions */}
-      <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4">
-        <h4 className="mb-2 font-baloo text-lg font-bold text-blue-600">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <h4 className="mb-2 text-sm font-semibold text-slate-700">
           💡 Hướng dẫn:
         </h4>
-        <ul className="space-y-1 text-sm text-gray-700">
+        <ul className="space-y-1 text-sm text-slate-600">
           <li>• Upload hình ảnh chính (tùy chọn) - Giống đề Cambridge thật</li>
-          <li>• Sử dụng <code className="rounded bg-blue-100 px-2 py-1 font-mono">__1__</code>, <code className="rounded bg-blue-100 px-2 py-1 font-mono">__2__</code>, ... để đánh dấu chỗ trống</li>
+          <li>• Sử dụng <code className="rounded bg-slate-100 px-2 py-1 font-mono">__1__</code>, <code className="rounded bg-slate-100 px-2 py-1 font-mono">__2__</code>, ... để đánh dấu chỗ trống</li>
           <li>• Nhấn "Phát hiện chỗ trống" sau khi nhập đoạn văn</li>
           <li>• Thêm từ + hình ảnh vào ngân hàng từ (bao gồm cả từ đúng và từ nhiễu)</li>
           <li>• Chọn đáp án đúng cho mỗi chỗ trống</li>
@@ -482,15 +480,15 @@ const WordBankFillEditor: React.FC<WordBankFillEditorProps> = ({
       </div>
 
       {/* Main Image Upload */}
-      <div className="rounded-xl border-4 border-purple-200 bg-purple-50 p-6">
-        <h4 className="mb-3 font-baloo text-xl font-bold text-purple-600">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+        <h4 className="mb-3 text-base font-semibold text-slate-800">
           🖼️ Hình ảnh chính (Tùy chọn)
         </h4>
-        <p className="mb-4 text-sm text-gray-600">
+        <p className="mb-4 text-sm text-slate-500">
           Upload 1 hình ảnh lớn làm context cho cả đoạn văn (giống đề Cambridge thật)
         </p>
-        <p className="mb-3 text-xs font-medium text-purple-600 bg-purple-50 px-3 py-2 rounded-lg border border-purple-200">
-          💡 Mẹo: Bạn có thể <span className="font-bold">Ctrl+V</span> để paste ảnh trực tiếp!
+        <p className="mb-3 text-xs font-medium text-slate-600 bg-white px-3 py-2 rounded-lg border border-slate-200">
+          💡 Mẹo: Bạn có thể <span className="font-semibold">Ctrl+V</span> để paste ảnh trực tiếp!
         </p>
 
         {!mainImageUrl ? (
@@ -506,20 +504,20 @@ const WordBankFillEditor: React.FC<WordBankFillEditorProps> = ({
             }}
             onFocus={() => setFocusedImageArea('main')}
             onBlur={() => setFocusedImageArea(null)}
-            className={`cursor-pointer rounded-xl border-2 border-dashed transition-colors ${
+            className={`cursor-pointer rounded-xl border border-dashed transition-colors ${
               focusedImageArea === 'main'
-                ? 'border-purple-500 bg-purple-50'
-                : 'border-purple-300 bg-white'
+                ? 'border-orange-400 bg-orange-50'
+                : 'border-slate-300 bg-white hover:border-orange-400 hover:bg-orange-50/40'
             }`}
           >
             <div className="flex flex-col items-center justify-center p-8">
-              <ImageIcon className="mb-3 h-16 w-16 text-purple-400" />
-              <span className="mb-2 text-lg font-bold text-purple-700">
+              <ImageIcon className="mb-3 h-12 w-12 text-slate-400" />
+              <span className="mb-2 text-sm font-medium text-slate-700">
                 {uploadingMainImage ? '⏳ Đang tải lên...' : 'Nhấn để tải ảnh hoặc Ctrl+V'}
               </span>
-              <span className="text-sm text-purple-600">PNG, JPG (tối đa 20MB)</span>
+              <span className="text-xs text-slate-400">PNG, JPG (tối đa 20MB)</span>
               {focusedImageArea === 'main' && (
-                <p className="mt-3 text-sm font-bold text-purple-700 animate-pulse">
+                <p className="mt-3 text-xs font-semibold text-orange-600">
                   💡 Bạn có thể Ctrl+V để dán ảnh từ clipboard
                 </p>
               )}
@@ -534,12 +532,12 @@ const WordBankFillEditor: React.FC<WordBankFillEditorProps> = ({
             />
           </div>
         ) : (
-          <div className="relative rounded-xl border-4 border-purple-400 bg-white p-4">
+          <div className="relative rounded-xl border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-center">
               <img
                 src={mainImageUrl}
                 alt="Main context image"
-                className="max-h-96 w-auto rounded-lg shadow-lg"
+                className="max-h-96 w-auto rounded-lg shadow-sm"
               />
             </div>
             <button
@@ -558,27 +556,27 @@ const WordBankFillEditor: React.FC<WordBankFillEditorProps> = ({
       </div>
 
       {/* Text Input */}
-      <div className="rounded-xl border-2 border-violet-200 bg-white p-6">
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
         <div className="mb-3 flex items-center justify-between">
-          <label className="font-medium text-gray-700">
+          <label className="font-medium text-slate-700">
             Đoạn văn: <span className="text-red-500">*</span>
           </label>
           <button
             onClick={detectGaps}
-            className="rounded-lg border-2 border-violet-300 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-600 transition-all hover:bg-violet-100"
+            className="rounded-lg border border-orange-300 bg-orange-50 px-4 py-2 text-sm font-medium text-orange-600 transition-colors hover:bg-orange-100"
           >
             🔍 Phát hiện chỗ trống
           </button>
         </div>
 
         {/* Formatting Toolbar */}
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border-2 border-violet-200 bg-violet-50 p-3">
-          <span className="text-sm font-bold text-violet-700">✨ Định dạng:</span>
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <span className="text-sm font-semibold text-slate-600">Định dạng:</span>
           
           <button
             type="button"
             onClick={makeBold}
-            className="flex items-center gap-1 rounded-lg border-2 border-violet-300 bg-white px-3 py-1 text-sm font-bold transition-all hover:bg-violet-100"
+            className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm font-bold transition-colors hover:bg-slate-100"
             title="In đậm (bôi đen text rồi nhấn)"
           >
             <span className="font-bold">B</span>
@@ -634,7 +632,7 @@ const WordBankFillEditor: React.FC<WordBankFillEditorProps> = ({
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={8}
-          className="w-full rounded-xl border-2 border-violet-200 px-4 py-3 leading-relaxed focus:border-violet-400 focus:outline-none"
+          className="w-full rounded-lg border border-slate-300 px-4 py-3 leading-relaxed focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
           placeholder="Nhập đoạn văn với chỗ trống...
 
 VD:
@@ -647,32 +645,32 @@ Tom likes to __1__ football in the park. He has a **big** __2__ ball. Every day 
         )}
         
         {/* Format Guide */}
-        <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
-          <p className="mb-1 text-xs font-bold text-blue-700">📖 Hướng dẫn format:</p>
-          <ul className="space-y-1 text-xs text-blue-600">
-            <li>• <code className="rounded bg-blue-100 px-1">**text**</code> = <strong>in đậm</strong></li>
-            <li>• <code className="rounded bg-blue-100 px-1">&lt;mark style="background-color: #ffeb3b"&gt;text&lt;/mark&gt;</code> = <mark style={{ backgroundColor: '#ffeb3b' }}>tô màu</mark></li>
+        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <p className="mb-1 text-xs font-semibold text-slate-700">📖 Hướng dẫn format:</p>
+          <ul className="space-y-1 text-xs text-slate-600">
+            <li>• <code className="rounded bg-slate-100 px-1">**text**</code> = <strong>in đậm</strong></li>
+            <li>• <code className="rounded bg-slate-100 px-1">&lt;mark style="background-color: #ffeb3b"&gt;text&lt;/mark&gt;</code> = <mark style={{ backgroundColor: '#ffeb3b' }}>tô màu</mark></li>
             <li>• Hoặc bôi đen text và nhấn nút format ở trên</li>
           </ul>
         </div>
       </div>
 
       {/* Word Bank */}
-      <div className="rounded-xl border-2 border-violet-200 bg-white p-6">
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
         <div className="mb-4 flex items-center justify-between">
-          <h4 className="font-baloo text-xl font-bold text-violet-600">
+          <h4 className="text-base font-semibold text-slate-800">
             🏦 Ngân hàng từ ({wordBank.length} từ)
           </h4>
           
           {/* Toggle for images in word bank */}
-          <label className="flex items-center gap-2 cursor-pointer rounded-lg border-2 border-violet-300 bg-violet-50 px-4 py-2">
+          <label className="flex items-center gap-2 cursor-pointer rounded-lg border border-slate-300 bg-slate-50 px-4 py-2">
             <input
               type="checkbox"
               checked={hasImagesInBank}
               onChange={(e) => setHasImagesInBank(e.target.checked)}
-              className="h-5 w-5 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+              className="h-5 w-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
             />
-            <span className="text-sm font-medium text-violet-700">
+            <span className="text-sm font-medium text-slate-700">
               📸 Có hình ảnh kèm từ
             </span>
           </label>
@@ -687,9 +685,9 @@ Tom likes to __1__ football in the park. He has a **big** __2__ ball. Every day 
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {wordBank.map((item, index) => (
-            <div key={index} className="rounded-xl border-2 border-violet-200 bg-violet-50 p-4">
+            <div key={index} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <div className="mb-3 flex items-center justify-between">
-                <span className="font-baloo text-sm font-bold text-violet-600">
+                <span className="text-sm font-semibold text-slate-600">
                   Từ #{index + 1}
                 </span>
                 {wordBank.length > 5 && (
@@ -707,16 +705,16 @@ Tom likes to __1__ football in the park. He has a **big** __2__ ball. Every day 
                 type="text"
                 value={item.word}
                 onChange={(e) => updateWordBank(index, 'word', e.target.value)}
-                className="mb-3 w-full rounded-lg border-2 border-violet-200 px-3 py-2 font-medium focus:border-violet-400 focus:outline-none"
+                className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 font-medium focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
                 placeholder={`Nhập từ ${index + 1}`}
               />
 
               {/* Image Upload - Only show if hasImagesInBank is true */}
               {hasImagesInBank && (
               <div className="mb-2">
-                <label className="mb-1 flex items-center justify-between text-xs font-bold text-gray-700">
+                <label className="mb-1 flex items-center justify-between text-xs font-medium text-slate-600">
                   <span>Hình ảnh</span>
-                  <span className="text-xs font-normal text-violet-600">💡 Nhấn vào ô rồi Ctrl+V</span>
+                  <span className="text-xs font-normal text-slate-400">💡 Nhấn vào ô rồi Ctrl+V</span>
                 </label>
                 {!item.imageUrl ? (
                   <div
@@ -731,24 +729,24 @@ Tom likes to __1__ football in the park. He has a **big** __2__ ball. Every day 
                     }}
                     onFocus={() => setFocusedImageArea(index)}
                     onBlur={() => setFocusedImageArea(null)}
-                    className={`cursor-pointer rounded-lg border-2 border-dashed transition-all ${
+                    className={`cursor-pointer rounded-lg border border-dashed transition-all ${
                       focusedImageArea === index
-                        ? 'border-violet-500 bg-violet-100 shadow-lg'
-                        : 'border-violet-300 bg-white hover:border-violet-400 hover:bg-violet-50'
+                        ? 'border-orange-400 bg-orange-50'
+                        : 'border-slate-300 bg-white hover:border-orange-400 hover:bg-orange-50/40'
                     }`}
                   >
                     <div className="flex flex-col items-center justify-center p-4">
                       <ImageIcon className={`mb-1 h-8 w-8 ${
-                        focusedImageArea === index ? 'text-violet-600' : 'text-violet-400'
+                        focusedImageArea === index ? 'text-orange-500' : 'text-slate-400'
                       }`} />
                       <span className={`text-xs font-medium ${
-                        focusedImageArea === index ? 'text-violet-700' : 'text-violet-600'
+                        focusedImageArea === index ? 'text-orange-600' : 'text-slate-500'
                       }`}>
                         {uploadingWordImage === index ? '⏳ Đang tải...' : 'Click hoặc Ctrl+V'}
                       </span>
                       {focusedImageArea === index && (
-                        <div className="mt-2 rounded-lg bg-violet-200 px-3 py-1">
-                          <p className="text-xs font-bold text-violet-800 animate-pulse">
+                        <div className="mt-2 rounded-lg bg-orange-100 px-3 py-1">
+                          <p className="text-xs font-semibold text-orange-700">
                             ⌨️ Sẵn sàng paste!
                           </p>
                         </div>
@@ -768,7 +766,7 @@ Tom likes to __1__ football in the park. He has a **big** __2__ ball. Every day 
                     <img
                       src={item.imageUrl}
                       alt={item.word}
-                      className="h-24 w-full rounded-lg border-2 border-violet-300 object-cover"
+                      className="h-24 w-full rounded-lg border border-slate-200 object-cover"
                     />
                     <button
                       type="button"
@@ -788,7 +786,7 @@ Tom likes to __1__ football in the park. He has a **big** __2__ ball. Every day 
         {wordBank.length < 12 && (
           <button
             onClick={addWordSlot}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-violet-300 bg-violet-50 py-3 font-medium text-violet-600 transition-all hover:bg-violet-100"
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 py-3 text-sm font-medium text-slate-600 transition-colors hover:border-orange-400 hover:bg-orange-50/40"
           >
             <Plus className="h-4 w-4" />
             <span>Thêm từ</span>
@@ -798,28 +796,28 @@ Tom likes to __1__ football in the park. He has a **big** __2__ ball. Every day 
 
       {/* Gaps Answers */}
       {gaps.length > 0 && (
-        <div className="rounded-xl border-2 border-violet-200 bg-white p-6">
+        <div className="rounded-xl border border-slate-200 bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h4 className="font-baloo text-xl font-bold text-violet-600">
-              ✅ Đáp án đúng
+            <h4 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+              <span className="text-lg">✅</span> Đáp án đúng
             </h4>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-slate-500">
               {getScorableItemsCount(gaps)} câu chấm điểm • {getExampleItemsCount(gaps)} câu ví dụ
             </div>
           </div>
           <div className="space-y-4">
             {gaps.map((gap) => (
-              <div key={gap.id} className={`rounded-xl border-2 p-4 ${
+              <div key={gap.id} className={`rounded-lg border p-4 ${
                 gap.isExample
-                  ? 'border-amber-400 bg-amber-50'
-                  : 'border-violet-200 bg-violet-50'
+                  ? 'border-amber-300 bg-amber-50'
+                  : 'border-slate-200 bg-slate-50'
               }`}>
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="font-baloo text-lg font-bold text-violet-600">
+                  <span className="text-sm font-semibold text-slate-900">
                     Chỗ trống {gap.gapNumber}:
                   </span>
                   {gap.isExample && (
-                    <span className="rounded-full bg-amber-500 px-3 py-1 text-sm font-bold text-white">
+                    <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white">
                       📌 Câu ví dụ
                     </span>
                   )}
@@ -832,9 +830,9 @@ Tom likes to __1__ football in the park. He has a **big** __2__ ball. Every day 
                       type="checkbox"
                       checked={gap.isExample || false}
                       onChange={(e) => updateGapExample(gap.gapNumber, e.target.checked)}
-                      className="h-5 w-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                      className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-400"
                     />
-                    <span className="text-sm font-medium text-gray-700">
+                    <span className="text-sm font-medium text-slate-700">
                       ✨ Đánh dấu là ví dụ (không tính điểm)
                     </span>
                   </label>
@@ -843,7 +841,7 @@ Tom likes to __1__ football in the park. He has a **big** __2__ ball. Every day 
                   <select
                     value={gap.correctWord || ''}
                     onChange={(e) => updateGapAnswer(gap.gapNumber, e.target.value)}
-                    className="w-full rounded-xl border-2 border-violet-200 px-4 py-2 font-medium focus:border-violet-400 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
                   >
                     <option value="">-- Chọn đáp án đúng --</option>
                     {wordBank.filter(w => w.word.trim()).map((item, index) => (
@@ -854,8 +852,8 @@ Tom likes to __1__ football in the park. He has a **big** __2__ ball. Every day 
                   </select>
                   {/* Debug info */}
                   {gap.correctWord && (
-                    <p className="text-xs text-green-600 mt-1">
-                      ✅ Đã chọn: <span className="font-bold">{gap.correctWord}</span>
+                    <p className="text-xs text-emerald-600 mt-1">
+                      ✅ Đã chọn: <span className="font-semibold">{gap.correctWord}</span>
                     </p>
                   )}
                 </div>
@@ -867,18 +865,18 @@ Tom likes to __1__ football in the park. He has a **big** __2__ ball. Every day 
 
       {/* Preview */}
       {gaps.length > 0 && (
-        <div className="rounded-xl border-2 border-purple-200 bg-purple-50 p-6">
-          <h4 className="mb-4 font-baloo text-xl font-bold text-purple-600">
-            👀 Xem trước
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+          <h4 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900">
+            <span className="text-lg">👀</span> Xem trước
           </h4>
-          <div className="rounded-xl bg-white p-6">
+          <div className="rounded-lg border border-slate-200 bg-white p-6">
             {/* Main Image Preview */}
             {mainImageUrl && (
               <div className="mb-6 flex justify-center">
                 <img
                   src={mainImageUrl}
                   alt="Main context"
-                  className="max-h-64 rounded-lg border-4 border-purple-300 shadow-lg"
+                  className="max-h-64 rounded-lg border border-slate-200 shadow-sm"
                 />
               </div>
             )}
@@ -889,13 +887,13 @@ Tom likes to __1__ football in the park. He has a **big** __2__ ball. Every day 
             </div>
 
             {/* Word Bank Preview */}
-            <div className="border-t-2 border-purple-200 pt-4">
-              <p className="mb-3 font-bold text-purple-700">Ngân hàng từ:</p>
+            <div className="border-t border-slate-200 pt-4">
+              <p className="mb-3 font-semibold text-slate-700">Ngân hàng từ:</p>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 {wordBank.filter(w => w.word.trim()).map((item, index) => (
                   <div
                     key={index}
-                    className="rounded-lg border-2 border-purple-300 bg-white p-2 text-center"
+                    className="rounded-lg border border-slate-200 bg-white p-2 text-center"
                   >
                     {item.imageUrl && (
                       <img
@@ -911,12 +909,12 @@ Tom likes to __1__ football in the park. He has a **big** __2__ ball. Every day 
             </div>
 
             {/* Scoring Info */}
-            <div className="mt-4 rounded-lg bg-green-50 border-2 border-green-200 p-3">
-              <p className="text-sm font-bold text-green-700">
+            <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+              <p className="text-sm font-semibold text-emerald-700">
                 📊 Tính điểm: {getScorableItemsCount(gaps)} câu × 1 điểm = {getScorableItemsCount(gaps)} điểm
               </p>
               {getExampleItemsCount(gaps) > 0 && (
-                <p className="text-xs text-green-600 mt-1">
+                <p className="text-xs text-emerald-600 mt-1">
                   ({getExampleItemsCount(gaps)} câu ví dụ không tính điểm)
                 </p>
               )}
@@ -926,19 +924,19 @@ Tom likes to __1__ football in the park. He has a **big** __2__ ball. Every day 
       )}
 
       {/* Action Buttons */}
-      <div className="flex justify-end space-x-3 border-t-2 border-gray-200 pt-4">
+      <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
         <button
           onClick={onCancel}
-          className="flex items-center space-x-2 rounded-lg border-2 border-gray-300 px-6 py-3 transition-colors hover:bg-gray-50"
+          className="flex items-center gap-2 rounded-lg border border-slate-300 px-6 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
         >
-          <X className="h-5 w-5" />
+          <X className="h-4 w-4" />
           <span>Hủy</span>
         </button>
         <button
           onClick={handleSave}
-          className="flex items-center space-x-2 rounded-lg bg-violet-600 px-6 py-3 text-white transition-colors hover:bg-violet-700"
+          className="flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-orange-600"
         >
-          <Save className="h-5 w-5" />
+          <Save className="h-4 w-4" />
           <span>Lưu câu hỏi</span>
         </button>
       </div>

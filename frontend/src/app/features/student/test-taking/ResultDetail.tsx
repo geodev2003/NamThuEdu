@@ -1,7 +1,6 @@
 import { useParams, useNavigate, Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  RotateCcw,
   Eye,
   TrendingUp,
   Clock,
@@ -84,6 +83,15 @@ export function ResultDetail({ modalSubmissionId }: { modalSubmissionId?: number
   const vstepMeta = submission?.vstep_meta;
   const isVstep = vstepMeta?.is_vstep;
   const vstepScores = vstepMeta?.vstep_scores || {};
+  const examId = submission?.exam_id ?? submission?.exam?.eId;
+  const examType = String(submission?.exam?.eType ?? "").toUpperCase();
+
+  const getSkillReviewUrl = (key: string) => {
+    if (examType === "IELTS" && examId) {
+      return `${STUDENT_BASE_PATH}/lam-bai-ielts/${examId}/${key}?review=${submissionId}`;
+    }
+    return `${STUDENT_BASE_PATH}/dap-an/${submissionId}`;
+  };
 
   const scoreRaw = isVstep ? (vstepMeta?.overall_avg ?? 0) : (submission?.sScore ?? 0);
   const score = typeof scoreRaw === "number" ? scoreRaw : parseFloat(scoreRaw) || 0;
@@ -165,7 +173,7 @@ export function ResultDetail({ modalSubmissionId }: { modalSubmissionId?: number
   };
 
   return (
-    <div className="py-2 max-w-4xl mx-auto space-y-6 animate-fadeIn">
+    <div className="py-2 max-w-4xl mx-auto space-y-4 animate-fadeIn">
       {/* Back Button */}
       {!modalSubmissionId && (
         <button onClick={() => navigate(`${STUDENT_BASE_PATH}/bai-tap`)}
@@ -175,10 +183,10 @@ export function ResultDetail({ modalSubmissionId }: { modalSubmissionId?: number
       )}
 
       {/* Main Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         
         {/* Left Column: Score Card */}
-        <div className="bg-slate-50/30 backdrop-blur-sm rounded-3xl p-6 flex flex-col items-center justify-center space-y-6 border border-slate-100"
+        <div className="bg-slate-50/30 backdrop-blur-sm rounded-3xl p-5 flex flex-col items-center justify-center space-y-4 border border-slate-100"
           style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.02)" }}>
           <div className="text-center">
             <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Điểm số tổng quan</h2>
@@ -217,75 +225,59 @@ export function ResultDetail({ modalSubmissionId }: { modalSubmissionId?: number
         </div>
 
         {/* Right Column: Details & Stats & Actions */}
-        <div className="md:col-span-2 bg-white rounded-3xl p-6 flex flex-col justify-between border border-slate-100"
+        <div className="md:col-span-2 bg-white rounded-3xl p-5 flex flex-col justify-between border border-slate-100"
           style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.02)" }}>
-          
+
           {/* Header Info */}
-          <div className="space-y-2.5">
-            <div>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase"
-                style={{
-                  backgroundColor: submission?.exam?.eType === "VSTEP" ? "#e0e7ff" : "#f1f5f9",
-                  color: submission?.exam?.eType === "VSTEP" ? "#4f46e5" : "#475569"
-                }}>
-                {submission?.exam?.eType ?? "BÀI THI"}
-              </span>
-            </div>
-            <h1 className="font-black text-slate-900 leading-snug tracking-tight" style={{ fontSize: 22 }}>
+          <div className="space-y-2">
+            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase text-slate-400 bg-slate-100">
+              {submission?.exam?.eType ?? "BÀI THI"}
+            </span>
+            <h1 className="font-black text-slate-900 leading-snug tracking-tight" style={{ fontSize: 20 }}>
               {submission?.exam?.eTitle ?? "Bài thi"}
             </h1>
-            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs text-slate-400 font-bold">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
               {submission?.sSubmit_time && (
-                <span className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-slate-350" />
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
                   Nộp lúc {formatTime(submission?.sSubmit_time)}
                 </span>
               )}
-              {submission?.exam?.teacher?.uName && (
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                  Giảng viên chấm: <span className="text-slate-600 font-black">{submission.exam.teacher.uName}</span>
-                </span>
-              )}
+              <span className="flex items-center gap-1">
+                <span className="w-1 h-1 rounded-full bg-slate-300" />
+                {submission?.teacher_reviewed_at && submission?.exam?.teacher?.uName
+                  ? <>Chấm bởi <span className="text-slate-500 font-semibold">{submission.exam.teacher.uName}</span></>
+                  : <>Chấm bởi <span className="text-slate-500 font-semibold">Hệ thống</span></>
+                }
+              </span>
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-3 gap-3 my-6">
+          {/* Stats row */}
+          <div className="grid grid-cols-3 gap-2.5 my-4">
             {[
-              { icon: CheckCircle, label: "Số câu đúng", value: `${answeredCorrect}/${totalQuestions}`, color: "#10b981", bg: "#ecfdf5", border: "#d1fae5" },
-              { icon: Clock, label: "Trạng thái", value: submission?.sStatus === "graded" ? "Đã chấm" : "Đã nộp", color: "#3b82f6", bg: "#eff6ff", border: "#dbeafe" },
-              { icon: TrendingUp, label: "Lần làm bài", value: `Lần thứ ${submission?.sAttempt ?? 1}`, color: "#8b5cf6", bg: "#f5f3ff", border: "#ede9fe" },
+              { icon: CheckCircle, label: "Số câu đúng", value: `${answeredCorrect}/${totalQuestions}` },
+              { icon: Clock, label: "Trạng thái", value: submission?.sStatus === "graded" ? "Đã chấm" : "Đã nộp" },
+              { icon: TrendingUp, label: "Lần làm bài", value: `Lần thứ ${submission?.sAttempt ?? 1}` },
             ].map((s) => (
-              <div key={s.label} className="rounded-2xl p-4 border flex flex-col justify-between min-h-[105px] transition-all hover:-translate-y-0.5 hover:shadow-md"
-                style={{ background: "#ffffff", borderColor: "#f1f5f9" }}>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: s.bg }}>
-                  <s.icon className="w-4 h-4" style={{ color: s.color }} />
-                </div>
+              <div key={s.label} className="rounded-xl p-3.5 bg-slate-50 border border-slate-100 flex flex-col gap-2">
+                <s.icon className="w-4 h-4 text-slate-400" />
                 <div>
-                  <p className="text-slate-850 font-black text-sm md:text-base mt-2">{s.value}</p>
-                  <p className="text-slate-400 font-bold text-[9px] uppercase tracking-wider mt-0.5">{s.label}</p>
+                  <p className="text-slate-800 font-black text-sm">{s.value}</p>
+                  <p className="text-slate-400 text-[10px] font-medium mt-0.5">{s.label}</p>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100">
+          {/* Action */}
+          <div className="pt-4 border-t border-slate-100">
             <Link to={`${STUDENT_BASE_PATH}/dap-an/${submissionId}`}
               onClick={() => window.dispatchEvent(new Event("close-result-modal"))}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white transition-all shadow-md shadow-sky-500/10 hover:shadow-lg hover:shadow-sky-500/20 active:scale-[0.99]"
-              style={{ background: `linear-gradient(135deg, ${PRIMARY}, #0284c7)`, fontSize: 14 }}>
-              <Eye className="w-4.5 h-4.5" /> Xem đáp án chi tiết
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white bg-[#0ea5e9] hover:bg-[#0284c7] active:scale-[0.99] transition-all"
+            >
+              <Eye className="w-4 h-4" /> Xem đáp án chi tiết
             </Link>
-            {assignmentId && (
-              <Link to={`${STUDENT_BASE_PATH}/lam-bai/${assignmentId}`}
-                onClick={() => window.dispatchEvent(new Event("close-result-modal"))}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold border border-slate-200/80 bg-white text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-350 active:scale-[0.99]"
-                style={{ fontSize: 14 }}>
-                <RotateCcw className="w-4.5 h-4.5" /> Làm lại bài thi
-              </Link>
-            )}
           </div>
 
         </div>
@@ -293,10 +285,10 @@ export function ResultDetail({ modalSubmissionId }: { modalSubmissionId?: number
       </div>
 
       {/* Detailed Information & Part/Skill Scores */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         
         {/* General Details Card */}
-        <div className="bg-white rounded-3xl p-6 space-y-4 border border-slate-100"
+        <div className="bg-white rounded-3xl p-5 space-y-3 border border-slate-100"
           style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.02)" }}>
           <div className="border-b border-slate-100 pb-3">
             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Thông tin chi tiết</h3>
@@ -304,9 +296,15 @@ export function ResultDetail({ modalSubmissionId }: { modalSubmissionId?: number
           <div className="space-y-3">
             {[
               { icon: User, label: "Học viên", value: submission?.user?.uName ?? "Chưa cập nhật" },
-              { icon: Award, label: "Giảng viên chấm", value: submission?.exam?.teacher?.uName ?? "Hệ thống tự động" },
               { icon: Clock, label: "Ngày làm bài", value: submission?.sSubmit_time ? formatTime(submission?.sSubmit_time) : "—" },
               { icon: Calendar, label: "Ngày chấm", value: submission?.sGraded_time || submission?.teacher_reviewed_at ? formatTime(submission?.sGraded_time || submission?.teacher_reviewed_at) : "Chưa chấm điểm" },
+              {
+                icon: Award,
+                label: "Người chấm",
+                value: submission?.teacher_reviewed_at && submission?.exam?.teacher?.uName
+                  ? submission.exam.teacher.uName
+                  : "Hệ thống",
+              },
             ].map((item, idx) => {
               const Icon = item.icon;
               return (
@@ -325,86 +323,68 @@ export function ResultDetail({ modalSubmissionId }: { modalSubmissionId?: number
         </div>
 
         {/* Scores/Parts Details Card */}
-        <div className="md:col-span-2 bg-white rounded-3xl p-6 space-y-4 border border-slate-100"
+        <div className="md:col-span-2 bg-white rounded-3xl p-5 space-y-3 border border-slate-100"
           style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.02)" }}>
           <div className="border-b border-slate-100 pb-3">
             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Điểm số từng phần</h3>
           </div>
           
           {isVstep ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {[
-                { 
-                  label: "Kỹ năng Nghe", 
-                  val: vstepScores.listening, 
-                  correct: vstepMeta?.skill_stats?.listening?.correct, 
-                  total: vstepMeta?.skill_stats?.listening?.total,
-                  icon: Headphones,
-                  color: "#3b82f6", // Blue
-                  bg: "#eff6ff",
-                  border: "#dbeafe"
-                },
-                { 
-                  label: "Kỹ năng Đọc", 
-                  val: vstepScores.reading, 
-                  correct: vstepMeta?.skill_stats?.reading?.correct, 
-                  total: vstepMeta?.skill_stats?.reading?.total,
-                  icon: BookOpen,
-                  color: "#10b981", // Emerald
-                  bg: "#ecfdf5",
-                  border: "#d1fae5"
-                },
-                { 
-                  label: "Kỹ năng Viết", 
-                  val: vstepScores.writing, 
-                  correct: null, 
-                  total: null,
-                  icon: PenTool,
-                  color: "#8b5cf6", // Purple
-                  bg: "#f5f3ff",
-                  border: "#ede9fe"
-                },
-                { 
-                  label: "Kỹ năng Nói", 
-                  val: vstepScores.speaking, 
-                  correct: null, 
-                  total: null,
-                  icon: Mic,
-                  color: "#f59e0b", // Amber
-                  bg: "#fffbeb",
-                  border: "#fef3c7"
-                },
-              ].map((s) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {([
+                { key: "listening", label: "Kỹ năng Nghe", icon: Headphones,
+                  val: vstepScores.listening,
+                  correct: vstepMeta?.skill_stats?.listening?.correct,
+                  total: vstepMeta?.skill_stats?.listening?.total },
+                { key: "reading",   label: "Kỹ năng Đọc",  icon: BookOpen,
+                  val: vstepScores.reading,
+                  correct: vstepMeta?.skill_stats?.reading?.correct,
+                  total: vstepMeta?.skill_stats?.reading?.total },
+                { key: "writing",   label: "Kỹ năng Viết", icon: PenTool,
+                  val: vstepScores.writing,  correct: null, total: null },
+                { key: "speaking",  label: "Kỹ năng Nói",  icon: Mic,
+                  val: vstepScores.speaking, correct: null, total: null },
+              ] as const)
+                .filter((s) => {
+                  const sections: string[] = vstepMeta?.exam_sections ?? [];
+                  return sections.length === 0 || sections.includes(s.key);
+                })
+                .map((s) => {
                 const Icon = s.icon;
                 const isPending = s.val === null || s.val === undefined;
+                const skillUrl = getSkillReviewUrl(s.key);
                 return (
-                  <div key={s.label} className="p-4 rounded-2xl border flex items-center gap-4 transition-all hover:shadow-md hover:scale-[1.01]"
-                    style={{ backgroundColor: s.bg, borderColor: s.border }}>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: "#ffffff", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-                      <Icon className="w-5 h-5" style={{ color: s.color }} />
+                  <Link
+                    key={s.key}
+                    to={skillUrl}
+                    onClick={() => modalSubmissionId && window.dispatchEvent(new Event("close-result-modal"))}
+                    className="p-3.5 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 hover:border-slate-200 flex items-center gap-3.5 transition-colors group cursor-pointer"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-white border border-slate-100 flex items-center justify-center flex-shrink-0 group-hover:border-slate-200">
+                      <Icon className="w-4 h-4 text-slate-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{s.label}</p>
-                      <div className="mt-1 flex items-baseline justify-between">
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">{s.label}</p>
+                      <div className="mt-0.5 flex items-baseline justify-between gap-2">
                         {isPending ? (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 animate-pulse">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                             Chờ chấm
                           </span>
                         ) : (
-                          <p className="text-base font-extrabold text-slate-850">
-                            {Number(s.val).toFixed(1)}<span className="text-xs text-slate-400 font-normal">/10.0</span>
+                          <p className="text-sm font-black text-slate-800">
+                            {Number(s.val).toFixed(1)}<span className="text-[10px] text-slate-400 font-normal">/10.0</span>
                           </p>
                         )}
-                        {s.correct !== null && s.total !== null && s.total > 0 && (
-                          <span className="text-[10px] text-slate-500 bg-white/70 px-2 py-0.5 rounded-md font-semibold">
+                        {s.correct != null && s.total != null && s.total > 0 && (
+                          <span className="text-[10px] text-slate-500 font-semibold">
                             Đúng {s.correct}/{s.total}
                           </span>
                         )}
                       </div>
                     </div>
-                  </div>
+                    <span className="text-slate-300 group-hover:text-slate-400 text-xs">›</span>
+                  </Link>
                 );
               })}
             </div>

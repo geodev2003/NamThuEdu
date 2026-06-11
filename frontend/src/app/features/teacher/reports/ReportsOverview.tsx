@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { usePageTitle, PAGE_TITLES } from "@/hooks/usePageTitle";
+import { usePageHeader } from "@/contexts/TeacherHeaderContext";
 import { useTeacherReports } from "@/hooks/useTeacherReports";
 import { getAssetUrl } from "@/utils/apiConfig";
 import {
@@ -119,6 +120,7 @@ const CustomTooltip = ({ active, payload }: any) => {
 
 export function ReportsOverview() {
   usePageTitle(PAGE_TITLES.TEACHER_REPORTS);
+  usePageHeader({ breadcrumb: ["Dashboard", "Báo cáo"] });
   const [period, setPeriod] = useState("30days");
   const { data: reportsData, loading, error, refetch } = useTeacherReports(period);
 

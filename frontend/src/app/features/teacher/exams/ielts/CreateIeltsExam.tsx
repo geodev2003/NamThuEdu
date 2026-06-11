@@ -30,7 +30,6 @@ import {
   Clock,
   Edit3,
   Eye,
-  Settings as SettingsIcon,
   Save as SaveIcon,
   Upload,
   AlertTriangle,
@@ -49,7 +48,7 @@ import { IeltsReadingEditor } from "./editors/IeltsReadingEditor";
 import { IeltsWritingEditor } from "./editors/IeltsWritingEditor";
 import { IeltsSpeakingEditor } from "./editors/IeltsSpeakingEditor";
 import { IeltsExamStudentPreview } from "./IeltsExamStudentPreview";
-import { IeltsPlayModeConfig, type PlayModeConfig } from "./components/IeltsPlayModeConfig";
+import { type PlayModeConfig } from "./components/IeltsPlayModeConfig";
 import { IeltsImportModal } from "./components/IeltsImportModal";
 import type { IeltsSkillImport } from "../../../../../services/groqApi";
 
@@ -102,6 +101,7 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
     (location.state as any)?.description || ""
   );
   const [testType, setTestType] = useState<IeltsTestType>("Academic");
+  const [ageGroup, setAgeGroup] = useState<'kids' | 'teens' | 'adults' | 'all'>('all');
   const [skillData, setSkillData] = useState<any>(null);
   const [playMode, setPlayMode] = useState<PlayModeConfig>(DEFAULT_PLAY_MODE);
   const [activeTab, setActiveTab] = useState<ViewTab>("edit");
@@ -157,6 +157,7 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
           if (!mounted || !data) return;
           if (data.eTitle) setExamTitle(data.eTitle);
           if (data.ielts_test_type) setTestType(data.ielts_test_type);
+          if (data.age_group) setAgeGroup(data.age_group);
           // Restore skill data từ draft → editor sẽ render với initialData
           if (data.ielts_data) {
             setSkillData(data.ielts_data);
@@ -183,6 +184,7 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
           ielts_test_type: testType,
           ielts_skill: skill,
           eDifficulty: "medium",
+          age_group: ageGroup,
         });
         const newId = res.data?.data?.eId || res.data?.eId;
         if (mounted && newId) setExamId(String(newId));
@@ -225,6 +227,7 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
         eTitle: examTitle,
         eDescription: examDescription,
         ielts_test_type: testType,
+        age_group: ageGroup,
         ielts_config: {
           test_type: testType,
           skill,
@@ -276,8 +279,17 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
         ielts_data: { [getDataKey(skill)]: extractSkillItems(skill, skillData) },
         play_modes: playMode,
       });
-      success("Đã xuất bản đề thi IELTS");
-      setTimeout(() => navigate("/giao-vien/de-thi"), 600);
+      // Log activity (best-effort)
+      const { logTeacherActivity } = await import("../../../../../services/teacherActivityLog");
+      logTeacherActivity({
+        action: "exam.create",
+        entity_type: "exam",
+        entity_id: Number(examId),
+        detail: `Xuất bản đề IELTS: ${examTitle}`,
+        meta: { type: "IELTS", skill, test_type: testType },
+      });
+      success(`Đã xuất bản đề thi "${examTitle}" — học viên có thể làm bài ngay.`);
+      setTimeout(() => navigate("/giao-vien/de-thi"), 1200);
     } catch (err: any) {
       error(err?.response?.data?.message || "Không thể xuất bản đề thi");
     } finally {
@@ -373,6 +385,31 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
             ))}
           </div>
 
+          {/* Age group selector */}
+          <div className="hidden md:flex items-center gap-0.5 p-0.5 rounded-lg bg-gray-100" title="Nhóm học viên được phép truy cập đề thi">
+            {([
+              { value: 'all', label: 'Mọi nhóm' },
+              { value: 'teens', label: 'Teens' },
+              { value: 'adults', label: 'Adults' },
+            ] as { value: typeof ageGroup; label: string }[]).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  setAgeGroup(opt.value);
+                  setHasUnsavedChanges(true);
+                }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                  ageGroup === opt.value
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
           <button
             type="button"
             onClick={() => setImportOpen(true)}
@@ -449,7 +486,8 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
           {[
             { key: "edit" as ViewTab, label: "Soạn thảo", icon: Edit3 },
             { key: "preview" as ViewTab, label: "Xem trước (Học viên)", icon: Eye },
-            { key: "config" as ViewTab, label: "Chế độ chơi", icon: SettingsIcon },
+            // Tab "Chế độ chơi" đã ẩn — đề 1 skill dùng luôn DEFAULT_PLAY_MODE
+            // (Practice + Full test đều bật). Mở lại khi cần tuỳ chỉnh play mode.
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.key;
@@ -576,18 +614,6 @@ export function CreateIeltsExam({ initialSkill = "listening" }: CreateIeltsExamP
               playMode={playMode}
             />
           )}
-
-          {/* ── CONFIG TAB ── */}
-          {activeTab === "config" && (
-            <IeltsPlayModeConfig
-              skill={skill}
-              value={playMode}
-              onChange={(c) => {
-                setPlayMode(c);
-                setHasUnsavedChanges(true);
-              }}
-            />
-          )}
         </div>
       </div>
 
@@ -666,6 +692,8 @@ function normalizeImportedForEditor(imported: any, skill: IeltsSkill): any {
       ...imported,
       sections: imported.sections.map((sec: any, sIdx: number) => ({
         sectionNumber: sec.sectionNumber || sIdx + 1,
+        sectionTitle: sec.sectionTitle || sec.sectionName || "",
+        sectionInstruction: sec.sectionInstruction || sec.instructions || "",
         audioUrl: sec.audioUrl || "",
         audioFileName: sec.audioFileName || "",
         transcript: sec.transcript || "",
@@ -739,7 +767,14 @@ function normalizeQuestion(q: any, fallbackId: string): any {
   const opts = q.options || null;
   // Giữ nguyên options từ AI (có thể chỉ A-C hoặc A-E cho Choose TWO)
   // KHÔNG fill A/B/C/D rỗng vì làm rối UI cho note/form/sentence completion
-  const isMcq = q.questionType === "multiple-choice" || q.questionType === "matching-headings";
+  const isMcq = q.questionType === "multiple-choice";
+  // Các dạng matching dùng danh sách lựa chọn chung (A/B/C…) → cần options.
+  const isMatching = [
+    "matching-headings",
+    "matching-information",
+    "matching-features",
+    "matching-sentence-endings",
+  ].includes(q.questionType);
 
   let normalizedOpts: Record<string, string> | undefined;
   if (opts && typeof opts === "object") {
@@ -750,6 +785,9 @@ function normalizeQuestion(q: any, fallbackId: string): any {
   } else if (isMcq) {
     // MCQ mà thiếu options → tạo A-D rỗng để teacher điền
     normalizedOpts = { A: "", B: "", C: "", D: "" };
+  } else if (isMatching) {
+    // Matching mà thiếu options → tạo A/B/C rỗng cho danh sách lựa chọn chung
+    normalizedOpts = { A: "", B: "", C: "" };
   }
 
   return {
@@ -757,7 +795,11 @@ function normalizeQuestion(q: any, fallbackId: string): any {
     questionNumber: q.questionNumber || 0,
     questionType: q.questionType || "multiple-choice",
     questionText: q.questionText || "",
+    ...(q.taskTitle ? { taskTitle: q.taskTitle } : {}),
+    ...(q.taskInstruction ? { taskInstruction: q.taskInstruction } : {}),
     ...(normalizedOpts ? { options: normalizedOpts } : {}),
+    ...(q.wordLimit ? { wordLimit: q.wordLimit } : {}),
+    ...(q.selectCount && q.selectCount > 1 ? { selectCount: q.selectCount } : {}),
     correctAnswer: q.correctAnswer || "",
   };
 }
@@ -846,7 +888,7 @@ export function validateIeltsSkillData(skill: IeltsSkill, data: any): Validation
       }
       if (missingAnswer.length) {
         issues.push({
-          severity: "warning",
+          severity: "error",
           location: loc,
           message: `${missingAnswer.length} câu chưa có đáp án đúng (Câu ${formatRanges(missingAnswer)})`,
         });
@@ -870,15 +912,28 @@ export function validateIeltsSkillData(skill: IeltsSkill, data: any): Validation
         issues.push({ severity: "warning", location: loc, message: `Bài đọc ngắn (${p.wordCount} từ, IELTS thường 700-900 từ)` });
       }
       const qs = p.questions || [];
-      const expected = p.passageNumber === 3 ? 14 : 13;
-      if (qs.length < expected) {
-        issues.push({ severity: "error", location: loc, message: `Cần ${expected} câu hỏi (hiện ${qs.length})` });
+      if (qs.length === 0) {
+        issues.push({ severity: "error", location: loc, message: "Chưa có câu hỏi nào" });
       }
       const missingText: number[] = [];
       const missingAnswer: number[] = [];
+      const missingChoices: number[] = [];
+      const matchingSet = [
+        "matching-headings",
+        "matching-information",
+        "matching-features",
+        "matching-sentence-endings",
+      ];
       qs.forEach((q: any) => {
         if (!q.questionText?.trim()) missingText.push(q.questionNumber);
         if (!q.correctAnswer || !String(q.correctAnswer).trim()) missingAnswer.push(q.questionNumber);
+        // Matching: cần định nghĩa danh sách lựa chọn dùng chung (ít nhất 2 mục có nội dung)
+        if (matchingSet.includes(q.questionType)) {
+          const filled = Object.values(q.options || {}).filter(
+            (v: any) => v && String(v).trim()
+          ).length;
+          if (filled < 2) missingChoices.push(q.questionNumber);
+        }
       });
       if (missingText.length) {
         issues.push({
@@ -887,9 +942,16 @@ export function validateIeltsSkillData(skill: IeltsSkill, data: any): Validation
           message: `${missingText.length} câu thiếu nội dung (Câu ${formatRanges(missingText)})`,
         });
       }
-      if (missingAnswer.length) {
+      if (missingChoices.length) {
         issues.push({
           severity: "warning",
+          location: loc,
+          message: `${missingChoices.length} câu matching chưa có danh sách lựa chọn (Câu ${formatRanges(missingChoices)})`,
+        });
+      }
+      if (missingAnswer.length) {
+        issues.push({
+          severity: "error",
           location: loc,
           message: `${missingAnswer.length} câu chưa có đáp án đúng (Câu ${formatRanges(missingAnswer)})`,
         });

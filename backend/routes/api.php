@@ -97,6 +97,9 @@ Route::get('/public/courses', [CourseController::class, 'publicCourses']);
 // Public blog endpoints (no auth required)
 Route::get('/public/posts', [BlogController::class, 'publicIndex']);
 Route::get('/public/posts/{slug}', [BlogController::class, 'publicShow']);
+
+// Public news feed (Google News proxy, cached 15 minutes)
+Route::get('/public/news', [\App\Http\Controllers\NewsController::class, 'index']);
 Route::get('/public/stats', function () {
     return response()->json([
         'status' => 'success',
@@ -115,14 +118,16 @@ Route::get('/public/stats', function () {
     ]);
 });
 
-// Test upload endpoint (for development only)
-Route::post('/test/upload/audio', [FileUploadController::class, 'uploadAudio']);
-Route::post('/test/upload/image', [FileUploadController::class, 'uploadImage']);
+// Test upload endpoint (gated behind auth to prevent public access)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/test/upload/audio', [FileUploadController::class, 'uploadAudio']);
+    Route::post('/test/upload/image', [FileUploadController::class, 'uploadImage']);
 
-// Test Exam Routes (NO AUTH - for development)
-Route::post('/test/exams', [App\Http\Controllers\TestExamController::class, 'store']);
-Route::get('/test/exams/{id}', [App\Http\Controllers\TestExamController::class, 'show']);
-Route::put('/test/exams/{id}', [App\Http\Controllers\TestExamController::class, 'update']);
+    // Test Exam Routes (dev only — requires auth)
+    Route::post('/test/exams', [App\Http\Controllers\TestExamController::class, 'store']);
+    Route::get('/test/exams/{id}', [App\Http\Controllers\TestExamController::class, 'show']);
+    Route::put('/test/exams/{id}', [App\Http\Controllers\TestExamController::class, 'update']);
+});
 
 /* ========= AUTHENTICATED ROUTES ========= */
 Route::middleware('auth:sanctum')->group(function () {
@@ -195,7 +200,9 @@ Route::middleware('auth:sanctum')->group(function () {
         // Categories
         Route::get('/categories', [CategoryController::class, 'index']);
         
-        // Class Management
+        // ─── Class Management (DEPRECATED) ───────────────────────────────
+        // Class system đã bị gỡ khỏi UI flow. Giữ routes này để backward
+        // compat cho client cũ / data migration. Sẽ xóa hẳn ở phase drop DB.
         Route::get('/classes', [ClassController::class, 'index']);
         Route::post('/classes', [ClassController::class, 'store']);
         Route::get('/classes/statistics', [ClassController::class, 'statistics']);
@@ -244,6 +251,8 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // IELTS-specific routes
         Route::post('/ielts/parse-pdf', [GeminiPdfController::class, 'parsePdf']); // Gemini PDF → JSON
+        Route::post('/ielts/diarize-transcript', [GeminiPdfController::class, 'diarizeTranscript']); // Gemini phân tách speaker A/B
+        Route::post('/ielts/suggest-answers', [GeminiPdfController::class, 'suggestIeltsAnswers']); // Groq gợi ý đáp án từ transcript/passage
         Route::post('/exams/{examId}/ielts/listening/sections/{sectionNumber}/audio', [ExamController::class, 'uploadIeltsListeningAudio']);
 
         // ── IELTS exam CRUD (NEW: 1 đề = 1 skill) ──────────────────────────────
@@ -251,6 +260,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/exams/{examId}/ielts',               [IeltsExamController::class, 'updateDraft']);
         Route::post('/exams/{examId}/ielts/publish',      [IeltsExamController::class, 'publish']);
         Route::get('/exams/{examId}/ielts/draft',         [IeltsExamController::class, 'getDraft']);
+
+        // ── THPT exam CRUD (Vietnamese university entrance format) ─────────────
+        Route::post('/exams/thpt',                        [\App\Http\Controllers\ThptExamController::class, 'createDraft']);
+        Route::put('/exams/{examId}/thpt',                [\App\Http\Controllers\ThptExamController::class, 'updateDraft']);
+        Route::get('/exams/{examId}/thpt/draft',          [\App\Http\Controllers\ThptExamController::class, 'getDraft']);
+        Route::post('/exams/{examId}/thpt/publish',       [\App\Http\Controllers\ThptExamController::class, 'publish']);
+        Route::delete('/exams/{examId}/thpt/draft',       [\App\Http\Controllers\ThptExamController::class, 'discardDraft']);
+        Route::get('/exams/{examId}/thpt/versions',       [\App\Http\Controllers\ThptExamController::class, 'listVersions']);
         
         // Listening
         Route::post('/exams/{examId}/vstep/listening/parts/{partNumber}', [ExamController::class, 'saveVstepListeningPart']);
@@ -349,6 +366,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard/active-sessions', [MonitoringController::class, 'activeSessions']);
         Route::get('/dashboard/monitoring-stats', [MonitoringController::class, 'stats']);
         Route::get('/dashboard/recent-starts',   [MonitoringController::class, 'recentStarts']);
+        Route::get('/dashboard/exams-ready',      [MonitoringController::class, 'examsReadyToPublish']);
         Route::post('/dashboard/cleanup-expired',  [MonitoringController::class, 'cleanupExpired']);
         Route::get('/dashboard/statistics',        [MonitoringController::class, 'statistics']);
 
@@ -381,6 +399,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard/student-stats', [App\Http\Controllers\TeacherDashboardController::class, 'getStudentStats']);
         Route::get('/dashboard/performance-data', [App\Http\Controllers\TeacherDashboardController::class, 'getPerformanceData']);
         Route::get('/dashboard/recent-activities', [App\Http\Controllers\TeacherDashboardController::class, 'getRecentActivities']);
+        Route::get('/dashboard/top-students', [App\Http\Controllers\TeacherDashboardController::class, 'getTopStudents']);
+        Route::get('/dashboard/activity-chart', [App\Http\Controllers\TeacherDashboardController::class, 'getActivityChart']);
+
+        // Teacher activity log (FE-driven audit feed)
+        Route::get('/activity-log',  [App\Http\Controllers\TeacherActivityLogController::class, 'index']);
+        Route::post('/activity-log', [App\Http\Controllers\TeacherActivityLogController::class, 'store']);
         Route::get('/dashboard/test-statistics/{examId}', [App\Http\Controllers\TeacherDashboardController::class, 'getTestStatistics']);
         // Route::get('/dashboard/active-sessions', [...]) // replaced by MonitoringController
         Route::post('/dashboard/send-message', [App\Http\Controllers\TeacherDashboardController::class, 'sendMessageToStudent']);
@@ -419,6 +443,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/exams/{examId}/ielts/reading',   [StudentTestController::class, 'loadIeltsReading']);
         Route::get('/exams/{examId}/ielts/writing',   [StudentTestController::class, 'loadIeltsWriting']);
         Route::get('/exams/{examId}/ielts/speaking',  [StudentTestController::class, 'loadIeltsSpeaking']);
+
+        // ── THPT exam (Vietnamese university entrance) ──────────────────────────
+        Route::get('/thpt-exams/{examId}',                        [\App\Http\Controllers\ThptExamController::class, 'getForStudent']);
+        Route::post('/thpt-exams/{examId}/start',                 [\App\Http\Controllers\ThptExamController::class, 'startSubmission']);
+        Route::post('/thpt-exams/{examId}/submit',                [\App\Http\Controllers\ThptExamController::class, 'submitAnswers']);
+        Route::get('/thpt-submissions/{submissionId}/result',     [\App\Http\Controllers\ThptExamController::class, 'getResult']);
+
+        // Exam comments (bình luận / thảo luận đề thi)
+        Route::get('/exams/{examId}/comments',          [\App\Http\Controllers\ExamCommentController::class, 'index']);
+        Route::post('/exams/{examId}/comments',         [\App\Http\Controllers\ExamCommentController::class, 'store']);
+        Route::delete('/exams/{examId}/comments/{id}',  [\App\Http\Controllers\ExamCommentController::class, 'destroy']);
 
         Route::post('/submissions/{submissionId}/speaking/{partNumber}/upload', [StudentTestController::class, 'uploadSpeakingAudio'])->where(['submissionId' => '[0-9]+', 'partNumber' => '[0-9]+']);
         Route::post('/exams/{examId}/checkin-photo', [StudentTestController::class, 'uploadCheckinPhoto'])->where('examId', '[0-9]+');
@@ -530,13 +565,18 @@ Route::middleware('auth:sanctum')->group(function () {
         // Analytics
         Route::get('/analytics/overview', [StudentAnalyticsController::class, 'overview']);
         Route::get('/analytics/skills', [StudentAnalyticsController::class, 'skills']);
+        Route::get('/analytics/today', [StudentAnalyticsController::class, 'today']);
         Route::get('/analytics/weaknesses', [StudentAnalyticsController::class, 'weaknesses']);
         Route::get('/analytics/history', [StudentAnalyticsController::class, 'history']);
     });
     
     /* ======== ADMIN ROUTES ========= */
-    Route::middleware('role:admin')->prefix('admin')->group(function () {
-        
+    Route::middleware(['role:admin', 'admin.audit'])->prefix('admin')->group(function () {
+
+        // ── Audit log (real audit trail của hành động admin) ──
+        Route::get('/activity-logs',       [\App\Http\Controllers\AdminActivityLogController::class, 'index']);
+        Route::get('/activity-logs/stats', [\App\Http\Controllers\AdminActivityLogController::class, 'stats']);
+
         // User Management - View All Users
         Route::get('/users', [UserController::class, 'adminUsers']);
         Route::post('/users', [UserController::class, 'adminCreateUser']);
@@ -613,9 +653,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // System Settings & Notifications
         Route::prefix('system')->group(function () {
+            Route::get('/health', [AdminSystemController::class, 'systemHealth']);
             Route::get('/settings', [AdminSystemController::class, 'getSettings']);
             Route::post('/settings', [AdminSystemController::class, 'updateSettings']);
             Route::get('/notifications', [AdminSystemController::class, 'getNotifications']);
+            Route::get('/recent-activity', [AdminSystemController::class, 'recentActivity']);
             Route::post('/notifications/{id}/read', [AdminSystemController::class, 'markNotificationRead']);
         });
 

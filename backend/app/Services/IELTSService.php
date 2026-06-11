@@ -613,6 +613,8 @@ class IELTSService
         $count = 0;
         foreach ($sections as $section) {
             $sectionNumber = (int) ($section['sectionNumber'] ?? 1);
+            $sectionTitle  = (string) ($section['sectionTitle'] ?? ($section['sectionName'] ?? ''));
+            $sectionInstruction = (string) ($section['sectionInstruction'] ?? ($section['instructions'] ?? ''));
 
             $block = \App\Models\ContentBlock::create([
                 'exam_id'       => $exam->eId,
@@ -620,6 +622,8 @@ class IELTSService
                 'content'       => $section['audioUrl'] ?? '',
                 'metadata'      => [
                     'section_number' => $sectionNumber,
+                    'section_title'  => $sectionTitle,
+                    'instructions'   => $sectionInstruction,
                     'audio_filename' => $section['audioFileName'] ?? '',
                     'transcript'     => $section['transcript'] ?? '',
                 ],
@@ -631,8 +635,9 @@ class IELTSService
                 $block,
                 $section['questions'] ?? [],
                 'listening',
-                'Listening',
-                $sectionNumber
+                'listening',
+                $sectionNumber,
+                $sectionTitle
             );
         }
         return $count;
@@ -811,7 +816,8 @@ class IELTSService
         array $questions,
         string $skill,
         string $sectionName,
-        int $partNumber
+        int $partNumber,
+        string $sectionTitle = ''
     ): int {
         $count = 0;
         foreach ($questions as $qVal) {
@@ -821,6 +827,9 @@ class IELTSService
             $qText  = (string) ($qVal['questionText'] ?? '');
             $options = $qVal['options'] ?? null;
             $correctAnswer = (string) ($qVal['correctAnswer'] ?? '');
+            // Optional shared task metadata (for grouped questions in IELTS Listening/Reading)
+            $taskTitle = (string) ($qVal['taskTitle'] ?? '');
+            $taskInstruction = (string) ($qVal['taskInstruction'] ?? '');
 
             $question = Question::create([
                 'exam_id'          => $exam->eId,
@@ -832,11 +841,14 @@ class IELTSService
                 'qPart'            => $partNumber,
                 'qSection_order'   => $qNum,
                 'qPoints'          => 1,
-                'qData'            => [
-                    'question_number' => $qNum,
-                    'options'         => $options,
-                    'correct_answer'  => $correctAnswer,
-                ],
+                'qData'            => array_filter([
+                    'question_number'  => $qNum,
+                    'options'          => $options,
+                    'correct_answer'   => $correctAnswer,
+                    'section_title'    => $sectionTitle !== '' ? $sectionTitle : null,
+                    'task_title'       => $taskTitle !== '' ? $taskTitle : null,
+                    'task_instruction' => $taskInstruction !== '' ? $taskInstruction : null,
+                ], fn ($v) => $v !== null),
             ]);
 
             self::createAnswersForQuestion($question, $qType, $options, $correctAnswer);

@@ -17,8 +17,8 @@ export function EditExam() {
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <Link to="/giao-vien" className="hover:text-orange-600">Dashboard</Link>
                 <span>/</span>
-                <Link to="/giao-vien/de-thi/cua-toi" className="hover:text-orange-600 transition-colors">
-                  Đề thi của tôi
+                <Link to="/giao-vien/de-thi" className="hover:text-orange-600 transition-colors">
+                  Ngân hàng đề thi
                 </Link>
                 <span>/</span>
                 <span className="text-gray-900 font-medium">Chỉnh sửa</span>

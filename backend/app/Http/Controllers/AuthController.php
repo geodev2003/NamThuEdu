@@ -249,24 +249,14 @@ class AuthController extends Controller
             'age'   => $age,
             'role'  => $user->uRole,
             'age_group' => $user->age_group ?? 'teens',
+            'class_id' => $user->class_id,
             'theme_preference' => $user->theme_preference ?? 'auto',
             'avatar_url' => $user->avatar_url,
             'avatar' => $user->avatar_url,
         ];
-        
-        // Add class info for students
-        if ($user->uRole === 'student' && $user->class) {
-            $userData['class_id'] = $user->class_id;
-            $userData['class'] = [
-                'id' => $user->class->cId,
-                'name' => $user->class->cName,
-                'age_group' => $user->class->age_group,
-                'teacher' => $user->class->teacher ? [
-                    'id' => $user->class->teacher->uId,
-                    'name' => $user->class->teacher->uName,
-                ] : null,
-            ];
-        }
+
+        // (Class system deprecated — học viên giờ chỉ thuộc age_group, không
+        // còn thuộc lớp cố định. Khối expose class info đã được gỡ khỏi đây.)
 
         return response()->json([
             'status' => 'success',

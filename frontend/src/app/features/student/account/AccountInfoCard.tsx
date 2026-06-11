@@ -249,9 +249,23 @@ export function AccountInfoCard({ defaultExpanded = true }: Props = {}) {
   // Real avatar upload
   const avatarMutation = useMutation({
     mutationFn: (file: File) => studentApi.uploadAvatar(file),
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       toast.success('Đã cập nhật ảnh đại diện');
       queryClient.invalidateQueries({ queryKey: ['student', 'profile'] });
+      // Update localStorage so sidebar/header pick up the new avatar immediately
+      try {
+        const raw = localStorage.getItem('user');
+        if (raw) {
+          const u = JSON.parse(raw);
+          const newUrl = res?.data?.data?.avatar_url || res?.data?.avatar_url;
+          if (newUrl) {
+            u.avatar_url = newUrl;
+            u.avatar = newUrl;
+            localStorage.setItem('user', JSON.stringify(u));
+            window.dispatchEvent(new Event('user-profile-updated'));
+          }
+        }
+      } catch { /* non-critical */ }
     },
     onError: (err: any) => {
       const errors = err?.response?.data?.errors;

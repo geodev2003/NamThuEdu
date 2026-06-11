@@ -6,7 +6,7 @@ import {
   MessageSquare, Trophy, Clock, ChevronRight, X,
 } from "lucide-react";
 import { studentApi } from "../../../services/studentApi";
-import { formatTimeAgo } from "../../../utils/formatters";
+import { formatTimeAgo, formatDateTime } from "../../../utils/formatters";
 
 const PURPLE = "#7C3AED";
 const STUDENT_BASE_PATH = "/hoc-vien";
@@ -106,11 +106,16 @@ export function NotificationDropdown() {
     });
   };
 
-  // Fetch notifications (auto-refetch every 60s while panel open or component mounted)
+  // Fetch notifications. Polling 10s khi tab active, refetch ngay khi user
+  // focus lại tab — đảm bảo gần realtime mà không tốn tài nguyên khi background.
   const { data, isLoading } = useQuery({
     queryKey: ["student", "notifications", "dropdown"],
     queryFn: () => studentApi.getNotifications({ limit: 10 }),
-    refetchInterval: 60_000,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    staleTime: 0,
   });
 
   const notifications: NotificationDto[] = (data as any)?.data?.data?.notifications || [];
@@ -260,6 +265,23 @@ export function NotificationDropdown() {
     };
     navigator.serviceWorker.addEventListener("message", handler);
     return () => navigator.serviceWorker.removeEventListener("message", handler);
+  }, [queryClient]);
+
+  // Real-time: lắng nghe BroadcastChannel khi 1 tab khác cùng origin tạo
+  // comment/reply mới — invalidate ngay để badge cập nhật không cần đợi 10s poll
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    const ch = new BroadcastChannel("exam-comments");
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "comment_changed") {
+        queryClient.invalidateQueries({ queryKey: ["student", "notifications", "dropdown"] });
+      }
+    };
+    ch.addEventListener("message", handler);
+    return () => {
+      ch.removeEventListener("message", handler);
+      ch.close();
+    };
   }, [queryClient]);
 
   return (
@@ -453,7 +475,9 @@ export function NotificationDropdown() {
                           <Clock
                             className="w-3.5 h-3.5 text-slate-350"
                           />
-                          <span>{formatTimeAgo(notif.created_at)}</span>
+                          <span title={formatDateTime(notif.created_at)}>{formatTimeAgo(notif.created_at)}</span>
+                          <span className="text-slate-300 font-normal">·</span>
+                          <span className="font-normal text-slate-400">{formatDateTime(notif.created_at)}</span>
                           {notif.action_label && url && (
                             <>
                               <span className="text-slate-200 font-normal">•</span>

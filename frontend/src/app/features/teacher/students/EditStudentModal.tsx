@@ -214,6 +214,17 @@ export function EditStudentModal({ isOpen, onClose, student, onSave, toast: toas
       if (response.ok) {
         const result = await response.json();
         onSave(result.data);
+
+        // Log activity (best-effort)
+        const { logTeacherActivity } = await import("../../../../services/teacherActivityLog");
+        logTeacherActivity({
+          action: "student.update",
+          entity_type: "student",
+          entity_id: student?.id ?? null,
+          detail: `Cập nhật học viên: ${formData.name}`,
+          meta: { age_group: formData.ageGroup, status: formData.status },
+        });
+
         onClose();
       } else {
         const errorData = await response.json();

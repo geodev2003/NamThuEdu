@@ -468,6 +468,86 @@
   font-family: 'Comic Neue', cursive;
 }
 
+/* Teacher builder: neutralize childish fonts for a professional, VStep-like look.
+   Scoped to .kids-builder so the student-facing exam UI keeps its playful style. */
+.kids-builder .font-baloo,
+.kids-builder .font-comic {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Teacher builder: calm the editor chrome (less color, cleaner, VStep-like).
+   Targets only decorative pastel utilities, never structural ones. */
+
+/* 1. Decorative pastel gradient panels (from-*-50/100) -> flat white */
+.kids-builder [class*="bg-gradient-to-br"][class*="from-purple-50"],
+.kids-builder [class*="bg-gradient-to-br"][class*="from-pink-50"],
+.kids-builder [class*="bg-gradient-to-br"][class*="from-indigo-50"],
+.kids-builder [class*="bg-gradient-to-br"][class*="from-blue-50"],
+.kids-builder [class*="bg-gradient-to-br"][class*="from-violet-50"],
+.kids-builder [class*="bg-gradient-to-br"][class*="from-orange-50"],
+.kids-builder [class*="bg-gradient-to-r"][class*="from-purple-50"],
+.kids-builder [class*="bg-gradient-to-r"][class*="from-pink-50"],
+.kids-builder [class*="bg-gradient-to-r"][class*="from-indigo-50"],
+.kids-builder [class*="bg-gradient-to-r"][class*="from-blue-50"],
+.kids-builder [class*="bg-gradient-to-r"][class*="from-amber-100"],
+.kids-builder [class*="bg-gradient-to-r"][class*="from-red-100"],
+.kids-builder [class*="bg-gradient-to-r"][class*="from-purple-100"] {
+  background-image: none !important;
+  background-color: #ffffff !important;
+}
+
+/* 2. Gradient action buttons (from-*-500/400) -> solid orange (primary) */
+.kids-builder [class*="from-purple-500"][class*="to-pink-500"],
+.kids-builder [class*="from-pink-500"][class*="to-purple-500"],
+.kids-builder [class*="from-green-400"][class*="to-blue-500"],
+.kids-builder [class*="from-green-400"][class*="to-emerald-500"],
+.kids-builder [class*="from-indigo-500"][class*="to-purple-500"],
+.kids-builder [class*="from-amber-500"][class*="to-yellow-500"],
+.kids-builder [class*="from-red-500"][class*="to-orange-500"],
+.kids-builder [class*="from-purple-500"][class*="to-pink-600"] {
+  background-image: none !important;
+  background-color: #f97316 !important;
+  color: #ffffff !important;
+}
+
+/* 3. Heavy decorative borders -> thin */
+.kids-builder .border-4 {
+  border-width: 1px !important;
+}
+
+/* 4. Pastel border colors -> neutral slate */
+.kids-builder .border-purple-200,
+.kids-builder .border-pink-200,
+.kids-builder .border-indigo-200,
+.kids-builder .border-blue-200,
+.kids-builder .border-purple-300,
+.kids-builder .border-pink-300,
+.kids-builder .border-indigo-300,
+.kids-builder .border-violet-200,
+.kids-builder .border-violet-100,
+.kids-builder .border-purple-100,
+.kids-builder .border-blue-300,
+.kids-builder .border-orange-200,
+.kids-builder .border-amber-200 {
+  border-color: #e2e8f0 !important;
+}
+
+/* 5. Unify focus rings to orange */
+.kids-builder .focus\:border-purple-400:focus,
+.kids-builder .focus\:border-purple-500:focus,
+.kids-builder .focus\:border-indigo-400:focus,
+.kids-builder .focus\:border-indigo-500:focus,
+.kids-builder .focus\:border-violet-400:focus,
+.kids-builder .focus\:border-violet-500:focus {
+  border-color: #f97316 !important;
+}
+
+/* 6. Soften the perpetual pulse animation in the builder */
+.kids-builder .animate-pulse-subtle {
+  animation: none !important;
+}
+
 /* Smooth highlight animations for Kids Exam */
 @keyframes pulse-subtle {
   0%, 100% {
@@ -880,4 +960,22 @@
 .vstep-reading-editor .ql-editor.ql-blank::before {
   font-style: normal;
   color: #9ca3af;
+}
+
+/* IELTS — rung nhẹ label câu hỏi khi học viên focus vào ô đáp án tương ứng */
+@keyframes ielts-row-shake {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-4px); }
+  30%  { transform: translateX(4px); }
+  45%  { transform: translateX(-3px); }
+  60%  { transform: translateX(3px); }
+  75%  { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+.ielts-row-shake {
+  animation: ielts-row-shake 0.45s ease-in-out;
+  /* Highlight nhẹ kèm theo để dễ nhận biết hơn */
+  background-color: #fff7ed;
+  border-radius: 6px;
 }

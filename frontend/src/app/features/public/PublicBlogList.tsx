@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, memo } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useNavigate, useSearchParams, Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { usePageTitle } from "../../../hooks/usePageTitle";
 import { publicBlogApi, type Blog } from "../../../services/blogApi";
@@ -77,7 +77,7 @@ const FeaturedCard = memo(function FeaturedCard({ post }: { post: Blog }) {
         </span>
       )}
       <h2 className="mb-4 text-[1.75rem] font-bold leading-tight tracking-tight text-slate-900 transition-colors group-hover:text-orange-600">
-        {post.pTitle}
+        <Link to={`/bai-viet/${slug}`} className="hover:text-orange-600 focus:outline-none">{post.pTitle}</Link>
       </h2>
       <div className="mb-5 overflow-hidden rounded-xl">
         {post.pThumbnail ? (
@@ -136,7 +136,7 @@ const PostRow = memo(function PostRow({ post }: { post: Blog }) {
             </p>
           )}
           <h3 className="mb-2 line-clamp-2 text-[0.9375rem] font-semibold leading-snug text-slate-900 transition-colors group-hover:text-orange-600">
-            {post.pTitle}
+            <Link to={`/bai-viet/${slug}`} className="hover:text-orange-600 focus:outline-none">{post.pTitle}</Link>
           </h3>
           <p className="mb-3 line-clamp-2 text-sm leading-relaxed text-slate-400">
             {stripHtml(post.pContent ?? "").slice(0, 130)}…

@@ -274,69 +274,77 @@ export function TestHistory() {
       {/* ══ Content */}
       <div className="px-8 lg:px-16 py-8 space-y-5">
 
-      {/* ── Stats ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* ── Stats strip ── */}
+      <div className="rounded-2xl bg-white flex divide-x divide-[#F0EEFF]"
+        style={{ border: "1.5px solid #F0F0F8", boxShadow: "0 2px 10px rgba(124,58,237,0.06)" }}>
 
         {/* Total */}
-        <div className="rounded-2xl p-4 bg-white" style={{ border: "1.5px solid #F0F0F8", boxShadow: "0 2px 10px rgba(124,58,237,0.06)" }}>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: "#EDE9FE" }}>
-            <BarChart2 className="w-4 h-4" style={{ color: PURPLE }} />
+        <div className="flex-1 flex items-center gap-3 px-4 py-3.5">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#EDE9FE" }}>
+            <BarChart2 className="w-3.5 h-3.5" style={{ color: PURPLE }} />
           </div>
-          <p style={{ fontSize: 28, fontWeight: 900, color: "#1F1344", lineHeight: 1 }}>{totalTests}</p>
-          <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>Tổng bài thi</p>
-          <p style={{ fontSize: 10, color: PURPLE_MID, fontWeight: 600, marginTop: 2 }}>{submitted.length} đã nộp</p>
+          <div className="min-w-0">
+            <p style={{ fontSize: 20, fontWeight: 900, color: "#1F1344", lineHeight: 1 }}>{totalTests}</p>
+            <p style={{ fontSize: 10.5, color: "#9CA3AF", marginTop: 2 }}>Tổng bài thi</p>
+            <p style={{ fontSize: 10, color: PURPLE_MID, fontWeight: 600, marginTop: 1 }}>{submitted.length} đã nộp</p>
+          </div>
         </div>
 
-        {/* Pass rate — neutral when 0%, green when meaningful */}
-        <div className="rounded-2xl p-4 bg-white" style={{ border: "1.5px solid #F0F0F8", boxShadow: "0 2px 10px rgba(124,58,237,0.06)" }}>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+        {/* Pass */}
+        <div className="flex-1 flex items-center gap-3 px-4 py-3.5">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
             style={{ background: passRate >= 50 ? "#D1FAE5" : "#F3F4F6" }}>
-            <CheckCircle className="w-4 h-4" style={{ color: passRate >= 50 ? "#059669" : "#9CA3AF" }} />
+            <CheckCircle className="w-3.5 h-3.5" style={{ color: passRate >= 50 ? "#059669" : "#9CA3AF" }} />
           </div>
-          <p style={{ fontSize: 28, fontWeight: 900, color: "#1F1344", lineHeight: 1 }}>{passed}</p>
-          <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>Đạt ≥ 60%</p>
-          <p style={{ fontSize: 10, fontWeight: 600, marginTop: 2, color: passRate >= 50 ? "#059669" : "#9CA3AF" }}>
-            {passRate}% tỷ lệ đạt
-          </p>
-        </div>
-
-        {/* Avg score with progress bar */}
-        <div className="rounded-2xl p-4 bg-white" style={{ border: "1.5px solid #F0F0F8", boxShadow: "0 2px 10px rgba(124,58,237,0.06)" }}>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: "#DBEAFE" }}>
-            <TrendingUp className="w-4 h-4" style={{ color: "#2563EB" }} />
-          </div>
-          <p style={{ fontSize: 28, fontWeight: 900, color: "#1F1344", lineHeight: 1 }}>
-            {avgScore.toFixed(1)}
-            <span style={{ fontSize: 13, fontWeight: 500, color: "#9CA3AF" }}> / {Math.round(avgMax)}</span>
-          </p>
-          <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>Điểm trung bình</p>
-          <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: "#DBEAFE" }}>
-            <div className="h-full rounded-full" style={{
-              width: `${avgMax > 0 ? Math.min(avgScore / avgMax * 100, 100) : 0}%`,
-              background: "linear-gradient(90deg,#2563EB,#60A5FA)"
-            }} />
+          <div className="min-w-0">
+            <p style={{ fontSize: 20, fontWeight: 900, color: "#1F1344", lineHeight: 1 }}>{passed}</p>
+            <p style={{ fontSize: 10.5, color: "#9CA3AF", marginTop: 2 }}>Đạt ≥ 60%</p>
+            <p style={{ fontSize: 10, fontWeight: 600, marginTop: 1, color: passRate >= 50 ? "#059669" : "#9CA3AF" }}>
+              {passRate}% tỷ lệ đạt
+            </p>
           </div>
         </div>
 
-        {/* Best score */}
-        <div className="rounded-2xl p-4 bg-white" style={{ border: "1.5px solid #F0F0F8", boxShadow: "0 2px 10px rgba(124,58,237,0.06)" }}>
-          <div className="flex items-start justify-between mb-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#FEF3C7" }}>
-              <Star className="w-4 h-4" style={{ color: "#D97706" }} />
+        {/* Avg */}
+        <div className="flex-1 flex items-center gap-3 px-4 py-3.5">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#DBEAFE" }}>
+            <TrendingUp className="w-3.5 h-3.5" style={{ color: "#2563EB" }} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p style={{ fontSize: 20, fontWeight: 900, color: "#1F1344", lineHeight: 1 }}>
+              {avgScore.toFixed(1)}
+              <span style={{ fontSize: 11, fontWeight: 500, color: "#9CA3AF" }}> /{Math.round(avgMax)}</span>
+            </p>
+            <p style={{ fontSize: 10.5, color: "#9CA3AF", marginTop: 2 }}>Điểm trung bình</p>
+            <div className="mt-1.5 h-1 rounded-full overflow-hidden" style={{ background: "#DBEAFE" }}>
+              <div className="h-full rounded-full" style={{
+                width: `${avgMax > 0 ? Math.min(avgScore / avgMax * 100, 100) : 0}%`,
+                background: "linear-gradient(90deg,#2563EB,#60A5FA)"
+              }} />
             </div>
-            {bestScore > 0 && (
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                style={{ background: getCEFR(bestScore, bestMax).bg, color: getCEFR(bestScore, bestMax).color }}>
-                {getCEFR(bestScore, bestMax).label}
-              </span>
-            )}
           </div>
-          <p style={{ fontSize: 28, fontWeight: 900, color: "#1F1344", lineHeight: 1 }}>
-            {bestScore > 0 ? bestScore.toFixed(1) : "—"}
-            {bestScore > 0 && <span style={{ fontSize: 13, fontWeight: 500, color: "#9CA3AF" }}> / {bestMax}</span>}
-          </p>
-          <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>Điểm cao nhất</p>
-          <p style={{ fontSize: 10, color: "#D97706", fontWeight: 600, marginTop: 2 }}>kỷ lục cá nhân</p>
+        </div>
+
+        {/* Best */}
+        <div className="flex-1 flex items-center gap-3 px-4 py-3.5">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#FEF3C7" }}>
+            <Star className="w-3.5 h-3.5" style={{ color: "#D97706" }} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <p style={{ fontSize: 20, fontWeight: 900, color: "#1F1344", lineHeight: 1 }}>
+                {bestScore > 0 ? bestScore.toFixed(1) : "—"}
+              </p>
+              {bestScore > 0 && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ background: getCEFR(bestScore, bestMax).bg, color: getCEFR(bestScore, bestMax).color }}>
+                  {getCEFR(bestScore, bestMax).label}
+                </span>
+              )}
+            </div>
+            <p style={{ fontSize: 10.5, color: "#9CA3AF", marginTop: 2 }}>Điểm cao nhất</p>
+            <p style={{ fontSize: 10, color: "#D97706", fontWeight: 600, marginTop: 1 }}>kỷ lục cá nhân</p>
+          </div>
         </div>
       </div>
 

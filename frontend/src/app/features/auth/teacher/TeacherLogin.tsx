@@ -3,11 +3,11 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { useNavigate, Link, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { login } from '../../../../services/authApi';
-import { Eye, EyeOff, Phone, Lock, BookOpen, ShieldOff, X } from 'lucide-react';
+import { Eye, EyeOff, Phone, Lock, BookOpen, ShieldOff, X, AlertTriangle } from 'lucide-react';
 import { Header } from '../../public/components/Header';
 import { setAuthData, getRememberedPhone, clearAuthData } from '../../../../utils/authStorage';
 import { usePageTitle, PAGE_TITLES } from '../../../../hooks/usePageTitle';
@@ -16,11 +16,15 @@ import '../../../../styles/loginAnimations.css';
 export function TeacherLogin() {
   usePageTitle(PAGE_TITLES.TEACHER_LOGIN, true);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+
+  const maintenanceMsg = searchParams.get('message');
+  const isMaintenance = searchParams.get('maintenance') === '1';
 
   useEffect(() => {
     const savedPhone = getRememberedPhone('teacher');
@@ -30,11 +34,26 @@ export function TeacherLogin() {
     }
   }, []);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(maintenanceMsg);
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
   const [lockedToast, setLockedToast] = useState(false);
+  const [toast, setToast] = useState<{msg: string; show: boolean} | null>(null);
   const lockedToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (isMaintenance && maintenanceMsg) {
+      setToast({ msg: decodeURIComponent(maintenanceMsg), show: true });
+      const timer = setTimeout(() => {
+        setToast(prev => prev ? { ...prev, show: false } : null);
+      }, 5000);
+      const clearTimer = setTimeout(() => setToast(null), 5500);
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(clearTimer);
+      };
+    }
+  }, [isMaintenance, maintenanceMsg]);
 
   const showLockedToast = () => {
     setLockedToast(true);
@@ -109,6 +128,21 @@ export function TeacherLogin() {
         transition: 'opacity 300ms ease-out'
       }}
     >
+      {/* Maintenance Toast */}
+      {toast && (
+        <div
+          className={`fixed top-5 right-5 z-[9999] flex items-center gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 shadow-lg transition-all duration-500 ${
+            toast.show ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
+          }`}
+          style={{ maxWidth: 380 }}
+        >
+          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+          <div>
+            <p className="text-sm font-bold text-amber-800">Hệ thống đang bảo trì</p>
+            <p className="text-xs text-amber-700">{toast.msg}</p>
+          </div>
+        </div>
+      )}
       {/* ── Locked account toast ── */}
       {lockedToast && (
         <div
@@ -231,6 +265,17 @@ export function TeacherLogin() {
             {/* Heading */}
             <h1 className="text-3xl font-extrabold text-gray-900 mb-1">{t('auth.teacherLogin.title')}</h1>
             <p className="text-gray-500 text-sm mb-8">{t('auth.teacherLogin.subtitle')}</p>
+
+            {/* Maintenance notification */}
+            {isMaintenance && maintenanceMsg && (
+              <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 animate-fadeIn">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+                <div>
+                  <p className="text-sm font-bold text-amber-800">Hệ thống đang bảo trì</p>
+                  <p className="text-xs text-amber-700 mt-0.5">{decodeURIComponent(maintenanceMsg)}</p>
+                </div>
+              </div>
+            )}
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4">

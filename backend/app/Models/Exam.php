@@ -51,6 +51,11 @@ class Exam extends Model
         'ielts_test_type',
         'ielts_skill',
         'ielts_config',
+        // THPT fields
+        'thpt_config',
+        'thpt_draft_config',
+        'thpt_version',
+        'thpt_versions',
     ];
 
     protected $casts = [
@@ -61,6 +66,9 @@ class Exam extends Model
         'ui_config' => 'array',
         'kids_exam_config' => 'array',
         'ielts_config' => 'array',
+        'thpt_config' => 'array',
+        'thpt_draft_config' => 'array',
+        'thpt_versions' => 'array',
     ];
 
     /**

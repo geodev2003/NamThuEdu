@@ -290,29 +290,32 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="rounded-2xl border-4 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 p-6">
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-baloo text-2xl font-bold text-purple-600">
-              🎧 Match with Letters (Listening)
-            </h3>
-            <p className="mt-1 text-sm text-gray-600">
-              Nghe và ghép nối bằng chữ cái
-            </p>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🎧</span>
+            <div>
+              <h3 className="text-base font-semibold text-slate-900">
+                Match with Letters (Listening)
+              </h3>
+              <p className="text-sm text-slate-500">
+                Nghe và ghép nối bằng chữ cái
+              </p>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={onCancel}
-              className="flex items-center space-x-2 rounded-xl border-2 border-gray-300 bg-white px-4 py-2 transition-all hover:bg-gray-50"
+              className="flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
             >
               <X className="h-4 w-4" />
               <span>Hủy</span>
             </button>
             <button
               onClick={handleSave}
-              className="flex items-center space-x-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-2 font-bold text-white transition-all hover:scale-105 hover:shadow-lg"
+              className="flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600"
             >
               <Save className="h-4 w-4" />
               <span>Lưu câu hỏi</span>
@@ -322,32 +325,32 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
       </div>
 
       {/* Basic Info */}
-      <div className="rounded-xl border-2 border-gray-200 bg-white p-6">
-        <h4 className="mb-4 font-baloo text-lg font-bold text-gray-800">
-          📝 Thông tin cơ bản
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <h4 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900">
+          <span className="text-lg">📝</span> Thông tin cơ bản
         </h4>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-2 block text-sm font-medium text-slate-700">
               Tiêu đề câu hỏi
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-lg border-2 border-gray-300 px-4 py-2 focus:border-purple-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
               placeholder="VD: Ghép nối tên với hoạt động"
             />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-2 block text-sm font-medium text-slate-700">
               Điểm số
             </label>
             <input
               type="number"
               value={points}
               onChange={(e) => setPoints(parseInt(e.target.value))}
-              className="w-full rounded-lg border-2 border-gray-300 px-4 py-2 focus:border-purple-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
               min="1"
               max="10"
             />
@@ -356,13 +359,13 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
       </div>
 
       {/* Audio Upload */}
-      <div className="rounded-xl border-2 border-purple-200 bg-purple-50 p-6">
-        <h4 className="mb-4 font-baloo text-lg font-bold text-purple-800">
-          🎵 File Audio *
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+        <h4 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900">
+          <span className="text-lg">🎵</span> File Audio *
         </h4>
         <div className="space-y-4">
           <div className="flex items-center space-x-4">
-            <label className="flex cursor-pointer items-center space-x-2 rounded-lg bg-purple-500 px-4 py-2 text-white transition-all hover:bg-purple-600">
+            <label className="flex cursor-pointer items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600">
               <Upload className="h-4 w-4" />
               <span>{uploadingAudio ? 'Đang tải...' : 'Upload Audio'}</span>
               <input
@@ -375,7 +378,7 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
             </label>
             {audioUrl && (
               <div className="flex items-center space-x-2">
-                <Volume2 className="h-5 w-5 text-purple-600" />
+                <Volume2 className="h-5 w-5 text-slate-500" />
                 <audio controls src={audioUrl} className="h-10">
                   Your browser does not support the audio element.
                 </audio>
@@ -388,21 +391,21 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
               </div>
             )}
           </div>
-          <p className="text-sm text-purple-700">
+          <p className="text-sm text-slate-500">
             💡 Upload file audio chứa hướng dẫn ghép nối
           </p>
         </div>
       </div>
 
       {/* Subjects Section (6 items to match) */}
-      <div className="rounded-xl border-2 border-blue-200 bg-white p-6">
-        <div className="sticky top-0 z-40 -mx-6 -mt-6 mb-4 flex items-center justify-between bg-white px-6 py-4 shadow-md">
-          <h4 className="font-baloo text-lg font-bold text-blue-600">
-            � Chủ thể cần ghép nối - {subjects.length} mục
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <div className="sticky top-0 z-40 -mx-5 -mt-5 mb-4 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
+          <h4 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+            <span className="text-lg">🔤</span> Chủ thể cần ghép nối - {subjects.length} mục
           </h4>
           <button
             onClick={handleAddSubject}
-            className="flex items-center space-x-2 rounded-lg bg-blue-500 px-4 py-2 text-white transition-all hover:bg-blue-600"
+            className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600"
           >
             <Plus className="h-4 w-4" />
             <span>Thêm chủ thể</span>
@@ -413,10 +416,10 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
           {subjects.map((subject, index) => (
             <div
               key={index}
-              className="rounded-lg border-2 border-blue-200 bg-blue-50 p-4"
+              className="rounded-lg border border-slate-200 bg-slate-50 p-4"
             >
               <div className="mb-2 flex items-center justify-between">
-                <h5 className="font-bold text-blue-700">Chủ thể #{index + 1}</h5>
+                <h5 className="text-sm font-semibold text-slate-900">Chủ thể #{index + 1}</h5>
                 <div className="flex items-center space-x-2">
                   <label className="flex items-center space-x-2 text-sm">
                     <input
@@ -425,9 +428,9 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
                       onChange={(e) =>
                         handleSubjectChange(index, 'isExample', e.target.checked)
                       }
-                      className="h-4 w-4 rounded border-gray-300"
+                      className="h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400"
                     />
-                    <span className="text-purple-600 font-medium">Ví dụ mẫu</span>
+                    <span className="text-slate-600 font-medium">Ví dụ mẫu</span>
                   </label>
                   {subjects.length > 1 && (
                     <button
@@ -442,7 +445,7 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
                     Tên chủ thể * (VD: her son, her uncle)
                   </label>
                   <input
@@ -451,12 +454,12 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
                     onChange={(e) =>
                       handleSubjectChange(index, 'label', e.target.value)
                     }
-                    className="w-full rounded-lg border-2 border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
                     placeholder="VD: her son"
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
                     Ghép với chữ cái * (A-H)
                   </label>
                   <select
@@ -464,7 +467,7 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
                     onChange={(e) =>
                       handleSubjectChange(index, 'correctLetter', e.target.value)
                     }
-                    className="w-full rounded-lg border-2 border-green-300 bg-green-50 px-4 py-2 font-bold text-green-700 focus:border-green-500 focus:outline-none"
+                    className="w-full rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
                   >
                     <option value="">-- Chọn chữ cái --</option>
                     {options.map((option) => (
@@ -478,16 +481,16 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
 
               {/* Preview */}
               {subject.label && subject.correctLetter && (
-                <div className="mt-4 rounded-lg bg-white p-3 border-2 border-green-200">
-                  <p className="text-xs font-medium text-gray-600 mb-1">Xem trước:</p>
+                <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-medium text-slate-500 mb-1">Xem trước:</p>
                   <div className="flex items-center space-x-3">
-                    <span className="font-bold text-blue-700">{subject.label}</span>
-                    <span className="text-2xl">→</span>
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-500 text-xl font-bold text-white">
+                    <span className="font-semibold text-slate-700">{subject.label}</span>
+                    <span className="text-2xl text-slate-400">→</span>
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-xl font-bold text-white">
                       {subject.correctLetter}
                     </span>
                     {subject.isExample && (
-                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-medium">
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">
                         ✨ Ví dụ mẫu
                       </span>
                     )}
@@ -500,12 +503,12 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
       </div>
 
       {/* Options Section (8 images A-H) */}
-      <div className="rounded-xl border-2 border-pink-200 bg-white p-6">
-        <div className="sticky top-0 z-40 -mx-6 -mt-6 mb-4 bg-white px-6 py-4 shadow-md">
-          <h4 className="font-baloo text-lg font-bold text-pink-600">
-            🖼️ Options (Chữ cái A-H + Hình ảnh) - {options.length} mục
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <div className="sticky top-0 z-40 -mx-5 -mt-5 mb-4 border-b border-slate-200 bg-white px-5 py-4">
+          <h4 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+            <span className="text-lg">🖼️</span> Options (Chữ cái A-H + Hình ảnh) - {options.length} mục
           </h4>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             💡 Cần đủ 8 options (A-H) với 2 distractors (không được ghép)
           </p>
         </div>
@@ -514,17 +517,17 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
           {options.map((option) => (
             <div
               key={option.letter}
-              className="rounded-lg border-2 border-pink-200 bg-pink-50 p-4"
+              className="rounded-lg border border-slate-200 bg-slate-50 p-4"
             >
               <div className="mb-2 flex items-center justify-center">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-pink-500 text-2xl font-bold text-white">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-500 text-2xl font-bold text-white">
                   {option.letter}
                 </span>
               </div>
 
               <div className="space-y-3">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
                     Mô tả * (VD: swimming, cooking)
                   </label>
                   <input
@@ -533,13 +536,13 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
                     onChange={(e) =>
                       handleOptionChange(option.letter, 'description', e.target.value)
                     }
-                    className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
                     placeholder="VD: swimming"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
                     Hình ảnh * (Upload hoặc Ctrl+V)
                   </label>
                   {option.imageUrl ? (
@@ -547,7 +550,7 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
                       <img
                         src={option.imageUrl}
                         alt={`Option ${option.letter}`}
-                        className="h-32 w-full rounded-lg border-2 border-pink-200 object-cover"
+                        className="h-32 w-full rounded-lg border border-slate-200 object-cover"
                       />
                       <button
                         onClick={() => handleOptionChange(option.letter, 'imageUrl', '')}
@@ -561,10 +564,10 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
                       onPaste={(e) => handleOptionPasteImage(e, option.letter)}
                       className="relative"
                     >
-                      <label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 hover:bg-gray-50">
-                        <Upload className="mb-1 h-8 w-8 text-gray-400" />
-                        <span className="text-xs text-gray-500">Upload</span>
-                        <span className="text-xs text-gray-400">hoặc Ctrl+V</span>
+                      <label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 transition-colors hover:border-orange-400 hover:bg-orange-50/40">
+                        <Upload className="mb-1 h-8 w-8 text-slate-400" />
+                        <span className="text-xs text-slate-500">Upload</span>
+                        <span className="text-xs text-slate-400">hoặc Ctrl+V</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -577,7 +580,7 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
                         type="text"
                         onPaste={(e) => handleOptionPasteImage(e, option.letter)}
                         placeholder="Nhấn vào đây và Ctrl+V"
-                        className="mt-2 w-full rounded border border-dashed border-pink-300 px-2 py-1 text-xs text-center"
+                        className="mt-2 w-full rounded border border-dashed border-slate-300 px-2 py-1 text-xs text-center"
                         readOnly
                       />
                     </div>
@@ -587,8 +590,8 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
 
               {/* Preview */}
               {option.imageUrl && option.description && (
-                <div className="mt-3 rounded-lg bg-white p-2 border border-pink-200">
-                  <p className="text-xs font-medium text-center text-pink-700">
+                <div className="mt-3 rounded-lg border border-slate-200 bg-white p-2">
+                  <p className="text-xs font-medium text-center text-slate-600">
                     {option.letter}: {option.description}
                   </p>
                 </div>
@@ -599,11 +602,11 @@ const ListeningLetterMatchEditor: React.FC<ListeningLetterMatchEditorProps> = ({
       </div>
 
       {/* Instructions */}
-      <div className="rounded-xl border-2 border-purple-200 bg-purple-50 p-4">
-        <h4 className="mb-2 font-baloo text-sm font-bold text-purple-800">
-          💡 Hướng dẫn:
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700">
+          <span>💡</span> Hướng dẫn:
         </h4>
-        <ul className="space-y-1 text-sm text-purple-700">
+        <ul className="space-y-1 text-sm text-slate-600">
           <li>• Upload file audio chứa hướng dẫn ghép nối</li>
           <li>• Thêm 6 chủ thể cần ghép nối (VD: her son, her uncle)</li>
           <li>• Cần đủ 8 options (A-H) với hình ảnh và mô tả</li>

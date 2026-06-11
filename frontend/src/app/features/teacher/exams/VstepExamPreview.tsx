@@ -69,9 +69,10 @@ const PARTS_PER_SKILL: Record<SkillKey, number[]> = {
 /* ============================================================
  *  COMPONENT
  * ============================================================ */
-export function VstepExamPreview() {
+export function VstepExamPreview({ admin = false, backTo }: { admin?: boolean; backTo?: string } = {}) {
   const { examId } = useParams();
   const navigate = useNavigate();
+  const backPath = backTo || "/giao-vien/de-thi";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -185,10 +186,10 @@ export function VstepExamPreview() {
     const id = String(examId);
     setLoading(true);
     Promise.allSettled([
-      loadVstepListeningExam(id),
-      loadVstepExam(id),
-      loadVstepWritingExam(id),
-      loadVstepSpeakingExam(id),
+      loadVstepListeningExam(id, admin),
+      loadVstepExam(id, admin),
+      loadVstepWritingExam(id, admin),
+      loadVstepSpeakingExam(id, admin),
     ])
       .then((results) => {
         const [L, R, W, S] = results;
@@ -285,7 +286,7 @@ export function VstepExamPreview() {
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
           <p className="text-red-600 mb-3">{error}</p>
-          <Link to="/giao-vien/de-thi" className="text-blue-600 hover:underline">← Quay lại</Link>
+          <Link to={backPath} className="text-blue-600 hover:underline">← Quay lại</Link>
         </div>
       </div>
     );
@@ -347,7 +348,7 @@ export function VstepExamPreview() {
         <div className="px-4 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <button
-              onClick={() => navigate("/giao-vien/de-thi")}
+              onClick={() => navigate(backPath)}
               className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
               aria-label="Quay lại"
             >
@@ -492,7 +493,7 @@ export function VstepExamPreview() {
                       .filter((k) => k.startsWith(`vstep_prep_${examId}`))
                       .forEach((k) => localStorage.removeItem(k));
                   } catch {}
-                  navigate("/giao-vien/de-thi");
+                  navigate(backPath);
                 }}
                 className="px-4 py-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-md text-sm font-semibold transition-colors"
                 title="Hoàn tất và quay lại danh sách đề"

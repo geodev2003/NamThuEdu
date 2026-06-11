@@ -71,15 +71,41 @@ function getSkillMeta(skill: string) {
   return SKILL_META[skill?.toLowerCase()] ?? { label: skill || 'Tổng hợp', Icon: BookOpen };
 }
 
+// ─── Claymorphism design tokens ──────────────────────────────────────────────
+const CLAY_STARTERS = {
+  bg:     'linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%)',
+  shadow: '0 8px 24px rgba(16,185,129,0.22), 0 2px 8px rgba(16,185,129,0.10)',
+  text:   '#065F46', badge: '#10B981', badgeBg: 'rgba(209,250,229,0.7)',
+};
+const CLAY_MOVERS = {
+  bg:     'linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)',
+  shadow: '0 8px 24px rgba(59,130,246,0.22), 0 2px 8px rgba(59,130,246,0.10)',
+  text:   '#1E3A8A', badge: '#3B82F6', badgeBg: 'rgba(219,234,254,0.7)',
+};
+const CLAY_FLYERS = {
+  bg:     'linear-gradient(135deg, #EDE9FE 0%, #DDD6FE 100%)',
+  shadow: '0 8px 24px rgba(139,92,246,0.22), 0 2px 8px rgba(139,92,246,0.10)',
+  text:   '#4C1D95', badge: '#8B5CF6', badgeBg: 'rgba(237,233,254,0.7)',
+};
+
+const SKILL_CLAY: Record<string, { bg: string; icon: string; shadow: string }> = {
+  nghe:  { bg: 'linear-gradient(135deg, #FFF0F0, #FECDD3)', icon: '#E11D48', shadow: '0 8px 20px rgba(225,29,72,0.18)' },
+  đọc:   { bg: 'linear-gradient(135deg, #F0FFF4, #BBF7D0)', icon: '#059669', shadow: '0 8px 20px rgba(5,150,105,0.18)' },
+  viết:  { bg: 'linear-gradient(135deg, #FEFCE8, #FEF08A)', icon: '#B45309', shadow: '0 8px 20px rgba(180,83,9,0.15)'  },
+  nói:   { bg: 'linear-gradient(135deg, #EFF6FF, #BFDBFE)', icon: '#2563EB', shadow: '0 8px 20px rgba(37,99,235,0.18)' },
+};
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-const Section = ({ title, subtitle, action, children }:
-  { title: string; subtitle?: string; action?: React.ReactNode; children: React.ReactNode }) => (
-  <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6">
-    <header className="flex items-start sm:items-end justify-between gap-3 sm:gap-4 mb-4 sm:mb-5">
+const ClaySection = ({ title, subtitle, emoji, action, children, accentColor }:
+  { title: string; subtitle?: string; emoji?: string; action?: React.ReactNode; children: React.ReactNode; accentColor?: string }) => (
+  <section className="rounded-3xl p-5 sm:p-6" style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', boxShadow: '0 8px 32px rgba(251,113,133,0.10), 0 2px 8px rgba(0,0,0,0.04)', border: '2px solid rgba(255,255,255,0.9)' }}>
+    <header className="flex items-start sm:items-center justify-between gap-3 sm:gap-4 mb-5">
       <div className="min-w-0">
-        <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">{title}</h2>
-        {subtitle && <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{subtitle}</p>}
+        <h2 className="text-base sm:text-lg font-extrabold tracking-tight" style={{ color: accentColor || '#1A1040' }}>
+          {emoji && <span className="mr-1.5">{emoji}</span>}{title}
+        </h2>
+        {subtitle && <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-medium">{subtitle}</p>}
       </div>
       {action && <div className="flex-shrink-0">{action}</div>}
     </header>
@@ -89,63 +115,62 @@ const Section = ({ title, subtitle, action, children }:
 
 const ExamCard = ({ test }: { test: TestItem }) => {
   const level = detectLevel(test.exam_type, test.exam_title);
-  const meta  = level !== 'other' ? LEVEL_META[level] : null;
+  const clay = level === 'starters' ? CLAY_STARTERS : level === 'movers' ? CLAY_MOVERS : level === 'flyers' ? CLAY_FLYERS : null;
   const skill = getSkillMeta(test.exam_skill);
   const canStart = test.attempts_used < test.attempts_allowed;
   const inProgress = test.status === 'in_progress';
 
   return (
-    <article className="group bg-white rounded-xl border border-slate-200 p-4 sm:p-5 transition-all hover:border-rose-300 hover:shadow-md">
-      {/* Top row: level + urgent */}
+    <article className="group rounded-2xl p-4 sm:p-5 transition-all duration-200 hover:-translate-y-1 active:scale-[0.98]"
+      style={{
+        background: clay?.bg ?? 'linear-gradient(135deg, #FFF1F2, #FFE4E6)',
+        boxShadow: clay?.shadow ?? '0 8px 24px rgba(244,63,94,0.18)',
+        border: '2px solid rgba(255,255,255,0.8)',
+      }}>
+      {/* Top row: level badge + urgent */}
       <div className="flex items-center justify-between gap-2 mb-3">
-        {meta ? (
-          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ring-inset ${meta.tone}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
-            {meta.label}
-            <span className="text-slate-400 font-normal">· {meta.sub}</span>
-          </span>
-        ) : (
-          <span className="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
-            {test.exam_type}
-          </span>
-        )}
+        <span className="inline-flex items-center gap-1.5 text-xs font-extrabold px-3 py-1 rounded-full"
+          style={{ background: clay?.badgeBg ?? 'rgba(255,255,255,0.6)', color: clay?.text ?? '#9F1239', backdropFilter: 'blur(8px)' }}>
+          {level !== 'other' ? LEVEL_META[level as Exclude<CambridgeLevel,'other'>].label : test.exam_type}
+          {level !== 'other' && <span className="text-[10px] opacity-70 ml-1">· {LEVEL_META[level as Exclude<CambridgeLevel,'other'>].sub}</span>}
+        </span>
         {test.is_urgent && (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-600">
-            <AlertCircle className="w-3.5 h-3.5" />
-            Sắp hết hạn
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-white/70 px-2 py-0.5 rounded-full">
+            <AlertCircle className="w-3 h-3" />Sắp hết hạn
           </span>
         )}
       </div>
 
       {/* Title */}
-      <h3 className="text-base font-semibold text-slate-900 mb-3 line-clamp-2 leading-snug min-h-[2.75rem]">
+      <h3 className="text-sm sm:text-base font-extrabold mb-3 line-clamp-2 leading-snug min-h-[2.75rem]" style={{ color: clay?.text ?? '#9F1239' }}>
         {test.exam_title}
       </h3>
 
       {/* Meta row */}
-      <div className="flex items-center gap-4 text-xs text-slate-500 mb-4">
+      <div className="flex items-center gap-3 text-[11px] font-semibold mb-3" style={{ color: clay?.text ?? '#9F1239', opacity: 0.7 }}>
         <span className="inline-flex items-center gap-1.5">
-          <skill.Icon className="w-3.5 h-3.5" />
-          {skill.label}
+          <skill.Icon className="w-3.5 h-3.5" />{skill.label}
         </span>
         <span>{test.exam_duration} phút</span>
         <span>{test.total_questions} câu</span>
       </div>
 
-      {/* Attempts */}
-      <div className="flex items-center justify-between text-xs text-slate-500 mb-4">
-        <span>Lượt làm</span>
-        <span className="font-medium text-slate-700">{test.attempts_used} / {test.attempts_allowed}</span>
+      {/* Attempts bar */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex-1 h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.4)' }}>
+          <div className="h-full rounded-full transition-all" style={{ width: `${test.attempts_allowed > 0 ? (test.attempts_used/test.attempts_allowed)*100 : 0}%`, background: clay?.badge ?? '#F43F5E' }} />
+        </div>
+        <span className="text-[10px] font-bold flex-shrink-0" style={{ color: clay?.text ?? '#9F1239' }}>{test.attempts_used}/{test.attempts_allowed} lượt</span>
       </div>
 
       {/* Action */}
       <Link
-        to={canStart ? `/hoc-vien/kids/phong-cho/${test.assignment_id}` : '#'}
+        to={canStart ? `/hoc-vien/phong-cho/${test.assignment_id}` : '#'}
         onClick={e => !canStart && e.preventDefault()}
-        className={`w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors
-          ${canStart
-            ? 'bg-rose-500 text-white hover:bg-rose-600'
-            : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+        className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-extrabold transition-all"
+        style={canStart
+          ? { background: clay?.badge ?? '#F43F5E', color: '#fff', boxShadow: `0 4px 12px ${clay?.badge ?? '#F43F5E'}55` }
+          : { background: 'rgba(255,255,255,0.4)', color: 'rgba(0,0,0,0.3)', cursor: 'not-allowed' }}
       >
         <Play className="w-4 h-4 fill-white" />
         {inProgress ? 'Tiếp tục' : 'Bắt đầu'}
@@ -182,7 +207,7 @@ export function KidsDashboard() {
           const raw = (testsRes.value as any).data?.data;
           const pending = (raw?.pending || []).map((t: any) => ({ ...t, status: 'pending' }));
           const inProg  = (raw?.in_progress || []).map((t: any) => ({ ...t, status: 'in_progress' }));
-          setTests([...inProg, ...pending].slice(0, 6));
+          setTests([...inProg, ...pending].filter(isKidsExam).slice(0, 6));
         }
         if (subRes.status === 'fulfilled') {
           const subs = (subRes.value as any).data?.data?.submissions || [];
@@ -199,10 +224,11 @@ export function KidsDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-2 border-rose-200 border-t-rose-500 rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-slate-500">Đang tải bảng điều khiển…</p>
+      <div className="min-h-screen flex items-center justify-center"
+        style={{ background: 'linear-gradient(160deg, #FFF1F2 0%, #FFF7ED 50%, #F0FDF4 100%)' }}>
+        <div className="text-center space-y-4">
+          <div className="text-5xl animate-bounce">🎈</div>
+          <p className="text-base font-bold text-rose-500">Đang tải bảng điều khiển…</p>
         </div>
       </div>
     );
@@ -217,57 +243,74 @@ export function KidsDashboard() {
   // Filter: kids chỉ thấy Cambridge YL — ẩn VSTEP/IELTS/TOEIC
   const kidsTests = tests.filter(isKidsExam);
 
-  const SKILLS = [
-    { Icon: Headphones, label: 'Nghe',     desc: 'Luyện nghe hiểu', link: '/hoc-vien/kids/luyen-tap' },
-    { Icon: BookOpen,   label: 'Đọc',      desc: 'Luyện đọc hiểu',  link: '/hoc-vien/kids/luyen-tap' },
-    { Icon: PenLine,    label: 'Viết',     desc: 'Luyện viết câu',  link: '/hoc-vien/kids/luyen-tap' },
-    { Icon: Mic,        label: 'Nói',      desc: 'Luyện phát âm',   link: '/hoc-vien/kids/luyen-tap' },
-  ];
-
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4 sm:space-y-6">
+    <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #FFF1F2 0%, #FFF7ED 50%, #F0FDF4 100%)' }}>
 
-        {/* ─── Header ───────────────────────────────────────────── */}
-        <header className="space-y-4 lg:space-y-0 lg:flex lg:items-end lg:justify-between lg:gap-6">
-          <div className="min-w-0">
-            <p className="text-xs sm:text-sm text-rose-500 font-semibold mb-1">Bảng điều khiển</p>
-            <h1 className="text-2xl sm:text-3xl text-slate-900 leading-tight">
-              Xin chào, {user?.uName || 'bạn'} 👋
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Cambridge Young Learners · Starters · Movers · Flyers
-            </p>
-          </div>
+      {/* ─── Greeting + Stats (light, hợp header trắng) ───────── */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 space-y-5 pb-8">
 
-          {/* Compact stats — grid on mobile, inline on desktop */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:flex lg:items-center gap-2">
-            <Stat label="Streak" value={`${streak}`} icon={<Flame className="w-3.5 h-3.5 text-rose-500" />} />
-            <Stat label="Coins" value={`${coins}`} />
-            <Stat label="Điểm TB" value={`${avgScore}%`} />
-            <Stat label="Đã thi" value={`${examsCount}`} />
+        <section className="relative overflow-hidden rounded-3xl p-5 sm:p-7"
+          style={{ background: 'linear-gradient(135deg, #FFFFFF 0%, #FFF7ED 100%)', boxShadow: '0 8px 32px rgba(251,113,133,0.12)', border: '2px solid rgba(255,255,255,0.9)' }}>
+          {/* Decorative blobs */}
+          <div className="absolute -top-10 -right-6 w-40 h-40 rounded-full opacity-40 pointer-events-none" style={{ background: 'radial-gradient(circle, #FED7AA, transparent)' }} />
+          <div className="absolute -bottom-12 left-1/3 w-36 h-36 rounded-full opacity-30 pointer-events-none" style={{ background: 'radial-gradient(circle, #FECDD3, transparent)' }} />
+
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+            <div>
+              <p className="text-xs font-extrabold text-rose-400 uppercase tracking-widest mb-1">🎮 Trang chủ Kids</p>
+              <h1 className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: '#9F1239' }}>
+                Xin chào, {user?.uName?.split(' ').slice(-1)[0] || 'bạn'} 👋
+              </h1>
+              <p className="text-sm font-semibold text-orange-500/80 mt-1">Cambridge Young Learners ⭐</p>
+              {streak > 0 && (
+                <div className="mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full"
+                  style={{ background: 'rgba(251,146,60,0.14)', border: '1.5px solid rgba(251,146,60,0.25)' }}>
+                  <Flame className="w-4 h-4 text-orange-500" fill="#FB923C" />
+                  <span className="text-xs font-bold text-orange-700">{streak} ngày học liên tiếp — tuyệt vời! 🌟</span>
+                </div>
+              )}
+            </div>
+
+            {/* Stat bubbles */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {[
+                { icon: '🔥', label: 'Streak',  value: streak,          c: '#E11D48', bg: 'linear-gradient(135deg,#FFF1F2,#FECDD3)' },
+                { icon: '🪙', label: 'Coins',   value: coins,           c: '#B45309', bg: 'linear-gradient(135deg,#FEFCE8,#FEF08A)' },
+                { icon: '📊', label: 'Điểm TB', value: `${avgScore}%`,  c: '#2563EB', bg: 'linear-gradient(135deg,#EFF6FF,#BFDBFE)' },
+                { icon: '📝', label: 'Đã thi',  value: examsCount,      c: '#059669', bg: 'linear-gradient(135deg,#F0FFF4,#BBF7D0)' },
+              ].map(s => (
+                <div key={s.label} className="rounded-2xl px-3.5 py-2.5 min-w-[84px]"
+                  style={{ background: s.bg, border: '2px solid rgba(255,255,255,0.85)', boxShadow: '0 4px 14px rgba(0,0,0,0.05)' }}>
+                  <div className="text-lg leading-none">{s.icon}</div>
+                  <div className="text-lg font-extrabold tabular-nums leading-none mt-1.5" style={{ color: s.c }}>{s.value}</div>
+                  <div className="text-[10px] font-bold mt-0.5" style={{ color: s.c, opacity: 0.7 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
           </div>
-        </header>
+        </section>
+
+        {/* ─── Nội dung ──────────────────────────────────────────── */}
+
 
         {/* ─── Bài thi được giao ───────────────────────────────── */}
-        <Section
+        <ClaySection
           title="Bài thi của em"
+          emoji="📚"
           subtitle={kidsTests.length > 0 ? `${kidsTests.length} bài đang chờ em làm` : undefined}
+          accentColor="#9F1239"
           action={
-            <Link to="/hoc-vien/kids/bai-tap"
-                  className="inline-flex items-center gap-1 text-sm font-semibold text-rose-600 hover:text-rose-700">
-              Xem tất cả
-              <ChevronRight className="w-4 h-4" />
+            <Link to="/hoc-vien/bai-tap"
+                  className="inline-flex items-center gap-1 text-sm font-extrabold text-rose-600 hover:text-rose-700">
+              Xem tất cả<ChevronRight className="w-4 h-4" />
             </Link>
           }
         >
           {kidsTests.length === 0 ? (
-            <div className="relative text-center py-14 px-6 rounded-2xl bg-gradient-to-b from-rose-50/60 to-white border border-rose-100">
-              <div className="w-14 h-14 rounded-2xl bg-white shadow-sm border border-rose-100 mx-auto mb-3 flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-rose-400" />
-              </div>
-              <p className="text-base font-semibold text-slate-800">Chưa có bài thi nào</p>
-              <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
+            <div className="relative text-center py-12 px-6 rounded-2xl" style={{ background: 'linear-gradient(135deg, #FFF1F2, #FFE4E6)', border: '2px solid rgba(255,255,255,0.8)' }}>
+              <div className="text-5xl mb-3">🎯</div>
+              <p className="text-base font-extrabold text-rose-800">Chưa có bài thi nào</p>
+              <p className="text-sm text-rose-600/80 mt-1 max-w-sm mx-auto font-medium">
                 Khi thầy/cô giao bài Starters, Movers hoặc Flyers — sẽ hiện ở đây.
               </p>
             </div>
@@ -276,103 +319,116 @@ export function KidsDashboard() {
               {kidsTests.map(test => <ExamCard key={test.assignment_id} test={test} />)}
             </div>
           )}
-        </Section>
+        </ClaySection>
 
         {/* ─── Lộ trình Cambridge ──────────────────────────────── */}
-        <Section
+        <ClaySection
           title="Lộ trình Cambridge Young Learners"
+          emoji="🌈"
           subtitle="Ba cấp độ tăng dần — Starters đến Flyers"
+          accentColor="#065F46"
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {(['starters', 'movers', 'flyers'] as const).map((lv, i) => {
+            {([
+              { lv: 'starters' as const, clay: CLAY_STARTERS, emoji: '🌱', desc: 'Bước đầu làm quen tiếng Anh. Từ vựng cơ bản, câu chào hỏi, hình ảnh.' },
+              { lv: 'movers'   as const, clay: CLAY_MOVERS,   emoji: '🚀', desc: 'Mở rộng vốn từ và cấu trúc câu. Đọc hiểu đoạn văn ngắn, viết câu đơn giản.' },
+              { lv: 'flyers'   as const, clay: CLAY_FLYERS,   emoji: '⭐', desc: 'Vận dụng tiếng Anh trong nhiều tình huống. Đọc đoạn văn dài, viết đoạn ngắn.' },
+            ]).map(({ lv, clay, emoji: em, desc }, i) => {
               const meta = LEVEL_META[lv];
               return (
-                <div key={lv} className="relative bg-white border border-slate-200 rounded-xl p-5">
-                  <div className="flex items-start justify-between">
-                    <div className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ring-inset ${meta.tone}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+                <div key={lv} className="rounded-2xl p-5 transition-all hover:-translate-y-1"
+                  style={{ background: clay.bg, boxShadow: clay.shadow, border: '2px solid rgba(255,255,255,0.8)' }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-extrabold px-3 py-1 rounded-full"
+                      style={{ background: clay.badgeBg, color: clay.text, backdropFilter: 'blur(8px)' }}>
                       {meta.sub}
-                    </div>
-                    <span className="text-xs text-slate-400">Bước {i + 1}</span>
+                    </span>
+                    <span className="text-xl">{em}</span>
                   </div>
-                  <h3 className="text-base font-semibold text-slate-900 mt-3">{meta.label}</h3>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    {lv === 'starters' && 'Bước đầu làm quen tiếng Anh. Từ vựng cơ bản, câu chào hỏi, hình ảnh.'}
-                    {lv === 'movers'   && 'Mở rộng vốn từ và cấu trúc câu. Đọc hiểu đoạn văn ngắn, viết câu đơn giản.'}
-                    {lv === 'flyers'   && 'Vận dụng tiếng Anh trong nhiều tình huống. Đọc đoạn văn dài, viết đoạn ngắn.'}
-                  </p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: clay.badge }}>Bước {i + 1}</p>
+                  <h3 className="text-base font-extrabold mb-2" style={{ color: clay.text }}>{meta.label}</h3>
+                  <p className="text-xs leading-relaxed font-medium" style={{ color: clay.text, opacity: 0.75 }}>{desc}</p>
                 </div>
               );
             })}
           </div>
-        </Section>
+        </ClaySection>
 
         {/* ─── Luyện kỹ năng ───────────────────────────────────── */}
-        <Section
+        <ClaySection
           title="Luyện kỹ năng"
+          emoji="💪"
           subtitle="4 kỹ năng — luyện theo nhịp riêng của bạn"
+          accentColor="#1E3A8A"
         >
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {SKILLS.map(s => (
-              <Link
-                key={s.label}
-                to={s.link}
-                className="group bg-white border border-slate-200 rounded-xl p-5 hover:border-rose-300 hover:shadow-sm transition-all"
-              >
-                <div className="w-10 h-10 rounded-lg bg-slate-50 group-hover:bg-rose-50 flex items-center justify-center transition-colors">
-                  <s.Icon className="w-5 h-5 text-slate-600 group-hover:text-rose-600 transition-colors" />
+            {([
+              { label: 'Nghe', clay: SKILL_CLAY['nghe'], Icon: Headphones, desc: 'Luyện nghe hiểu', emoji: '👂', link: '/hoc-vien/luyen-tap' },
+              { label: 'Đọc',  clay: SKILL_CLAY['đọc'],  Icon: BookOpen,   desc: 'Luyện đọc hiểu', emoji: '📖', link: '/hoc-vien/luyen-tap' },
+              { label: 'Viết', clay: SKILL_CLAY['viết'], Icon: PenLine,    desc: 'Luyện viết câu', emoji: '✏️', link: '/hoc-vien/luyen-tap' },
+              { label: 'Nói',  clay: SKILL_CLAY['nói'],  Icon: Mic,        desc: 'Luyện phát âm',  emoji: '🎤', link: '/hoc-vien/luyen-tap' },
+            ]).map(s => (
+              <Link key={s.label} to={s.link}
+                className="group rounded-2xl p-4 sm:p-5 transition-all duration-200 hover:-translate-y-1 active:scale-[0.97]"
+                style={{ background: s.clay.bg, boxShadow: s.clay.shadow, border: '2px solid rgba(255,255,255,0.85)' }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/40 backdrop-blur-sm">
+                    <s.Icon className="w-5 h-5" style={{ color: s.clay.icon }} />
+                  </div>
+                  <span className="text-xl">{s.emoji}</span>
                 </div>
-                <h3 className="text-sm font-semibold text-slate-900 mt-3">{s.label}</h3>
-                <p className="text-xs text-slate-500 mt-1">{s.desc}</p>
-                <div className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 group-hover:text-rose-600 mt-3 transition-colors">
-                  Bắt đầu
-                  <ArrowRight className="w-3 h-3" />
+                <h3 className="text-sm font-extrabold mb-1" style={{ color: s.clay.icon }}>{s.label}</h3>
+                <p className="text-xs font-medium mb-3" style={{ color: s.clay.icon, opacity: 0.7 }}>{s.desc}</p>
+                <div className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-white/50"
+                  style={{ color: s.clay.icon }}>
+                  Bắt đầu <ArrowRight className="w-3 h-3" />
                 </div>
               </Link>
             ))}
           </div>
-        </Section>
+        </ClaySection>
 
         {/* ─── Kết quả gần đây ────────────────────────────────── */}
         {recentResults.length > 0 && (
-          <Section
+          <ClaySection
             title="Kết quả gần đây"
+            emoji="🏅"
+            accentColor="#92400E"
             action={
-              <Link to="/hoc-vien/kids/lich-su"
-                    className="inline-flex items-center gap-1 text-sm font-semibold text-rose-600 hover:text-rose-700">
-                <span className="hidden sm:inline">Xem tất cả</span>
-                <span className="sm:hidden">Xem</span>
-                <ChevronRight className="w-4 h-4" />
+              <Link to="/hoc-vien/lich-su"
+                    className="inline-flex items-center gap-1 text-sm font-extrabold text-rose-600 hover:text-rose-700">
+                Xem tất cả<ChevronRight className="w-4 h-4" />
               </Link>
             }
           >
-            <div className="divide-y divide-slate-100">
+            <div className="space-y-3">
               {recentResults.map((sub: any) => {
                 const score = Math.round(sub.sScore ?? 0);
-                const grade = score >= 80 ? 'text-emerald-600'
-                            : score >= 60 ? 'text-amber-600'
-                            : 'text-rose-600';
                 const skill = getSkillMeta(sub.exam?.eSkill || '');
+                const isGreat = score >= 80;
+                const isOk    = score >= 60;
+                const clay = isGreat ? CLAY_STARTERS : isOk ? CLAY_MOVERS : CLAY_FLYERS;
                 return (
                   <Link
                     key={sub.sId}
-                    to={`/hoc-vien/kids/ket-qua/${sub.sId}`}
-                    className="flex items-center gap-3 sm:gap-4 py-3 first:pt-0 last:pb-0 hover:bg-slate-50/50 -mx-2 px-2 rounded-lg transition-colors"
+                    to={`/hoc-vien/ket-qua/${sub.sId}`}
+                    className="flex items-center gap-3 sm:gap-4 p-3 rounded-2xl transition-all hover:-translate-y-0.5 active:scale-[0.97]"
+                    style={{ background: clay.bg, boxShadow: clay.shadow, border: '2px solid rgba(255,255,255,0.8)' }}
                   >
-                    <div className="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">
-                      <skill.Icon className="w-4 h-4 text-slate-500" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/40">
+                      <skill.Icon className="w-4 h-4" style={{ color: clay.badge }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">{sub.exam?.eTitle || 'Bài thi'}</p>
-                      <p className="text-xs text-slate-500 mt-0.5 truncate">{skill.label} · {sub.exam?.eTotal_questions || 0} câu</p>
+                      <p className="text-sm font-extrabold truncate" style={{ color: clay.text }}>{sub.exam?.eTitle || 'Bài thi'}</p>
+                      <p className="text-xs font-semibold mt-0.5 truncate" style={{ color: clay.text, opacity: 0.7 }}>{skill.label} · {sub.exam?.eTotal_questions || 0} câu</p>
                     </div>
-                    <div className={`text-base font-semibold tabular-nums ${grade} flex-shrink-0`}>{score}%</div>
-                    <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0 hidden sm:block" />
+                    <div className="text-lg font-extrabold tabular-nums flex-shrink-0" style={{ color: clay.badge }}>{score}%</div>
+                    <ArrowRight className="w-4 h-4 flex-shrink-0" style={{ color: clay.badge, opacity: 0.7 }} />
                   </Link>
                 );
               })}
             </div>
-          </Section>
+          </ClaySection>
         )}
 
       </div>
@@ -380,13 +436,3 @@ export function KidsDashboard() {
   );
 }
 
-// Compact stat pill used in header (responsive)
-const Stat = ({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) => (
-  <div className="flex items-center justify-between sm:justify-start gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 sm:py-1.5 min-w-0">
-    <div className="flex items-center gap-1.5 min-w-0">
-      {icon}
-      <span className="text-xs text-slate-500 truncate">{label}</span>
-    </div>
-    <span className="text-sm font-semibold text-slate-900 tabular-nums flex-shrink-0">{value}</span>
-  </div>
-);

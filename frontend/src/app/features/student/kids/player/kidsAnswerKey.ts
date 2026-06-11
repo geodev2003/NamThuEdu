@@ -1,0 +1,184 @@
+/**
+ * kidsAnswerKey — trích đáp án đúng + so khớp cho từng dạng kids task,
+ * dùng riêng cho trang xem lại bài (review). Chỉ phục vụ HIỂN THỊ;
+ * điểm thật do backend chấm.
+ *
+ * Trả về danh sách dòng review: nhãn ô con, đáp án học viên, đáp án đúng, đúng/sai.
+ */
+import { normalize } from './kidsAnswer';
+import type { KidsAnswerMap } from './kidsAnswer';
+
+export interface ReviewRow {
+  label: string;
+  student: string;
+  correct: string;
+  isCorrect: boolean;
+}
+
+const eq = (a: string, b: string) => {
+  const na = normalize(a);
+  return na !== '' && na === normalize(b);
+};
+
+export function buildReviewRows(
+  taskType: string,
+  taskData: any,
+  answer: KidsAnswerMap
+): ReviewRow[] {
+  const get = (k: string) => answer[k] ?? '';
+
+  switch (taskType) {
+    case 'odd_one_out': {
+      const correct = String(taskData?.correct_odd_one ?? '');
+      const student = get('0');
+      return [
+        {
+          label: 'Hình khác loại',
+          student: student ? `Hình ${student}` : '—',
+          correct: `Hình ${correct}`,
+          isCorrect: student !== '' && student === correct,
+        },
+      ];
+    }
+    case 'word_definition_matching': {
+      const words: any[] = taskData?.words ?? [];
+      return words.map((w, i) => {
+        const expected = String.fromCharCode(65 + i);
+        const student = get(String(i));
+        return {
+          label: w.word ?? `Từ ${i + 1}`,
+          student: student || '—',
+          correct: expected,
+          isCorrect: student === expected,
+        };
+      });
+    }
+    case 'dialogue_matching': {
+      const dialogues: any[] = taskData?.dialogues ?? [];
+      return dialogues.map((d, i) => {
+        const student = get(String(i));
+        return {
+          label: d.question ?? `Câu ${i + 1}`,
+          student: student || '—',
+          correct: String(d.correct_answer ?? ''),
+          isCorrect: student === String(d.correct_answer ?? ''),
+        };
+      });
+    }
+    case 'listening_letter_match': {
+      const subjects: any[] = (taskData?.subjects ?? []).filter(
+        (s: any) => !(s.is_example ?? s.isExample)
+      );
+      return subjects.map((s, i) => {
+        const expected = String(s.correct_letter ?? s.correctLetter ?? '');
+        const student = get(String(i));
+        return {
+          label: s.label ?? `Mục ${i + 1}`,
+          student: student || '—',
+          correct: expected,
+          isCorrect: student !== '' && student === expected,
+        };
+      });
+    }
+    case 'cloze_test': {
+      const gaps: any[] = taskData?.gaps ?? [];
+      const rows: ReviewRow[] = gaps.map((g, i) => {
+        const key = String(g.gap_id ?? i + 1);
+        const student = get(key);
+        return {
+          label: `Chỗ trống ${g.gap_id ?? i + 1}`,
+          student: student || '—',
+          correct: String(g.correct_answer ?? ''),
+          isCorrect: eq(student, g.correct_answer ?? ''),
+        };
+      });
+      if (taskData?.story_title_question) {
+        const student = get('title');
+        rows.push({
+          label: 'Tên câu chuyện',
+          student: student || '—',
+          correct: String(taskData.story_title_question.correct_answer ?? ''),
+          isCorrect: eq(student, taskData.story_title_question.correct_answer ?? ''),
+        });
+      }
+      return rows;
+    }
+    case 'open_cloze': {
+      const gaps: any[] = taskData?.gaps ?? [];
+      return gaps.map((g, i) => {
+        const key = String(g.gap_id ?? i + 1);
+        const student = get(key);
+        const accepts: string[] = g.correct_answers ?? [];
+        return {
+          label: `Chỗ trống ${g.gap_id ?? i + 1}`,
+          student: student || '—',
+          correct: accepts.join(' / '),
+          isCorrect: accepts.some((a) => eq(student, a)),
+        };
+      });
+    }
+    case 'story_completion': {
+      const sentences: any[] = taskData?.completion_sentences ?? [];
+      return sentences.map((s, i) => {
+        const student = get(String(i));
+        return {
+          label: `Câu ${i + 1}`,
+          student: student || '—',
+          correct: String(s.correct_answer ?? ''),
+          isCorrect: eq(student, s.correct_answer ?? ''),
+        };
+      });
+    }
+    case 'unscramble_words': {
+      const items: any[] = (taskData?.items ?? []).filter((it: any) => !it.isExample);
+      return items.map((it, i) => {
+        const student = get(String(i));
+        return {
+          label: `Từ ${i + 1}`,
+          student: student || '—',
+          correct: String(it.correct_answer ?? ''),
+          isCorrect: eq(student, it.correct_answer ?? ''),
+        };
+      });
+    }
+    case 'word_bank_fill': {
+      const gaps: any[] = (taskData?.gaps ?? []).filter((g: any) => !g.isExample);
+      return gaps.map((g, i) => {
+        const key = String(g.gap_number ?? i + 1);
+        const student = get(key);
+        return {
+          label: `Chỗ trống ${g.gap_number ?? i + 1}`,
+          student: student || '—',
+          correct: String(g.correct_word ?? ''),
+          isCorrect: eq(student, g.correct_word ?? ''),
+        };
+      });
+    }
+    case 'reading_comprehension': {
+      const questions: any[] = taskData?.questions ?? [];
+      return questions.map((qq, i) => {
+        const student = get(String(i));
+        return {
+          label: qq.question ?? `Câu ${i + 1}`,
+          student: student || '—',
+          correct: String(qq.answer ?? ''),
+          isCorrect: eq(student, qq.answer ?? ''),
+        };
+      });
+    }
+    default:
+      return [];
+  }
+}
+
+/** Dạng nói / viết tự do → review chỉ hiển thị bài làm, không có đáp án máy. */
+export const MANUAL_REVIEW_TYPES = new Set([
+  'picture_questions',
+  'picture_card_questions',
+  'object_placement',
+  'find_differences',
+  'picture_story_narration',
+  'information_exchange',
+  'picture_sentence_writing',
+  'picture_story_writing',
+]);
