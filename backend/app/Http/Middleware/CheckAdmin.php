@@ -23,10 +23,10 @@ class CheckAdmin
             ], 401);
         }
 
-        if ($request->user()->uRole !== 'admin' && $request->user()->uRole !== 'teacher') {
+        if ($request->user()->uRole !== 'admin') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Forbidden - Admin or Teacher access required'
+                'message' => 'Forbidden - Admin access required'
             ], 403);
         }
 

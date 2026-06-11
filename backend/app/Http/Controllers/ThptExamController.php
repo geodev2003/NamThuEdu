@@ -181,9 +181,10 @@ class ThptExamController extends Controller
 
         // Đề thi là tài sản chung: mọi giáo viên đều xem + sửa được.
         $isTeacher = $user && $user->uRole === 'teacher';
+        $isAdmin = $user && $user->uRole === 'admin';
         $isPublic = !($exam->eIs_private ?? false) && $exam->eStatus === 'published';
 
-        if (!$isTeacher && !$isPublic) {
+        if (!$isTeacher && !$isAdmin && !$isPublic) {
             return $this->error('Bạn không có quyền xem đề này.', 403);
         }
 
@@ -256,7 +257,14 @@ class ThptExamController extends Controller
             return $this->error('Đề chưa đủ nội dung để publish.', 422, $errors);
         }
 
-        $updates = ['eStatus' => 'published'];
+        // Lần đầu publish → áp cài đặt auto-duyệt. Nếu đề đã live rồi (rotate
+        // version mới) thì GIỮ published, không hạ xuống pending để tránh gỡ
+        // đề mà học viên đang làm.
+        $moderationStatus = $isPublished ? 'published' : Exam::resolveModerationStatus();
+        $updates = [
+            'eStatus' => $moderationStatus,
+            'eIs_private' => $moderationStatus !== 'published',
+        ];
 
         if ($isPublished && $hasDraft) {
             // ── Rotate version ──────────────────────────────────────────
@@ -286,9 +294,13 @@ class ThptExamController extends Controller
         $exam->update($updates);
         $exam->refresh();
 
-        $message = $isPublished && $hasDraft
-            ? "Đã xuất bản phiên bản {$exam->thpt_version}. Học viên đang làm bài cũ vẫn dùng phiên bản trước."
-            : 'Đã xuất bản đề thi THPT.';
+        if ($moderationStatus === 'pending') {
+            $message = 'Đã gửi đề thi THPT, chờ quản trị viên duyệt.';
+        } else {
+            $message = $isPublished && $hasDraft
+                ? "Đã xuất bản phiên bản {$exam->thpt_version}. Học viên đang làm bài cũ vẫn dùng phiên bản trước."
+                : 'Đã xuất bản đề thi THPT.';
+        }
 
         return response()->json([
             'status' => 'success',

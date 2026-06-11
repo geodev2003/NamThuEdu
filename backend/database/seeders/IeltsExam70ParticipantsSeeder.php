@@ -172,7 +172,8 @@ class IeltsExam70ParticipantsSeeder extends Seeder
                 'uEmail'        => 'student' . time() . $i . '@seed.test',
                 'uPhone'        => '098' . str_pad((string)(1000000 + $startIdx + $i), 7, '0', STR_PAD_LEFT),
                 'uPassword'     => Hash::make('123456'),
-                'plain_password' => '123456',
+                // SECURITY: do not persist plaintext passwords. The seeder default
+                // (123456) is documented in the README/seeder name only.
                 'uRole'         => 'student',
                 'uStatus'       => 'active',
                 'age_group'     => 'adults',

@@ -18,19 +18,12 @@ export function ListenAndDrawLines({
   const { instructions, imageUrl, audioUrl, items = [] } = taskData;
   const isInteractive = mode === 'student';
   const imageRef = imageRefs?.[question.qId];
-
-  // Debug logging
-  console.log('🎮 ListenAndDrawLines Debug:', {
-    questionId: question.qId,
-    mode,
-    isInteractive,
-    hasOnAnswer: !!onAnswer,
-    itemsCount: items.length,
-    currentAnswers: answer
-  });
+  const matchingMode: string =
+    (taskData as any).matchingMode ||
+    taskData.config?.matchingMode ||
+    (items[0]?.hotspot ? 'drag-to-image' : items[0]?.targetLabel ? 'drag-to-list' : 'drag-to-image');
 
   const handleDragStart = (e: React.DragEvent, itemIndex: number) => {
-    console.log('🎯 Drag Start:', { questionId: question.qId, itemIndex });
     e.dataTransfer.setData('questionId', question.qId.toString());
     e.dataTransfer.setData('itemIndex', itemIndex.toString());
     e.dataTransfer.effectAllowed = 'move';
@@ -45,40 +38,27 @@ export function ListenAndDrawLines({
     e.preventDefault();
     const draggedQuestionId = parseInt(e.dataTransfer.getData('questionId'));
     const draggedItemIndex = parseInt(e.dataTransfer.getData('itemIndex'));
-    
-    console.log('🎯 Drop:', { 
-      draggedQuestionId, 
-      draggedItemIndex, 
-      targetIndex,
-      currentQuestionId: question.qId,
-      hasOnAnswer: !!onAnswer
-    });
-    
+
     if (draggedQuestionId === question.qId && onAnswer) {
-      const newAnswer = {
+      onAnswer({
         ...answer,
         [draggedItemIndex]: targetIndex
-      };
-      console.log('✅ Updating answer:', newAnswer);
-      onAnswer(newAnswer);
+      });
     }
   };
 
   const handleHotspotClick = (hotspotIndex: number) => {
-    console.log('🎯 Hotspot Click:', { hotspotIndex, isInteractive, hasOnAnswer: !!onAnswer });
-    
     if (!isInteractive || !onAnswer) return;
-    
+
     // Find which label is connected to this hotspot
     const labelIndex = Object.keys(answer).find(
       key => answer[parseInt(key)] === hotspotIndex
     );
-    
+
     if (labelIndex) {
       // Remove the connection
       const newAnswers = { ...answer };
       delete newAnswers[parseInt(labelIndex)];
-      console.log('🗑️ Removing connection:', { labelIndex, hotspotIndex, newAnswers });
       onAnswer(newAnswers);
     }
   };
@@ -245,15 +225,7 @@ export function ListenAndDrawLines({
             {items.map((item: any, idx: number) => {
               const isUsed = answer[idx] !== undefined;
               const labelKey = `${question.qId}-${idx}`;
-              
-              console.log(`🏷️ Rendering label ${idx}:`, {
-                name: item.name,
-                isInteractive,
-                draggable: isInteractive,
-                isUsed,
-                labelPosition: item.labelPosition
-              });
-              
+
               return item.labelPosition && (
                 <div
                   key={`label-${idx}`}
@@ -298,6 +270,53 @@ export function ListenAndDrawLines({
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Drag-to-list mode: match each name with its description (2-column) */}
+      {matchingMode === 'drag-to-list' && items && Array.isArray(items) && items.length > 0 && (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
+          {items.map((item: any, idx: number) => {
+            const selected = answer[idx];
+            return (
+              <div
+                key={`match-${idx}`}
+                className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 sm:flex-row sm:items-center"
+              >
+                <div className="flex items-center gap-2 sm:w-1/2">
+                  <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-indigo-500 text-sm font-bold text-white">
+                    {idx + 1}
+                  </span>
+                  <span className="font-semibold text-slate-800">{item.name}</span>
+                </div>
+                <div className="sm:w-1/2">
+                  <select
+                    value={selected ?? ''}
+                    disabled={!isInteractive}
+                    onChange={(e) => {
+                      if (!onAnswer) return;
+                      const val = e.target.value;
+                      const next = { ...answer };
+                      if (val === '') {
+                        delete next[idx];
+                      } else {
+                        next[idx] = parseInt(val);
+                      }
+                      onAnswer(next);
+                    }}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  >
+                    <option value="">— Chọn đáp án —</option>
+                    {items.map((opt: any, optIdx: number) => (
+                      <option key={optIdx} value={optIdx}>
+                        {opt.targetLabel || opt.targetId || `Lựa chọn ${optIdx + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

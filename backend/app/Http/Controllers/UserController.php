@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use App\Http\Requests\Admin\AdminCreateUserRequest;
+use App\Http\Requests\Admin\AdminUpdateUserRequest;
+use App\Http\Requests\Admin\ChangeUserRoleRequest;
+use App\Http\Requests\Admin\BulkUserActionRequest;
 use App\Models\Classes;
 use App\Models\ClassEnrollment;
 use App\Models\User;
@@ -498,7 +502,11 @@ class UserController extends Controller
             $student = User::create([
                 'uPhone' => trim($request->studentPhone),
                 'uPassword' => Hash::make($request->studentPassword),
-                'plain_password' => encrypt($request->studentPassword), // Store encrypted plain password
+                // SECURITY: Do NOT persist the plaintext password (encrypted or not).
+                // OWASP A02 (Cryptographic Failures): a reversible password store
+                // is equivalent to plaintext for any attacker with DB + APP_KEY.
+                // The plain password is returned ONCE in the response below so the
+                // teacher can hand it to the student; nothing else is retained.
                 'uName' => $request->studentName,
                 'uEmail' => $request->studentEmail ?? null,
                 'uDoB' => $request->studentDoB ?? null,
@@ -615,7 +623,9 @@ class UserController extends Controller
                 $student = User::create([
                     'uPhone' => trim($data['studentPhone']),
                     'uPassword' => Hash::make($data['studentPassword']),
-                    'plain_password' => encrypt($data['studentPassword']), // Store encrypted plain password
+                    // SECURITY: see note in createSingleStudent() — plaintext
+                    // password is never persisted. Caller must surface the
+                    // generated password to the teacher in-response only.
                     'uName' => $data['studentName'],
                     'uDoB' => $data['studentDoB'] ?? null,
                     'age_group' => $ageGroup,
@@ -1462,37 +1472,9 @@ class UserController extends Controller
      * POST /api/admin/users
      * Tạo tài khoản mới
      */
-    public function adminCreateUser(Request $request)
+    public function adminCreateUser(AdminCreateUserRequest $request)
     {
-        $user = $request->user();
-
-        if (!$user || $user->uRole !== 'admin') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Chỉ quản trị viên mới có quyền tạo tài khoản.'
-            ], 403);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'phone' => 'required|string|unique:users,uPhone',
-            'password' => 'required|string|min:6',
-            'name' => 'required|string|max:150',
-            'role' => 'required|in:student,teacher,admin',
-            'status' => 'nullable|in:active,inactive',
-            'dob' => 'nullable|date',
-            'address' => 'nullable|string',
-            'gender' => 'nullable|boolean',
-            'class' => 'nullable|integer',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Dữ liệu không hợp lệ.',
-                'errors' => $validator->errors()
-            ], 400);
-        }
-
+        // Xác thực quyền admin + validate input đã được xử lý bởi AdminCreateUserRequest.
         try {
             $newUser = User::create([
                 'uPhone' => trim($request->phone),
@@ -1554,16 +1536,10 @@ class UserController extends Controller
      * PUT /api/admin/users/{id}
      * Sửa tài khoản
      */
-    public function adminUpdateUser(Request $request, $id)
+    public function adminUpdateUser(AdminUpdateUserRequest $request, $id)
     {
+        // Xác thực quyền admin + validate input đã được xử lý bởi AdminUpdateUserRequest.
         $user = $request->user();
-
-        if (!$user || $user->uRole !== 'admin') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Chỉ quản trị viên mới có quyền sửa tài khoản.'
-            ], 403);
-        }
 
         $targetUser = User::find($id);
 
@@ -1579,26 +1555,6 @@ class UserController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Không thể thay đổi quyền của chính mình.'
-            ], 400);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|required|string|max:150',
-            'phone' => 'sometimes|required|string|unique:users,uPhone,' . $id . ',uId',
-            'role' => 'sometimes|required|in:student,teacher,admin',
-            'status' => 'sometimes|required|in:active,inactive',
-            'dob' => 'sometimes|nullable|date',
-            'address' => 'sometimes|nullable|string',
-            'gender' => 'sometimes|nullable|boolean',
-            'class' => 'sometimes|nullable|integer',
-            'password' => 'sometimes|nullable|string|min:6',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Dữ liệu không hợp lệ.',
-                'errors' => $validator->errors()
             ], 400);
         }
 
@@ -1706,16 +1662,10 @@ class UserController extends Controller
      * POST /api/admin/users/{id}/change-role
      * Phân quyền người dùng
      */
-    public function changeUserRole(Request $request, $id)
+    public function changeUserRole(ChangeUserRoleRequest $request, $id)
     {
+        // Xác thực quyền admin + validate input đã được xử lý bởi ChangeUserRoleRequest.
         $user = $request->user();
-
-        if (!$user || $user->uRole !== 'admin') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Chỉ quản trị viên mới có quyền phân quyền.'
-            ], 403);
-        }
 
         $targetUser = User::find($id);
 
@@ -1731,19 +1681,6 @@ class UserController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Không thể thay đổi quyền của chính mình.'
-            ], 400);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'role' => 'required|in:student,teacher,admin',
-            'reason' => 'nullable|string|max:255',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Dữ liệu không hợp lệ.',
-                'errors' => $validator->errors()
             ], 400);
         }
 
@@ -2163,32 +2100,10 @@ class UserController extends Controller
      * POST /api/admin/users/bulk-action
      * Thực hiện thao tác hàng loạt trên user
      */
-    public function bulkUserAction(Request $request)
+    public function bulkUserAction(BulkUserActionRequest $request)
     {
+        // Xác thực quyền admin + validate input đã được xử lý bởi BulkUserActionRequest.
         $user = $request->user();
-
-        if (!$user || $user->uRole !== 'admin') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Chỉ quản trị viên mới có quyền thực hiện thao tác này.'
-            ], 403);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'action' => 'required|in:lock,unlock,activate,deactivate,delete,restore,change_role',
-            'user_ids' => 'required|array|min:1|max:500',
-            'user_ids.*' => 'required|integer',
-            'role' => 'required_if:action,change_role|in:student,teacher,admin',
-            'reason' => 'nullable|string|max:255',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Dữ liệu không hợp lệ.',
-                'errors' => $validator->errors(),
-            ], 400);
-        }
 
         $action = $request->action;
         $targetIds = collect($request->user_ids)->unique()->values()->all();
@@ -3077,7 +2992,9 @@ class UserController extends Controller
         try {
             $student->update([
                 'uPassword' => Hash::make($request->new_password),
-                'plain_password' => encrypt($request->new_password) // Store encrypted plain password
+                // SECURITY: do not persist the plaintext password. The new
+                // password is surfaced to the teacher in the response (and/or
+                // the teacher chose it themselves), never stored on disk.
             ]);
 
             return response()->json([

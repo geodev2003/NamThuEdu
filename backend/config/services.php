@@ -42,6 +42,14 @@ return [
 
     'gemini' => [
         'api_key' => env('GEMINI_API_KEY'),
+        // Danh sách key để xoay vòng khi 1 key hết quota / bị rate-limit.
+        // Thêm GEMINI_API_KEY_2, _3... vào .env là tự động được dùng.
+        'api_keys' => array_values(array_unique(array_filter([
+            env('GEMINI_API_KEY'),
+            env('GEMINI_API_KEY_2'),
+            env('GEMINI_API_KEY_3'),
+            env('GEMINI_API_KEY_4'),
+        ]))),
         'model'   => env('GEMINI_MODEL', 'gemini-2.0-flash'),
     ],
 

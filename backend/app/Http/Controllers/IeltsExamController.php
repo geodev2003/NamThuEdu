@@ -293,8 +293,9 @@ class IeltsExamController extends Controller
     public function getDraft(Request $request, $examId)
     {
         $user = Auth::user();
+        $isAdmin = $user && $user->uRole === 'admin';
         $exam = Exam::where('eId', $examId)
-            ->where('eTeacher_id', $user->uId)
+            ->when(!$isAdmin, fn($q) => $q->where('eTeacher_id', $user->uId))
             ->with(['contentBlocks', 'questions.answers'])
             ->first();
 
@@ -384,6 +385,10 @@ class IeltsExamController extends Controller
                             'questionText'   => $q->qContent ?? '',
                             'options'        => $options ?: ['A' => '', 'B' => '', 'C' => '', 'D' => ''],
                             'correctAnswer'  => $data['correct_answer'] ?? '',
+                            'taskInstruction'=> $data['task_instruction'] ?? '',
+                            'wordLimit'      => $data['word_limit'] ?? '',
+                            'selectCount'    => $data['select_count'] ?? 1,
+                            'useWordBank'    => $data['use_word_bank'] ?? false,
                         ];
                     })
                     ->toArray();
@@ -425,6 +430,9 @@ class IeltsExamController extends Controller
                             'questionText'   => $q->qContent ?? '',
                             'options'        => $data['options'] ?? ['A' => '', 'B' => '', 'C' => '', 'D' => ''],
                             'correctAnswer'  => $data['correct_answer'] ?? '',
+                            'taskInstruction'=> $data['task_instruction'] ?? '',
+                            'wordLimit'      => $data['word_limit'] ?? '',
+                            'selectCount'    => $data['select_count'] ?? 1,
                         ];
                     })
                     ->toArray();

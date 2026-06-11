@@ -72,6 +72,23 @@ class Exam extends Model
     ];
 
     /**
+     * Quyết định trạng thái kiểm duyệt khi một đề được publish.
+     *
+     * Đọc cài đặt `examAutoApprove` (admin_settings):
+     *  - true (mặc định) → 'published' (đề lên thẳng, không cần admin duyệt)
+     *  - false           → 'pending'   (đề chờ admin duyệt, giữ private)
+     *
+     * Dùng chung cho mọi luồng publish (generic / VSTEP / IELTS / THPT / Import)
+     * để hành vi auto-duyệt nhất quán toàn hệ thống.
+     */
+    public static function resolveModerationStatus(): string
+    {
+        $raw = AdminSetting::where('key', 'examAutoApprove')->value('value');
+        $autoApprove = filter_var($raw ?? 'true', FILTER_VALIDATE_BOOLEAN);
+        return $autoApprove ? 'published' : 'pending';
+    }
+
+    /**
      * Relationships
      */
     public function examTemplate()

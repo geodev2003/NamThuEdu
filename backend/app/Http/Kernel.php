@@ -67,5 +67,6 @@ class Kernel extends HttpKernel
         'admin' => \App\Http\Middleware\CheckAdmin::class,
         'admin.audit' => \App\Http\Middleware\LogAdminActivity::class,
         'cors' => \App\Http\Middleware\CorsMiddleware::class,
+        'maintenance' => \App\Http\Middleware\CheckMaintenanceMode::class,
     ];
 }

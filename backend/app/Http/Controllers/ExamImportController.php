@@ -87,6 +87,7 @@ class ExamImportController extends Controller
             DB::beginTransaction();
 
             // Create exam
+            $moderationStatus = Exam::resolveModerationStatus();
             $exam = Exam::create([
                 'eTitle' => $request->eTitle,
                 'eDescription' => $request->eDescription,
@@ -94,7 +95,8 @@ class ExamImportController extends Controller
                 'eSkill' => $request->eSkill,
                 'eTeacher_id' => $user->uId,
                 'eDuration_minutes' => $request->eDuration_minutes,
-                'eIs_private' => $request->eIs_private ?? false,
+                'eIs_private' => $request->eIs_private ?? ($moderationStatus !== 'published'),
+                'eStatus' => $moderationStatus,
                 'eSource_type' => 'upload',
                 'eDifficulty' => $request->eDifficulty ?? 'medium',
                 'eTarget_level' => $request->eTarget_level,

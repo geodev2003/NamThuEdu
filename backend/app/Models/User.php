@@ -45,7 +45,11 @@ class User extends Authenticatable
         'avatar_url',
         'bio',
         'language_preference',
-        'plain_password',
+        // NOTE: `plain_password` was removed (OWASP A02 — Cryptographic
+        // Failures). The encrypted-plaintext column is being dropped via
+        // migration `2026_06_09_000000_drop_plain_password_from_users_table`.
+        // Do NOT re-add it; surface freshly generated passwords to the
+        // teacher in the API response at creation/reset time only.
         'notifications_read_at',
         'dismissed_notification_ids',
         'notification_settings',
@@ -101,6 +105,27 @@ class User extends Authenticatable
     public function getAuthIdentifier()
     {
         return $this->uId;
+    }
+
+    /**
+     * Alias accessor: $user->id luôn trả về uId.
+     *
+     * Lý do: code base + framework (Laravel broadcast channels, Sanctum, một
+     * số helper) thỉnh thoảng đọc $user->id theo convention chuẩn Laravel,
+     * nhưng bảng users của chúng ta dùng primaryKey = 'uId'. Trước khi có
+     * accessor này, $user->id trả về null và đã tạo bug ngầm (ví dụ:
+     * AdminSystemController::getProfile, routes/channels.php).
+     *
+     * Giữ accessor này như một "compat shim" — KHÔNG khuyến khích viết mới
+     * theo $user->id; convention chuẩn của repo vẫn là $user->uId. Khi nào
+     * Reminder #19 (chuẩn hoá naming) hoàn tất và cột rename về `id`, có
+     * thể xoá accessor này.
+     *
+     * @return int|null
+     */
+    public function getIdAttribute()
+    {
+        return $this->attributes['uId'] ?? null;
     }
 
     /**

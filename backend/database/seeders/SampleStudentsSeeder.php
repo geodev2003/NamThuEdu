@@ -116,7 +116,7 @@ class SampleStudentsSeeder extends Seeder
         $this->command->info('✅ 3 tài khoản học viên mẫu đã được tạo:');
         $this->command->info('');
         $this->command->info('  👶 KIDS   → Phone: 0901234567 | Pass: password123 | Tên: Bé Minh');
-        $this->command->info('  🧑 TEENS  → Phone: 0902345678 | Pass:    | Tên: Nguyễn Thị Lan');
-        $this->command->info('  👔 ADULTS → Phone: 0903456789 | Pass: 0903456789 | Tên: Trần Văn Hùng');
+        $this->command->info('  🧑 TEENS  → Phone: 0902345678 | Pass: password123 | Tên: Nguyễn Thị Lan');
+        $this->command->info('  👔 ADULTS → Phone: 0903456789 | Pass: password123 | Tên: Trần Văn Hùng');
     }
 }

@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use App\Models\AdminSetting;
 use App\Models\AdminNotification;
+use App\Models\User;
 
 class AdminSystemController extends Controller
 {
@@ -130,19 +132,39 @@ class AdminSystemController extends Controller
      */
     public function getSettings(Request $request)
     {
-        $settings = AdminSetting::all()->pluck('value', 'key')->toArray();
+        $stored = AdminSetting::all()->pluck('value', 'key')->toArray();
 
-        // Default values nếu chưa có trong DB
-        if (!isset($settings['autoRefresh'])) {
-            $settings['autoRefresh'] = true;
-        } else {
-            $settings['autoRefresh'] = filter_var($settings['autoRefresh'], FILTER_VALIDATE_BOOLEAN);
-        }
+        // Map default + kiểu dữ liệu cho từng setting.
+        // Khi thêm setting mới: thêm 1 dòng ở đây + 1 dòng trong updateSettings().
+        $defaults = [
+            'autoRefresh'       => true,
+            'refreshInterval'   => 30,
+            'emailAlert'        => false,
+            'alertEmail'        => '',
+            'maintenanceMode'   => false,
+            'allowRegistration' => true,
+            'maxLoginAttempts'  => 5,
+            'examAutoApprove'   => true,  // Mặc định tự động duyệt đề thi
+        ];
 
-        if (!isset($settings['emailAlert'])) {
-            $settings['emailAlert'] = false;
-        } else {
-            $settings['emailAlert'] = filter_var($settings['emailAlert'], FILTER_VALIDATE_BOOLEAN);
+        $boolKeys = ['autoRefresh', 'emailAlert', 'maintenanceMode', 'allowRegistration', 'examAutoApprove'];
+        $intKeys  = ['refreshInterval', 'maxLoginAttempts'];
+
+        $settings = [];
+        foreach ($defaults as $key => $default) {
+            if (!array_key_exists($key, $stored)) {
+                $settings[$key] = $default;
+                continue;
+            }
+
+            $raw = $stored[$key];
+            if (in_array($key, $boolKeys, true)) {
+                $settings[$key] = filter_var($raw, FILTER_VALIDATE_BOOLEAN);
+            } elseif (in_array($key, $intKeys, true)) {
+                $settings[$key] = (int) $raw;
+            } else {
+                $settings[$key] = (string) $raw;
+            }
         }
 
         return response()->json([
@@ -152,22 +174,72 @@ class AdminSystemController extends Controller
     }
 
     /**
-     * Cập nhật cài đặt
+     * Cập nhật cài đặt admin (whitelist).
+     *
+     * SECURITY: Trước đây hàm này lấy `$request->except(['_token','_method'])`
+     * và ghi BẤT KỲ key/value nào vào bảng `admin_settings` — đây là một dạng
+     * mass-assignment: caller có thể trồng các key tuỳ ý (poison cấu hình,
+     * gài feature flag, hoặc chèn key mà code khác đọc trong tương lai).
+     *
+     * Giờ chỉ chấp nhận các key được khai báo tường minh trong $allowedRules,
+     * mỗi key có rule validate riêng. Key không nằm trong whitelist sẽ bị
+     * loại và trả về trong field `rejected` để FE/dev nhìn thấy.
+     *
+     * Lưu ý: nội dung pháp lý (legal_vi/legal_en) đi qua endpoint
+     * updateLegalContent() riêng, KHÔNG dùng hàm này.
      */
     public function updateSettings(Request $request)
     {
-        $payload = $request->except(['_token', '_method']);
-        
+        // Whitelist tường minh: tên key => rule validate.
+        // Khi cần thêm setting mới: thêm 1 dòng ở đây + cập nhật getSettings().
+        $allowedRules = [
+            'autoRefresh'       => 'sometimes|boolean',
+            'refreshInterval'   => 'sometimes|integer|min:5|max:600',
+            'emailAlert'        => 'sometimes|boolean',
+            'alertEmail'        => 'sometimes|nullable|email|max:255',
+            'maintenanceMode'   => 'sometimes|boolean',
+            'allowRegistration' => 'sometimes|boolean',
+            'maxLoginAttempts'  => 'sometimes|integer|min:3|max:20',
+            'examAutoApprove'   => 'sometimes|boolean',  // Auto-approve exam toggle
+        ];
+
+        $allowedKeys = array_keys($allowedRules);
+        $rawPayload  = $request->except(['_token', '_method']);
+
+        // Tách phần hợp lệ vs phần bị reject (để báo cho client biết).
+        $payload  = array_intersect_key($rawPayload, array_flip($allowedKeys));
+        $rejected = array_values(array_diff(array_keys($rawPayload), $allowedKeys));
+
+        $validator = Validator::make($payload, $allowedRules);
+        if ($validator->fails()) {
+            return response()->json([
+                'status'   => 'error',
+                'message'  => 'Dữ liệu cài đặt không hợp lệ.',
+                'errors'   => $validator->errors(),
+                'rejected' => $rejected,
+            ], 422);
+        }
+
+        if (empty($payload)) {
+            return response()->json([
+                'status'   => 'error',
+                'message'  => 'Không có cài đặt hợp lệ nào được gửi. Các key được hỗ trợ: '
+                    . implode(', ', $allowedKeys),
+                'rejected' => $rejected,
+            ], 422);
+        }
+
         foreach ($payload as $key => $value) {
             AdminSetting::updateOrCreate(
                 ['key' => $key],
-                ['value' => is_bool($value) ? ($value ? 'true' : 'false') : (string)$value]
+                ['value' => is_bool($value) ? ($value ? 'true' : 'false') : (string) $value]
             );
         }
 
         return response()->json([
-            'status' => 'success',
-            'message' => 'Cập nhật cài đặt thành công.'
+            'status'   => 'success',
+            'message'  => 'Cập nhật cài đặt thành công.',
+            'rejected' => $rejected,
         ]);
     }
 
@@ -189,26 +261,53 @@ class AdminSystemController extends Controller
     }
 
     /**
-     * Lấy danh sách thông báo admin
+     * Lấy danh sách thông báo admin (có phân trang).
+     *
+     * Query params:
+     *   - page     (int, default 1)
+     *   - per_page (int, default 20, clamp 1..100)
+     *
+     * Backward compatibility: response giữ shape {status, data: [...]} cho
+     * client cũ (NotificationDropdown, AdminLayout, AdminNotificationsPage)
+     * vốn chỉ unwrap `data` và đọc nguyên array. Client mới có thể đọc thêm
+     * `meta.{current_page,last_page,per_page,total}` để hiển thị phân trang.
+     *
+     * Trước đây hardcode take(50) — không an toàn khi bảng admin_notifications
+     * lớn dần (đọc 50 row mỗi lần mở dropdown, không có cách lấy trang sau).
      */
     public function getNotifications(Request $request)
     {
-        $notifications = AdminNotification::orderBy('created_at', 'desc')->take(50)->get();
+        $perPage = (int) $request->input('per_page', 20);
+        if ($perPage < 1) {
+            $perPage = 20;
+        }
+        if ($perPage > 100) {
+            $perPage = 100;
+        }
 
-        // Map timestamp for UI
-        $mapped = $notifications->map(function($n) {
+        $paginator = AdminNotification::orderBy('created_at', 'desc')
+            ->paginate($perPage);
+
+        // Map sang shape UI quen thuộc (giữ nguyên field cũ).
+        $mapped = collect($paginator->items())->map(function ($n) {
             return [
-                'id' => $n->id,
-                'title' => $n->title,
-                'body' => $n->body,
-                'is_read' => (bool)$n->is_read,
-                'time' => $n->created_at ? $n->created_at->diffForHumans() : 'Vừa xong'
+                'id'      => $n->id,
+                'title'   => $n->title,
+                'body'    => $n->body,
+                'is_read' => (bool) $n->is_read,
+                'time'    => $n->created_at ? $n->created_at->diffForHumans() : 'Vừa xong',
             ];
         });
 
         return response()->json([
             'status' => 'success',
-            'data' => $mapped
+            'data'   => $mapped,
+            'meta'   => [
+                'current_page' => $paginator->currentPage(),
+                'last_page'    => $paginator->lastPage(),
+                'per_page'     => $paginator->perPage(),
+                'total'        => $paginator->total(),
+            ],
         ]);
     }
 
@@ -339,10 +438,15 @@ class AdminSystemController extends Controller
     public function getProfile(Request $request)
     {
         $user = $request->user();
+        // Dùng `uId` (primaryKey thực) thay vì `$user->id`. Trước đây
+        // `$user->id` trả về null vì bảng `users` không có cột `id`.
+        // User model có thêm accessor `getIdAttribute()` alias về uId
+        // để các caller cũ (vd: routes/channels.php) tiếp tục hoạt động,
+        // nhưng ở code mới hãy luôn dùng `uId` cho rõ.
         return response()->json([
             'status' => 'success',
             'data' => [
-                'id'         => $user->id,
+                'id'         => $user->uId,
                 'name'       => $user->uName ?? $user->name ?? 'Administrator',
                 'phone'      => $user->uPhone ?? $user->phone ?? '',
                 'email'      => $user->uEmail ?? $user->email ?? '',
@@ -362,6 +466,7 @@ class AdminSystemController extends Controller
         $request->validate([
             'name'  => 'nullable|string|max:100',
             'email' => 'nullable|email|max:150',
+            'phone' => 'nullable|string|max:20',
         ]);
 
         $user = $request->user();
@@ -371,6 +476,20 @@ class AdminSystemController extends Controller
         if ($request->filled('email')) {
             $user->uEmail = $request->email;
         }
+        if ($request->filled('phone')) {
+            // Kiểm tra trùng lặp SĐT với tài khoản khác
+            $existing = User::where('uPhone', $request->phone)
+                            ->where('uId', '!=', $user->uId)
+                            ->whereNull('uDeleted_at')
+                            ->first();
+            if ($existing) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Số điện thoại này đã được sử dụng bởi tài khoản khác.'
+                ], 400);
+            }
+            $user->uPhone = $request->phone;
+        }
         $user->save();
 
         return response()->json([
@@ -379,6 +498,7 @@ class AdminSystemController extends Controller
             'data'    => [
                 'name'  => $user->uName ?? $user->name,
                 'email' => $user->uEmail ?? $user->email,
+                'phone' => $user->uPhone ?? $user->phone,
             ]
         ]);
     }

@@ -9,8 +9,14 @@ export function extractTaskData(question: Question): TaskData {
   const taskData = question.kids_task_config || {};
   const realTaskData = taskData.task_data || taskData;
   const config = taskData.config || realTaskData.config || {};
-  
+
+  // Spread the raw editor config (realTaskData) + nested config FIRST so that any
+  // field the editor saved (text, story, word_bank, gaps, options, matchingMode,
+  // answer_format, targetLabel, ...) is directly readable on the returned object.
+  // The normalized fields below then override with consistent names.
   return {
+    ...config,
+    ...realTaskData,
     task_type: taskData.task_type || realTaskData.task_type || config.task_type,
     task_data: realTaskData,
     config,
