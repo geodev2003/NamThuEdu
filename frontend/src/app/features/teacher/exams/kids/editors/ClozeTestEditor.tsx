@@ -59,12 +59,12 @@ const ClozeTestEditor: React.FC<ClozeTestEditorProps> = ({
       );
       
       if (confirm) {
-        const gapIds = existingGaps.map(marker => {
+        const gapIds: number[] = existingGaps.map(marker => {
           const match = marker.match(/__(\d+)__/);
           return match ? parseInt(match[1]) : 0;
         }).filter(id => id > 0);
 
-        const uniqueGapIds = Array.from(new Set(gapIds)).sort((a, b) => a - b);
+        const uniqueGapIds: number[] = Array.from(new Set<number>(gapIds)).sort((a, b) => a - b);
         
         const newGaps = uniqueGapIds.map(id => ({
           gap_id: id,
@@ -196,29 +196,32 @@ const ClozeTestEditor: React.FC<ClozeTestEditorProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="rounded-2xl border-4 border-orange-200 bg-gradient-to-r from-orange-50 to-yellow-50 p-6">
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-baloo text-2xl font-bold text-orange-600">
-              📝 Cloze Test
-            </h3>
-            <p className="mt-1 text-sm text-gray-600">
-              Chọn từ đúng để điền vào chỗ trống
-            </p>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">📝</span>
+            <div>
+              <h3 className="text-base font-semibold text-slate-900">
+                Cloze Test
+              </h3>
+              <p className="text-sm text-slate-500">
+                Chọn từ đúng để điền vào chỗ trống
+              </p>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-3">
             <button
               onClick={onCancel}
-              className="flex items-center space-x-2 rounded-xl border-2 border-gray-300 bg-white px-4 py-2 transition-all hover:bg-gray-50"
+              className="flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
             >
               <X className="h-4 w-4" />
               <span>Hủy</span>
             </button>
             <button
               onClick={handleSave}
-              className="flex items-center space-x-2 rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 px-6 py-2 font-bold text-white transition-all hover:scale-105 hover:shadow-lg"
+              className="flex items-center gap-2 rounded-lg bg-orange-500 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
             >
               <Save className="h-4 w-4" />
               <span>Lưu câu hỏi</span>
@@ -228,32 +231,32 @@ const ClozeTestEditor: React.FC<ClozeTestEditorProps> = ({
       </div>
 
       {/* Basic Info */}
-      <div className="rounded-xl border-2 border-gray-200 bg-white p-6">
-        <h4 className="mb-4 font-baloo text-lg font-bold text-gray-800">
+      <div className="rounded-xl border border-slate-200 bg-white p-6">
+        <h4 className="mb-4 text-base font-semibold text-slate-900">
           📝 Thông tin cơ bản
         </h4>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-2 block text-sm font-medium text-slate-700">
               Tiêu đề câu hỏi
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-lg border-2 border-gray-300 px-4 py-2 focus:border-orange-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
               placeholder="VD: Điền từ vào chỗ trống"
             />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-2 block text-sm font-medium text-slate-700">
               Điểm số
             </label>
             <input
               type="number"
               value={points}
               onChange={(e) => setPoints(parseInt(e.target.value))}
-              className="w-full rounded-lg border-2 border-gray-300 px-4 py-2 focus:border-orange-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
               min="1"
               max="10"
             />
@@ -262,19 +265,19 @@ const ClozeTestEditor: React.FC<ClozeTestEditorProps> = ({
       </div>
 
       {/* Text with Gaps */}
-      <div className="rounded-xl border-2 border-gray-200 bg-white p-6">
-        <h4 className="mb-4 font-baloo text-lg font-bold text-gray-800">
-          📄 Đoạn văn
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <h4 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900">
+          <span className="text-lg">📄</span> Đoạn văn
         </h4>
         <div className="space-y-4">
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-slate-700">
                 Nhập đoạn văn (dùng __1__, __2__, __3__ để đánh dấu chỗ trống)
               </label>
               <button
                 onClick={handleDetectBlanks}
-                className="flex items-center space-x-2 rounded-lg bg-indigo-500 px-4 py-2 text-sm text-white transition-all hover:bg-indigo-600"
+                className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600"
               >
                 <span>🔍</span>
                 <span>Phát hiện chỗ trống</span>
@@ -283,15 +286,15 @@ const ClozeTestEditor: React.FC<ClozeTestEditorProps> = ({
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 font-medium focus:border-orange-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
               rows={6}
               placeholder="VD: Tom likes to play __1__ in the park. He has a __2__ ball. His friend __3__ plays with him."
             />
           </div>
 
           {/* Preview */}
-          <div className="rounded-lg bg-orange-50 p-4">
-            <p className="mb-2 text-sm font-medium text-gray-700">Xem trước:</p>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p className="mb-2 text-sm font-medium text-slate-700">Xem trước:</p>
             <div
               className="text-lg leading-relaxed"
               dangerouslySetInnerHTML={{ __html: renderTextWithGaps() }}
@@ -303,13 +306,13 @@ const ClozeTestEditor: React.FC<ClozeTestEditorProps> = ({
       {/* Gaps Configuration */}
       <div className="space-y-4">
         {/* Sticky header with add button */}
-        <div className="sticky top-0 z-40 -mx-6 -mt-6 mb-4 flex items-center justify-between bg-white px-6 py-4 shadow-md">
-          <h4 className="font-baloo text-lg font-bold text-gray-800">
-            🔢 Cấu hình chỗ trống ({gaps.length})
+        <div className="sticky top-0 z-40 -mx-6 -mt-6 mb-4 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+          <h4 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+            <span className="text-lg">🔢</span> Cấu hình chỗ trống ({gaps.length})
           </h4>
           <button
             onClick={handleAddGap}
-            className="flex items-center space-x-2 rounded-lg bg-orange-500 px-4 py-2 text-white transition-all hover:bg-orange-600"
+            className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600"
           >
             <Plus className="h-4 w-4" />
             <span>Thêm chỗ trống</span>
@@ -319,10 +322,10 @@ const ClozeTestEditor: React.FC<ClozeTestEditorProps> = ({
         {gaps.map((gap) => (
           <div
             key={gap.gap_id}
-            className="rounded-xl border-2 border-gray-200 bg-white p-6"
+            className="rounded-xl border border-slate-200 bg-white p-5"
           >
             <div className="mb-4 flex items-center justify-between">
-              <h5 className="font-baloo text-lg font-bold text-orange-600">
+              <h5 className="text-sm font-semibold text-slate-900">
                 Chỗ trống __{gap.gap_id}__
               </h5>
               {gaps.length > 1 && (
@@ -347,7 +350,7 @@ const ClozeTestEditor: React.FC<ClozeTestEditorProps> = ({
                   onChange={(e) =>
                     handleGapChange(gap.gap_id, 'correct_answer', e.target.value)
                   }
-                  className="w-full rounded-lg border-2 border-green-300 bg-green-50 px-4 py-2 font-bold text-green-700 focus:border-green-500 focus:outline-none"
+                  className="w-full rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
                   placeholder="VD: football"
                 />
               </div>
@@ -379,7 +382,7 @@ const ClozeTestEditor: React.FC<ClozeTestEditorProps> = ({
                         onChange={(e) =>
                           handleOptionChange(gap.gap_id, optIndex, e.target.value)
                         }
-                        className="flex-1 rounded-lg border-2 border-gray-300 px-4 py-2 focus:border-orange-500 focus:outline-none"
+                        className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
                         placeholder={`Lựa chọn ${String.fromCharCode(65 + optIndex)}`}
                       />
                       {gap.options.length > 2 && (
@@ -400,13 +403,13 @@ const ClozeTestEditor: React.FC<ClozeTestEditorProps> = ({
       </div>
 
       {/* Story Title Question (Optional - Movers/Flyers R&W Part 3) */}
-      <div className="rounded-xl border-2 border-purple-200 bg-purple-50 p-6">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h4 className="font-baloo text-xl font-bold text-purple-600">
-              📖 Câu hỏi chọn tên câu chuyện (Tùy chọn)
+            <h4 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+              <span className="text-lg">📖</span> Câu hỏi chọn tên câu chuyện (Tùy chọn)
             </h4>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-slate-500">
               Movers/Flyers R&W Part 3: "What's the best name for this story?"
             </p>
           </div>
@@ -415,9 +418,9 @@ const ClozeTestEditor: React.FC<ClozeTestEditorProps> = ({
               type="checkbox"
               checked={hasStoryTitle}
               onChange={(e) => setHasStoryTitle(e.target.checked)}
-              className="h-5 w-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+              className="h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400"
             />
-            <span className="text-sm font-medium text-purple-700">
+            <span className="text-sm font-medium text-slate-700">
               Bật câu hỏi này
             </span>
           </label>
@@ -426,12 +429,12 @@ const ClozeTestEditor: React.FC<ClozeTestEditorProps> = ({
         {hasStoryTitle && (
           <div className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-bold text-gray-700">
+              <label className="mb-2 block text-sm font-medium text-slate-700">
                 Các lựa chọn tên câu chuyện:
               </label>
               {storyTitleOptions.map((option, index) => (
                 <div key={index} className="mb-2 flex items-center gap-2">
-                  <span className="font-bold text-purple-600">
+                  <span className="font-semibold text-slate-600">
                     {String.fromCharCode(65 + index)}.
                   </span>
                   <input
@@ -442,7 +445,7 @@ const ClozeTestEditor: React.FC<ClozeTestEditorProps> = ({
                       newOptions[index] = e.target.value;
                       setStoryTitleOptions(newOptions);
                     }}
-                    className="flex-1 rounded-lg border-2 border-purple-200 px-4 py-2 focus:border-purple-400 focus:outline-none"
+                    className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
                     placeholder={`Tên câu chuyện ${String.fromCharCode(65 + index)}`}
                   />
                   {storyTitleOptions.length > 3 && (
@@ -460,7 +463,7 @@ const ClozeTestEditor: React.FC<ClozeTestEditorProps> = ({
               {storyTitleOptions.length < 5 && (
                 <button
                   onClick={() => setStoryTitleOptions([...storyTitleOptions, ''])}
-                  className="mt-2 flex items-center gap-2 rounded-lg border-2 border-dashed border-purple-300 bg-white px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50"
+                  className="mt-2 flex items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-orange-400 hover:bg-orange-50/40"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Thêm lựa chọn</span>
@@ -469,13 +472,13 @@ const ClozeTestEditor: React.FC<ClozeTestEditorProps> = ({
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-bold text-gray-700">
+              <label className="mb-2 block text-sm font-medium text-slate-700">
                 Đáp án đúng:
               </label>
               <select
                 value={storyTitleCorrect}
                 onChange={(e) => setStoryTitleCorrect(e.target.value)}
-                className="w-full rounded-lg border-2 border-purple-200 px-4 py-2 focus:border-purple-400 focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
               >
                 <option value="">-- Chọn đáp án đúng --</option>
                 {storyTitleOptions.filter(opt => opt.trim()).map((option, index) => (
@@ -490,11 +493,11 @@ const ClozeTestEditor: React.FC<ClozeTestEditorProps> = ({
       </div>
 
       {/* Instructions */}
-      <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4">
-        <h4 className="mb-2 font-baloo text-sm font-bold text-blue-800">
-          💡 Hướng dẫn:
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700">
+          <span>💡</span> Hướng dẫn:
         </h4>
-        <ul className="space-y-1 text-sm text-blue-700">
+        <ul className="space-y-1 text-sm text-slate-600">
           <li>• Nhập đoạn văn và dùng __1__, __2__, __3__ để đánh dấu chỗ trống</li>
           <li>• Mỗi chỗ trống cần có đáp án đúng và 2-5 lựa chọn</li>
           <li>• Đáp án đúng phải nằm trong danh sách lựa chọn</li>

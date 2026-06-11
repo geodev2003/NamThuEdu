@@ -14,6 +14,9 @@ export interface AdminUser {
   status?: "active" | "inactive";
   uCreated_at?: string;
   created_at?: string;
+  avatar_url?: string | null;
+  avatar?: string | null;
+  age_group?: "kids" | "teens" | "adults" | string | null;
 }
 
 export interface AdminCategory {
@@ -53,6 +56,18 @@ export interface AdminExam {
   created_at?: string;
   teacher?: { uName?: string; name?: string };
   questions_count?: number;
+  // Age-group classification fields
+  age_group?: "kids" | "teens" | "adults" | string | null;
+  content_type?: string | null;
+  difficulty_level?: string | null;
+  eTarget_level?: string | null;
+  eDifficulty?: string | null;
+  eDescription?: string | null;
+  eDuration?: number | string | null;
+  eDuration_minutes?: number | string | null;
+  // IELTS-specific
+  ielts_test_type?: string | null;
+  ielts_skill?: string | null;
 }
 
 export interface AdminActivityLogItem {
@@ -136,20 +151,6 @@ export interface AdminStudentRegistrationItem {
   last_login?: string | null;
 }
 
-export interface AdminStudentComplaintItem {
-  complaint_id: number;
-  student: {
-    id: number;
-    name: string | null;
-    phone: string;
-    address?: string | null;
-  };
-  type: string;
-  status: "open" | "resolved";
-  submitted_at?: string;
-  note?: string;
-}
-
 export interface AdminCreateCoursePayload {
   course_name: string;
   teacher_id: number;
@@ -188,6 +189,7 @@ export const adminApi = {
     password: string;
     role: "student" | "teacher" | "admin";
     status?: "active" | "inactive";
+    age_group?: "kids" | "teens" | "adults" | string;
   }) {
     const response = await api.post<ApiResponse<unknown>>("/admin/users", payload);
     return response.data;
@@ -428,23 +430,6 @@ export const adminApi = {
     };
   },
 
-  async getStudentComplaints(params?: { search?: string }) {
-    const response = await api.get<ApiResponse<{ summary?: Record<string, number>; data?: AdminStudentComplaintItem[] }>>(
-      "/admin/students/complaints",
-      { params: { paginate: "false", ...params } }
-    );
-    const raw = unwrap(response.data);
-    return {
-      summary: raw.summary || {},
-      items: raw.data || [],
-    };
-  },
-
-  async resolveStudentComplaint(studentId: number) {
-    const response = await api.post<ApiResponse<unknown>>(`/admin/students/complaints/${studentId}/resolve`);
-    return response.data;
-  },
-
   async createCourse(payload: AdminCreateCoursePayload) {
     const response = await api.post<ApiResponse<unknown>>("/admin/courses", payload);
     return response.data;
@@ -469,8 +454,8 @@ export const adminApi = {
     return unwrap(response.data);
   },
 
-  async updateAdminProfile(payload: { name?: string; email?: string }) {
-    const response = await api.put<ApiResponse<{ name: string; email: string }>>("/admin/profile", payload);
+  async updateAdminProfile(payload: { name?: string; email?: string; phone?: string }) {
+    const response = await api.put<ApiResponse<{ name: string; email: string; phone: string }>>("/admin/profile", payload);
     return unwrap(response.data);
   },
 

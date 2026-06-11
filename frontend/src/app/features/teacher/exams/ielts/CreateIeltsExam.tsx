@@ -767,7 +767,14 @@ function normalizeQuestion(q: any, fallbackId: string): any {
   const opts = q.options || null;
   // Giữ nguyên options từ AI (có thể chỉ A-C hoặc A-E cho Choose TWO)
   // KHÔNG fill A/B/C/D rỗng vì làm rối UI cho note/form/sentence completion
-  const isMcq = q.questionType === "multiple-choice" || q.questionType === "matching-headings";
+  const isMcq = q.questionType === "multiple-choice";
+  // Các dạng matching dùng danh sách lựa chọn chung (A/B/C…) → cần options.
+  const isMatching = [
+    "matching-headings",
+    "matching-information",
+    "matching-features",
+    "matching-sentence-endings",
+  ].includes(q.questionType);
 
   let normalizedOpts: Record<string, string> | undefined;
   if (opts && typeof opts === "object") {
@@ -778,6 +785,9 @@ function normalizeQuestion(q: any, fallbackId: string): any {
   } else if (isMcq) {
     // MCQ mà thiếu options → tạo A-D rỗng để teacher điền
     normalizedOpts = { A: "", B: "", C: "", D: "" };
+  } else if (isMatching) {
+    // Matching mà thiếu options → tạo A/B/C rỗng cho danh sách lựa chọn chung
+    normalizedOpts = { A: "", B: "", C: "" };
   }
 
   return {
@@ -788,6 +798,8 @@ function normalizeQuestion(q: any, fallbackId: string): any {
     ...(q.taskTitle ? { taskTitle: q.taskTitle } : {}),
     ...(q.taskInstruction ? { taskInstruction: q.taskInstruction } : {}),
     ...(normalizedOpts ? { options: normalizedOpts } : {}),
+    ...(q.wordLimit ? { wordLimit: q.wordLimit } : {}),
+    ...(q.selectCount && q.selectCount > 1 ? { selectCount: q.selectCount } : {}),
     correctAnswer: q.correctAnswer || "",
   };
 }
@@ -900,21 +912,41 @@ export function validateIeltsSkillData(skill: IeltsSkill, data: any): Validation
         issues.push({ severity: "warning", location: loc, message: `Bài đọc ngắn (${p.wordCount} từ, IELTS thường 700-900 từ)` });
       }
       const qs = p.questions || [];
-      const expected = p.passageNumber === 3 ? 14 : 13;
-      if (qs.length < expected) {
-        issues.push({ severity: "error", location: loc, message: `Cần ${expected} câu hỏi (hiện ${qs.length})` });
+      if (qs.length === 0) {
+        issues.push({ severity: "error", location: loc, message: "Chưa có câu hỏi nào" });
       }
       const missingText: number[] = [];
       const missingAnswer: number[] = [];
+      const missingChoices: number[] = [];
+      const matchingSet = [
+        "matching-headings",
+        "matching-information",
+        "matching-features",
+        "matching-sentence-endings",
+      ];
       qs.forEach((q: any) => {
         if (!q.questionText?.trim()) missingText.push(q.questionNumber);
         if (!q.correctAnswer || !String(q.correctAnswer).trim()) missingAnswer.push(q.questionNumber);
+        // Matching: cần định nghĩa danh sách lựa chọn dùng chung (ít nhất 2 mục có nội dung)
+        if (matchingSet.includes(q.questionType)) {
+          const filled = Object.values(q.options || {}).filter(
+            (v: any) => v && String(v).trim()
+          ).length;
+          if (filled < 2) missingChoices.push(q.questionNumber);
+        }
       });
       if (missingText.length) {
         issues.push({
           severity: "error",
           location: loc,
           message: `${missingText.length} câu thiếu nội dung (Câu ${formatRanges(missingText)})`,
+        });
+      }
+      if (missingChoices.length) {
+        issues.push({
+          severity: "warning",
+          location: loc,
+          message: `${missingChoices.length} câu matching chưa có danh sách lựa chọn (Câu ${formatRanges(missingChoices)})`,
         });
       }
       if (missingAnswer.length) {

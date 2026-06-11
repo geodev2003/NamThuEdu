@@ -52,10 +52,10 @@ import { TestExamPlayer } from "../features/test";
 import { AssignmentProgress } from "../features/teacher/assignments/AssignmentProgress";
 import { CreateAssignment } from "../features/teacher/assignments/CreateAssignment";
 
-// Practice
-import { PracticeSessionList } from "../features/teacher/practice/PracticeSessionList";
-import { PracticeSessionDetail } from "../features/teacher/practice/PracticeSessionDetail";
-import { PracticeSessionEdit } from "../features/teacher/practice/PracticeSessionEdit";
+// Practice (Luyện tập GV) — đã gỡ khỏi UI. Files vẫn còn trong codebase nếu cần khôi phục.
+// import { PracticeSessionList } from "../features/teacher/practice/PracticeSessionList";
+// import { PracticeSessionDetail } from "../features/teacher/practice/PracticeSessionDetail";
+// import { PracticeSessionEdit } from "../features/teacher/practice/PracticeSessionEdit";
 
 // Grading
 import { StudentVstepExamPage } from "../features/student/exams/StudentVstepExamPage";
@@ -179,13 +179,9 @@ export const teacherRoutes = {
     { path: "bai-tap/:assignmentId/tien-do", Component: AssignmentProgress },
     { path: "bai-tap/giao-moi", Component: CreateAssignment },
 
-    // Luyện tập
-    { path: "luyen-tap", Component: PracticeSessionList },
-    { path: "luyen-tap/theo-chu-de", Component: PracticeSessionList },
-    { path: "luyen-tap/theo-mau", Component: PracticeSessionList },
-    { path: "luyen-tap/ngau-nhien", Component: PracticeSessionList },
-    { path: "luyen-tap/:id", Component: PracticeSessionDetail },
-    { path: "luyen-tap/:id/chinh-sua", Component: PracticeSessionEdit },
+    // Luyện tập (GV) — đã gỡ. Redirect mọi link cũ về Ngân hàng đề.
+    { path: "luyen-tap", Component: () => <Navigate to="/giao-vien/de-thi" replace /> },
+    { path: "luyen-tap/*", Component: () => <Navigate to="/giao-vien/de-thi" replace /> },
 
     // Chấm bài
     { path: "cham-diem", Component: GradingQueue },

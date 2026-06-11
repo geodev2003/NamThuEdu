@@ -13,7 +13,7 @@
  */
 import { useState, useRef } from "react";
 import {
-  X, Upload, Download, FileJson, FileText, CheckCircle2, Loader2, AlertCircle,
+  X, Upload, FileJson, FileText, CheckCircle2, Loader2, AlertCircle,
   Code2, Copy, Check, Wand2, Sparkles,
   Headphones, BookOpen, PenLine, Mic,
 } from "lucide-react";
@@ -24,6 +24,7 @@ import {
 } from "../../../../../../services/groqApi";
 import { parseIeltsSkillSmart, scoreParsedQuality, type QualityResult } from "../ieltsParser";
 import { API_BASE_URL } from "../../../../../../utils/apiConfig";
+import { PdfPageSelector } from "./PdfPageSelector";
 
 interface Props {
   open: boolean;
@@ -34,7 +35,7 @@ interface Props {
   onImported: (skillData: IeltsSkillImport) => void;
 }
 
-type Stage = "idle" | "extract" | "scanned" | "parse" | "ready";
+type Stage = "idle" | "trim" | "extract" | "scanned" | "parse" | "ready";
 type ParseMethod = "lib" | "ai-fallback" | "ai-direct" | "manual" | "json";
 
 const SKILL_META: Record<IeltsImportSkill, { label: string; icon: any; gradient: [string, string]; bg: string; text: string }> = {
@@ -42,46 +43,6 @@ const SKILL_META: Record<IeltsImportSkill, { label: string; icon: any; gradient:
   reading:   { label: "Reading",   icon: BookOpen,   gradient: ["#10B981", "#059669"], bg: "bg-emerald-50", text: "text-emerald-700" },
   writing:   { label: "Writing",   icon: PenLine,    gradient: ["#F97316", "#EA580C"], bg: "bg-orange-50", text: "text-orange-700" },
   speaking:  { label: "Speaking",  icon: Mic,        gradient: ["#A855F7", "#7C3AED"], bg: "bg-purple-50", text: "text-purple-700" },
-};
-
-const SAMPLE_BY_SKILL: Record<IeltsImportSkill, any> = {
-  listening: {
-    sections: [
-      {
-        sectionNumber: 1,
-        transcript: "Sample transcript",
-        questions: [
-          { questionNumber: 1, questionType: "form-completion", questionText: "Full name: Sarah ___1___", correctAnswer: "Thompson" },
-        ],
-      },
-    ],
-  },
-  reading: {
-    passages: [
-      {
-        passageNumber: 1,
-        title: "The History of Coffee",
-        body: "Coffee has a long history...",
-        wordCount: 850,
-        questions: [
-          { questionNumber: 1, questionType: "true-false-not-given", questionText: "Coffee originated in Ethiopia.", correctAnswer: "TRUE" },
-        ],
-      },
-    ],
-  },
-  writing: {
-    tasks: [
-      { taskNumber: 1, prompt: "Describe the chart...", chartType: "bar" },
-      { taskNumber: 2, prompt: "Some people believe...", essayType: "opinion" },
-    ],
-  },
-  speaking: {
-    parts: [
-      { partNumber: 1, questions: [{ topic: "Hometown", text: "Where are you from?" }] },
-      { partNumber: 2, cueCard: { topic: "Describe a memorable journey", bullets: ["Where", "When", "Who", "Why"], followUp: "Will you go again?" } },
-      { partNumber: 3, questions: [{ text: "How has travel changed?" }] },
-    ],
-  },
 };
 
 export function IeltsImportModal({ open, skill, testType, onClose, onImported }: Props) {
@@ -98,6 +59,7 @@ export function IeltsImportModal({ open, skill, testType, onClose, onImported }:
   const [parseMethod, setParseMethod] = useState<ParseMethod>("lib");
   const [parseStatus, setParseStatus] = useState<string>("");
   const [quality, setQuality] = useState<QualityResult | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const originalFileRef = useRef<File | null>(null);
 
   const meta = SKILL_META[skill];
@@ -116,10 +78,12 @@ export function IeltsImportModal({ open, skill, testType, onClose, onImported }:
     setIsScannedPdf(false);
     setParseStatus("");
     setQuality(null);
+    setPendingFile(null);
     originalFileRef.current = null;
   };
 
-  const handleFile = async (f: File) => {
+  /** Khi user chọn file: PDF → bước chọn/cắt trang; JSON → xử lý ngay. */
+  const onPickFile = async (f: File) => {
     setError("");
     setPayload(null);
     setFileName(f.name);
@@ -128,67 +92,9 @@ export function IeltsImportModal({ open, skill, testType, onClose, onImported }:
     const isJson = f.type === "application/json" || /\.json$/i.test(f.name);
 
     if (isPdf) {
-      try {
-        setStage("extract");
-        setPdfProgress({ done: 0, total: 0 });
-        originalFileRef.current = f; // Lưu file gốc cho mọi trường hợp
-
-        const pdfjs = await import("pdfjs-dist");
-        pdfjs.GlobalWorkerOptions.workerSrc =
-          `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-        const buf = await f.arrayBuffer();
-        const pdf = await pdfjs.getDocument({ data: buf }).promise;
-        let fullText = "";
-        for (let i = 1; i <= pdf.numPages; i++) {
-          setPdfProgress({ done: i, total: pdf.numPages });
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          let lastY: number | null = null;
-          let pageText = "";
-          for (const item of content.items as any[]) {
-            if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) pageText += "\n";
-            pageText += item.str;
-            lastY = item.transform[5];
-          }
-          fullText += `\n=== Page ${i} ===\n${pageText.trim()}\n`;
-        }
-
-        // Detect PDF scan: text rất ít = ảnh scan
-        const meaningfulText = fullText.replace(/=== Page \d+ ===/g, '').trim();
-        const isScan = meaningfulText.length < 150;
-
-        if (isScan) {
-          // PDF scan → đi thẳng Gemini AI (lib không đọc được)
-          setIsScannedPdf(true);
-          setScannedText("");
-          setStage("parse");
-          setParseStatus("PDF dạng ảnh scan — đang dùng Gemini AI để OCR + phân tích…");
-          try {
-            const aiResult = await callGeminiApi(f);
-            validatePayloadForSkill(aiResult, skill);
-            setPayload(aiResult);
-            setParseMethod("ai-direct");
-            setParseStatus("Hoàn tất phân tích bằng Gemini AI (PDF scan)");
-            setStage("ready");
-          } catch (e: any) {
-            setError(`PDF scan và Gemini AI cũng thất bại: ${e.message}. Bạn có thể nhập nội dung thủ công bên dưới.`);
-            setStage("scanned");
-          }
-        } else {
-          // PDF có text → chạy pipeline lib → fallback AI
-          setIsScannedPdf(false);
-          setScannedText(fullText);
-          try {
-            await runSmartPipeline(fullText, f);
-          } catch (e: any) {
-            setError(e.message);
-            setStage("scanned");
-          }
-        }
-      } catch (e: any) {
-        setError(e.message || "Lỗi đọc PDF");
-        setStage("idle");
-      }
+      // Hiện bước chọn/cắt trang trước khi import.
+      setPendingFile(f);
+      setStage("trim");
       return;
     }
 
@@ -203,11 +109,83 @@ export function IeltsImportModal({ open, skill, testType, onClose, onImported }:
         setStage("ready");
       } catch (e: any) {
         setError(e.message || "JSON không hợp lệ");
+        setStage("idle");
       }
       return;
     }
 
     setError("Chỉ hỗ trợ file .pdf hoặc .json");
+    setStage("idle");
+  };
+
+  /** Xử lý PDF (đã cắt trang nếu cần): trích text → pipeline lib/AI. */
+  const processPdf = async (f: File) => {
+    setError("");
+    setPayload(null);
+    setFileName(f.name);
+    setPendingFile(null);
+
+    try {
+      setStage("extract");
+      setPdfProgress({ done: 0, total: 0 });
+      originalFileRef.current = f; // Lưu file (đã cắt) cho mọi trường hợp
+
+      const pdfjs = await import("pdfjs-dist");
+      pdfjs.GlobalWorkerOptions.workerSrc =
+        `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+      const buf = await f.arrayBuffer();
+      const pdf = await pdfjs.getDocument({ data: buf }).promise;
+      let fullText = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        setPdfProgress({ done: i, total: pdf.numPages });
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        let lastY: number | null = null;
+        let pageText = "";
+        for (const item of content.items as any[]) {
+          if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) pageText += "\n";
+          pageText += item.str;
+          lastY = item.transform[5];
+        }
+        fullText += `\n=== Page ${i} ===\n${pageText.trim()}\n`;
+      }
+
+      // Detect PDF scan: text rất ít = ảnh scan
+      const meaningfulText = fullText.replace(/=== Page \d+ ===/g, '').trim();
+      const isScan = meaningfulText.length < 150;
+
+      if (isScan) {
+        // PDF scan → đi thẳng Gemini AI (lib không đọc được)
+        setIsScannedPdf(true);
+        setScannedText("");
+        setStage("parse");
+        setParseStatus("PDF dạng ảnh scan — đang dùng Gemini AI để OCR + phân tích…");
+        try {
+          const aiResult = await callGeminiApi(f);
+          validatePayloadForSkill(aiResult, skill);
+          setPayload(aiResult);
+          setParseMethod("ai-direct");
+          setParseStatus("Hoàn tất phân tích bằng Gemini AI (PDF scan)");
+          setStage("ready");
+        } catch (e: any) {
+          setError(`PDF scan và Gemini AI cũng thất bại: ${e.message}. Bạn có thể nhập nội dung thủ công bên dưới.`);
+          setStage("scanned");
+        }
+      } else {
+        // PDF có text → chạy pipeline lib → fallback AI
+        setIsScannedPdf(false);
+        setScannedText(fullText);
+        try {
+          await runSmartPipeline(fullText, f);
+        } catch (e: any) {
+          setError(e.message);
+          setStage("scanned");
+        }
+      }
+    } catch (e: any) {
+      setError(e.message || "Lỗi đọc PDF");
+      setStage("idle");
+    }
   };
 
   /** Khi user paste text thủ công và bấm "Phân tích" */
@@ -336,23 +314,15 @@ export function IeltsImportModal({ open, skill, testType, onClose, onImported }:
     onClose();
   };
 
-  const downloadSample = () => {
-    const blob = new Blob([JSON.stringify(SAMPLE_BY_SKILL[skill], null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ielts-${skill}-template.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const summary = payload ? buildSummary(payload, skill) : null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={() => onClose()}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col z-10"
+        className={`relative bg-white rounded-2xl shadow-2xl w-full max-h-[92vh] overflow-hidden flex flex-col z-10 transition-all ${
+          stage === "trim" ? "max-w-5xl" : "max-w-3xl"
+        }`}
         style={{ animation: "ieltsImportIn .2s cubic-bezier(0.34,1.56,0.64,1)" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -381,22 +351,6 @@ export function IeltsImportModal({ open, skill, testType, onClose, onImported }:
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-          {/* Sample download */}
-          <div className={`${meta.bg} border border-current/20 rounded-xl p-4 flex items-center justify-between gap-3`}>
-            <div className="flex-1 min-w-0">
-              <p className={`text-sm font-bold ${meta.text}`}>Cần file mẫu?</p>
-              <p className="text-xs text-gray-600 mt-0.5">
-                Tải JSON template với cấu trúc đúng cho {meta.label}.
-              </p>
-            </div>
-            <button
-              onClick={downloadSample}
-              className={`flex items-center gap-1.5 h-9 px-3 bg-white border border-current/30 ${meta.text} rounded-lg text-sm font-semibold hover:bg-white transition-colors flex-shrink-0`}
-            >
-              <Download className="w-4 h-4" /> Tải mẫu
-            </button>
-          </div>
-
           {/* Upload zone */}
           {stage === "idle" && (
             <label className="block border-2 border-dashed border-gray-300 hover:border-gray-400 rounded-xl p-8 cursor-pointer transition-all">
@@ -406,7 +360,7 @@ export function IeltsImportModal({ open, skill, testType, onClose, onImported }:
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) handleFile(f);
+                  if (f) onPickFile(f);
                   e.target.value = "";
                 }}
               />
@@ -422,6 +376,20 @@ export function IeltsImportModal({ open, skill, testType, onClose, onImported }:
                 </div>
               </div>
             </label>
+          )}
+
+          {/* Chọn / cắt trang PDF trước khi import */}
+          {stage === "trim" && pendingFile && (
+            <PdfPageSelector
+              file={pendingFile}
+              accentColor={meta.gradient[0]}
+              onConfirm={(result) => processPdf(result)}
+              onCancel={() => {
+                setPendingFile(null);
+                setFileName("");
+                setStage("idle");
+              }}
+            />
           )}
 
           {/* Extract progress */}
@@ -630,7 +598,8 @@ export function IeltsImportModal({ open, skill, testType, onClose, onImported }:
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer — ẩn ở bước chọn/cắt trang (selector có nút riêng) */}
+        {stage !== "trim" && (
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50">
           <button
             onClick={onClose}
@@ -665,6 +634,7 @@ export function IeltsImportModal({ open, skill, testType, onClose, onImported }:
             </button>
           )}
         </div>
+        )}
       </div>
     </div>
   );

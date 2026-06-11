@@ -375,20 +375,7 @@ export function NotificationDropdown() {
             )}
           </div>
 
-          {/* Footer */}
-          <div style={{ borderTop: "1px solid #F1F5F9" }}>
-            <Link
-              to="/admin/notifications"
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-center gap-1 py-2.5 transition-all duration-200 cursor-pointer"
-              style={{ fontSize: 12, color: "#64748B", fontWeight: 500 }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#0F172A"; (e.currentTarget as HTMLAnchorElement).style.background = "#F8FAFC"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#64748B"; (e.currentTarget as HTMLAnchorElement).style.background = "transparent"; }}
-            >
-              Xem tất cả thông báo
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
+          {/* No footer when the separate notifications page is removed */}
         </div>
       )}
     </div>

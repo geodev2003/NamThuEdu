@@ -49,6 +49,13 @@ interface Props {
   playMode: PlayModeConfig;
   /** Khi truyền vào, 2 nút "LUYỆN TẬP" và "BẮT ĐẦU THI" sẽ mở trang demo làm bài. */
   examId?: number | string;
+  /** Chế độ admin: điều hướng demo sang route /admin thay vì /giao-vien. */
+  admin?: boolean;
+  /**
+   * Khi truyền vào, nút "LUYỆN TẬP"/"BẮT ĐẦU THI" sẽ gọi callback này
+   * để render demo INLINE (không điều hướng route). Ưu tiên hơn navigate.
+   */
+  onStartDemo?: () => void;
 }
 
 type ModeTab = "practice" | "full_test";
@@ -60,6 +67,8 @@ export function IeltsExamStudentPreview({
   skillData,
   playMode,
   examId,
+  admin = false,
+  onStartDemo,
 }: Props) {
   const structure = IELTS_STRUCTURE[skill];
   const navigate = useNavigate();
@@ -68,14 +77,23 @@ export function IeltsExamStudentPreview({
     playMode.practice_enabled ? "practice" : "full_test"
   );
 
-  // Mở trang demo làm bài (chỉ khi có examId — tức trang preview standalone)
+  // Mở demo làm bài. Ưu tiên callback inline (onStartDemo) — tránh lỗi
+  // routing khi nhúng trong iframe/modal. Fallback sang navigate khi standalone.
   const openDemoPlayer = () => {
     if (!examId) {
       toast.warning("Tính năng xem thử chỉ khả dụng khi mở từ trang Xem đề thi");
       return;
     }
     toast.info("🔍 Chế độ xem thử · Đáp án sẽ không được lưu");
-    navigate(`/giao-vien/de-thi/ielts/${skill}/thu/${examId}`);
+    if (onStartDemo) {
+      onStartDemo();
+      return;
+    }
+    navigate(
+      admin
+        ? `/admin/de-thi/xem/ielts/${skill}/thu/${examId}`
+        : `/giao-vien/de-thi/ielts/${skill}/thu/${examId}`
+    );
   };
 
   // Lấy danh sách sections từ skillData (mỗi editor có shape khác nhau)

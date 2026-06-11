@@ -16,6 +16,7 @@ import { ArrowRight, ChevronDown, Check, Info, Lightbulb } from "lucide-react";
 import type {
   IeltsListeningPayload,
   IeltsListeningSection,
+  IeltsQuestion,
   AnswerMap,
 } from "../types";
 import { IeltsAudioOnce } from "../components/IeltsAudioOnce";
@@ -189,6 +190,9 @@ export function IeltsListeningView({
               const num = q.questionNumber;
               const value = (answers[q.qId] ?? "") as string;
               const hasAnswer = value.trim().length > 0;
+              const selectCount = Number((q.data?.select_count as number) ?? 1);
+              const isMulti =
+                selectCount > 1 && q.options && Object.keys(q.options).length > 0;
               return (
                 <div
                   key={q.qId}
@@ -204,7 +208,14 @@ export function IeltsListeningView({
                   >
                     {num}
                   </span>
-                  {q.options && Object.keys(q.options).length > 0 ? (
+                  {isMulti ? (
+                    <MultiAnswerSelect
+                      value={value}
+                      options={q.options as Record<string, string>}
+                      selectCount={selectCount}
+                      onChange={(v) => onAnswer(q.qId, v)}
+                    />
+                  ) : q.options && Object.keys(q.options).length > 0 ? (
                     <AnswerDropdown
                       value={value}
                       options={q.options as Record<string, string>}
@@ -277,17 +288,259 @@ function highlightQuestionRow(num: number): void {
 }
 
 /**
- * Render context block bên trái — auto detect 2 layouts:
+ * Wrapper: tách câu MATCHING (cần hiện bảng nghĩa A/B/C) khỏi phần còn lại.
+ * Matching trước đây bị nhét vào form-render nên học viên chỉ thấy item +
+ * dropdown, KHÔNG thấy "A = …, B = …" → không hiểu chọn gì. Giờ render riêng:
+ *   • Một bảng nghĩa (legend) dùng chung hiện 1 lần.
+ *   • Danh sách item đánh số rõ ràng.
+ * Các segment giữ đúng thứ tự câu để không xáo trộn đề.
+ */
+function FormContent({ section }: { section: IeltsListeningSection }) {
+  // Phân loại từng câu: matching (cần legend A/B/C) | mcq (trắc nghiệm có
+  // options nhưng KHÔNG phải blank-fill) | other (form/note/table/sentence…).
+  const classify = (q: IeltsQuestion): "matching" | "mcq" | "other" => {
+    const type = (q.questionType || "").toString();
+    const hasOptions = !!q.options && Object.keys(q.options).length > 0;
+    if (type.includes("matching") && hasOptions) return "matching";
+    if (hasOptions && (type.includes("multiple") || type.includes("choice")))
+      return "mcq";
+    return "other";
+  };
+
+  // Chia câu hỏi thành các segment liên tiếp cùng loại.
+  const segments: { kind: "matching" | "mcq" | "other"; questions: IeltsQuestion[] }[] = [];
+  section.questions.forEach((q) => {
+    const kind = classify(q);
+    const last = segments[segments.length - 1];
+    if (last && last.kind === kind) {
+      last.questions.push(q);
+    } else {
+      segments.push({ kind, questions: [q] });
+    }
+  });
+
+  return (
+    <div className="space-y-4">
+      {segments.map((seg, i) =>
+        seg.kind === "matching" ? (
+          <MatchingBlock key={`seg-m-${i}`} questions={seg.questions} section={section} />
+        ) : seg.kind === "mcq" ? (
+          <McqBlock key={`seg-q-${i}`} questions={seg.questions} section={section} />
+        ) : (
+          <NonMatchingContent
+            key={`seg-n-${i}`}
+            questions={seg.questions}
+            section={section}
+          />
+        )
+      )}
+    </div>
+  );
+}
+
+/**
+ * Render nhóm câu MATCHING: hiện bảng nghĩa (legend) A/B/C dùng chung + danh
+ * sách item đánh số. Item nào liên tiếp có CÙNG legend thì gom chung 1 bảng.
+ */
+function MatchingBlock({
+  questions,
+  section,
+}: {
+  questions: IeltsQuestion[];
+  section: IeltsListeningSection;
+}) {
+  // Gom item theo legend (options) giống nhau — thường cả nhóm 7-10 dùng chung.
+  const groups: {
+    legend: Record<string, string>;
+    title?: string;
+    instruction?: string;
+    items: IeltsQuestion[];
+  }[] = [];
+  questions.forEach((q) => {
+    const legendKey = JSON.stringify(q.options || {});
+    const last = groups[groups.length - 1];
+    if (last && JSON.stringify(last.legend) === legendKey) {
+      last.items.push(q);
+    } else {
+      groups.push({
+        legend: (q.options || {}) as Record<string, string>,
+        title:
+          (q.data?.taskTitle as string) || (q.data?.task_title as string) || undefined,
+        instruction:
+          (q.data?.taskInstruction as string) ||
+          (q.data?.task_instruction as string) ||
+          undefined,
+        items: [q],
+      });
+    }
+  });
+
+  return (
+    <div className="space-y-3">
+      {groups.map((g, gi) => {
+        const first = g.items[0].questionNumber;
+        const last = g.items[g.items.length - 1].questionNumber;
+        const range = first === last ? `${first}` : `${first}–${last}`;
+        return (
+          <div
+            key={`mg-${gi}`}
+            className="rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm"
+          >
+            <div className="flex items-baseline gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100">
+              <span className="inline-flex items-center px-2 py-0.5 rounded bg-orange-100 text-[#FF6B35] text-xs font-bold">
+                Câu {range}
+              </span>
+              {g.title && (
+                <h3 className="text-sm font-bold text-gray-900">{g.title}</h3>
+              )}
+            </div>
+
+            {g.instruction && g.instruction !== section.instructions && (
+              <p className="px-4 pt-2.5 text-xs font-semibold text-[#FF6B35] italic">
+                {g.instruction}
+              </p>
+            )}
+
+            {/* Bảng nghĩa (legend) dùng chung — hiện rõ A/B/C nghĩa là gì */}
+            <div className="mx-4 my-2.5 rounded-md border border-orange-100 bg-orange-50/40 divide-y divide-orange-100/70">
+              {Object.entries(g.legend).map(([letter, meaning]) => (
+                <div key={letter} className="flex items-start gap-2.5 px-3 py-1.5">
+                  <span className="flex-shrink-0 inline-flex items-center justify-center w-6 h-6 rounded bg-[#FF6B35] text-white text-xs font-bold">
+                    {letter}
+                  </span>
+                  <span className="text-[14px] leading-snug text-[#1a1a1a] pt-0.5">
+                    {meaning}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Danh sách item cần ghép — số câu rõ ràng đầu mỗi dòng */}
+            <ul className="divide-y divide-gray-100 border-t border-gray-100">
+              {g.items.map((q) => (
+                <li
+                  key={q.qId}
+                  id={`ielts-row-${q.questionNumber}`}
+                  className="flex items-center gap-2.5 px-4 py-2.5"
+                >
+                  <span className="flex-shrink-0 inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded bg-[#fff0eb] text-[#FF6B35] font-bold text-xs border border-[#ffc1ad]">
+                    {q.questionNumber}
+                  </span>
+                  <span className="text-[15px] leading-relaxed text-[#1a1a1a]">
+                    {cleanQuestionText((q.questionText || "").trim(), q.questionNumber)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Render nhóm câu TRẮC NGHIỆM (MCQ): mỗi câu hiện số thứ tự + đề bài + các
+ * lựa chọn A/B/C. Trước đây MCQ lẫn trong form-render nên không hiện được số
+ * câu (không có blank ___) → học viên thấy dropdown bên phải mà không biết
+ * ứng với câu nào. Giờ render rõ ràng từng câu.
+ */
+function McqBlock({
+  questions,
+  section,
+}: {
+  questions: IeltsQuestion[];
+  section: IeltsListeningSection;
+}) {
+  return (
+    <div className="space-y-3">
+      {(() => {
+        let lastTitle: string | undefined;
+        return questions.map((q) => {
+          const title =
+            (q.data?.taskTitle as string) ||
+            (q.data?.task_title as string) ||
+            undefined;
+          const instruction =
+            (q.data?.taskInstruction as string) ||
+            (q.data?.task_instruction as string) ||
+            undefined;
+          const showTitle = !!title && title !== lastTitle;
+          if (title) lastTitle = title;
+          const stem = cleanQuestionText(
+            (q.questionText || "").trim(),
+            q.questionNumber
+          );
+
+          return (
+            <div
+              key={q.qId}
+              id={`ielts-row-${q.questionNumber}`}
+              className="rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm"
+            >
+              {showTitle && (
+                <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
+                  <h3 className="text-sm font-bold text-gray-900">{title}</h3>
+                </div>
+              )}
+
+              {instruction && instruction !== section.instructions && (
+                <p className="px-4 pt-2.5 text-xs font-semibold text-[#FF6B35] italic">
+                  {instruction}
+                </p>
+              )}
+
+              {/* Số câu + đề bài */}
+              <div className="flex items-start gap-2.5 px-4 py-2.5">
+                <span className="flex-shrink-0 inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded bg-[#fff0eb] text-[#FF6B35] font-bold text-xs border border-[#ffc1ad]">
+                  {q.questionNumber}
+                </span>
+                <span className="text-[15px] leading-relaxed text-[#1a1a1a] font-medium">
+                  {stem}
+                </span>
+              </div>
+
+              {/* Các lựa chọn A/B/C — chỉ để đọc, học viên chọn ở dropdown bên phải */}
+              {q.options && (
+                <ul className="px-4 pb-3 space-y-1">
+                  {Object.entries(q.options).map(([letter, text]) => (
+                    <li key={letter} className="flex items-start gap-2.5">
+                      <span className="flex-shrink-0 inline-flex items-center justify-center w-6 h-6 rounded bg-gray-100 text-[#677788] text-xs font-bold">
+                        {letter}
+                      </span>
+                      <span className="text-[14px] leading-snug text-[#1a1a1a] pt-0.5">
+                        {text}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        });
+      })()}
+    </div>
+  );
+}
+
+/**
+ * Render phần KHÔNG phải matching bên trái — auto detect 2 layouts:
  *   • Tabular (table_completion, form, note): các câu có prefix "Subject — facet"
  *     → group consecutive câu cùng subject thành 1 card. Mỗi card = 1 entry,
  *     facets stacked theo dòng. Đọc theo entry tự nhiên hơn flat list.
  *   • Flat (sentence_completion, MCQ multi-letter): giữ render cũ — group theo
  *     stem chung khi nhiều câu cùng prompt.
  */
-function FormContent({ section }: { section: IeltsListeningSection }) {
+function NonMatchingContent({
+  questions,
+  section,
+}: {
+  questions: IeltsQuestion[];
+  section: IeltsListeningSection;
+}) {
   // Parse từng câu thành { prefix, rest } để có thể group theo prefix subject
   const parsed = useMemo(() => {
-    return section.questions.map((q) => {
+    return questions.map((q) => {
       const text = cleanQuestionText((q.questionText || "").trim(), q.questionNumber);
       const split = splitEntryPrefix(text);
       return {
@@ -305,7 +558,7 @@ function FormContent({ section }: { section: IeltsListeningSection }) {
           undefined,
       };
     });
-  }, [section.questions]);
+  }, [questions]);
 
   // Detect tabular: ≥50% câu có prefix "Subject — facet" + tối thiểu 3 câu để có ý nghĩa
   const useTabular = useMemo(() => {
@@ -385,64 +638,73 @@ function FormContent({ section }: { section: IeltsListeningSection }) {
   if (useTabular) {
     return (
       <div className="space-y-3">
-        {entryGroups.map((g) => (
-          <div
-            key={g.key}
-            className="rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm"
-          >
-            {/* Optional task title */}
-            {g.title && (
-              <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
-                <h3 className="text-sm font-bold text-gray-900">{g.title}</h3>
+        {(() => {
+          // Không lặp lại cùng 1 taskTitle ở mọi card (vd "ANNUAL WULLABALLOO
+          // CONFERENCE" trước đây hiện ở từng mốc giờ → rối). Chỉ hiện 1 lần đầu.
+          let lastTitle: string | undefined;
+          return entryGroups.map((g) => {
+            const showTitle = !!g.title && g.title !== lastTitle;
+            if (g.title) lastTitle = g.title;
+            return (
+              <div
+                key={g.key}
+                className="rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm"
+              >
+                {/* Optional task title — chỉ hiện 1 lần cho nhóm cùng title */}
+                {showTitle && (
+                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
+                    <h3 className="text-sm font-bold text-gray-900">{g.title}</h3>
+                  </div>
+                )}
+
+                {/* Entry header (subject) — hiện 1 trong 2:
+                      • prefix: tên entry plain text (vd "The Junction")
+                      • subjectPlaceholder: row có blank (vd "The [5]") */}
+                {(g.prefix || g.subjectPlaceholder) && (
+                  <div className="px-4 py-2.5 bg-orange-50/50 border-b border-orange-100/80">
+                    {g.prefix ? (
+                      <span className="text-[15px] font-bold text-gray-900">
+                        {g.prefix}
+                      </span>
+                    ) : g.subjectPlaceholder ? (
+                      <span
+                        id={`ielts-row-${g.subjectPlaceholder.number}`}
+                        className="text-[15px] font-bold text-gray-900"
+                      >
+                        {renderInlineBlanks(
+                          g.subjectPlaceholder.text,
+                          g.subjectPlaceholder.number,
+                          true
+                        )}
+                      </span>
+                    ) : null}
+                  </div>
+                )}
+
+                {/* Optional task instruction */}
+                {g.instruction && g.instruction !== section.instructions && (
+                  <p className="px-4 pt-2 text-xs font-semibold text-[#FF6B35] italic">
+                    {g.instruction}
+                  </p>
+                )}
+
+                {/* Facets — mỗi facet là 1 dòng, KHÔNG hiện chip số ở left
+                    (input box bên phải đã có số rõ rồi → tránh trùng lặp) */}
+                <ul className="divide-y divide-gray-100">
+                  {g.items.map((item) => (
+                    <li
+                      key={item.number}
+                      id={`ielts-row-${item.number}`}
+                      className="px-4 py-2.5 text-[15px] leading-relaxed text-[#1a1a1a]"
+                    >
+                      {renderInlineBlanks(item.text, item.number, true)}
+                    </li>
+                  ))}
+                </ul>
               </div>
-            )}
-
-            {/* Entry header (subject) — hiện 1 trong 2:
-                  • prefix: tên entry plain text (vd "The Junction")
-                  • subjectPlaceholder: row có blank (vd "The [5]") */}
-            {(g.prefix || g.subjectPlaceholder) && (
-              <div className="px-4 py-2.5 bg-orange-50/50 border-b border-orange-100/80">
-                {g.prefix ? (
-                  <span className="text-[15px] font-bold text-gray-900">
-                    {g.prefix}
-                  </span>
-                ) : g.subjectPlaceholder ? (
-                  <span
-                    id={`ielts-row-${g.subjectPlaceholder.number}`}
-                    className="text-[15px] font-bold text-gray-900"
-                  >
-                    {renderInlineBlanks(
-                      g.subjectPlaceholder.text,
-                      g.subjectPlaceholder.number,
-                      true
-                    )}
-                  </span>
-                ) : null}
-              </div>
-            )}
-
-            {/* Optional task instruction */}
-            {g.instruction && g.instruction !== section.instructions && (
-              <p className="px-4 pt-2 text-xs font-semibold text-[#FF6B35] italic">
-                {g.instruction}
-              </p>
-            )}
-
-            {/* Facets — mỗi facet là 1 dòng, KHÔNG hiện chip số ở left
-                (input box bên phải đã có số rõ rồi → tránh trùng lặp) */}
-            <ul className="divide-y divide-gray-100">
-              {g.items.map((item) => (
-                <li
-                  key={item.number}
-                  id={`ielts-row-${item.number}`}
-                  className="px-4 py-2.5 text-[15px] leading-relaxed text-[#1a1a1a]"
-                >
-                  {renderInlineBlanks(item.text, item.number, true)}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+            );
+          });
+        })()}
       </div>
     );
   }
@@ -482,47 +744,54 @@ function FormContent({ section }: { section: IeltsListeningSection }) {
 
   return (
     <div className="space-y-5 text-[17px] leading-[1.7] text-[#1a1a1a]">
-      {stemGroups.map((g) => {
-        const isGroup = g.questions.length > 1;
-        const first = g.questions[0].number;
-        const last = g.questions[g.questions.length - 1].number;
-        const range = isGroup ? `${first}–${last}` : `${first}`;
+      {(() => {
+        // Track title đã render để KHÔNG lặp lại cùng 1 taskTitle cho mọi câu
+        // (vd "Moving Company Service Report" trước đây hiện 6 lần → rất rối).
+        let lastTitle: string | undefined;
+        return stemGroups.map((g) => {
+          const isGroup = g.questions.length > 1;
+          const first = g.questions[0].number;
+          const last = g.questions[g.questions.length - 1].number;
+          const range = isGroup ? `${first}–${last}` : `${first}`;
+          const showTitle = !!g.title && g.title !== lastTitle;
+          if (g.title) lastTitle = g.title;
 
-        return (
-          <div key={g.key} className="space-y-2">
-            {g.title && (
-              <h3 className="text-center text-lg font-bold text-gray-900 pb-1">
-                {g.title}
-              </h3>
-            )}
+          return (
+            <div key={g.key} className="space-y-2">
+              {showTitle && (
+                <h3 className="text-center text-lg font-bold text-gray-900 pb-1">
+                  {g.title}
+                </h3>
+              )}
 
-            {g.instruction && g.instruction !== section.instructions && (
-              <p className="text-sm font-semibold text-[#FF6B35] italic">
-                {g.instruction}
-              </p>
-            )}
+              {g.instruction && g.instruction !== section.instructions && (
+                <p className="text-sm font-semibold text-[#FF6B35] italic">
+                  {g.instruction}
+                </p>
+              )}
 
-            {isGroup && (
-              <div className="flex items-baseline gap-2 pb-1 border-b border-gray-200">
-                <span className="inline-flex items-center px-2 py-0.5 rounded bg-orange-100 text-[#FF6B35] text-xs font-bold">
-                  Câu {range}
-                </span>
-                <span className="text-xs text-gray-500">
-                  ({g.questions.length} câu trả lời)
-                </span>
-              </div>
-            )}
+              {isGroup && (
+                <div className="flex items-baseline gap-2 pb-1 border-b border-gray-200">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-orange-100 text-[#FF6B35] text-xs font-bold">
+                    Câu {range}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    ({g.questions.length} câu trả lời)
+                  </span>
+                </div>
+              )}
 
-            <div>{renderInlineBlanks(g.stem, first)}</div>
+              <div>{renderInlineBlanks(g.stem, first)}</div>
 
-            {isGroup && (
-              <p className="text-sm text-gray-500 italic">
-                → Trả lời cho câu {g.questions.map((q) => q.number).join(", ")}
-              </p>
-            )}
-          </div>
-        );
-      })}
+              {isGroup && (
+                <p className="text-sm text-gray-500 italic">
+                  → Trả lời cho câu {g.questions.map((q) => q.number).join(", ")}
+                </p>
+              )}
+            </div>
+          );
+        });
+      })()}
     </div>
   );
 }
@@ -755,8 +1024,73 @@ function AnswerDropdown({ value, options, onChange }: AnswerDropdownProps) {
   );
 }
 
+// ─── Multi-select answer (Choose TWO/THREE letters) ──────────────────────────
+// Lưu đáp án dạng "A,C" (sắp xếp). Giới hạn số lượng = selectCount.
+interface MultiAnswerSelectProps {
+  value: string;
+  options: Record<string, string>;
+  selectCount: number;
+  onChange: (v: string) => void;
+}
 
-// ─── Section Instructions Banner ─────────────────────────────────────────────
+function MultiAnswerSelect({
+  value,
+  options,
+  selectCount,
+  onChange,
+}: MultiAnswerSelectProps) {
+  const selected = new Set(
+    (value || "").split(",").map((s) => s.trim()).filter(Boolean)
+  );
+  const toggle = (letter: string) => {
+    const next = new Set(selected);
+    if (next.has(letter)) {
+      next.delete(letter);
+    } else {
+      if (next.size >= selectCount) return; // không vượt quá số cho phép
+      next.add(letter);
+    }
+    onChange(Array.from(next).sort().join(","));
+  };
+  return (
+    <div className="flex-1 space-y-1">
+      <p className="text-[11px] text-[#677788]">
+        Chọn {selectCount} đáp án ({selected.size}/{selectCount})
+      </p>
+      <div className="flex flex-col gap-1">
+        {Object.entries(options).map(([letter, text]) => {
+          const isSelected = selected.has(letter);
+          const atLimit = !isSelected && selected.size >= selectCount;
+          return (
+            <button
+              key={letter}
+              type="button"
+              onClick={() => toggle(letter)}
+              disabled={atLimit}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md border transition-colors cursor-pointer ${
+                isSelected
+                  ? "border-[#FF6B35] bg-orange-50 text-[#FF6B35]"
+                  : atLimit
+                    ? "border-[#e0e0e0] bg-gray-50 text-gray-300 cursor-not-allowed"
+                    : "border-[#e0e0e0] bg-white text-[#1a1a1a] hover:border-[#FF6B35]"
+              }`}
+            >
+              <span
+                className={`flex-shrink-0 inline-flex items-center justify-center w-6 h-6 rounded text-xs font-bold ${
+                  isSelected ? "bg-[#FF6B35] text-white" : "bg-gray-100 text-[#677788]"
+                }`}
+              >
+                {letter}
+              </span>
+              <span className="flex-1 leading-snug">{text}</span>
+              {isSelected && <Check className="flex-shrink-0 w-4 h-4 text-[#FF6B35]" />}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 // Hiển thị yêu cầu rõ ràng trước mỗi section: loại câu hỏi + instruction +
 // tip cụ thể theo loại để student không bị sai format.
 const QUESTION_TYPE_META: Record<

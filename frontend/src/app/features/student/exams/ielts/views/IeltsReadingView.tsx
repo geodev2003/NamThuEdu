@@ -158,17 +158,31 @@ export function IeltsReadingView({
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-              {currentPassage.questions.map((q) => (
-                <div key={q.qId} id={`ielts-q-${q.qId}`}>
-                  <IeltsQuestionRenderer
-                    question={q}
-                    answer={answers[q.qId] ?? null}
-                    onAnswer={onAnswer}
-                    flagged={!!flagged[q.qId]}
-                    onToggleFlag={onToggleFlag}
-                  />
-                </div>
-              ))}
+              {currentPassage.questions.map((q, idx) => {
+                const instr = (q as any).data?.task_instruction || "";
+                const prevInstr =
+                  idx > 0
+                    ? (currentPassage.questions[idx - 1] as any).data
+                        ?.task_instruction || ""
+                    : null;
+                const showInstruction = instr && instr !== prevInstr;
+                return (
+                  <div key={q.qId} id={`ielts-q-${q.qId}`}>
+                    {showInstruction && (
+                      <div className="mb-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-100 text-xs text-blue-900 leading-relaxed whitespace-pre-line">
+                        {instr}
+                      </div>
+                    )}
+                    <IeltsQuestionRenderer
+                      question={q}
+                      answer={answers[q.qId] ?? null}
+                      onAnswer={onAnswer}
+                      flagged={!!flagged[q.qId]}
+                      onToggleFlag={onToggleFlag}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

@@ -103,8 +103,8 @@ export function TestList() {
   // Theme palette switches based on age group
   const { PRIMARY, PRIMARY_LIGHT, PRIMARY_MID, ACCENT } = isKids ? THEME_KIDS : THEME_DEFAULT;
 
-  // URL base — keep kids in /hoc-vien/kids/* namespace
-  const BASE = isKids ? '/hoc-vien/kids' : STUDENT_BASE_PATH;
+  // URL base — kids dùng chung namespace /hoc-vien như các nhóm khác
+  const BASE = STUDENT_BASE_PATH;
 
   const isAdultLevelExam = (t: any) => {
     const s = String(t.exam_type || '').toLowerCase() + ' ' + String(t.exam_title || '').toLowerCase();

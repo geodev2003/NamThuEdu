@@ -37,8 +37,8 @@ export function PracticeList() {
   // Theme palette switches based on age group (rose for kids, purple for others)
   const { PRIMARY: PURPLE, PRIMARY_LIGHT: PURPLE_LIGHT } = isKids ? THEME_KIDS : THEME_DEFAULT;
 
-  // URL base — keep kids in /hoc-vien/kids/* namespace
-  const BASE = isKids ? '/hoc-vien/kids' : STUDENT_BASE_PATH;
+  // URL base — kids dùng chung namespace /hoc-vien như các nhóm khác
+  const BASE = STUDENT_BASE_PATH;
 
   const { data, isLoading } = useQuery({
     queryKey: ['student', 'practice', 'topics'],

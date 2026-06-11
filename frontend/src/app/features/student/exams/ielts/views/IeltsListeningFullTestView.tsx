@@ -376,42 +376,69 @@ function McqBody({
                 {cleanQuestionText(q.questionText, q.questionNumber)}
               </p>
             </div>
-            {q.options && (
-              <div className="ml-10 space-y-2">
-                {Object.entries(q.options).map(([letter, text]) => {
-                  const selected = answers[q.qId] === letter;
-                  const isOptCorrect = reviewMode && letter === correctAnswers[q.qId];
-                  const isOptWrong   = reviewMode && selected && !isOptCorrect;
-                  return (
-                    <label
-                      key={letter}
-                      className={`flex items-start gap-3 p-2.5 rounded-md border transition-colors ${
-                        isOptCorrect ? "border-emerald-400 bg-emerald-50 cursor-default" :
-                        isOptWrong   ? "border-red-400 bg-red-50 cursor-default" :
-                        selected     ? "border-orange-400 bg-orange-50 cursor-default" :
-                        reviewMode   ? "border-gray-200 bg-white cursor-default opacity-60" :
-                        "border-gray-200 hover:border-gray-300 hover:bg-gray-50 cursor-pointer"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name={`q-${q.qId}`}
-                        value={letter}
-                        checked={selected}
-                        onChange={() => !reviewMode && onAnswer(q.qId, letter)}
-                        disabled={reviewMode}
-                        className="mt-0.5 w-4 h-4 text-orange-600"
-                      />
-                      <span className="flex-1 text-sm text-gray-800">
-                        <b className="mr-1.5">{letter}</b>
-                        {text}
-                      </span>
-                      {isOptCorrect && <span className="text-emerald-600 font-bold text-xs flex-shrink-0">✓</span>}
-                    </label>
-                  );
-                })}
-              </div>
-            )}
+            {q.options && (() => {
+              const selectCount = Number((q.data?.select_count as number) ?? 1);
+              const isMulti = selectCount > 1;
+              const selSet = new Set(
+                String(answers[q.qId] ?? "").split(",").map((s) => s.trim()).filter(Boolean)
+              );
+              const corrSet = new Set(
+                String(correctAnswers[q.qId] ?? "").split(",").map((s) => s.trim()).filter(Boolean)
+              );
+              const toggleMulti = (letter: string) => {
+                if (reviewMode) return;
+                const next = new Set(selSet);
+                if (next.has(letter)) next.delete(letter);
+                else {
+                  if (next.size >= selectCount) return;
+                  next.add(letter);
+                }
+                onAnswer(q.qId, Array.from(next).sort().join(","));
+              };
+              return (
+                <div className="ml-10 space-y-2">
+                  {isMulti && !reviewMode && (
+                    <p className="text-[11px] text-gray-500">
+                      Chọn {selectCount} đáp án ({selSet.size}/{selectCount})
+                    </p>
+                  )}
+                  {Object.entries(q.options!).map(([letter, text]) => {
+                    const selected = isMulti ? selSet.has(letter) : answers[q.qId] === letter;
+                    const isOptCorrect = reviewMode && (isMulti ? corrSet.has(letter) : letter === correctAnswers[q.qId]);
+                    const isOptWrong   = reviewMode && selected && !isOptCorrect;
+                    return (
+                      <label
+                        key={letter}
+                        className={`flex items-start gap-3 p-2.5 rounded-md border transition-colors ${
+                          isOptCorrect ? "border-emerald-400 bg-emerald-50 cursor-default" :
+                          isOptWrong   ? "border-red-400 bg-red-50 cursor-default" :
+                          selected     ? "border-orange-400 bg-orange-50 cursor-default" :
+                          reviewMode   ? "border-gray-200 bg-white cursor-default opacity-60" :
+                          "border-gray-200 hover:border-gray-300 hover:bg-gray-50 cursor-pointer"
+                        }`}
+                      >
+                        <input
+                          type={isMulti ? "checkbox" : "radio"}
+                          name={`q-${q.qId}`}
+                          value={letter}
+                          checked={selected}
+                          onChange={() =>
+                            isMulti ? toggleMulti(letter) : (!reviewMode && onAnswer(q.qId, letter))
+                          }
+                          disabled={reviewMode}
+                          className="mt-0.5 w-4 h-4 text-orange-600"
+                        />
+                        <span className="flex-1 text-sm text-gray-800">
+                          <b className="mr-1.5">{letter}</b>
+                          {text}
+                        </span>
+                        {isOptCorrect && <span className="text-emerald-600 font-bold text-xs flex-shrink-0">✓</span>}
+                      </label>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         );
       })}

@@ -1,0 +1,56 @@
+src/app/components/Layout.tsx(2,25): error TS2307: Cannot find module './Sidebar' or its corresponding type declarations.
+src/app/features/auth/index.ts(17,23): error TS2307: Cannot find module './Login' or its corresponding type declarations.
+src/app/features/auth/index.ts(18,26): error TS2307: Cannot find module './Register' or its corresponding type declarations.
+src/app/features/auth/shared/index.ts(5,32): error TS2307: Cannot find module './ForgotPassword' or its corresponding type declarations.
+src/app/features/student/exams/StudentVstepExamPage.tsx(351,36): error TS2698: Spread types may only be created from object types.
+src/app/features/teacher/blog/Categories.tsx(295,80): error TS2322: Type '{ iconName: string; className: string; style: { color: string; }; }' is not assignable to type 'IntrinsicAttributes & { iconName: string; className?: string; }'.
+  Property 'style' does not exist on type 'IntrinsicAttributes & { iconName: string; className?: string; }'.
+src/app/features/teacher/blog/Categories.tsx(389,84): error TS2322: Type '{ iconName: string; className: string; style: { color: string; }; }' is not assignable to type 'IntrinsicAttributes & { iconName: string; className?: string; }'.
+  Property 'style' does not exist on type 'IntrinsicAttributes & { iconName: string; className?: string; }'.
+src/app/features/teacher/exams/CreateVSTEPExam.tsx(411,57): error TS2339: Property 'wordCount' does not exist on type '{ part: number; name: string; questions: number; description: string; }'.
+src/app/features/teacher/exams/CreateVSTEPExam.tsx(411,84): error TS2339: Property 'wordCount' does not exist on type '{ part: number; name: string; questions: number; description: string; }'.
+src/app/features/teacher/exams/kids/editors/ClozeTestEditor.tsx(67,73): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/app/features/teacher/exams/kids/editors/ClozeTestEditor.tsx(67,77): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/app/features/teacher/exams/kids/editors/ClozeTestEditor.tsx(75,17): error TS2345: Argument of type '{ gap_id: unknown; options: string[]; correct_answer: string; }[]' is not assignable to parameter of type 'SetStateAction<Gap[]>'.
+  Type '{ gap_id: unknown; options: string[]; correct_answer: string; }[]' is not assignable to type 'Gap[]'.
+    Type '{ gap_id: unknown; options: string[]; correct_answer: string; }' is not assignable to type 'Gap'.
+      Types of property 'gap_id' are incompatible.
+        Type 'unknown' is not assignable to type 'number'.
+src/app/features/teacher/exams/kids/editors/ObjectPlacementEditor.tsx(38,46): error TS2345: Argument of type 'number' is not assignable to parameter of type 'File'.
+src/app/features/teacher/exams/kids/editors/ObjectPlacementEditor.tsx(54,46): error TS2345: Argument of type 'number' is not assignable to parameter of type 'File'.
+src/app/features/teacher/exams/kids/editors/PictureSentenceWritingEditor.tsx(48,46): error TS2345: Argument of type 'number' is not assignable to parameter of type 'File'.
+src/app/features/teacher/exams/kids/editors/PictureStoryWritingEditor.tsx(33,46): error TS2345: Argument of type 'number' is not assignable to parameter of type 'File'.
+src/app/features/teacher/settings/PdfCutterTab.tsx(43,25): error TS2345: Argument of type '{ canvasContext: CanvasRenderingContext2D; viewport: PageViewport; }' is not assignable to parameter of type 'RenderParameters'.
+  Property 'canvas' is missing in type '{ canvasContext: CanvasRenderingContext2D; viewport: PageViewport; }' but required in type 'RenderParameters'.
+src/app/features/teacher/settings/PdfCutterTab.tsx(75,30): error TS2322: Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
+  Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'ArrayBufferView<ArrayBuffer>'.
+    Types of property 'buffer' are incompatible.
+      Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
+        Type 'SharedArrayBuffer' is not assignable to type 'ArrayBuffer'.
+          Types of property '[Symbol.toStringTag]' are incompatible.
+            Type '"SharedArrayBuffer"' is not assignable to type '"ArrayBuffer"'.
+src/components/shared/ErrorHandler.tsx(3,10): error TS2305: Module '"../../types/teacher"' has no exported member 'ValidationError'.
+src/services/teacherApi.test.ts(21,23): error TS2339: Property 'defaults' does not exist on type '{ client: AxiosInstance; dashboard: { getTestStatistics(examId: number): Promise<ApiResponse<TestStatistics>>; getActiveSessions(): Promise<...>; ... 4 more ...; getRecentActivities(): Promise<...>; }; ... 12 more ...; user: { ...; }; }'.
+src/services/teacherApi.test.ts(22,23): error TS2339: Property 'defaults' does not exist on type '{ client: AxiosInstance; dashboard: { getTestStatistics(examId: number): Promise<ApiResponse<TestStatistics>>; getActiveSessions(): Promise<...>; ... 4 more ...; getRecentActivities(): Promise<...>; }; ... 12 more ...; user: { ...; }; }'.
+src/services/teacherApi.test.ts(23,23): error TS2339: Property 'defaults' does not exist on type '{ client: AxiosInstance; dashboard: { getTestStatistics(examId: number): Promise<ApiResponse<TestStatistics>>; getActiveSessions(): Promise<...>; ... 4 more ...; getRecentActivities(): Promise<...>; }; ... 12 more ...; user: { ...; }; }'.
+src/services/teacherApi.test.ts(24,23): error TS2339: Property 'defaults' does not exist on type '{ client: AxiosInstance; dashboard: { getTestStatistics(examId: number): Promise<ApiResponse<TestStatistics>>; getActiveSessions(): Promise<...>; ... 4 more ...; getRecentActivities(): Promise<...>; }; ... 12 more ...; user: { ...; }; }'.
+src/services/teacherApi.test.ts(43,16): error TS2339: Property 'defaults' does not exist on type '{ client: AxiosInstance; dashboard: { getTestStatistics(examId: number): Promise<ApiResponse<TestStatistics>>; getActiveSessions(): Promise<...>; ... 4 more ...; getRecentActivities(): Promise<...>; }; ... 12 more ...; user: { ...; }; }'.
+src/services/teacherApi.test.ts(45,22): error TS2339: Property 'get' does not exist on type '{ client: AxiosInstance; dashboard: { getTestStatistics(examId: number): Promise<ApiResponse<TestStatistics>>; getActiveSessions(): Promise<...>; ... 4 more ...; getRecentActivities(): Promise<...>; }; ... 12 more ...; user: { ...; }; }'.
+src/services/teacherApi.test.ts(65,16): error TS2339: Property 'defaults' does not exist on type '{ client: AxiosInstance; dashboard: { getTestStatistics(examId: number): Promise<ApiResponse<TestStatistics>>; getActiveSessions(): Promise<...>; ... 4 more ...; getRecentActivities(): Promise<...>; }; ... 12 more ...; user: { ...; }; }'.
+src/services/teacherApi.test.ts(67,22): error TS2339: Property 'get' does not exist on type '{ client: AxiosInstance; dashboard: { getTestStatistics(examId: number): Promise<ApiResponse<TestStatistics>>; getActiveSessions(): Promise<...>; ... 4 more ...; getRecentActivities(): Promise<...>; }; ... 12 more ...; user: { ...; }; }'.
+src/services/teacherApi.test.ts(74,5): error TS2552: Cannot find name 'localStorageMock'. Did you mean 'localStorage'?
+src/services/teacherApi.test.ts(91,16): error TS2339: Property 'defaults' does not exist on type '{ client: AxiosInstance; dashboard: { getTestStatistics(examId: number): Promise<ApiResponse<TestStatistics>>; getActiveSessions(): Promise<...>; ... 4 more ...; getRecentActivities(): Promise<...>; }; ... 12 more ...; user: { ...; }; }'.
+src/services/teacherApi.test.ts(94,24): error TS2339: Property 'get' does not exist on type '{ client: AxiosInstance; dashboard: { getTestStatistics(examId: number): Promise<ApiResponse<TestStatistics>>; getActiveSessions(): Promise<...>; ... 4 more ...; getRecentActivities(): Promise<...>; }; ... 12 more ...; user: { ...; }; }'.
+src/services/teacherApi.test.ts(100,12): error TS2552: Cannot find name 'localStorageMock'. Did you mean 'localStorage'?
+src/services/teacherApi.test.ts(108,5): error TS2552: Cannot find name 'localStorageMock'. Did you mean 'localStorage'?
+src/services/teacherApi.test.ts(125,16): error TS2339: Property 'defaults' does not exist on type '{ client: AxiosInstance; dashboard: { getTestStatistics(examId: number): Promise<ApiResponse<TestStatistics>>; getActiveSessions(): Promise<...>; ... 4 more ...; getRecentActivities(): Promise<...>; }; ... 12 more ...; user: { ...; }; }'.
+src/services/teacherApi.test.ts(128,24): error TS2339: Property 'get' does not exist on type '{ client: AxiosInstance; dashboard: { getTestStatistics(examId: number): Promise<ApiResponse<TestStatistics>>; getActiveSessions(): Promise<...>; ... 4 more ...; getRecentActivities(): Promise<...>; }; ... 12 more ...; user: { ...; }; }'.
+src/services/teacherApi.test.ts(134,12): error TS2552: Cannot find name 'localStorageMock'. Did you mean 'localStorage'?
+src/services/teacherApi.test.ts(162,16): error TS2339: Property 'defaults' does not exist on type '{ client: AxiosInstance; dashboard: { getTestStatistics(examId: number): Promise<ApiResponse<TestStatistics>>; getActiveSessions(): Promise<...>; ... 4 more ...; getRecentActivities(): Promise<...>; }; ... 12 more ...; user: { ...; }; }'.
+src/services/teacherApi.test.ts(164,22): error TS2339: Property 'get' does not exist on type '{ client: AxiosInstance; dashboard: { getTestStatistics(examId: number): Promise<ApiResponse<TestStatistics>>; getActiveSessions(): Promise<...>; ... 4 more ...; getRecentActivities(): Promise<...>; }; ... 12 more ...; user: { ...; }; }'.
+src/types/teacher.ts(232,3): error TS2687: All declarations of 'eSource_type' must have identical modifiers.
+src/types/teacher.ts(640,3): error TS2717: Subsequent property declarations must have the same type.  Property 'eSkill' must be of type '"mixed" | "listening" | "reading" | "writing" | "speaking"', but here has type 'string'.
+src/types/teacher.ts(643,3): error TS2687: All declarations of 'eSource_type' must have identical modifiers.
+src/types/teacher.ts(668,3): error TS2717: Subsequent property declarations must have the same type.  Property 'completed' must be of type '{ student: Student; submission: Submission; }[]', but here has type 'number'.
+src/types/teacher.ts(669,3): error TS2717: Subsequent property declarations must have the same type.  Property 'not_completed' must be of type 'Student[]', but here has type 'number'.
+src/types/teacher.ts(696,3): error TS2717: Subsequent property declarations must have the same type.  Property 'student_rankings' must be of type '{ rank: number; student: Student; score: number; submission_time: string; }[]', but here has type '{ student_id: number; student_name: string; score: number; rank: number; }[]'.

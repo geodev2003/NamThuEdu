@@ -77,7 +77,9 @@ export function IeltsQuestionRenderer({
       {/* Word limit hint */}
       {(data.word_limit || data.maxWords) && (
         <div className="mb-2 text-[11px] text-gray-500 italic">
-          Write <span className="font-semibold">NO MORE THAN {data.word_limit ?? data.maxWords} WORD{(data.word_limit ?? data.maxWords) > 1 ? "S" : ""}</span> from the passage.
+          {typeof data.word_limit === "string" && data.word_limit
+            ? `Write ${data.word_limit} from the passage.`
+            : `Write NO MORE THAN ${data.word_limit ?? data.maxWords} WORD${(data.word_limit ?? data.maxWords) > 1 ? "S" : ""} from the passage.`}
         </div>
       )}
 
@@ -100,14 +102,44 @@ function renderInput(
   const onChange = (v: AnswerValue) => onAnswer(q.qId, v);
   const data = q.data ?? {};
 
-  // ─── Multiple choice (A/B/C/D) ────────────────────────────────────────
+  // ─── Multiple choice (A/B/C/D) — single or multi-select ───────────────
   if (type === "multiple_choice" && q.options) {
     const letters = Object.keys(q.options);
+    const selectCount = Number(data.select_count ?? data.selectCount ?? 1);
+    const multi = selectCount > 1;
+    // Multi-select: đáp án lưu "A,C". Tách thành Set để thao tác.
+    const selectedSet = new Set(
+      String(answer ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    );
+    const correctSet = new Set(
+      String(correctAnswer ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    );
+    const toggleMulti = (letter: string) => {
+      const next = new Set(selectedSet);
+      if (next.has(letter)) next.delete(letter);
+      else {
+        if (next.size >= selectCount) return;
+        next.add(letter);
+      }
+      onChange(Array.from(next).sort().join(","));
+    };
     return (
       <div className="space-y-1.5">
+        {multi && (
+          <p className="text-[11px] font-semibold text-blue-700 mb-1">
+            Choose {selectCount} answers ({selectedSet.size}/{selectCount} selected)
+          </p>
+        )}
         {letters.map((letter) => {
-          const selected = answer === letter;
-          const isCorrect = reviewMode && letter === correctAnswer;
+          const selected = multi ? selectedSet.has(letter) : answer === letter;
+          const isCorrect =
+            reviewMode && (multi ? correctSet.has(letter) : letter === correctAnswer);
           const isWrong = reviewMode && selected && !isCorrect;
           return (
             <label
@@ -123,11 +155,11 @@ function renderInput(
               }`}
             >
               <input
-                type="radio"
+                type={multi ? "checkbox" : "radio"}
                 name={`q_${q.qId}`}
                 value={letter}
                 checked={selected}
-                onChange={() => onChange(letter)}
+                onChange={() => (multi ? toggleMulti(letter) : onChange(letter))}
                 disabled={reviewMode}
                 className="mt-0.5 accent-blue-600"
               />
@@ -186,32 +218,92 @@ function renderInput(
     type === "matching_sentence_endings" ||
     type === "plan_map_diagram"
   ) {
-    const choices = (data.choices as Record<string, string>) || (data.options as Record<string, string>) || {};
+    const choices =
+      (q.options as Record<string, string>) ||
+      (data.choices as Record<string, string>) ||
+      (data.options as Record<string, string>) ||
+      {};
     const choiceKeys = Object.keys(choices);
     if (choiceKeys.length > 0) {
+      // Có nhãn mô tả (vd "A — The neocortex") → hiện legend cho học viên dễ hiểu.
+      const hasLabels = choiceKeys.some((k) => (choices[k] ?? "").trim() !== "");
       return (
-        <select
-          value={(answer as string) ?? ""}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={reviewMode}
-          className={`w-full max-w-xs px-3 py-2 rounded-md border text-sm cursor-pointer transition-colors ${
-            reviewMode && answer === correctAnswer
-              ? "bg-emerald-50 border-emerald-400 text-emerald-900"
-              : reviewMode && answer && answer !== correctAnswer
-                ? "bg-red-50 border-red-400 text-red-900"
-                : "bg-white border-gray-300 text-gray-900 hover:border-blue-400 focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
-          }`}
-        >
-          <option value="">— Choose —</option>
-          {choiceKeys.map((k) => (
-            <option key={k} value={k}>
-              {k} — {choices[k]}
-            </option>
-          ))}
-        </select>
+        <div className="space-y-2">
+          {hasLabels && (
+            <ul className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 space-y-1">
+              {choiceKeys.map((k) => (
+                <li key={k} className="flex gap-2 text-xs text-gray-700">
+                  <span className="font-bold text-gray-900">{k}</span>
+                  <span>{choices[k]}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <select
+            value={(answer as string) ?? ""}
+            onChange={(e) => onChange(e.target.value)}
+            disabled={reviewMode}
+            className={`w-full max-w-xs px-3 py-2 rounded-md border text-sm cursor-pointer transition-colors ${
+              reviewMode && answer === correctAnswer
+                ? "bg-emerald-50 border-emerald-400 text-emerald-900"
+                : reviewMode && answer && answer !== correctAnswer
+                  ? "bg-red-50 border-red-400 text-red-900"
+                  : "bg-white border-gray-300 text-gray-900 hover:border-blue-400 focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
+            }`}
+          >
+            <option value="">— Choose —</option>
+            {choiceKeys.map((k) => (
+              <option key={k} value={k}>
+                {choices[k] ? `${k} — ${choices[k]}` : k}
+              </option>
+            ))}
+          </select>
+        </div>
       );
     }
     // Fallback to text input
+  }
+
+  // ─── Word-bank completion (chọn từ danh sách cho sẵn) ─────────────────
+  if (data.use_word_bank) {
+    const bank =
+      (q.options as Record<string, string>) ||
+      (data.options as Record<string, string>) ||
+      {};
+    const bankKeys = Object.keys(bank);
+    if (bankKeys.length > 0) {
+      return (
+        <div className="space-y-2">
+          <ul className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 grid grid-cols-2 gap-x-4 gap-y-1">
+            {bankKeys.map((k) => (
+              <li key={k} className="flex gap-2 text-xs text-gray-700">
+                <span className="font-bold text-gray-900">{k}</span>
+                <span>{bank[k]}</span>
+              </li>
+            ))}
+          </ul>
+          <select
+            value={(answer as string) ?? ""}
+            onChange={(e) => onChange(e.target.value)}
+            disabled={reviewMode}
+            className={`w-full max-w-xs px-3 py-2 rounded-md border text-sm cursor-pointer transition-colors ${
+              reviewMode && answer === correctAnswer
+                ? "bg-emerald-50 border-emerald-400 text-emerald-900"
+                : reviewMode && answer && answer !== correctAnswer
+                  ? "bg-red-50 border-red-400 text-red-900"
+                  : "bg-white border-gray-300 text-gray-900 hover:border-blue-400 focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
+            }`}
+          >
+            <option value="">— Choose —</option>
+            {bankKeys.map((k) => (
+              <option key={k} value={k}>
+                {bank[k] ? `${k} — ${bank[k]}` : k}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
+    }
   }
 
   // ─── Text input (fill-blank style) ────────────────────────────────────

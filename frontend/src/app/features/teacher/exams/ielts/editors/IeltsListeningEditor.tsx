@@ -19,9 +19,40 @@ interface ListeningQuestion {
   questionNumber: number;
   questionType: string;
   questionText: string;
+  /** Tiêu đề/chủ đề dùng chung cho 1 nhóm câu (vd "Items"). */
+  taskTitle?: string;
+  /** Câu hỏi/chỉ dẫn dùng chung của nhóm (vd "Where does the speaker decide to put items in? Write A, B or C."). */
+  taskInstruction?: string;
   options?: Record<string, string>;
   correctAnswer: string;
+  /** MCQ: số đáp án cần chọn (1 = chọn 1; 2 = "Choose TWO letters"…). Dùng chung cả nhóm. */
+  selectCount?: number;
+  /** Completion/short-answer: giới hạn từ ("ONE WORD ONLY"…). Dùng chung cả nhóm. */
+  wordLimit?: string;
+  /** Completion: dùng word bank (chọn từ danh sách cho sẵn). Dùng chung cả nhóm. */
+  useWordBank?: boolean;
 }
+
+// Các dạng điền từ trong Listening — có giới hạn từ + word bank.
+const LISTENING_COMPLETION_TYPES = [
+  "form-completion",
+  "note-completion",
+  "table-completion",
+  "flow-chart-completion",
+  "summary-completion",
+  "sentence-completion",
+  "short-answer",
+];
+const isListeningCompletion = (t: string) => LISTENING_COMPLETION_TYPES.includes(t);
+const isListeningMatching = (t: string) => (t || "").includes("matching");
+const WORD_LIMIT_OPTS = [
+  "",
+  "ONE WORD ONLY",
+  "ONE WORD AND/OR A NUMBER",
+  "NO MORE THAN TWO WORDS",
+  "NO MORE THAN TWO WORDS AND/OR A NUMBER",
+  "NO MORE THAN THREE WORDS",
+];
 
 interface ListeningSection {
   sectionNumber: 1 | 2 | 3 | 4;
@@ -87,6 +118,8 @@ export function IeltsListeningEditor({ examId, initialData, onSave }: Props) {
           return {
             ...q,
             questionText: q.questionText ?? "",
+            taskTitle: q.taskTitle ?? "",
+            taskInstruction: q.taskInstruction ?? "",
             correctAnswer: isMcq && !correctAnswer.trim() ? "A" : correctAnswer,
             options: q.options ?? { A: "", B: "", C: "", D: "" },
           };
@@ -96,11 +129,20 @@ export function IeltsListeningEditor({ examId, initialData, onSave }: Props) {
   });
   const [activeSection, setActiveSection] = useState<1 | 2 | 3 | 4>(1);
   const [uploadingSection, setUploadingSection] = useState<number | null>(null);
-  const [transcribingSection, setTranscribingSection] = useState<number | null>(null);
+  // Tập các section đang transcribe — Set để nhiều section chạy SONG SONG.
+  const [transcribingSections, setTranscribingSections] = useState<Set<number>>(new Set());
   const [modelLoadingPct, setModelLoadingPct] = useState<number | null>(null);
   const [transcribeError, setTranscribeError] = useState<string | null>(null);
   const [enableDiarization, setEnableDiarization] = useState(true);
   const autoSaveTimerRef = useRef<number | null>(null);
+
+  const markTranscribing = useCallback((n: number, on: boolean) => {
+    setTranscribingSections((prev) => {
+      const next = new Set(prev);
+      on ? next.add(n) : next.delete(n);
+      return next;
+    });
+  }, []);
 
   // AI suggest đáp án (Groq) — track per section
   const [suggestingSection, setSuggestingSection] = useState<number | null>(null);
@@ -132,6 +174,42 @@ export function IeltsListeningEditor({ examId, initialData, onSave }: Props) {
       );
     },
     []
+  );
+
+  /**
+   * Một "nhóm" = dải câu LIỀN NHAU cùng questionType trong 1 section.
+   * Khi sửa cài đặt dùng chung của nhóm (instruction, options, wordLimit,
+   * selectCount, useWordBank) → áp cho mọi câu trong đúng nhóm đó (không phải
+   * toàn section). Trả về [start, end] của nhóm chứa qIdx.
+   */
+  const groupRangeOf = useCallback(
+    (questions: ListeningQuestion[], qIdx: number): [number, number] => {
+      const type = questions[qIdx]?.questionType;
+      let start = qIdx;
+      let end = qIdx;
+      while (start - 1 >= 0 && questions[start - 1].questionType === type) start--;
+      while (end + 1 < questions.length && questions[end + 1].questionType === type) end++;
+      return [start, end];
+    },
+    []
+  );
+
+  const patchGroupAt = useCallback(
+    (secNum: number, qIdx: number, patch: Partial<ListeningQuestion>) => {
+      setSections((prev) =>
+        prev.map((s) => {
+          if (s.sectionNumber !== secNum) return s;
+          const [start, end] = groupRangeOf(s.questions, qIdx);
+          return {
+            ...s,
+            questions: s.questions.map((q, i) =>
+              i >= start && i <= end ? { ...q, ...patch } : q
+            ),
+          };
+        })
+      );
+    },
+    [groupRangeOf]
   );
 
   const handleAudioUpload = async (file: File) => {
@@ -178,7 +256,7 @@ export function IeltsListeningEditor({ examId, initialData, onSave }: Props) {
    * để phân tách speaker A/B dựa trên ngữ nghĩa (chính xác hơn pitch).
    */
   const runTranscribe = async (file: File, sectionNum: 1 | 2 | 3 | 4) => {
-    setTranscribingSection(sectionNum);
+    markTranscribing(sectionNum, true);
     setTranscribeError(null);
     let lastUpdate = 0;
     let lastPctRef = -1;
@@ -250,7 +328,7 @@ export function IeltsListeningEditor({ examId, initialData, onSave }: Props) {
           : err?.message || "Không thể tự động chuyển audio thành text. Vui lòng nhập thủ công."
       );
     } finally {
-      setTranscribingSection(null);
+      markTranscribing(sectionNum, false);
     }
   };
 
@@ -259,7 +337,7 @@ export function IeltsListeningEditor({ examId, initialData, onSave }: Props) {
    */
   const handleManualTranscribe = async () => {
     if (!current.audioUrl) return;
-    setTranscribingSection(activeSection);
+    markTranscribing(activeSection, true);
     setTranscribeError(null);
     try {
       const resp = await fetch(current.audioUrl);
@@ -270,7 +348,7 @@ export function IeltsListeningEditor({ examId, initialData, onSave }: Props) {
     } catch (err: any) {
       console.error("Manual transcribe failed:", err);
       setTranscribeError("Không thể tải lại file audio. Vui lòng upload lại.");
-      setTranscribingSection(null);
+      markTranscribing(activeSection, false);
     }
   };
 
@@ -414,8 +492,8 @@ export function IeltsListeningEditor({ examId, initialData, onSave }: Props) {
   // Debounced auto-save: chờ 1.5s sau lần cuối cùng sections thay đổi.
   // Không save khi đang transcribe để tránh spam HTTP + lag giao diện.
   useEffect(() => {
-    // Bỏ qua khi đang xử lý STT — transcript sẽ update nhiều lần trong lúc này
-    if (transcribingSection !== null) return;
+    // Bỏ qua khi đang xử lý STT (bất kỳ section nào) — transcript update nhiều lần
+    if (transcribingSections.size > 0) return;
 
     if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = window.setTimeout(() => {
@@ -426,7 +504,10 @@ export function IeltsListeningEditor({ examId, initialData, onSave }: Props) {
       if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sections, transcribingSection]);
+  }, [sections, transcribingSections]);
+
+  // Section đang xem có đang transcribe không (dùng cho UI nút/banner).
+  const isActiveTranscribing = transcribingSections.has(activeSection);
 
   return (
     <div className="space-y-5">
@@ -437,6 +518,7 @@ export function IeltsListeningEditor({ examId, initialData, onSave }: Props) {
             const isActive = s.sectionNumber === activeSection;
             const hasAudio = !!s.audioUrl;
             const filledQs = s.questions.filter((q) => q.questionText.trim()).length;
+            const isSecTranscribing = transcribingSections.has(s.sectionNumber);
             return (
               <button
                 key={s.sectionNumber}
@@ -455,9 +537,11 @@ export function IeltsListeningEditor({ examId, initialData, onSave }: Props) {
                   >
                     Section {s.sectionNumber}
                   </span>
-                  {hasAudio && filledQs === 10 && (
+                  {isSecTranscribing ? (
+                    <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                  ) : hasAudio && filledQs === 10 ? (
                     <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  )}
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-1 text-[11px] text-gray-500">
                   <Volume2 className="w-3 h-3" />
@@ -465,7 +549,11 @@ export function IeltsListeningEditor({ examId, initialData, onSave }: Props) {
                     {hasAudio ? "Audio ✓" : "Cần audio"}
                   </span>
                   <span className="text-gray-300">·</span>
-                  <span>{filledQs}/10 câu</span>
+                  {isSecTranscribing ? (
+                    <span className="text-blue-600 font-medium">Đang nhận dạng…</span>
+                  ) : (
+                    <span>{filledQs}/10 câu</span>
+                  )}
                 </div>
               </button>
             );
@@ -608,10 +696,10 @@ export function IeltsListeningEditor({ examId, initialData, onSave }: Props) {
                 <button
                   type="button"
                   onClick={handleManualTranscribe}
-                  disabled={transcribingSection === activeSection}
+                  disabled={isActiveTranscribing}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-60 disabled:cursor-not-allowed transition-all cursor-pointer"
                 >
-                  {transcribingSection === activeSection ? (
+                  {isActiveTranscribing ? (
                     <>
                       <Loader2 className="w-3 h-3 animate-spin" />
                       Đang nhận dạng...
@@ -632,17 +720,17 @@ export function IeltsListeningEditor({ examId, initialData, onSave }: Props) {
               updateSection(activeSection, { transcript: e.target.value })
             }
             placeholder={
-              transcribingSection === activeSection
+              isActiveTranscribing
                 ? "Đang nhận dạng giọng nói, vui lòng chờ..."
                 : "Dán transcript của audio vào đây để hỗ trợ chấm điểm... (hoặc upload audio để tự động tạo)"
             }
             rows={4}
-            disabled={transcribingSection === activeSection}
+            disabled={isActiveTranscribing}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none disabled:bg-gray-50 disabled:text-gray-400"
           />
           {/* Status banner — gộp loading + error vào 1 block, không gây giật khi mount/unmount.
               Dùng will-change để tối ưu re-paint, fixed height để không layout-shift textarea phía trên. */}
-          {(transcribingSection === activeSection || transcribeError) && (
+          {(isActiveTranscribing || transcribeError) && (
             <div
               className={`mt-2 flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] border ${
                 transcribeError
@@ -650,7 +738,7 @@ export function IeltsListeningEditor({ examId, initialData, onSave }: Props) {
                   : "bg-blue-50/70 text-blue-700 border-blue-100"
               }`}
             >
-              {transcribingSection === activeSection ? (
+              {isActiveTranscribing ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -759,15 +847,34 @@ export function IeltsListeningEditor({ examId, initialData, onSave }: Props) {
         )}
 
         <div className="space-y-3">
-          {current.questions.map((q, idx) => (
-            <ListeningQuestionRow
-              key={q.id}
-              question={q}
-              sectionNumber={activeSection}
-              index={idx}
-              onPatch={updateQuestion}
-            />
-          ))}
+          {current.questions.map((q, idx) => {
+            const prevType = idx > 0 ? current.questions[idx - 1].questionType : null;
+            const isGroupStart = q.questionType !== prevType;
+            // Đếm số câu trong nhóm (dải liền nhau cùng dạng) bắt đầu từ đây.
+            let groupSize = 1;
+            if (isGroupStart) {
+              for (
+                let j = idx + 1;
+                j < current.questions.length &&
+                current.questions[j].questionType === q.questionType;
+                j++
+              ) {
+                groupSize++;
+              }
+            }
+            return (
+              <ListeningQuestionRow
+                key={q.id}
+                question={q}
+                sectionNumber={activeSection}
+                index={idx}
+                isGroupStart={isGroupStart}
+                groupSize={groupSize}
+                onPatch={updateQuestion}
+                onPatchGroup={patchGroupAt}
+              />
+            );
+          })}
         </div>
       </div>
 
@@ -816,15 +923,48 @@ const ListeningQuestionRow = memo(function ListeningQuestionRow({
   question,
   sectionNumber,
   index,
+  isGroupStart = false,
+  groupSize = 1,
   onPatch,
+  onPatchGroup,
 }: {
   question: ListeningQuestion;
   sectionNumber: number;
   index: number;
+  /** True nếu đây là câu ĐẦU của một nhóm (dải liền nhau cùng dạng) → hiện cài đặt dùng chung. */
+  isGroupStart?: boolean;
+  /** Số câu trong nhóm (để hiển thị "Câu N–M"). */
+  groupSize?: number;
   onPatch: (secNum: number, qIdx: number, patch: Partial<ListeningQuestion>) => void;
+  onPatchGroup?: (secNum: number, qIdx: number, patch: Partial<ListeningQuestion>) => void;
 }) {
   const isMcq = question.questionType === "multiple-choice";
+  const isMatching = isListeningMatching(question.questionType);
+  const completion = isListeningCompletion(question.questionType);
+  const wordBank = completion && !!question.useWordBank;
+  const selectCount = question.selectCount ?? 1;
+  const isMultiMcq = isMcq && selectCount > 1;
   const handleChange = (patch: Partial<ListeningQuestion>) => onPatch(sectionNumber, index, patch);
+  /** Patch dùng chung cho cả nhóm (instruction, options, wordLimit, selectCount, useWordBank). */
+  const handleGroup = (patch: Partial<ListeningQuestion>) =>
+    (onPatchGroup ?? ((s, _i, p) => onPatch(s, index, p)))(sectionNumber, index, patch);
+  const optionKeys = Object.keys(question.options || {})
+    .filter((k) => /^[A-Za-z]+$/.test(k))
+    .sort();
+  const LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
+  // Multi-select MCQ lưu "A,C".
+  const selectedSet = new Set(
+    (question.correctAnswer || "").split(",").map((s) => s.trim()).filter(Boolean)
+  );
+  const toggleMulti = (k: string) => {
+    const next = new Set(selectedSet);
+    if (next.has(k)) next.delete(k);
+    else {
+      if (next.size >= selectCount) return;
+      next.add(k);
+    }
+    handleChange({ correctAnswer: Array.from(next).sort().join(",") });
+  };
   return (
     <div className="rounded-xl border border-gray-200 p-3 hover:border-blue-300 transition-all">
       <div className="flex items-start gap-3">
@@ -833,20 +973,33 @@ const ListeningQuestionRow = memo(function ListeningQuestionRow({
         </div>
 
         <div className="flex-1 min-w-0 space-y-2">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <select
               value={question.questionType}
               onChange={(e) => {
                 const newType = e.target.value;
-                // Nếu chuyển sang MCQ mà chưa có đáp án → mặc định "A".
-                if (
-                  newType === "multiple-choice" &&
-                  !question.correctAnswer?.trim()
-                ) {
-                  handleChange({ questionType: newType, correctAnswer: "A" });
+                // Đổi dạng → áp cho cả nhóm + reset cài đặt đặc thù để tránh lệch.
+                const patch: Partial<ListeningQuestion> = {
+                  questionType: newType,
+                  selectCount: undefined,
+                  wordLimit: undefined,
+                  useWordBank: undefined,
+                  correctAnswer:
+                    newType === "multiple-choice" && !question.correctAnswer?.trim()
+                      ? "A"
+                      : "",
+                };
+                if (isListeningMatching(newType)) {
+                  patch.options =
+                    question.options && Object.keys(question.options).length
+                      ? question.options
+                      : { A: "", B: "", C: "" };
+                } else if (newType === "multiple-choice") {
+                  patch.options = question.options ?? { A: "", B: "", C: "", D: "" };
                 } else {
-                  handleChange({ questionType: newType });
+                  patch.options = undefined;
                 }
+                handleGroup(patch);
               }}
               className="text-xs font-medium px-2 py-1 border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
@@ -856,59 +1009,262 @@ const ListeningQuestionRow = memo(function ListeningQuestionRow({
                 </option>
               ))}
             </select>
+
+            {/* Cài đặt dùng chung của nhóm — chỉ hiện ở câu đầu nhóm */}
+            {isGroupStart && isMcq && (
+              <label className="flex items-center gap-1.5 text-[11px] text-gray-600">
+                Số đáp án chọn:
+                <select
+                  value={selectCount}
+                  onChange={(e) =>
+                    handleGroup({
+                      selectCount: Number(e.target.value) > 1 ? Number(e.target.value) : undefined,
+                    })
+                  }
+                  className="px-2 py-1 border border-gray-300 rounded-md bg-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value={1}>1 (chọn 1)</option>
+                  <option value={2}>2 (Choose TWO)</option>
+                  <option value={3}>3 (Choose THREE)</option>
+                </select>
+              </label>
+            )}
+            {isGroupStart && completion && (
+              <>
+                <label className="flex items-center gap-1.5 text-[11px] text-gray-600">
+                  Giới hạn từ:
+                  <select
+                    value={question.wordLimit ?? ""}
+                    onChange={(e) =>
+                      handleGroup({ wordLimit: e.target.value || undefined })
+                    }
+                    className="px-2 py-1 border border-gray-300 rounded-md bg-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {WORD_LIMIT_OPTS.map((w) => (
+                      <option key={w} value={w}>
+                        {w === "" ? "Không giới hạn" : w}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex items-center gap-1.5 text-[11px] text-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!question.useWordBank}
+                    onChange={(e) => {
+                      const on = e.target.checked;
+                      handleGroup({
+                        useWordBank: on || undefined,
+                        options: on
+                          ? question.options && Object.keys(question.options).length
+                            ? question.options
+                            : { A: "", B: "", C: "", D: "" }
+                          : undefined,
+                        ...(on ? {} : { correctAnswer: "" }),
+                      });
+                    }}
+                    className="w-3.5 h-3.5 accent-blue-500"
+                  />
+                  Dùng word bank
+                </label>
+              </>
+            )}
+            {isGroupStart && groupSize > 1 && (
+              <span className="text-[11px] text-gray-400">
+                Nhóm {question.questionNumber}–{question.questionNumber + groupSize - 1}
+              </span>
+            )}
           </div>
 
           <input
             type="text"
             value={question.questionText}
             onChange={(e) => handleChange({ questionText: e.target.value })}
-            placeholder="Nội dung câu hỏi..."
+            placeholder={isMatching ? "Tên mục cần ghép (vd: kettle, alarm clock...)" : "Nội dung câu hỏi..."}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
 
-          {isMcq && question.options ? (
-            <div className="grid grid-cols-2 gap-2">
-              {(Object.keys(question.options).filter((k) => k.length === 1) as string[])
-                .sort()
-                .map((k) => (
-                <label
-                  key={k}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-gray-200 hover:border-blue-300 transition-all cursor-pointer text-xs"
-                  style={{
-                    background: question.correctAnswer === k ? "#ECFDF5" : "#FFFFFF",
-                    borderColor: question.correctAnswer === k ? "#86EFAC" : "#E5E7EB",
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name={`correct-${question.id}`}
-                    checked={question.correctAnswer === k}
-                    onChange={() => handleChange({ correctAnswer: k })}
-                    className="w-3.5 h-3.5 accent-emerald-500"
-                  />
-                  <span className="font-bold text-gray-700">{k}.</span>
-                  <input
-                    type="text"
-                    value={(question.options as any)![k] || ""}
-                    onChange={(e) =>
-                      handleChange({
-                        options: { ...question.options!, [k]: e.target.value } as any,
-                      })
-                    }
-                    placeholder={`Đáp án ${k}`}
-                    className="flex-1 bg-transparent text-xs outline-none"
-                  />
-                </label>
-              ))}
+          {/* Chỉ dẫn chung của nhóm — hiện 1 lần ở câu đầu nhóm, áp cho mọi dạng */}
+          {isGroupStart && (
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wide text-indigo-700 mb-1">
+                Chỉ dẫn chung của nhóm (áp dụng cho cả nhóm)
+              </label>
+              <textarea
+                value={question.taskInstruction || ""}
+                onChange={(e) => handleGroup({ taskInstruction: e.target.value })}
+                rows={2}
+                placeholder="VD: Complete the notes below. Write ONE WORD ONLY. / Choose the correct letter, A, B or C."
+                className="w-full px-3 py-2 text-sm border border-indigo-200 rounded-lg bg-indigo-50/40 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+              />
             </div>
+          )}
+
+          {isMatching || wordBank ? (
+            <div className="space-y-2">
+              {/* Bảng lựa chọn / word bank dùng chung — chỉ hiện ở câu đầu nhóm */}
+              {isGroupStart && (
+                <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 p-3 space-y-2.5">
+                  <label className="block text-[11px] font-bold uppercase tracking-wide text-indigo-700 mb-1">
+                    {isMatching
+                      ? "Bảng lựa chọn (A, B, C…) — nghĩa của từng chữ cái"
+                      : "Word bank (danh sách từ A, B, C…)"}
+                  </label>
+                  <div className="space-y-1.5">
+                    {optionKeys.map((k) => (
+                      <div key={k} className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          {k}
+                        </span>
+                        <input
+                          type="text"
+                          value={(question.options as any)?.[k] || ""}
+                          onChange={(e) =>
+                            handleGroup({
+                              options: { ...(question.options || {}), [k]: e.target.value } as any,
+                            })
+                          }
+                          placeholder={isMatching ? `Nghĩa của ${k}` : `Từ/cụm cho ${k}`}
+                          className="flex-1 px-2.5 py-1.5 text-sm border border-indigo-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        {optionKeys.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = { ...(question.options || {}) } as Record<string, string>;
+                              delete next[k];
+                              handleGroup({ options: next });
+                            }}
+                            className="p-1 rounded-md text-gray-400 hover:text-rose-500 hover:bg-rose-50 transition-all cursor-pointer flex-shrink-0"
+                            title="Xoá lựa chọn"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {optionKeys.length < LETTERS.length && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextLetter = LETTERS[optionKeys.length];
+                        handleGroup({
+                          options: { ...(question.options || {}), [nextLetter]: "" } as any,
+                        });
+                      }}
+                      className="mt-2 text-[12px] font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                    >
+                      + Thêm lựa chọn
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Đáp án: chọn chữ cái khớp với mục này */}
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] font-semibold text-gray-500 flex-shrink-0">Đáp án đúng:</span>
+                <select
+                  value={question.correctAnswer}
+                  onChange={(e) => handleChange({ correctAnswer: e.target.value })}
+                  className="flex-1 px-3 py-2 text-sm border border-emerald-200 bg-emerald-50/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                >
+                  <option value="">-- Chọn chữ cái --</option>
+                  {optionKeys.map((k) => (
+                    <option key={k} value={k}>
+                      {k}{(question.options as any)?.[k] ? ` — ${(question.options as any)[k]}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          ) : isMcq && question.options ? (
+            isMultiMcq ? (
+              <div className="space-y-1.5">
+                <p className="text-[11px] text-gray-500">
+                  Chọn đúng {selectCount} đáp án (Choose {selectCount === 2 ? "TWO" : "THREE"}):
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {optionKeys.map((k) => (
+                    <label
+                      key={k}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-md border text-xs cursor-pointer transition-all"
+                      style={{
+                        background: selectedSet.has(k) ? "#ECFDF5" : "#FFFFFF",
+                        borderColor: selectedSet.has(k) ? "#86EFAC" : "#E5E7EB",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedSet.has(k)}
+                        onChange={() => toggleMulti(k)}
+                        className="w-3.5 h-3.5 accent-emerald-500"
+                      />
+                      <span className="font-bold text-gray-700">{k}.</span>
+                      <input
+                        type="text"
+                        value={(question.options as any)![k] || ""}
+                        onChange={(e) =>
+                          handleChange({
+                            options: { ...question.options!, [k]: e.target.value } as any,
+                          })
+                        }
+                        placeholder={`Đáp án ${k}`}
+                        className="flex-1 bg-transparent text-xs outline-none"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {(Object.keys(question.options).filter((k) => k.length === 1) as string[])
+                  .sort()
+                  .map((k) => (
+                  <label
+                    key={k}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-gray-200 hover:border-blue-300 transition-all cursor-pointer text-xs"
+                    style={{
+                      background: question.correctAnswer === k ? "#ECFDF5" : "#FFFFFF",
+                      borderColor: question.correctAnswer === k ? "#86EFAC" : "#E5E7EB",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name={`correct-${question.id}`}
+                      checked={question.correctAnswer === k}
+                      onChange={() => handleChange({ correctAnswer: k })}
+                      className="w-3.5 h-3.5 accent-emerald-500"
+                    />
+                    <span className="font-bold text-gray-700">{k}.</span>
+                    <input
+                      type="text"
+                      value={(question.options as any)![k] || ""}
+                      onChange={(e) =>
+                        handleChange({
+                          options: { ...question.options!, [k]: e.target.value } as any,
+                        })
+                      }
+                      placeholder={`Đáp án ${k}`}
+                      className="flex-1 bg-transparent text-xs outline-none"
+                    />
+                  </label>
+                ))}
+              </div>
+            )
           ) : (
-            <input
-              type="text"
-              value={question.correctAnswer}
-              onChange={(e) => handleChange({ correctAnswer: e.target.value })}
-              placeholder="Đáp án đúng (vd: TRUE / FALSE / NOT GIVEN, hoặc từ khóa)..."
-              className="w-full px-3 py-2 text-sm border border-emerald-200 bg-emerald-50/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
+            <div className="space-y-1">
+              {question.wordLimit && (
+                <p className="text-[11px] text-gray-500 italic">{question.wordLimit}</p>
+              )}
+              <input
+                type="text"
+                value={question.correctAnswer}
+                onChange={(e) => handleChange({ correctAnswer: e.target.value })}
+                placeholder="Đáp án đúng (vd: TRUE / FALSE / NOT GIVEN, hoặc từ khóa)..."
+                className="w-full px-3 py-2 text-sm border border-emerald-200 bg-emerald-50/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
           )}
         </div>
       </div>

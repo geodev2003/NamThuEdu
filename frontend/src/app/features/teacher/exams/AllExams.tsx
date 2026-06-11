@@ -634,9 +634,8 @@ export function AllExams() {
 
           return (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="px-5 pt-4 pb-3 border-b border-gray-100">
-                <h2 className="text-sm font-semibold text-gray-900">Lọc theo nhóm tuổi học viên</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Chọn nhóm để xem các đề thi phù hợp</p>
+              <div className="px-4 py-2 border-b border-gray-100">
+                <h2 className="text-xs font-semibold text-gray-700">Lọc theo nhóm tuổi học viên</h2>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-gray-100">
@@ -646,28 +645,27 @@ export function AllExams() {
                     <button
                       key={key}
                       onClick={() => setFilterAgeGroup(key)}
-                      className={`relative px-5 py-4 text-left transition-colors cursor-pointer ${
+                      className={`relative px-4 py-2.5 text-left transition-colors cursor-pointer ${
                         isActive ? "bg-gray-50" : "hover:bg-gray-50/60"
                       }`}
                     >
                       {isActive && (
                         <span className="absolute top-0 left-0 right-0 h-0.5 bg-gray-900" />
                       )}
-                      <div className="flex items-center gap-2 mb-2">
-                        <Icon className={`w-4 h-4 ${isActive ? "text-gray-900" : "text-gray-400"}`} strokeWidth={2} />
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Icon className={`w-3.5 h-3.5 ${isActive ? "text-gray-900" : "text-gray-400"}`} strokeWidth={2} />
                         <span className={`text-xs font-medium ${isActive ? "text-gray-900" : "text-gray-600"}`}>
                           {label}
                         </span>
                       </div>
                       <div className="flex items-baseline gap-1.5">
-                        <span className={`text-2xl font-bold tabular-nums leading-none ${
+                        <span className={`text-xl font-bold tabular-nums leading-none ${
                           isActive ? "text-gray-900" : "text-gray-700"
                         }`}>
                           {count}
                         </span>
-                        <span className="text-xs text-gray-400">đề</span>
+                        <span className="text-[11px] text-gray-400">đề · {hint}</span>
                       </div>
-                      <p className="text-[11px] text-gray-400 mt-1">{hint}</p>
                     </button>
                   );
                 })}
@@ -678,8 +676,8 @@ export function AllExams() {
 
         {/* Refined Search & Filters - Inline Design */}
         {!loading && !error && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="space-y-3">
               {/* Search bar */}
               <div className="relative">
                 <Search className="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -688,7 +686,7 @@ export function AllExams() {
                   placeholder="Tìm theo tên đề thi..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-sm bg-white placeholder-gray-400 transition-shadow"
+                  className="w-full pl-11 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-sm bg-white placeholder-gray-400 transition-shadow"
                 />
               </div>
               
@@ -855,9 +853,9 @@ export function AllExams() {
           </div>
         )}
 
-        {/* Bulk Action Bar */}
-        {!loading && !error && paginatedExams.length > 0 && (
-          <div className="flex items-center justify-between bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 p-3 shadow-sm">
+        {/* Bulk Action Bar — ẩn ở trạng thái mặc định cho gọn, chỉ hiện khi đã chọn ≥1 đề */}
+        {!loading && !error && selectedIds.size > 0 && (
+          <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 p-2.5">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => {

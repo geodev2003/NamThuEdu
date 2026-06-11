@@ -1,19 +1,28 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { login } from "../../../../services/authApi";
-import { Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, AlertTriangle } from "lucide-react";
+import "../../../../styles/loginAnimations.css";
 
 function AdminLogin() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const maintenanceMsg = searchParams.get('message');
+  const isMaintenance = searchParams.get('maintenance') === '1';
+
+  const [error, setError] = useState<string | null>(maintenanceMsg);
+  const [loginSuccess, setLoginSuccess] = useState(false);
+  const [fadeOut, setFadeOut] = useState(false);
+  const [toast, setToast] = useState<{msg: string; show: boolean} | null>(null);
   const [sysStats, setSysStats] = useState<{ students: number; teachers: number; courses: number; exams: number } | null>(null);
   const [serverOk, setServerOk] = useState<boolean | null>(null);
   const [now, setNow] = useState<string>("");
@@ -40,6 +49,20 @@ function AdminLogin() {
     });
   }, []);
 
+  useEffect(() => {
+    if (isMaintenance && maintenanceMsg) {
+      setToast({ msg: decodeURIComponent(maintenanceMsg), show: true });
+      const timer = setTimeout(() => {
+        setToast(prev => prev ? { ...prev, show: false } : null);
+      }, 5000);
+      const clearTimer = setTimeout(() => setToast(null), 5500);
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(clearTimer);
+      };
+    }
+  }, [isMaintenance, maintenanceMsg]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -58,7 +81,19 @@ function AdminLogin() {
       storage.setItem("auth_token", access_token);
       storage.setItem("auth_role", user.role);
       storage.setItem("user", JSON.stringify(user));
-      navigate("/admin");
+      
+      // Success animation sequence
+      setLoginSuccess(true);
+      
+      // Wait for success animation to complete
+      setTimeout(() => {
+        setFadeOut(true);
+      }, 800);
+      
+      // Navigate after fade out
+      setTimeout(() => {
+        navigate("/admin");
+      }, 1100);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.message || t("auth.adminLogin.errors.failed"));
@@ -97,7 +132,97 @@ function AdminLogin() {
   ];
 
   return (
-    <div className="min-h-screen flex bg-zinc-50 font-sans text-zinc-900 selection:bg-zinc-200">
+    <div 
+      className="min-h-screen flex bg-zinc-50 font-sans text-zinc-900 selection:bg-zinc-200 relative"
+      style={{
+        opacity: fadeOut ? 0 : 1,
+        transition: "opacity 300ms ease-out"
+      }}
+    >
+      {/* Maintenance Toast */}
+      {toast && (
+        <div
+          className={`fixed top-5 right-5 z-[9999] flex items-center gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 shadow-lg transition-all duration-500 ${
+            toast.show ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
+          }`}
+          style={{ maxWidth: 380 }}
+        >
+          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+          <div>
+            <p className="text-sm font-bold text-amber-800">Hệ thống đang bảo trì</p>
+            <p className="text-xs text-amber-700">{toast.msg}</p>
+          </div>
+        </div>
+      )}
+      {/* Success Overlay */}
+      {loginSuccess && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{
+            background: "rgba(255, 255, 255, 0.95)",
+            animation: "fadeIn 300ms ease-out"
+          }}
+        >
+          <div className="flex flex-col items-center gap-4">
+            {/* Animated Checkmark */}
+            <div 
+              className="relative"
+              style={{
+                width: "80px",
+                height: "80px",
+                animation: "scaleIn 400ms ease-out"
+              }}
+            >
+              <svg viewBox="0 0 80 80" className="w-full h-full">
+                {/* Circle */}
+                <circle
+                  cx="40"
+                  cy="40"
+                  r="36"
+                  fill="none"
+                  stroke="#10B981"
+                  strokeWidth="4"
+                  style={{
+                    strokeDasharray: "226",
+                    strokeDashoffset: "226",
+                    animation: "drawCircle 600ms ease-out forwards"
+                  }}
+                />
+                {/* Checkmark */}
+                <path
+                  d="M 25 40 L 35 50 L 55 30"
+                  fill="none"
+                  stroke="#10B981"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    strokeDasharray: "50",
+                    strokeDashoffset: "50",
+                    animation: "drawCheck 400ms ease-out 300ms forwards"
+                  }}
+                />
+              </svg>
+            </div>
+            
+            {/* Success Text */}
+            <div 
+              className="text-center"
+              style={{
+                animation: "fadeInUp 400ms ease-out 400ms both"
+              }}
+            >
+              <h3 className="text-xl font-bold text-gray-900 mb-1">
+                {t("auth.adminLogin.successTitle")}
+              </h3>
+              <p className="text-sm text-gray-500">
+                {t("auth.adminLogin.successRedirecting")}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── LEFT — Minimalist Dashboard ─── */}
       <div className="hidden lg:flex lg:w-1/2 bg-zinc-950 text-zinc-400 p-12 flex-col justify-between relative overflow-hidden">
         {/* Deep Tech Backgrounds */}
@@ -191,7 +316,7 @@ function AdminLogin() {
                 {t("auth.adminLogin.phone")}
               </label>
               <input
-                type="tel"
+                type="text"
                 id="phone"
                 value={phone}
                 onChange={e => setPhone(e.target.value)}

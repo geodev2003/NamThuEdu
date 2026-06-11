@@ -35,14 +35,25 @@ const SKILL_LABELS: Record<IeltsSkill, string> = {
   speaking: "Speaking",
 };
 
-export function IeltsTestPreviewPage() {
-  const { examId: examIdParam, skill: skillParam } = useParams<{
+export function IeltsTestPreviewPage({
+  admin = false,
+  examId: examIdProp,
+  skill: skillProp,
+  onBack,
+}: {
+  admin?: boolean;
+  examId?: number | string;
+  skill?: string;
+  onBack?: () => void;
+} = {}) {
+  const params = useParams<{
     examId: string;
     skill: string;
   }>();
   const navigate = useNavigate();
-  const examId = Number(examIdParam);
-  const skill = (skillParam || "listening") as IeltsSkill;
+  const examId = Number(examIdProp ?? params.examId);
+  const skill = ((skillProp ?? params.skill) || "listening") as IeltsSkill;
+  const goBack = () => (onBack ? onBack() : navigate(-1));
   usePageTitle(`Xem thử IELTS ${SKILL_LABELS[skill] ?? "Test"}`);
 
   const [loading, setLoading] = useState(true);
@@ -59,8 +70,11 @@ export function IeltsTestPreviewPage() {
     setLoading(true);
     setError(null);
 
+    const loadUrl = admin
+      ? `/admin/exams/${examId}/preview/ielts/${skill}`
+      : `/teacher/exams/${examId}/ielts/${skill}`;
     api
-      .get(`/teacher/exams/${examId}/ielts/${skill}`)
+      .get(loadUrl)
       .then((res) => {
         if (cancelled) return;
         setPayload(res.data?.data ?? null);
@@ -102,7 +116,7 @@ export function IeltsTestPreviewPage() {
       {/* Top notice bar — luôn hiển thị để teacher biết đây là demo */}
       <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3">
         <button
-          onClick={() => navigate(-1)}
+          onClick={goBack}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -169,7 +183,7 @@ export function IeltsTestPreviewPage() {
                   lại trang soạn thảo để thêm câu hỏi trước khi xem thử giao diện làm bài.
                 </p>
                 <button
-                  onClick={() => navigate(-1)}
+                  onClick={goBack}
                   className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />

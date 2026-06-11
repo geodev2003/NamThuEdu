@@ -27,9 +27,6 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
   examId,
   questionId,
 }) => {
-  console.log('🎯 LookReadEditor loaded with initialData:', initialData);
-  console.log('🎯 examId:', examId, 'questionId:', questionId);
-
   const toast = useToastContext();
   const [title, setTitle] = useState('');
   const [answerFormat, setAnswerFormat] = useState<'tick_cross' | 'yes_no'>('tick_cross'); // Part 1 vs Part 2
@@ -260,32 +257,30 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
       config,
     };
 
-    console.log('💾 Saving question with calculated points:', {
-      totalStatements: statements.length,
-      scorableStatements: getScorableItemsCount(statements),
-      exampleStatements: getExampleItemsCount(statements),
-      calculatedPoints,
-    });
-
     toast.success('✅ Đã lưu câu hỏi thành công!');
     onSave(questionData);
   };
 
   return (
-    <div className="space-y-6 rounded-2xl border-4 border-orange-200 bg-white p-6 shadow-xl">
+    <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       {/* Header */}
-      <div className="border-b-4 border-orange-100 pb-4">
-        <h3 className="font-baloo text-3xl font-bold text-orange-600">
-          👀 Phần 1: Nhìn và Đọc (Đọc)
-        </h3>
-        <p className="mt-1 text-gray-600">
-          Học viên nhìn ảnh, đọc câu văn và đánh dấu ✓ (đúng) hoặc ✗ (sai)
-        </p>
+      <div className="border-b border-slate-200 pb-4">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">👀</span>
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">
+              Phần 1: Nhìn và Đọc (Đọc)
+            </h3>
+            <p className="text-sm text-slate-500">
+              Học viên nhìn ảnh, đọc câu văn và đánh dấu ✓ (đúng) hoặc ✗ (sai)
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Question Title */}
       <div>
-        <label className="mb-2 block font-baloo text-lg font-bold text-gray-700">
+        <label className="mb-1.5 block text-sm font-medium text-slate-700">
           📝 Tiêu đề câu hỏi / Hướng dẫn
         </label>
         <input
@@ -293,33 +288,33 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="VD: Nhìn tranh và đọc câu. Đánh dấu ✓ hoặc ✗"
-          className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-lg focus:border-orange-500 focus:outline-none"
+          className="w-full rounded-lg border border-slate-300 px-4 py-2.5 focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
         />
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-slate-500">
           Hướng dẫn chung cho học viên về cách làm bài
         </p>
       </div>
 
       {/* Answer Format Selector */}
-      <div className="rounded-xl border-2 border-purple-200 bg-purple-50 p-4">
-        <label className="mb-3 block font-baloo text-lg font-bold text-purple-700">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <label className="mb-3 block text-sm font-semibold text-slate-700">
           📋 Định dạng câu trả lời:
         </label>
         <div className="grid grid-cols-2 gap-4">
           <button
             type="button"
             onClick={() => setAnswerFormat('tick_cross')}
-            className={`rounded-xl border-2 p-4 text-left transition-all ${
+            className={`rounded-lg border p-4 text-left transition-all ${
               answerFormat === 'tick_cross'
-                ? 'border-purple-500 bg-purple-100 shadow-lg'
-                : 'border-purple-200 bg-white hover:border-purple-300'
+                ? 'border-orange-400 bg-orange-50 ring-1 ring-orange-400'
+                : 'border-slate-200 bg-white hover:border-slate-300'
             }`}
           >
             <div className="mb-2 flex items-center gap-2">
-              <span className="text-3xl">✓✗</span>
-              <span className="font-bold text-purple-700">Tick / Cross</span>
+              <span className="text-xl">✓✗</span>
+              <span className="font-semibold text-slate-800">Tick / Cross</span>
             </div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-slate-500">
               Starters R&W Part 1: Mỗi câu có ảnh riêng, đánh dấu ✓ hoặc ✗
             </p>
           </button>
@@ -327,17 +322,17 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
           <button
             type="button"
             onClick={() => setAnswerFormat('yes_no')}
-            className={`rounded-xl border-2 p-4 text-left transition-all ${
+            className={`rounded-lg border p-4 text-left transition-all ${
               answerFormat === 'yes_no'
-                ? 'border-purple-500 bg-purple-100 shadow-lg'
-                : 'border-purple-200 bg-white hover:border-purple-300'
+                ? 'border-orange-400 bg-orange-50 ring-1 ring-orange-400'
+                : 'border-slate-200 bg-white hover:border-slate-300'
             }`}
           >
             <div className="mb-2 flex items-center gap-2">
-              <span className="text-3xl">📝</span>
-              <span className="font-bold text-purple-700">Yes / No</span>
+              <span className="text-xl">📝</span>
+              <span className="font-semibold text-slate-800">Yes / No</span>
             </div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-slate-500">
               Starters R&W Part 2: Nhìn 1 ảnh lớn chung, viết yes/no
             </p>
           </button>
@@ -345,14 +340,14 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
       </div>
 
       {/* Shared Image Upload - NEW FEATURE */}
-      <div className="rounded-xl border-4 border-blue-300 bg-blue-50 p-4">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <div className="mb-3 flex items-center space-x-2">
-          <span className="text-2xl">🖼️</span>
-          <h4 className="font-baloo text-xl font-bold text-blue-700">
+          <span className="text-xl">🖼️</span>
+          <h4 className="text-base font-semibold text-slate-800">
             Hình ảnh chung cho tất cả câu (Tùy chọn)
           </h4>
         </div>
-        <p className="mb-3 text-sm text-blue-900">
+        <p className="mb-3 text-sm text-slate-500">
           💡 Giống đề Cambridge thật: Upload 1 hình lớn, tất cả câu hỏi đều dựa vào hình này. 
           Nếu không upload, mỗi câu sẽ có hình riêng.
         </p>
@@ -370,20 +365,20 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
             }}
             onFocus={() => setFocusedSharedImage(true)}
             onBlur={() => setFocusedSharedImage(false)}
-            className={`cursor-pointer rounded-lg border-2 border-dashed transition-colors ${
+            className={`cursor-pointer rounded-lg border border-dashed transition-colors ${
               focusedSharedImage
-                ? 'border-blue-500 bg-blue-100'
-                : 'border-blue-300 bg-white'
+                ? 'border-orange-400 bg-orange-50'
+                : 'border-slate-300 bg-white hover:border-orange-400 hover:bg-orange-50/40'
             }`}
           >
             <div className="flex flex-col items-center justify-center p-6">
-              <ImageIcon className="mb-2 h-16 w-16 text-blue-400" />
-              <span className="mb-1 text-lg font-bold text-blue-700">
+              <ImageIcon className="mb-2 h-12 w-12 text-slate-400" />
+              <span className="mb-1 text-sm font-medium text-slate-700">
                 {uploadingSharedImage ? '⏳ Đang tải lên...' : 'Nhấn để tải ảnh chung hoặc Ctrl+V'}
               </span>
-              <span className="text-sm text-blue-600">PNG, JPG (tối đa 20MB)</span>
+              <span className="text-xs text-slate-400">PNG, JPG (tối đa 20MB)</span>
               {focusedSharedImage && (
-                <p className="mt-2 text-sm font-bold text-blue-700 animate-pulse">
+                <p className="mt-2 text-xs font-semibold text-orange-600">
                   💡 Bạn có thể Ctrl+V để dán ảnh từ clipboard
                 </p>
               )}
@@ -398,12 +393,12 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
             />
           </div>
         ) : (
-          <div className="relative rounded-lg border-2 border-blue-500 bg-white p-4">
+          <div className="relative rounded-lg border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-center">
               <img
                 src={sharedImageUrl}
                 alt="Shared image"
-                className="max-h-64 w-auto rounded-lg shadow-lg"
+                className="max-h-64 w-auto rounded-lg shadow-sm"
               />
             </div>
             <button
@@ -414,7 +409,7 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
             >
               <X className="h-5 w-5" />
             </button>
-            <p className="mt-2 text-center text-sm font-bold text-green-600">
+            <p className="mt-2 text-center text-sm font-medium text-green-600">
               ✅ Tất cả câu hỏi sẽ dùng chung hình này!
             </p>
           </div>
@@ -424,18 +419,18 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
       {/* Statements List */}
       <div>
         {/* Sticky header with add button */}
-        <div className="sticky top-0 z-40 -mx-6 -mt-6 mb-4 flex items-center justify-between bg-white px-6 py-4 shadow-md">
+        <div className="sticky top-0 z-40 -mx-6 -mt-6 mb-4 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
           <div>
-            <h4 className="font-baloo text-2xl font-bold text-gray-800">
+            <h4 className="text-base font-semibold text-slate-800">
               📋 Danh Sách Câu Văn
             </h4>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-slate-500">
               {getScorableItemsCount(statements)} câu chấm điểm • {getExampleItemsCount(statements)} câu ví dụ
             </p>
           </div>
           <button
             onClick={addStatement}
-            className="flex items-center space-x-2 rounded-lg bg-green-500 px-4 py-2 text-white transition-colors hover:bg-green-600"
+            className="flex items-center space-x-2 rounded-lg bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700"
           >
             <Plus className="h-5 w-5" />
             <span>Thêm câu văn</span>
@@ -443,19 +438,19 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
         </div>
 
         {statements.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-center">
-            <div className="mb-3 text-5xl">📝</div>
-            <p className="text-gray-600">Chưa có câu văn nào. Nhấn "Thêm câu văn" để bắt đầu!</p>
+          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+            <div className="mb-3 text-4xl">📝</div>
+            <p className="text-slate-500">Chưa có câu văn nào. Nhấn "Thêm câu văn" để bắt đầu!</p>
           </div>
         ) : (
           <div className="space-y-4">
             {statements.map((stmt, index) => (
               <div
                 key={stmt.id}
-                className={`rounded-xl border-4 p-4 transition-all ${
+                className={`rounded-xl border p-4 transition-all ${
                   stmt.isExample
-                    ? 'border-amber-400 bg-amber-50'
-                    : 'border-gray-200 bg-white'
+                    ? 'border-amber-300 bg-amber-50'
+                    : 'border-slate-200 bg-white'
                 }`}
               >
                 <div className="mb-3 flex items-center justify-between">
@@ -464,7 +459,7 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
                       {index + 1}
                     </span>
                     {stmt.isExample && (
-                      <span className="rounded-full bg-amber-500 px-3 py-1 text-sm font-bold text-white">
+                      <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white">
                         📌 Câu ví dụ
                       </span>
                     )}
@@ -475,13 +470,13 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
                         type="checkbox"
                         checked={stmt.isExample}
                         onChange={(e) => updateStatement(stmt.id, 'isExample', e.target.checked)}
-                        className="h-5 w-5 rounded border-gray-300"
+                        className="h-5 w-5 rounded border-slate-300 text-orange-600 focus:ring-orange-500"
                       />
-                      <span className="text-sm font-medium">Đánh dấu là ví dụ</span>
+                      <span className="text-sm font-medium text-slate-600">Đánh dấu là ví dụ</span>
                     </label>
                     <button
                       onClick={() => deleteStatement(stmt.id)}
-                      className="rounded-lg bg-red-500 p-2 text-white transition-colors hover:bg-red-600"
+                      className="rounded-lg border border-red-200 bg-red-50 p-2 text-red-600 transition-colors hover:bg-red-100"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -492,7 +487,7 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
                   {/* Statement Image Upload - Only show if no shared image */}
                   {!sharedImageUrl && (
                     <div>
-                      <label className="mb-2 block text-sm font-bold text-gray-700">
+                      <label className="mb-2 block text-sm font-medium text-slate-700">
                         🖼️ Hình ảnh cho câu này (Ctrl+V để paste)
                       </label>
                       
@@ -511,20 +506,20 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
                           }}
                           onFocus={() => setFocusedStatement(stmt.id)}
                           onBlur={() => setFocusedStatement(null)}
-                          className={`cursor-pointer rounded-lg border-2 border-dashed transition-colors ${
+                          className={`cursor-pointer rounded-lg border border-dashed transition-colors ${
                             focusedStatement === stmt.id
-                              ? 'border-orange-500 bg-orange-50'
-                              : 'border-gray-300 bg-white'
+                              ? 'border-orange-400 bg-orange-50'
+                              : 'border-slate-300 bg-white hover:border-orange-400 hover:bg-orange-50/40'
                           }`}
                         >
                           <div className="flex flex-col items-center justify-center p-6">
-                            <ImageIcon className="mb-2 h-12 w-12 text-gray-400" />
-                            <span className="mb-1 text-base font-medium text-gray-700">
+                            <ImageIcon className="mb-2 h-10 w-10 text-slate-400" />
+                            <span className="mb-1 text-sm font-medium text-slate-700">
                               {uploadingImages[stmt.id] ? '⏳ Đang tải lên...' : 'Nhấn để tải ảnh hoặc Ctrl+V'}
                             </span>
-                            <span className="text-sm text-gray-500">PNG, JPG (tối đa 20MB)</span>
+                            <span className="text-xs text-slate-400">PNG, JPG (tối đa 20MB)</span>
                             {focusedStatement === stmt.id && (
-                              <p className="mt-2 text-xs font-bold text-orange-600 animate-pulse">
+                              <p className="mt-2 text-xs font-semibold text-orange-600">
                                 💡 Bạn có thể Ctrl+V để dán ảnh từ clipboard
                               </p>
                             )}
@@ -539,7 +534,7 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
                           />
                         </div>
                       ) : (
-                        <div className="relative rounded-lg border-2 border-orange-400 bg-gray-50 p-4">
+                        <div className="relative rounded-lg border border-slate-200 bg-slate-50 p-4">
                           <div className="flex items-center justify-center">
                             <img
                               src={stmt.imageUrl}
@@ -562,8 +557,8 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
 
                   {/* Show info if using shared image */}
                   {sharedImageUrl && (
-                    <div className="rounded-lg border-2 border-blue-300 bg-blue-50 p-3">
-                      <p className="text-sm font-bold text-blue-700">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-sm font-medium text-slate-600">
                         ℹ️ Câu này sử dụng hình ảnh chung ở trên
                       </p>
                     </div>
@@ -571,7 +566,7 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
 
                   {/* Statement Text */}
                   <div>
-                    <label className="mb-1 block text-sm font-bold text-gray-700">
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
                       Câu văn mô tả
                     </label>
                     <input
@@ -579,20 +574,20 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
                       value={stmt.statement}
                       onChange={(e) => updateStatement(stmt.id, 'statement', e.target.value)}
                       placeholder="VD: This is a bus."
-                      className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 focus:border-orange-500 focus:outline-none"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
                     />
                   </div>
 
                   {/* Correct Answer */}
                   <div>
-                    <label className="mb-2 block text-sm font-bold text-gray-700">
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
                       Đáp án đúng
                     </label>
                     <div className="flex space-x-4">
-                      <label className={`flex cursor-pointer items-center space-x-2 rounded-lg border-2 px-4 py-2 transition-all ${
+                      <label className={`flex cursor-pointer items-center space-x-2 rounded-lg border px-4 py-2 transition-all ${
                         stmt.correctAnswer === 'tick'
-                          ? 'border-green-500 bg-green-100'
-                          : 'border-gray-300 hover:border-green-500 hover:bg-green-50'
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-slate-300 hover:border-green-400 hover:bg-green-50/50'
                       }`}>
                         <input
                           type="radio"
@@ -601,13 +596,13 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
                           onChange={() => updateStatement(stmt.id, 'correctAnswer', 'tick')}
                           className="h-5 w-5 text-green-600"
                         />
-                        <span className="text-2xl">✓</span>
-                        <span className="font-medium">Đúng (Tick)</span>
+                        <span className="text-xl">✓</span>
+                        <span className="text-sm font-medium text-slate-700">Đúng (Tick)</span>
                       </label>
-                      <label className={`flex cursor-pointer items-center space-x-2 rounded-lg border-2 px-4 py-2 transition-all ${
+                      <label className={`flex cursor-pointer items-center space-x-2 rounded-lg border px-4 py-2 transition-all ${
                         stmt.correctAnswer === 'cross'
-                          ? 'border-red-500 bg-red-100'
-                          : 'border-gray-300 hover:border-red-500 hover:bg-red-50'
+                          ? 'border-red-500 bg-red-50'
+                          : 'border-slate-300 hover:border-red-400 hover:bg-red-50/50'
                       }`}>
                         <input
                           type="radio"
@@ -616,18 +611,18 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
                           onChange={() => updateStatement(stmt.id, 'correctAnswer', 'cross')}
                           className="h-5 w-5 text-red-600"
                         />
-                        <span className="text-2xl">✗</span>
-                        <span className="font-medium">Sai (Cross)</span>
+                        <span className="text-xl">✗</span>
+                        <span className="text-sm font-medium text-slate-700">Sai (Cross)</span>
                       </label>
                     </div>
                   </div>
 
                   {/* Preview */}
                   {stmt.statement && stmt.imageUrl && (
-                    <div className="rounded-lg bg-gray-100 p-3">
-                      <p className="text-sm">
-                        <span className="font-bold">Preview:</span> {stmt.statement}{' '}
-                        <span className="text-2xl">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-sm text-slate-600">
+                        <span className="font-semibold">Preview:</span> {stmt.statement}{' '}
+                        <span className="text-xl">
                           {stmt.correctAnswer === 'tick' ? '✓' : '✗'}
                         </span>
                       </p>
@@ -641,11 +636,11 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
       </div>
 
       {/* Instructions for Students */}
-      <div className="rounded-xl border-2 border-blue-300 bg-blue-50 p-4">
-        <h4 className="mb-2 font-baloo text-lg font-bold text-blue-700">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <h4 className="mb-2 text-sm font-semibold text-slate-700">
           💡 Hướng dẫn cho học viên:
         </h4>
-        <ol className="list-decimal space-y-1 pl-5 text-sm text-blue-900">
+        <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-600">
           <li>Nhìn kỹ ảnh của từng câu</li>
           <li>Đọc câu văn mô tả</li>
           <li>Đánh dấu ✓ nếu câu đúng với ảnh</li>
@@ -654,17 +649,17 @@ const LookReadEditor: React.FC<LookReadEditorProps> = ({
       </div>
 
       {/* Action Buttons - Moved to bottom */}
-      <div className="flex justify-end space-x-3 border-t-2 border-gray-200 pt-4">
+      <div className="flex justify-end space-x-3 border-t border-slate-200 pt-4">
         <button
           onClick={onCancel}
-          className="flex items-center space-x-2 rounded-lg border-2 border-gray-300 px-6 py-3 transition-colors hover:bg-gray-50"
+          className="flex items-center space-x-2 rounded-lg border border-slate-300 px-6 py-2.5 text-slate-700 transition-colors hover:bg-slate-50"
         >
           <X className="h-5 w-5" />
           <span>Hủy</span>
         </button>
         <button
           onClick={handleSave}
-          className="flex items-center space-x-2 rounded-lg bg-orange-600 px-6 py-3 text-white transition-colors hover:bg-orange-700"
+          className="flex items-center space-x-2 rounded-lg bg-orange-600 px-6 py-2.5 text-white transition-colors hover:bg-orange-700"
         >
           <Save className="h-5 w-5" />
           <span>Lưu câu hỏi</span>

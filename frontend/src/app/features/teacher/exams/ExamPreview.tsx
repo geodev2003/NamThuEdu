@@ -50,7 +50,7 @@ interface ExamData {
   questions: Question[];
 }
 
-export function ExamPreview() {
+export function ExamPreview({ admin = false, backTo }: { admin?: boolean; backTo?: string } = {}) {
   const { examId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
@@ -135,7 +135,7 @@ export function ExamPreview() {
 
     try {
       setLoading(true);
-      const response = await getKidsExam(parseInt(examId));
+      const response = await getKidsExam(parseInt(examId), admin);
       console.log('📥 Loaded exam for preview:', response);
       // API returns exam directly, not wrapped in { exam: ... }
       setExamData(response);
@@ -921,7 +921,7 @@ export function ExamPreview() {
             {/* Actions */}
             <div className="flex flex-col gap-3">
               <button
-                onClick={() => navigate(-1)}
+                onClick={() => (backTo ? navigate(backTo) : navigate(-1))}
                 className="w-full px-6 py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl hover:from-orange-600 hover:to-pink-600 transition-all inline-flex items-center justify-center gap-2 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
                 <ArrowLeft className="w-5 h-5" />
@@ -1212,7 +1212,7 @@ export function ExamPreview() {
                   if (interactiveMode) {
                     toast.warning('⚠️ Không thể thoát khi đang làm bài!');
                   } else {
-                    navigate(-1);
+                    if (backTo) { navigate(backTo); } else { navigate(-1); }
                   }
                 }}
                 disabled={interactiveMode}

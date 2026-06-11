@@ -461,9 +461,6 @@ export function AdminDashboard() {
               <Activity className="h-5 w-5" style={{ color: "#0F172A" }} />
               <h2 style={{ fontSize: 16, fontWeight: 700, color: "#0F172A" }}>{t(`${d}.recentActivity`)}</h2>
             </div>
-            <Link to="/admin/system/activity-logs" className="flex items-center gap-1" style={{ fontSize: 12, color: "#64748B", fontWeight: 500 }}>
-              {t(`${d}.viewLogs`)} <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
           </div>
           <div className="space-y-3">
             {recentActivities.map((a) => (

@@ -17,6 +17,7 @@ import {
   Zap,
   Search,
   ChevronRight,
+  FileEdit,
 } from "lucide-react";
 import { logout } from "../../services/authApi";
 import { adminApi } from "../../services/adminApi";
@@ -37,39 +38,22 @@ interface NavItem {
 const adminNav: NavItem[] = [
   { label: "Tổng quan", href: "/admin", icon: LayoutDashboard },
   {
-    label: "Giáo viên",
-    icon: GraduationCap,
-    submenu: [
-      { label: "Danh sách giáo viên", href: "/admin/teachers" },
-      { label: "Phân công lớp", href: "/admin/teachers/assignments" },
-    ],
-  },
-  {
-    label: "Học viên",
+    label: "Người dùng",
     icon: Users,
     submenu: [
-      { label: "Tất cả học viên", href: "/admin/students" },
-      { label: "Đăng ký mới", href: "/admin/students/new-registrations" },
-      { label: "Khiếu nại", href: "/admin/students/complaints" },
+      { label: "Danh sách người dùng", href: "/admin/users" },
     ],
   },
+  { label: "Đề thi", href: "/admin/courses", icon: FileText },
   {
     label: "Khóa học",
     icon: BookOpen,
     submenu: [
-      { label: "Tất cả khóa học", href: "/admin/courses" },
       { label: "Tạo khóa học", href: "/admin/courses/new" },
       { label: "Danh mục", href: "/admin/courses/categories" },
     ],
   },
-  {
-    label: "Nội dung",
-    icon: FileText,
-    submenu: [
-      { label: "Bài viết", href: "/admin/content/posts" },
-      { label: "Ngân hàng đề", href: "/admin/content/exams" },
-    ],
-  },
+  { label: "Bài viết", href: "/admin/content/posts", icon: FileEdit },
   {
     label: "Báo cáo",
     icon: BarChart3,
@@ -78,22 +62,6 @@ const adminNav: NavItem[] = [
       { label: "Học viên", href: "/admin/reports/students" },
       { label: "Hiệu suất GV", href: "/admin/reports/teachers" },
     ],
-  },
-  {
-    label: "Hệ thống",
-    icon: Activity,
-    indicator: "online",
-    submenu: [
-      { label: "Nhật ký hoạt động", href: "/admin/system/activity-logs" },
-      { label: "Nhật ký Audit", href: "/admin/system/audit-logs" },
-      { label: "Sức khỏe server", href: "/admin/system/server-health" },
-      { label: "Backup dữ liệu", href: "/admin/system/backups" },
-    ],
-  },
-  {
-    label: "Thông báo",
-    href: "/admin/notifications",
-    icon: Bell,
   },
   { label: "Cài đặt", href: "/admin/settings", icon: Settings },
 ];
@@ -130,7 +98,6 @@ export function AdminLayout() {
     .map((w) => w[0].toUpperCase())
     .join("") || "AD";
 
-  const [studentBadge, setStudentBadge] = useState<number | null>(null);
   const [notifBadge, setNotifBadge] = useState<number | null>(null);
   const [serverLatency, setServerLatency] = useState<number | null>(null);
   const [serverStatus, setServerStatus] = useState<"online" | "warning" | "offline">("online");
@@ -139,21 +106,11 @@ export function AdminLayout() {
 
   const loadSidebarData = useCallback(async () => {
     try {
-      const [regData, notifs, health] = await Promise.allSettled([
-        adminApi.getStudentNewRegistrations({ period_days: 7 }),
+      const [notifs, health] = await Promise.allSettled([
         adminApi.getNotifications(),
         adminApi.getSystemHealth(),
       ]);
 
-      if (regData.status === "fulfilled") {
-        const count = regData.value.items.length;
-        setStudentBadge((prev) => {
-          if (prev !== null && count > prev) {
-            playSound();
-          }
-          return count;
-        });
-      }
       if (notifs.status === "fulfilled") {
         const unread = notifs.value.filter((n) => !n.is_read).length;
         setNotifBadge((prev) => {
@@ -202,16 +159,29 @@ export function AdminLayout() {
   }, [location.pathname]);
 
   const isActive = (item: NavItem) => {
-    if (item.href) return location.pathname === item.href;
-    return item.submenu?.some((s) => location.pathname.startsWith(s.href)) ?? false;
+    if (item.href) {
+      if (item.href === "/admin/courses") {
+        return location.pathname === "/admin/courses";
+      }
+      return location.pathname === item.href || location.pathname.startsWith(item.href + "/");
+    }
+    return item.submenu?.some((s) => {
+      if (s.href === "/admin/courses") {
+        return location.pathname === "/admin/courses";
+      }
+      return location.pathname === s.href || location.pathname.startsWith(s.href + "/");
+    }) ?? false;
   };
 
-  const isSubActive = (href: string) =>
-    location.pathname === href || location.pathname.startsWith(href + "/");
+  const isSubActive = (href: string) => {
+    if (href === "/admin/courses") {
+      return location.pathname === "/admin/courses";
+    }
+    return location.pathname === href || location.pathname.startsWith(href + "/");
+  };
 
   // Map nav badge to real data per item label
   const getLiveBadge = (label: string): number | null => {
-    if (label === "Học viên") return studentBadge;
     if (label === "Thông báo") return notifBadge;
     return null;
   };
@@ -412,13 +382,12 @@ export function AdminLayout() {
             <ChevronRight className="h-3 w-3 flex-shrink-0" style={{ color: "#CBD5E1" }} />
             <span className="font-semibold truncate" style={{ fontSize: 14, color: "#0F172A", letterSpacing: "-0.01em" }}>
               {location.pathname === "/admin" || location.pathname === "/admin/dashboard" ? "Tổng quan" :
-               location.pathname.startsWith("/admin/teachers") ? "Giáo viên" :
-               location.pathname.startsWith("/admin/students") ? "Học viên" :
-               location.pathname.startsWith("/admin/courses") ? "Khóa học" :
-               location.pathname.startsWith("/admin/content") ? "Nội dung" :
+               location.pathname.startsWith("/admin/users") ? "Người dùng" :
+               location.pathname === "/admin/courses" ? "Đề thi" :
+               location.pathname.startsWith("/admin/courses/new") ? "Khóa học" :
+               location.pathname.startsWith("/admin/courses/categories") ? "Khóa học" :
+               location.pathname.startsWith("/admin/content/posts") ? "Bài viết" :
                location.pathname.startsWith("/admin/reports") ? "Báo cáo" :
-               location.pathname.startsWith("/admin/system") ? "Hệ thống" :
-               location.pathname.startsWith("/admin/notifications") ? "Thông báo" :
                location.pathname.startsWith("/admin/settings") ? "Cài đặt" :
                location.pathname.startsWith("/admin/profile") ? "Hồ sơ" : "Admin"}
             </span>
@@ -492,7 +461,7 @@ export function AdminLayout() {
             <div className="h-5 w-px" style={{ background: "#E2E8F0" }} />
 
             {/* Admin profile chip */}
-            <Link to="/admin/profile"
+            <Link to="/admin/settings?tab=profile"
               className="flex items-center gap-2.5 rounded-xl pl-1 pr-2.5 py-1 cursor-pointer transition-all duration-150 no-underline"
               style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}
               onMouseEnter={(e) => {
@@ -516,7 +485,7 @@ export function AdminLayout() {
             </Link>
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto w-full max-w-[1680px] mx-auto">
           <Suspense fallback={<AdminPageSkeleton />}>
             <Outlet />
           </Suspense>

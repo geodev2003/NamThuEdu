@@ -71,6 +71,26 @@ api.interceptors.response.use(
       console.groupEnd();
     }
 
+    // Handle 503 Maintenance Mode — force logout and redirect (skip admin)
+    if (error.response?.status === 503) {
+      const currentPath = window.location.pathname;
+
+      // Admin bypasses maintenance — don't redirect them
+      if (currentPath.includes('/admin')) {
+        return Promise.reject(error);
+      }
+
+      clearAuthData();
+      const msg = encodeURIComponent('Hệ thống đang bảo trì. Vui lòng quay lại sau.');
+
+      if (currentPath.includes('/giao-vien')) {
+        window.location.href = '/giao-vien/dang-nhap?maintenance=1&message=' + msg;
+      } else {
+        window.location.href = '/dang-nhap?maintenance=1&message=' + msg;
+      }
+      return Promise.reject(error);
+    }
+
     // Handle 401 Unauthorized — smart redirect based on current path
     if (error.response?.status === 401) {
       clearAuthData();

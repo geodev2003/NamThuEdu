@@ -165,7 +165,7 @@ const ExamCard = ({ test }: { test: TestItem }) => {
 
       {/* Action */}
       <Link
-        to={canStart ? `/hoc-vien/kids/phong-cho/${test.assignment_id}` : '#'}
+        to={canStart ? `/hoc-vien/phong-cho/${test.assignment_id}` : '#'}
         onClick={e => !canStart && e.preventDefault()}
         className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-extrabold transition-all"
         style={canStart
@@ -207,7 +207,7 @@ export function KidsDashboard() {
           const raw = (testsRes.value as any).data?.data;
           const pending = (raw?.pending || []).map((t: any) => ({ ...t, status: 'pending' }));
           const inProg  = (raw?.in_progress || []).map((t: any) => ({ ...t, status: 'in_progress' }));
-          setTests([...inProg, ...pending].slice(0, 6));
+          setTests([...inProg, ...pending].filter(isKidsExam).slice(0, 6));
         }
         if (subRes.status === 'fulfilled') {
           const subs = (subRes.value as any).data?.data?.submissions || [];
@@ -246,53 +246,52 @@ export function KidsDashboard() {
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #FFF1F2 0%, #FFF7ED 50%, #F0FDF4 100%)' }}>
 
-      {/* ─── Clay Hero Header ─────────────────────────────────── */}
-      <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #FB7185 0%, #F97316 60%, #FBBF24 100%)', paddingBottom: '3.5rem' }}>
-        {/* Decorative blobs */}
-        <div className="absolute -top-8 -left-8 w-40 h-40 rounded-full opacity-30 pointer-events-none" style={{ background: 'radial-gradient(circle, #FDE68A, transparent)' }} />
-        <div className="absolute top-2 right-1/4 w-24 h-24 rounded-full opacity-25 pointer-events-none" style={{ background: 'radial-gradient(circle, #FEF3C7, transparent)' }} />
-        <div className="absolute -bottom-10 right-10 w-36 h-36 rounded-full opacity-30 pointer-events-none" style={{ background: 'radial-gradient(circle, #FECDD3, transparent)' }} />
-        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-2">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      {/* ─── Greeting + Stats (light, hợp header trắng) ───────── */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 space-y-5 pb-8">
+
+        <section className="relative overflow-hidden rounded-3xl p-5 sm:p-7"
+          style={{ background: 'linear-gradient(135deg, #FFFFFF 0%, #FFF7ED 100%)', boxShadow: '0 8px 32px rgba(251,113,133,0.12)', border: '2px solid rgba(255,255,255,0.9)' }}>
+          {/* Decorative blobs */}
+          <div className="absolute -top-10 -right-6 w-40 h-40 rounded-full opacity-40 pointer-events-none" style={{ background: 'radial-gradient(circle, #FED7AA, transparent)' }} />
+          <div className="absolute -bottom-12 left-1/3 w-36 h-36 rounded-full opacity-30 pointer-events-none" style={{ background: 'radial-gradient(circle, #FECDD3, transparent)' }} />
+
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
             <div>
-              <p className="text-xs font-bold text-rose-100 uppercase tracking-widest mb-1">🎮 Trang chủ Kids</p>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight drop-shadow-sm">
+              <p className="text-xs font-extrabold text-rose-400 uppercase tracking-widest mb-1">🎮 Trang chủ Kids</p>
+              <h1 className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: '#9F1239' }}>
                 Xin chào, {user?.uName?.split(' ').slice(-1)[0] || 'bạn'} 👋
               </h1>
-              <p className="text-sm text-rose-100 mt-1 font-semibold">Cambridge Young Learners ⭐</p>
+              <p className="text-sm font-semibold text-orange-500/80 mt-1">Cambridge Young Learners ⭐</p>
+              {streak > 0 && (
+                <div className="mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full"
+                  style={{ background: 'rgba(251,146,60,0.14)', border: '1.5px solid rgba(251,146,60,0.25)' }}>
+                  <Flame className="w-4 h-4 text-orange-500" fill="#FB923C" />
+                  <span className="text-xs font-bold text-orange-700">{streak} ngày học liên tiếp — tuyệt vời! 🌟</span>
+                </div>
+              )}
             </div>
-            {/* Stats bubbles */}
-            <div className="flex flex-wrap gap-2">
+
+            {/* Stat bubbles */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {[
-                { icon: '🔥', label: 'Streak', value: streak },
-                { icon: '🪙', label: 'Coins', value: coins },
-                { icon: '📊', label: 'Điểm TB', value: `${avgScore}%` },
-                { icon: '📝', label: 'Đã thi', value: examsCount },
+                { icon: '🔥', label: 'Streak',  value: streak,          c: '#E11D48', bg: 'linear-gradient(135deg,#FFF1F2,#FECDD3)' },
+                { icon: '🪙', label: 'Coins',   value: coins,           c: '#B45309', bg: 'linear-gradient(135deg,#FEFCE8,#FEF08A)' },
+                { icon: '📊', label: 'Điểm TB', value: `${avgScore}%`,  c: '#2563EB', bg: 'linear-gradient(135deg,#EFF6FF,#BFDBFE)' },
+                { icon: '📝', label: 'Đã thi',  value: examsCount,      c: '#059669', bg: 'linear-gradient(135deg,#F0FFF4,#BBF7D0)' },
               ].map(s => (
-                <div key={s.label}
-                  className="flex items-center gap-2 px-3.5 py-2 rounded-2xl text-white"
-                  style={{ background: 'rgba(255,255,255,0.22)', backdropFilter: 'blur(12px)', border: '1.5px solid rgba(255,255,255,0.35)', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-                  <span>{s.icon}</span>
-                  <div>
-                    <span className="text-base font-extrabold tabular-nums">{s.value}</span>
-                    <span className="text-[10px] font-semibold opacity-70 ml-1">{s.label}</span>
-                  </div>
+                <div key={s.label} className="rounded-2xl px-3.5 py-2.5 min-w-[84px]"
+                  style={{ background: s.bg, border: '2px solid rgba(255,255,255,0.85)', boxShadow: '0 4px 14px rgba(0,0,0,0.05)' }}>
+                  <div className="text-lg leading-none">{s.icon}</div>
+                  <div className="text-lg font-extrabold tabular-nums leading-none mt-1.5" style={{ color: s.c }}>{s.value}</div>
+                  <div className="text-[10px] font-bold mt-0.5" style={{ color: s.c, opacity: 0.7 }}>{s.label}</div>
                 </div>
               ))}
             </div>
           </div>
-          {streak > 0 && (
-            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-2xl"
-              style={{ background: 'rgba(255,255,255,0.22)', backdropFilter: 'blur(8px)', border: '1.5px solid rgba(255,255,255,0.3)' }}>
-              <Flame className="w-4 h-4 text-yellow-200" fill="#FDE68A" />
-              <span className="text-sm font-bold text-white">{streak} ngày học liên tiếp — tuyệt vời! 🌟</span>
-            </div>
-          )}
-        </div>
-      </div>
+        </section>
 
-      {/* ─── Card pull-up overlap ──────────────────────────────── */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 -mt-12 space-y-5 pb-8">
+        {/* ─── Nội dung ──────────────────────────────────────────── */}
+
 
         {/* ─── Bài thi được giao ───────────────────────────────── */}
         <ClaySection
@@ -301,7 +300,7 @@ export function KidsDashboard() {
           subtitle={kidsTests.length > 0 ? `${kidsTests.length} bài đang chờ em làm` : undefined}
           accentColor="#9F1239"
           action={
-            <Link to="/hoc-vien/kids/bai-tap"
+            <Link to="/hoc-vien/bai-tap"
                   className="inline-flex items-center gap-1 text-sm font-extrabold text-rose-600 hover:text-rose-700">
               Xem tất cả<ChevronRight className="w-4 h-4" />
             </Link>
@@ -364,10 +363,10 @@ export function KidsDashboard() {
         >
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {([
-              { label: 'Nghe', clay: SKILL_CLAY['nghe'], Icon: Headphones, desc: 'Luyện nghe hiểu', emoji: '👂', link: '/hoc-vien/kids/luyen-tap' },
-              { label: 'Đọc',  clay: SKILL_CLAY['đọc'],  Icon: BookOpen,   desc: 'Luyện đọc hiểu', emoji: '📖', link: '/hoc-vien/kids/luyen-tap' },
-              { label: 'Viết', clay: SKILL_CLAY['viết'], Icon: PenLine,    desc: 'Luyện viết câu', emoji: '✏️', link: '/hoc-vien/kids/luyen-tap' },
-              { label: 'Nói',  clay: SKILL_CLAY['nói'],  Icon: Mic,        desc: 'Luyện phát âm',  emoji: '🎤', link: '/hoc-vien/kids/luyen-tap' },
+              { label: 'Nghe', clay: SKILL_CLAY['nghe'], Icon: Headphones, desc: 'Luyện nghe hiểu', emoji: '👂', link: '/hoc-vien/luyen-tap' },
+              { label: 'Đọc',  clay: SKILL_CLAY['đọc'],  Icon: BookOpen,   desc: 'Luyện đọc hiểu', emoji: '📖', link: '/hoc-vien/luyen-tap' },
+              { label: 'Viết', clay: SKILL_CLAY['viết'], Icon: PenLine,    desc: 'Luyện viết câu', emoji: '✏️', link: '/hoc-vien/luyen-tap' },
+              { label: 'Nói',  clay: SKILL_CLAY['nói'],  Icon: Mic,        desc: 'Luyện phát âm',  emoji: '🎤', link: '/hoc-vien/luyen-tap' },
             ]).map(s => (
               <Link key={s.label} to={s.link}
                 className="group rounded-2xl p-4 sm:p-5 transition-all duration-200 hover:-translate-y-1 active:scale-[0.97]"
@@ -396,7 +395,7 @@ export function KidsDashboard() {
             emoji="🏅"
             accentColor="#92400E"
             action={
-              <Link to="/hoc-vien/kids/lich-su"
+              <Link to="/hoc-vien/lich-su"
                     className="inline-flex items-center gap-1 text-sm font-extrabold text-rose-600 hover:text-rose-700">
                 Xem tất cả<ChevronRight className="w-4 h-4" />
               </Link>
@@ -412,7 +411,7 @@ export function KidsDashboard() {
                 return (
                   <Link
                     key={sub.sId}
-                    to={`/hoc-vien/kids/ket-qua/${sub.sId}`}
+                    to={`/hoc-vien/ket-qua/${sub.sId}`}
                     className="flex items-center gap-3 sm:gap-4 p-3 rounded-2xl transition-all hover:-translate-y-0.5 active:scale-[0.97]"
                     style={{ background: clay.bg, boxShadow: clay.shadow, border: '2px solid rgba(255,255,255,0.8)' }}
                   >

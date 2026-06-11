@@ -51,8 +51,11 @@ export const createKidsExam = async (examData: KidsExamData) => {
 };
 
 // Get kids exam by ID
-export const getKidsExam = async (examId: number) => {
-  const response = await api.get(`/teacher/kids-exams/${examId}`);
+export const getKidsExam = async (examId: number, admin = false) => {
+  const url = admin
+    ? `/admin/exams/${examId}/preview/kids`
+    : `/teacher/kids-exams/${examId}`;
+  const response = await api.get(url);
   return response.data;
 };
 

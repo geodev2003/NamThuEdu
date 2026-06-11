@@ -1,0 +1,383 @@
+/**
+ * KidsTestTaking — Trang làm bài thân thiện cho trẻ 6-12 (Cambridge YL)
+ *
+ * Khác bản người lớn (TestTaking — engine VSTEP 4 kỹ năng):
+ * - MỘT câu hỏi mỗi màn hình, chữ to, đáp án dạng thẻ bấm to.
+ * - Thanh tiến trình vui, lời động viên, không có tab Listening/Reading/Writing/Speaking.
+ * - Vẫn dùng chung API start/save/submit để đồng bộ backend.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useLocation, useNavigate, useParams } from 'react-router';
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Volume2, AlertTriangle, PartyPopper } from 'lucide-react';
+import { studentApi } from '../../../../services/studentApi';
+import KidsTaskRenderer from './player/KidsTaskRenderer';
+import { parseKidsAnswer, serializeKidsAnswer, countFilled } from './player/kidsAnswer';
+
+const BASE = '/hoc-vien';
+
+// ─── Helpers (đồng bộ cách đọc dữ liệu với TestTaking) ────────────────────────
+function getQuestionId(q: any): string {
+  return String(q?.qId ?? q?.id ?? '');
+}
+
+function getOptions(q: any) {
+  if (Array.isArray(q?.options)) {
+    return q.options.map((opt: any, idx: number) => ({
+      id: String(opt?.id ?? idx + 1),
+      label: String(opt?.label ?? String.fromCharCode(65 + idx)),
+      content: String(opt?.content ?? ''),
+      value: String(opt?.id ?? idx + 1),
+    }));
+  }
+  if (Array.isArray(q?.answers)) {
+    return q.answers.map((opt: any, idx: number) => ({
+      id: String(opt?.aId ?? idx + 1),
+      label: String.fromCharCode(65 + idx),
+      content: String(opt?.aContent ?? ''),
+      value: String(opt?.aContent ?? ''),
+    }));
+  }
+  return [];
+}
+
+function mapSavedAnswers(saved: any[] | undefined): Record<string, string> {
+  if (!Array.isArray(saved)) return {};
+  return saved.reduce<Record<string, string>>((acc, a) => {
+    const key = String(a?.question_id ?? '');
+    if (key) acc[key] = String(a?.saAnswer_text ?? a?.answer_text ?? '');
+    return acc;
+  }, {});
+}
+
+function formatClock(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+const OPTION_TONES = [
+  { bg: 'linear-gradient(135deg,#FFF1F2,#FECDD3)', c: '#E11D48' },
+  { bg: 'linear-gradient(135deg,#EFF6FF,#BFDBFE)', c: '#2563EB' },
+  { bg: 'linear-gradient(135deg,#F0FFF4,#BBF7D0)', c: '#059669' },
+  { bg: 'linear-gradient(135deg,#FEFCE8,#FEF08A)', c: '#B45309' },
+];
+
+// ─── Submit confirm ───────────────────────────────────────────────────────────
+function KidsSubmitDialog({ open, total, answered, onConfirm, onCancel, loading }:
+  { open: boolean; total: number; answered: number; onConfirm: () => void; onCancel: () => void; loading: boolean }) {
+  if (!open) return null;
+  const left = total - answered;
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-3xl p-7 w-full max-w-sm text-center" style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+        <div className="text-5xl mb-3">{left > 0 ? '🤔' : '🎉'}</div>
+        <h2 className="text-xl font-extrabold" style={{ color: '#9F1239' }}>
+          {left > 0 ? 'Em làm xong chưa nhỉ?' : 'Tuyệt vời!'}
+        </h2>
+        <p className="mt-2 text-sm font-medium text-slate-500">
+          {left > 0
+            ? `Em còn ${left} câu chưa trả lời. Em muốn nộp bài luôn không?`
+            : `Em đã trả lời hết ${total} câu rồi. Nộp bài nhé!`}
+        </p>
+        <div className="flex gap-3 mt-6">
+          <button onClick={onCancel} disabled={loading}
+            className="flex-1 py-3 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
+            Làm tiếp
+          </button>
+          <button onClick={onConfirm} disabled={loading}
+            className="flex-1 py-3 rounded-2xl font-extrabold text-white transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-60"
+            style={{ background: 'linear-gradient(135deg, #FB7185 0%, #F97316 100%)' }}>
+            {loading ? 'Đang nộp…' : 'Nộp bài 🚀'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function KidsTestTaking() {
+  const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const assignmentId = Number(id);
+
+  const autoStart = useMemo(() => new URLSearchParams(location.search).get('autostart') === '1', [location.search]);
+  const querySubmissionId = useMemo(() => {
+    const raw = Number(new URLSearchParams(location.search).get('submissionId') ?? 0);
+    return Number.isFinite(raw) && raw > 0 ? raw : null;
+  }, [location.search]);
+
+  const [submissionId, setSubmissionId] = useState<number | null>(null);
+  const [exam, setExam] = useState<any>(null);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [current, setCurrent] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [started, setStarted] = useState(false);
+  const [showSubmit, setShowSubmit] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const questions: any[] = exam?.questions ?? [];
+  const total = questions.length;
+  const q = questions[current];
+  const qid = q ? getQuestionId(q) : '';
+  const kidsConfig = q?.kids_task_config ?? null;
+  const kidsTaskType: string = kidsConfig?.task_type ?? '';
+  const kidsTaskData: any = kidsConfig?.task_data ?? null;
+  const isKidsTask = !!kidsConfig && !!kidsTaskData;
+  const options = q && !isKidsTask ? getOptions(q) : [];
+  const isWriting = q && !isKidsTask && options.length === 0;
+
+  const answeredCount = useMemo(
+    () => Object.keys(answers).filter(k => String(answers[k] ?? '').trim() !== '').length,
+    [answers]
+  );
+
+  const startMutation = useMutation({
+    mutationFn: async () => {
+      const startRes: any = await studentApi.startTest(assignmentId);
+      const startData = startRes?.data?.data;
+      if (!startData?.exam && (startData?.canResume || querySubmissionId)) {
+        return studentApi.resumeTest(assignmentId);
+      }
+      return startRes;
+    },
+    onSuccess: (res: any) => {
+      const data = res?.data?.data;
+      const fetchedExam = data?.exam ?? data?.assignment?.exam;
+      if (!fetchedExam || !Array.isArray(fetchedExam.questions)) {
+        setLoadError('Không tải được bài thi. Em thử lại nhé!');
+        return;
+      }
+      setSubmissionId(data?.submissionId ?? querySubmissionId ?? null);
+      setExam(fetchedExam);
+      const restored = mapSavedAnswers(data?.savedAnswers);
+      if (Object.keys(restored).length) setAnswers(restored);
+      const mins = Number(data?.timeRemaining ?? 0);
+      const dur = Number(fetchedExam?.eDuration_minutes ?? fetchedExam?.exam_duration ?? 30);
+      setTimeLeft((mins > 0 ? mins : dur) * 60);
+      setStarted(true);
+    },
+    onError: () => setLoadError('Không kết nối được. Em tải lại trang nhé!'),
+  });
+
+  const saveAnswerMutation = useMutation({
+    mutationFn: (p: { question_id: number; saAnswer_text: string }) =>
+      studentApi.saveAnswer(submissionId!, { question_id: p.question_id, saAnswer_text: p.saAnswer_text } as any),
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: () => studentApi.submitTest(submissionId!),
+    onSuccess: (res: any) => {
+      const sid = res?.data?.data?.submissionId ?? submissionId;
+      navigate(`${BASE}/ket-qua/${sid}`);
+    },
+    onError: () => setLoadError('Chưa nộp được bài. Em thử lại nhé!'),
+  });
+
+  // Auto-start when arriving from lobby
+  useEffect(() => {
+    if (!autoStart || started || startMutation.isPending) return;
+    startMutation.mutate();
+  }, [autoStart, started, startMutation]);
+
+  // Countdown — auto submit at 0
+  useEffect(() => {
+    if (!started || timeLeft <= 0) return;
+    const timer = setInterval(() => {
+      setTimeLeft(s => {
+        if (s <= 1) { clearInterval(timer); submitMutation.mutate(); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [started, timeLeft, submitMutation]);
+
+  const handleAnswer = useCallback((value: string) => {
+    if (!q) return;
+    setAnswers(prev => ({ ...prev, [qid]: value }));
+    if (submissionId && q?.qId) {
+      saveAnswerMutation.mutate({ question_id: Number(q.qId), saAnswer_text: value });
+    }
+  }, [q, qid, submissionId, saveAnswerMutation]);
+
+  // Kids task: nhiều ô con gói thành 1 JSON. Rỗng thì lưu '' để không tính là đã trả lời.
+  const handleKidsAnswer = useCallback((map: Record<string, string>) => {
+    const serialized = countFilled(map) > 0 ? serializeKidsAnswer(map) : '';
+    handleAnswer(serialized);
+  }, [handleAnswer]);
+
+  const playAudio = () => {
+    const url = q?.qMedia_url as string | undefined;
+    if (!url) return;
+    if (!audioRef.current || audioRef.current.src !== url) audioRef.current = new Audio(url);
+    audioRef.current.play().catch(() => undefined);
+  };
+
+  // ─── Not started yet ──────────────────────────────────────────────────────
+  if (!started) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(160deg, #FFF1F2 0%, #FFF7ED 50%, #F0FDF4 100%)' }}>
+        <div className="text-center space-y-4 px-6">
+          {loadError ? (
+            <>
+              <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mx-auto">
+                <AlertTriangle className="w-7 h-7 text-red-500" />
+              </div>
+              <p className="text-base font-bold text-slate-700">{loadError}</p>
+              <button onClick={() => { setLoadError(null); startMutation.mutate(); }}
+                className="px-6 py-3 rounded-2xl font-extrabold text-white"
+                style={{ background: 'linear-gradient(135deg, #FB7185 0%, #F97316 100%)' }}>
+                Thử lại
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="text-5xl animate-bounce">📝</div>
+              <p className="text-base font-bold text-rose-500">Đang mở bài thi…</p>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const progress = total > 0 ? Math.round(((current + 1) / total) * 100) : 0;
+  const selected = answers[qid] ?? '';
+  const isLast = current >= total - 1;
+
+  return (
+    <div className="min-h-screen pb-28" style={{ background: 'linear-gradient(160deg, #FFF1F2 0%, #FFF7ED 50%, #F0FDF4 100%)' }}>
+      {/* Top bar */}
+      <header className="sticky top-0 z-30" style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(14px)', borderBottom: '1.5px solid #FFE4E6' }}>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
+          <span className="text-sm font-extrabold flex-shrink-0" style={{ color: '#9F1239' }}>
+            Câu {current + 1}/{total}
+          </span>
+          <div className="flex-1 h-3 rounded-full bg-rose-100 overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-300"
+              style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #FB7185, #F97316)' }} />
+          </div>
+          <span className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-extrabold tabular-nums"
+            style={{ background: timeLeft <= 60 ? '#FEE2E2' : '#EFF6FF', color: timeLeft <= 60 ? '#DC2626' : '#2563EB' }}>
+            ⏱ {formatClock(timeLeft)}
+          </span>
+        </div>
+      </header>
+
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-6">
+        <section className="rounded-3xl p-6 sm:p-8"
+          style={{ background: 'rgba(255,255,255,0.9)', boxShadow: '0 8px 32px rgba(251,113,133,0.12)', border: '2px solid rgba(255,255,255,0.9)' }}>
+
+          {/* Audio (listening) */}
+          {q?.qMedia_url && (
+            <button onClick={playAudio}
+              className="mb-5 inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-white font-extrabold transition-transform hover:scale-[1.02] active:scale-95"
+              style={{ background: 'linear-gradient(135deg, #8B5CF6, #6366F1)', boxShadow: '0 8px 20px rgba(139,92,246,0.3)' }}>
+              <Volume2 className="w-5 h-5" /> Nghe lại
+            </button>
+          )}
+
+          {/* Optional image */}
+          {q?.qImage_url && (
+            <img src={q.qImage_url} alt="" className="w-full max-h-72 object-contain rounded-2xl mb-5 bg-slate-50" />
+          )}
+
+          {/* Reading passage */}
+          {q?.qPassage && (
+            <div className="mb-5 rounded-2xl p-4 text-[15px] leading-7 text-slate-700 bg-slate-50 border border-slate-100"
+              dangerouslySetInnerHTML={{ __html: q.qPassage }} />
+          )}
+
+          {/* Question */}
+          <h1 className="text-lg sm:text-xl font-extrabold leading-snug" style={{ color: '#1A1040' }}
+            dangerouslySetInnerHTML={{ __html: q?.qContent ?? `Câu ${current + 1}` }} />
+
+          {/* Kids task instruction */}
+          {isKidsTask && kidsConfig?.instructions && (
+            <p className="mt-2 text-sm font-medium text-slate-500">{kidsConfig.instructions}</p>
+          )}
+
+          {/* Answers */}
+          {isKidsTask ? (
+            <div className="mt-5">
+              <KidsTaskRenderer
+                taskType={kidsTaskType}
+                taskData={kidsTaskData}
+                answer={parseKidsAnswer(selected)}
+                onChange={handleKidsAnswer}
+              />
+            </div>
+          ) : isWriting ? (
+            <textarea
+              value={selected}
+              onChange={e => handleAnswer(e.target.value)}
+              placeholder="Em viết câu trả lời ở đây nhé…"
+              className="mt-5 w-full min-h-[140px] rounded-2xl border-2 border-rose-100 p-4 text-[15px] outline-none focus:border-rose-300 transition-colors"
+            />
+          ) : (
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {options.map((opt: any, i: number) => {
+                const tone = OPTION_TONES[i % OPTION_TONES.length];
+                const active = selected === opt.value;
+                return (
+                  <button key={opt.id} onClick={() => handleAnswer(opt.value)}
+                    className="group flex items-center gap-3 rounded-2xl p-4 text-left transition-all duration-150 hover:-translate-y-0.5 active:scale-[0.98]"
+                    style={{
+                      background: active ? tone.bg : '#fff',
+                      border: active ? `2.5px solid ${tone.c}` : '2px solid #F1F5F9',
+                      boxShadow: active ? `0 8px 20px ${tone.c}33` : '0 2px 8px rgba(0,0,0,0.04)',
+                    }}>
+                    <span className="w-9 h-9 rounded-xl flex items-center justify-center font-extrabold flex-shrink-0 text-white"
+                      style={{ background: tone.c }}>
+                      {opt.label}
+                    </span>
+                    <span className="flex-1 text-[15px] font-bold" style={{ color: active ? tone.c : '#334155' }}
+                      dangerouslySetInnerHTML={{ __html: opt.content }} />
+                    {active && <CheckCircle2 className="w-5 h-5 flex-shrink-0" style={{ color: tone.c }} />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </main>
+
+      {/* Bottom nav */}
+      <div className="fixed bottom-0 left-0 right-0 z-30" style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(14px)', borderTop: '1.5px solid #FFE4E6' }}>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
+          <button onClick={() => setCurrent(c => Math.max(0, c - 1))} disabled={current === 0}
+            className="inline-flex items-center gap-2 px-4 py-3 rounded-2xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors disabled:opacity-40">
+            <ArrowLeft className="w-4 h-4" /> Trước
+          </button>
+          <span className="flex-1 text-center text-xs font-bold text-slate-400">
+            Đã trả lời {answeredCount}/{total}
+          </span>
+          {isLast ? (
+            <button onClick={() => setShowSubmit(true)}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-extrabold text-white transition-transform hover:scale-[1.02] active:scale-95"
+              style={{ background: 'linear-gradient(135deg, #16A34A, #22C55E)', boxShadow: '0 8px 20px rgba(22,163,74,0.3)' }}>
+              <PartyPopper className="w-4 h-4" /> Nộp bài
+            </button>
+          ) : (
+            <button onClick={() => setCurrent(c => Math.min(total - 1, c + 1))}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-extrabold text-white transition-transform hover:scale-[1.02] active:scale-95"
+              style={{ background: 'linear-gradient(135deg, #FB7185, #F97316)', boxShadow: '0 8px 20px rgba(251,113,133,0.3)' }}>
+              Tiếp <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <KidsSubmitDialog
+        open={showSubmit}
+        total={total}
+        answered={answeredCount}
+        onCancel={() => setShowSubmit(false)}
+        onConfirm={() => submitMutation.mutate()}
+        loading={submitMutation.isPending}
+      />
+    </div>
+  );
+}

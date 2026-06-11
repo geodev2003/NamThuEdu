@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Navigate, RouteObject, useLocation } from 'react-router';
+import { Navigate, RouteObject, useLocation, useParams } from 'react-router';
 import { ProtectedRoute } from '../../components/auth';
 import { StudentLayout } from '../layouts/StudentLayout';
 import { KidsLayout } from '../layouts/KidsLayout';
@@ -13,8 +13,24 @@ const KidsDashboard = lazy(() =>
   import('../features/student/kids/KidsDashboard').then(m => ({ default: m.KidsDashboard })));
 const KidsPractice = lazy(() =>
   import('../features/student/kids/KidsPractice').then(m => ({ default: m.KidsPractice })));
+const KidsExamLobby = lazy(() =>
+  import('../features/student/kids/KidsExamLobby').then(m => ({ default: m.KidsExamLobby })));
+const KidsTestTaking = lazy(() =>
+  import('../features/student/kids/KidsTestTaking').then(m => ({ default: m.KidsTestTaking })));
+const KidsResult = lazy(() =>
+  import('../features/student/kids/KidsResult').then(m => ({ default: m.KidsResult })));
+const KidsSettings = lazy(() =>
+  import('../features/student/kids/KidsSettings').then(m => ({ default: m.KidsSettings })));
+const KidsTests = lazy(() =>
+  import('../features/student/kids/KidsTests').then(m => ({ default: m.KidsTests })));
+const KidsHistory = lazy(() =>
+  import('../features/student/kids/KidsHistory').then(m => ({ default: m.KidsHistory })));
+const KidsAnswerReview = lazy(() =>
+  import('../features/student/kids/KidsAnswerReview').then(m => ({ default: m.KidsAnswerReview })));
 const TeensDashboard = lazy(() =>
   import('../features/student/teens/TeensDashboard').then(m => ({ default: m.TeensDashboard })));
+const TeensTestTaking = lazy(() =>
+  import('../features/student/teens/TeensTestTaking').then(m => ({ default: m.TeensTestTaking })));
 const AdultsDashboard = lazy(() =>
   import('../features/student/adults/AdultsDashboard').then(m => ({ default: m.AdultsDashboard })));
 
@@ -97,7 +113,7 @@ function AdaptiveDashboard() {
   const ageGroup = user?.age_group;
 
   if (ageGroup === 'kids') {
-    return <Navigate to="/hoc-vien/kids" replace />;
+    return <Suspense fallback={<LoadingFallback />}><KidsDashboard /></Suspense>;
   }
   if (ageGroup === 'adults') {
     return <Suspense fallback={<LoadingFallback />}><AdultsDashboard /></Suspense>;
@@ -108,6 +124,96 @@ function AdaptiveDashboard() {
   return <Suspense fallback={<LoadingFallback />}><AdultsDashboard /></Suspense>;
 }
 
+// Kids xem KidsPractice; còn lại xem PracticeList chung.
+function AdaptivePractice() {
+  const userStr = localStorage.getItem('user');
+  const ageGroup = userStr ? JSON.parse(userStr)?.age_group : undefined;
+  if (ageGroup === 'kids') {
+    return <Suspense fallback={<LoadingFallback />}><KidsPractice /></Suspense>;
+  }
+  return <Suspense fallback={<LoadingFallback />}><PracticeList /></Suspense>;
+}
+
+function isKidsUser() {
+  const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
+  try { return raw ? JSON.parse(raw)?.age_group === 'kids' : false; } catch { return false; }
+}
+
+function isTeensUser() {
+  const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
+  try { return raw ? JSON.parse(raw)?.age_group === 'teens' : false; } catch { return false; }
+}
+
+// Phòng chờ: kids dùng bản đơn giản (không proctoring); teens BỎ phòng chờ
+// (không proctoring camera/mic) → vào thẳng trang làm bài; còn lại dùng ExamLobby.
+function TeensLobbySkip() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/hoc-vien/lam-bai/${id}?autostart=1`} replace />;
+}
+
+function AdaptiveExamLobby() {
+  if (isTeensUser()) return <TeensLobbySkip />;
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      {isKidsUser() ? <KidsExamLobby /> : <ExamLobby />}
+    </Suspense>
+  );
+}
+
+// Làm bài: kids dùng bản 1 câu/màn hình, teens dùng engine đa dạng dạng câu, còn lại dùng engine VSTEP chung.
+function AdaptiveTestTaking() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      {isKidsUser() ? <KidsTestTaking /> : isTeensUser() ? <TeensTestTaking /> : <TestTaking />}
+    </Suspense>
+  );
+}
+
+// Xem điểm: kids dùng bản vui vẻ, còn lại dùng ResultDetail chung.
+function AdaptiveResult() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      {isKidsUser() ? <KidsResult /> : <ResultDetail />}
+    </Suspense>
+  );
+}
+
+// Cài đặt: kids dùng bản thân thiện, còn lại dùng Settings chung.
+function AdaptiveSettings() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      {isKidsUser() ? <KidsSettings /> : <Settings />}
+    </Suspense>
+  );
+}
+
+// Bài thi được giao: kids dùng bản sạch/nhẹ, còn lại dùng TestList chung.
+function AdaptiveTests() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      {isKidsUser() ? <KidsTests /> : <TestList />}
+    </Suspense>
+  );
+}
+
+// Lịch sử làm bài: kids dùng bản sạch/nhẹ, còn lại dùng TestHistory chung.
+function AdaptiveHistory() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      {isKidsUser() ? <KidsHistory /> : <TestHistory />}
+    </Suspense>
+  );
+}
+
+// Xem lại đáp án: kids dùng bản thân thiện hiển thị từng ô con, còn lại dùng AnswerReview chung.
+function AdaptiveAnswerReview() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      {isKidsUser() ? <KidsAnswerReview /> : <AnswerReview />}
+    </Suspense>
+  );
+}
+
 // Redirect /hoc-vien/teens/* → /hoc-vien/*
 function TeensRedirect() {
   const location = useLocation();
@@ -115,10 +221,18 @@ function TeensRedirect() {
   return <Navigate to={newPath + location.search} replace />;
 }
 
+// Redirect /hoc-vien/kids/* → /hoc-vien/* (giữ bookmark cũ)
+function KidsRedirect() {
+  const location = useLocation();
+  const newPath = location.pathname.replace(/^\/hoc-vien\/kids/, '/hoc-vien');
+  return <Navigate to={newPath + location.search} replace />;
+}
+
 // Auto-detect layout from age_group in auth session (localStorage or sessionStorage)
 function AdaptiveStudentLayout() {
   const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
   const ageGroup = raw ? (JSON.parse(raw) as { age_group?: string }).age_group : undefined;
+  if (ageGroup === 'kids') return <KidsLayout />;
   if (ageGroup === 'teens') return <TeensLayout />;
   return <StudentLayout />;
 }
@@ -132,16 +246,6 @@ function ProtectedStudentLayout() {
   );
 }
 
-// Protected Kids Layout
-function ProtectedKidsLayout() {
-  return (
-    <ProtectedRoute requiredRole="student">
-      <StudentProtectedRoute ageGroup="kids">
-        <KidsLayout />
-      </StudentProtectedRoute>
-    </ProtectedRoute>
-  );
-}
 
 // Protected Adults Layout (uses shared StudentLayout)
 function ProtectedAdultsLayout() {
@@ -192,11 +296,11 @@ export const studentRoutes: RouteObject = {
     // Legacy routes (shared functionality)
     {
       path: 'bai-tap',
-      element: <Suspense fallback={<LoadingFallback />}><TestList /></Suspense>,
+      element: <AdaptiveTests />,
     },
     {
       path: 'luyen-tap',
-      element: <Suspense fallback={<LoadingFallback />}><PracticeList /></Suspense>,
+      element: <AdaptivePractice />,
     },
     {
       path: 'luyen-tap/:id',
@@ -220,11 +324,11 @@ export const studentRoutes: RouteObject = {
     },
     {
       path: 'phong-cho/:id',
-      element: <Suspense fallback={<LoadingFallback />}><ExamLobby /></Suspense>,
+      element: <AdaptiveExamLobby />,
     },
     {
       path: 'lam-bai/:id',
-      element: <Suspense fallback={<LoadingFallback />}><TestTaking /></Suspense>,
+      element: <AdaptiveTestTaking />,
     },
     {
       path: 'lam-bai-vstep/:examId',
@@ -266,7 +370,7 @@ export const studentRoutes: RouteObject = {
     },
     {
       path: 'ket-qua/:id',
-      element: <Suspense fallback={<LoadingFallback />}><ResultDetail /></Suspense>,
+      element: <AdaptiveResult />,
     },
     {
       path: 'ket-qua-vstep/:id',
@@ -274,11 +378,11 @@ export const studentRoutes: RouteObject = {
     },
     {
       path: 'dap-an/:id',
-      element: <Suspense fallback={<LoadingFallback />}><AnswerReview /></Suspense>,
+      element: <AdaptiveAnswerReview />,
     },
     {
       path: 'lich-su',
-      element: <Suspense fallback={<LoadingFallback />}><TestHistory /></Suspense>,
+      element: <AdaptiveHistory />,
     },
     {
       path: 'tien-do',
@@ -290,7 +394,7 @@ export const studentRoutes: RouteObject = {
     },
     {
       path: 'cai-dat',
-      element: <Suspense fallback={<LoadingFallback />}><Settings /></Suspense>,
+      element: <AdaptiveSettings />,
     },
     {
       path: 'bang-xep-hang',
@@ -309,100 +413,20 @@ export const studentRoutes: RouteObject = {
       element: <Suspense fallback={<LoadingFallback />}><NotificationList /></Suspense>,
     },
     {
-      path: 'thanh-tich',
-      element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
-    },
-    {
       path: '*',
       Component: UnderConstruction,
     },
   ],
 };
 
-// ─── KIDS ROUTES (6-12 tuổi) ─────────────────────────────────────────────────
+// ─── KIDS ROUTES — redirect /hoc-vien/kids/* → /hoc-vien/* ────────────────────
+// Kids giờ dùng chung namespace /hoc-vien (auth tự nhận age_group để render
+// KidsLayout + KidsDashboard). Giữ block này để redirect bookmark cũ.
 export const kidsRoutes: RouteObject = {
   path: '/hoc-vien/kids',
-  element: <ProtectedKidsLayout />,
   children: [
-    {
-      index: true,
-      element: <Suspense fallback={<LoadingFallback />}><KidsDashboard /></Suspense>,
-    },
-    // Practice (landing + sessions)
-    {
-      path: 'luyen-tap',
-      element: <Suspense fallback={<LoadingFallback />}><KidsPractice /></Suspense>,
-    },
-    {
-      path: 'luyen-tap/random',
-      element: <Suspense fallback={<LoadingFallback />}><PracticeSession /></Suspense>,
-    },
-    {
-      path: 'luyen-tap/mistakes',
-      element: <Suspense fallback={<LoadingFallback />}><PracticeSession /></Suspense>,
-    },
-    {
-      path: 'luyen-tap/new',
-      element: <Suspense fallback={<LoadingFallback />}><PracticeSession /></Suspense>,
-    },
-    {
-      path: 'luyen-tap/custom',
-      element: <Suspense fallback={<LoadingFallback />}><PracticeSession /></Suspense>,
-    },
-    {
-      path: 'luyen-tap/:id',
-      element: <Suspense fallback={<LoadingFallback />}><PracticeSession /></Suspense>,
-    },
-    // Tests (list + lobby + taking + results)
-    {
-      path: 'bai-tap',
-      element: <Suspense fallback={<LoadingFallback />}><TestList /></Suspense>,
-    },
-    {
-      path: 'phong-cho/:id',
-      element: <Suspense fallback={<LoadingFallback />}><ExamLobby /></Suspense>,
-    },
-    {
-      path: 'lam-bai/:id',
-      element: <Suspense fallback={<LoadingFallback />}><TestTaking /></Suspense>,
-    },
-    {
-      path: 'ket-qua/:id',
-      element: <Suspense fallback={<LoadingFallback />}><ResultDetail /></Suspense>,
-    },
-    {
-      path: 'dap-an/:id',
-      element: <Suspense fallback={<LoadingFallback />}><AnswerReview /></Suspense>,
-    },
-    {
-      path: 'lich-su',
-      element: <Suspense fallback={<LoadingFallback />}><TestHistory /></Suspense>,
-    },
-    // Kids-only / placeholder
-    {
-      path: 'hoc-bai',
-      element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
-    },
-    {
-      path: 'huy-hieu',
-      element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
-    },
-    {
-      path: 'thanh-tich',
-      element: <Suspense fallback={<LoadingFallback />}><UnderConstruction /></Suspense>,
-    },
-    {
-      path: 'ho-so',
-      element: <Suspense fallback={<LoadingFallback />}><Profile /></Suspense>,
-    },
-    {
-      path: 'cai-dat',
-      element: <Suspense fallback={<LoadingFallback />}><Settings /></Suspense>,
-    },
-    {
-      path: '*',
-      element: <Navigate to="/hoc-vien/kids" replace />,
-    },
+    { index: true, element: <Navigate to="/hoc-vien" replace /> },
+    { path: '*',   element: <KidsRedirect /> },
   ],
 };
 
